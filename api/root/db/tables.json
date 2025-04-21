@@ -1,0 +1,35 @@
+{
+  "tables": [
+    {
+      "table_name": "users",
+      "columns": [
+        "uid VARCHAR(255) PRIMARY KEY",
+        "email VARCHAR(150) UNIQUE NOT NULL",
+        "mobile VARCHAR(15) NOT NULL",
+        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+      ]
+    },
+    {
+      "table_name": "user_sessions",
+      "columns": [
+        "id SERIAL PRIMARY KEY",
+        "uid VARCHAR(255) REFERENCES users(uid) ON DELETE CASCADE",  
+        "session_id VARCHAR(255) NOT NULL",
+        "ip_address VARCHAR(45) NOT NULL",
+        "geo_location VARCHAR(255)",
+        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+      ]
+    },
+    {
+      "table_name": "uuid",
+      "columns": [
+        "_id VARCHAR(255) PRIMARY KEY",
+        "ref_type VARCHAR(100)",
+        "ref_id VARCHAR(100)",
+        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+      ]
+    }
+  ]
+}

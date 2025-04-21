@@ -1,0 +1,228 @@
+import random
+import re
+import bcrypt
+from flask import request
+from flask_restful import Resource
+from datetime import datetime
+import pytz
+import requests
+from root.utilis import handle_user_session, uniqueId
+from root.config import (
+    EMAIL_PASSWORD,
+    EMAIL_SENDER,
+    SMTP_PORT,
+    SMTP_SERVER,
+)
+from root.db.dbHelper import DBHelper
+import smtplib
+from email.message import EmailMessage
+
+
+def generate_otp():
+    return random.randint(100000, 999999)
+
+
+def send_otp_email(email, otp):
+    msg = EmailMessage()
+    msg["Subject"] = "Your OTP Code"
+    msg["From"] = EMAIL_SENDER
+    msg["To"] = email
+    msg.set_content(f"Your OTP is: {otp}\nValid for 10 minutes.")
+
+    server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+    server.starttls()
+    server.login(EMAIL_SENDER, EMAIL_PASSWORD)
+    server.send_message(msg)
+    server.quit()
+    return {"otp": otp, "email": email}
+
+
+def format_phone_number(mobile):
+    # Remove '+' and any non-numeric characters
+    return mobile.replace("+", "").strip()
+
+
+def send_otp_sms(mobile, otp):
+    print(f"Sending OTP to: {mobile}")
+    print(f"OTP: {otp}")
+
+    url = "http://localhost:9090/intl"  # TextBelt running locally
+    project_name = "Dockly"
+
+    data = {
+        "number": str(mobile),  # Ensure it's a string
+        "message": f"{project_name} OTP: {otp}. Use this code to verify your login.",
+        "key": "textbelt",  # Default key when running locally
+    }
+
+    print(f"Request data: {data}")  # Debugging
+
+    response = requests.post(url, data=data)
+    print(f"Response status code: {response.status_code}")
+    print(f"Response text: {response.text}")
+
+    try:
+        return response.json()
+    except requests.exceptions.JSONDecodeError:
+        return {
+            "error": "Invalid response from SMS API",
+            "response_text": response.text,
+        }
+
+
+def maskMobile(value, ifEmpty=False):
+    pattern = (
+        "\s*(?:\+?(\d{1,3}))?[-. (]*(\d{2})[-. )]*(\d{5})[-. ]*(\d{3})(?: *x(\d+))?\s*"
+    )
+    result = re.findall(pattern, value)
+
+    if len(result) > 0:
+        result = result[0]
+
+    if not (len(result) > 3):
+        return ifEmpty
+
+    return f"{result[1]}*****{result[3]}"
+
+
+def getUtcCurrentTime():
+    return datetime.now(tz=pytz.UTC)
+
+
+class RegisterUser(Resource):
+    def post(self):
+        data = request.get_json()
+        email = data.get("email")
+        print(f"email: {email}")
+
+        # Check if user exists
+        existing_user = DBHelper.find_one("users", filters={"email": email})
+        if existing_user:
+            return {
+                "status": 0,
+                "message": "Email already registered",
+                "payload": {},
+            }
+        uid = uniqueId(digit=5, isNum=True, prefix=f"USER")
+
+        # Start session
+        userId = DBHelper.insert(
+            "users", return_column="uid", uid=uid, email=email, mobile=""
+        )
+        sessionInfo = handle_user_session(uid)
+        otp = generate_otp()
+
+        return {
+            "status": 1,
+            "message": "User registered and session created",
+            "payload": {
+                "userId": userId,
+                "session": sessionInfo,
+                "otp": otp,
+                "email": email,
+            },
+        }
+
+
+def is_otp_valid(otpData, otp):
+
+    if otpData["otp"] != int(otp):
+        return {
+            "status": 0,
+            "class": "error",
+            "message": "Oops! That OTP doesn't match. Double-check and try again!",
+            "payload": {},
+        }
+
+    return {
+        "status": 1,
+        "class": "success",
+        "message": "OTP verified!",
+        "payload": {},
+    }
+
+
+class OtpVerification(Resource):
+    def post(self):
+        inputData = request.get_json(silent=True)
+        otp = inputData.get("otp")
+        response = is_otp_valid(inputData["otpStatus"], otp)
+        response["payload"]["userId"] = inputData["userId"]
+        return response
+
+
+class LoginUser(Resource):
+    def post(self):
+        inputData = request.get_json(silent=True)
+        print(f"inputData: {inputData}")
+        type = inputData.get("type")
+        otp = generate_otp()
+
+        if type == "email":
+            email = inputData.get("email")
+            user = DBHelper.find_one(
+                "users", columns="password_hash, firstname, id", email=email
+            )
+
+            if not user:
+                return {"status": 0, "message": "User not found with this email"}
+
+            otpResponse = send_otp_email(email, otp)
+
+        elif type == "mobile":
+            mobilenumber = inputData.get("mobile")
+            user = DBHelper.find_one(
+                "users",
+                columns="password_hash, firstname, id",
+                mobilenumber=mobilenumber,
+            )
+
+            if not user:
+                return {
+                    "status": 0,
+                    "message": "User not found with this mobile number",
+                }
+
+        else:
+            return {"status": 0, "message": "Invalid login type"}
+
+        passwordHash = user.get("password_hash")
+        userName = user.get("firstname", "User")
+        userId = user.get("id")
+
+        password = inputData.get("password")
+
+        if bcrypt.checkpw(password.encode("utf-8"), passwordHash.encode("utf-8")):
+            return {
+                "status": 1,
+                "message": f"Welcome back, {userName}!",
+                "payload": {"otpStatus": {**otpResponse, "userId": userId}},
+            }
+        else:
+            return {"status": 0, "message": "Incorrect password"}
+
+
+class AddDetails(Resource):
+    def post(self):
+        inputData = request.get_json(silent=True)
+        userId = inputData["userId"]
+        mobileNumber = inputData["mobileNumber"]
+
+        existingUser = DBHelper.find_one("users", columns="id", id=userId)
+        if existingUser:
+            DBHelper.update_one("users", inputData, id=userId)
+        otp = generate_otp()
+        # otpStatus = send_otp_sms(mobileNumber, otp)
+        # print(f"otpStatus: {otpStatus}")
+        otpResponse = {"otp": otp, "mobileNumber": mobileNumber}
+
+        return {
+            "status": 1,
+            "message": "OTP sent successfully",
+            "payload": {"userId": userId, "otpStatus": otpResponse},
+        }
+
+
+# phone_number = +919952202256
+# message = "Hello from TextBelt Open Source!"
+# response = send_sms(phone_number, message)

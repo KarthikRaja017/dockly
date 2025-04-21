@@ -1,0 +1,26 @@
+{
+  "name": "next-web-only",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "antd": "^5.24.7",
+    "axios": "^1.8.4",
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "sweetalert2": "^11.19.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.14.1",
+    "@types/react": "19.1.2",
+    "eslint": "latest",
+    "eslint-config-next": "latest",
+    "typescript": "latest"
+  }
+}
