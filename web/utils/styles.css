@@ -10,3 +10,9 @@
   font-size: 16px;
   margin: 0;
 }
+
+.custom-swal-popup {
+  width: 400px !important; /* adjust to your desired width */
+  max-width: 300px !important;
+  box-sizing: border-box;
+}

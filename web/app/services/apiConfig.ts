@@ -7,12 +7,36 @@ const api = axios.create({
   },
 });
 
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("Dtoken"); 
+
+    if (token) {
+      config.headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 export async function userRegister(params: any) {
   return api.post("/user/sign-up", params);
 }
 
+export async function userAddMobile(params: any) {
+  return api.post("/user/sign-up/mobile", params);
+}
+
 export async function emailVerification(params: any) {
   return api.post("/user/email/otpVerification", params);
+}
+export async function mobileVerification(params: any) {
+  return api.post("/user/mobile/otpVerification", params);
+}
+
+export async function signInVerification(params: any) {
+  return api.post("/user/signIn/otpVerification", params);
 }
 
 export async function userDetails(params: any) {
@@ -30,7 +54,7 @@ export async function getSmartBookmarks(uid: string) {
 }
 
 export async function getCurrentUser(params: string) {
-  return api.get("/get/currentUser", {
+  return api.get("/user/get/currentUser", {
     params: { params },
   });
 }

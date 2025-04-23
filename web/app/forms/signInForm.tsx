@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"; // ✅ App Router-compatible hook
 import { AxiosResponse } from "axios";
 import { showNotification } from "../../utils/notification";
 import { userLogin } from "../services/apiConfig";
+import { ROUTES } from "../routes";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -46,13 +47,20 @@ const SignInForm: React.FC = () => {
       const data = response.data;
       if (data.status) {
         showNotification("Success", data.message, "success");
+        localStorage.setItem("lotp", data.payload.otpStatus.otp);
+        localStorage.setItem("ltype", inputType);
         localStorage.setItem("uid", data.payload.otpStatus.userId);
-        router.push("/dashboard"); // ✅ navigation with app router
+        localStorage.setItem("value", JSON.stringify(data.payload.otpStatus));
+        router.push(ROUTES.signInVerification);
       } else {
         showNotification("Error", data.message, "error");
       }
     } catch (error) {
-      showNotification("Error", "Something went wrong. Please try again.", "error");
+      showNotification(
+        "Error",
+        "Something went wrong. Please try again.",
+        "error"
+      );
     }
   };
 

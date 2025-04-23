@@ -70,14 +70,21 @@ def handle_user_session(uid):
     ip = get_ip()
     geo = get_geo_location(ip)
 
-    DBHelper.insert(
-            "user_sessions",
-            uid=uid,
-            session_id=session['session_id'],
-            ip_address=ip,  # ✅ Corrected column name
-            geo_location=str(geo),
-            created_at=session['created_at']
-        )
+    session_data = {
+        "uid": uid,
+        "session_id": session["session_id"],
+        "ip_address": ip,
+        "geo_location": str(geo),
+        "created_at": session["created_at"],
+    }
+
+    existing_session = DBHelper.find_one("user_sessions", {"uid": uid})
+
+    if existing_session:
+        DBHelper.update_one("user_sessions", filters={"uid": uid}, updates=session_data)
+    else:
+        DBHelper.insert("user_sessions", **session_data)
+
     return {
         "session_id": session["session_id"],
         "created_at": session["created_at"],

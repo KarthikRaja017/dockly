@@ -1,16 +1,22 @@
-// ✅ No "use client" here or in anything it imports
-export const metadata = {
-  title: "Dockly",
-  description: "A simple and elegant way to manage your containers",
-  icons: {
-    icon: "/logoWhite.png",
-  },
-};
+import AuthProvider from "./components/authProvider";
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export const metadata = {
+  title: 'Dockly',
+  description: 'A simple and elegant way to manage your containers',
+}
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <AuthProvider> 
+          {children}
+        </AuthProvider>
+      </body>
     </html>
   );
 }

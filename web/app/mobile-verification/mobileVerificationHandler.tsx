@@ -6,32 +6,40 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { showNotification } from "../../utils/notification";
 import { AxiosResponse } from "axios";
 import { ApiResponse } from "../forms/signInForm";
-import { emailVerification } from "../services/apiConfig";
+import { mobileVerification } from "../services/apiConfig";
 import { ROUTES } from "../routes";
 
-const EmailOtpHandler = () => {
+const MobileVerificationHandler = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const email = searchParams.get("email");
+  const mobile = searchParams.get("mobile");
   const [otp, setOtp] = useState("");
+  const [uid, setUid] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const storedOtp = localStorage.getItem("otp") || "";
+    const storedOtp = localStorage.getItem("motp") || "";
+    const storeduid = localStorage.getItem("uid") || "";
     if (storedOtp) {
       setOtp(storedOtp);
+      setUid(storeduid);
     }
-  }, [email]);
-  const handleOtpSubmit = async (otp: string) => {
+  }, [mobile]);
+  const handleOtpSubmit = async (otp: any) => {
     try {
       setLoading(true);
-      const response: AxiosResponse<ApiResponse> = await emailVerification(otp);
+      const response: AxiosResponse<ApiResponse> = await mobileVerification({
+        uid,
+        ...otp,
+      });
       const { status, message: msg, payload } = response.data;
+      console.log("🚀 ~ handleOtpSubmit ~ payload:", payload);
 
       if (status) {
+        const token = payload?.token || "";
+        localStorage.setItem("Dtoken", token);
         showNotification("Success", msg, "success");
-        const userEmail = payload.email || "";
-        router.push(`${ROUTES.mobile}?email=${encodeURIComponent(userEmail)}`);
+        router.push(`${ROUTES.dashBoard}?user=${encodeURIComponent(uid)}`);
       }
     } catch (error: any) {
       console.error("SignUp Error:", error);
@@ -43,11 +51,11 @@ const EmailOtpHandler = () => {
       setLoading(false);
     }
   };
-  return email ? (
+  return mobile ? (
     <Suspense fallback={<div>Loading...</div>}>
       <OTPVerification
-        type="email"
-        value={email}
+        type="mobile"
+        value={mobile}
         storedOtp={otp}
         onSubmit={handleOtpSubmit}
       />
@@ -57,4 +65,4 @@ const EmailOtpHandler = () => {
   );
 };
 
-export default EmailOtpHandler;
+export default MobileVerificationHandler;

@@ -6,6 +6,7 @@ from flask_restful import Resource
 from datetime import datetime
 import pytz
 import requests
+from root.auth.auth import getAccessTokens
 from root.utilis import handle_user_session, uniqueId
 from root.config import (
     EMAIL_PASSWORD,
@@ -109,7 +110,7 @@ class RegisterUser(Resource):
         userId = DBHelper.insert(
             "users", return_column="uid", uid=uid, email=email, mobile=""
         )
-        sessionInfo = handle_user_session(uid)
+        sessionInfo = handle_user_session(userId)
         otp = generate_otp()
 
         return {
@@ -126,7 +127,7 @@ class RegisterUser(Resource):
 
 def is_otp_valid(otpData, otp):
 
-    if otpData["otp"] != int(otp):
+    if int(otpData) != int(otp):
         return {
             "status": 0,
             "class": "error",
@@ -146,35 +147,65 @@ class OtpVerification(Resource):
     def post(self):
         inputData = request.get_json(silent=True)
         otp = inputData.get("otp")
-        response = is_otp_valid(inputData["otpStatus"], otp)
-        response["payload"]["userId"] = inputData["userId"]
+        response = is_otp_valid(inputData["storedOtp"], otp)
+        response["payload"]["email"] = inputData["email"]
+        return response
+
+
+class MobileVerification(Resource):
+    def post(self):
+        inputData = request.get_json(silent=True)
+        otp = inputData.get("otp")
+        uid = inputData.get("uid")
+        response = is_otp_valid(inputData["storedOtp"], otp)
+        userInfo = {
+            "uid": uid,
+        }
+        token = getAccessTokens(userInfo)
+        response["payload"]["token"] = token["accessToken"]
+        return response
+
+
+class SignInVerification(Resource):
+    def post(self):
+        inputData = request.get_json(silent=True)
+        otp = inputData.get("otp")
+        uid = inputData.get("uid")
+        response = is_otp_valid(inputData["storedOtp"], otp)
+        userInfo = {
+            "uid": uid,
+        }
+        token = getAccessTokens(userInfo)
+        handle_user_session(uid)
+        response["payload"]["token"] = token["accessToken"]
         return response
 
 
 class LoginUser(Resource):
     def post(self):
         inputData = request.get_json(silent=True)
-        print(f"inputData: {inputData}")
-        type = inputData.get("type")
+        login_type = inputData.get("type")
         otp = generate_otp()
 
-        if type == "email":
+        if login_type == "email":
             email = inputData.get("email")
             user = DBHelper.find_one(
-                "users", columns="password_hash, firstname, id", email=email
+                table_name="users", filters={"email": email}, select_fields=["uid"]
             )
 
             if not user:
                 return {"status": 0, "message": "User not found with this email"}
 
-            otpResponse = send_otp_email(email, otp)
+            # otpResponse = send_otp_email(email, otp)
+            otpResponse = {"otp": otp, "email": email}
+            
 
-        elif type == "mobile":
+        elif login_type == "mobile":
             mobilenumber = inputData.get("mobile")
             user = DBHelper.find_one(
-                "users",
-                columns="password_hash, firstname, id",
-                mobilenumber=mobilenumber,
+                table_name="users",
+                filters={"mobile": mobilenumber},
+                select_fields=["uid"],
             )
 
             if not user:
@@ -183,23 +214,39 @@ class LoginUser(Resource):
                     "message": "User not found with this mobile number",
                 }
 
+            otpResponse = {"otp": otp, "mobile": mobilenumber}
         else:
             return {"status": 0, "message": "Invalid login type"}
 
-        passwordHash = user.get("password_hash")
-        userName = user.get("firstname", "User")
-        userId = user.get("id")
+        return {
+            "status": 1,
+            "payload": {"otpStatus": {**otpResponse, "userId": user.get("uid")}},
+        }
 
-        password = inputData.get("password")
 
-        if bcrypt.checkpw(password.encode("utf-8"), passwordHash.encode("utf-8")):
-            return {
-                "status": 1,
-                "message": f"Welcome back, {userName}!",
-                "payload": {"otpStatus": {**otpResponse, "userId": userId}},
-            }
-        else:
-            return {"status": 0, "message": "Incorrect password"}
+class AddMobile(Resource):
+    def post(self):
+        inputData = request.get_json(silent=True)
+        email = inputData["email"]
+        mobileNumber = inputData["mobile"]
+
+        existingUser = DBHelper.find_one("users", filters={"email": email})
+        if existingUser:
+            uid = DBHelper.update_one(
+                table_name="users",
+                filters={"email": email},
+                updates={"mobile": mobileNumber},
+                return_fields=["uid"],
+            )
+        otp = generate_otp()
+        # otpStatus = send_otp_sms(mobileNumber, otp)
+        otpResponse = {"otp": otp, "mobileNumber": mobileNumber}
+
+        return {
+            "status": 1,
+            "message": "OTP sent successfully",
+            "payload": {"email": email, "otpStatus": otpResponse, "uid": uid},
+        }
 
 
 class AddDetails(Resource):

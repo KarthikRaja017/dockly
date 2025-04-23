@@ -17,20 +17,18 @@ const OTPInput: React.FC<OTPInputProps> = ({
   onComplete,
   storedOtp = "",
 }) => {
-  console.log("🚀 ~ storedOtp:", storedOtp)
   const [otp, setOtp] = useState<string[]>(new Array(length).fill(""));
   const inputRefs = useRef<Array<InputRef | null>>([]);
 
   // Sync state with storedOtp
   useEffect(() => {
-    console.log("🚀 ~ useEffect ~ storedOtp:", storedOtp)
     if (storedOtp) {
       const updatedOtp = storedOtp
         .padEnd(length, "")
         .split("")
         .slice(0, length);
       setOtp(updatedOtp);
-  
+
       if (storedOtp.length === length) {
         onChange(storedOtp);
         onComplete(storedOtp);
@@ -127,7 +125,7 @@ const OTPVerification = (props: any) => {
   };
   const handleSubmit = () => {
     if (otp.length === 6) {
-      onSubmit(otp);
+      onSubmit({ otp: otp, storedOtp: storedOtp, email: value });
     } else {
       showNotification("Error", "Please enter a valid 6-digit OTP", "error");
     }

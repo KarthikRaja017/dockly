@@ -1,7 +1,8 @@
 from datetime import timedelta
 import os
+import subprocess
 
-from flask import Flask
+from flask import Flask, send_from_directory
 from flask_jwt_extended import JWTManager
 from flask_restful import Api
 from flask_cors import CORS
@@ -15,13 +16,13 @@ jwt = JWTManager()
 def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
     CORS(app)
-    # app.config["JWT_SECRET_KEY"] = G_JWT_ACCESS_SECRET_KEY
-    # app.config["JWT_ACCESS_TOKEN_EXPIRES"] = G_ACCESS_EXPIRES
-    # app.config["JWT_REFRESH_TOKEN_EXPIRES"] = G_REFRESH_EXPIRES
-    # mongo.init_app(app)
     postgres.init_app()
-    # jwt.init_app(app)
+    jwt.init_app(app)
     app.secret_key = G_SECRET_KEY
+#     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../web"))
+
+# # Launch the frontend
+#     subprocess.Popen(["yarn.cmd", "start"], cwd=base_dir, shell=True)
     from root.users import users_bp
     app.register_blueprint(users_bp)
     from root.db import db_bp

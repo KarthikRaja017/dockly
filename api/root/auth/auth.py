@@ -10,14 +10,12 @@ from functools import wraps
 # from root import mongo
 from root.db.dbHelper import DBHelper
 from root.config import G_ACCESS_EXPIRES
+from psycopg2.extras import RealDictRow
 
 # mdb = mongo.db
 
 
-def auth_required(**kwargs):
-    amac = kwargs.get("amac")
-    isOptional = kwargs.get("isOptional", False)
-
+def auth_required(amac=None, isOptional=False):
     def _decorator(fn):
         @jwt_required(optional=isOptional)
         @wraps(fn)
@@ -29,23 +27,13 @@ def auth_required(**kwargs):
             if isOptional and not uid:
                 return fn(*args, **kwargs, uid=None, user=None)
 
-            user = getAuthUser(uid["uid"])
+            user = getAuthUser(uid)
+            # print(f"user: {user}")
 
-            # status = user.get("status", "")
-            # if status in ["deleted", "removed", "suspended"]:
+            # if not user or "id" not in user:
             #     return {
             #         "status": 0,
-            #         "message": "Invalid Access. Please login again",
-            #         "payload": {
-            #             "redirectUrl": "/user/login",
-            #             "logout": True
-            #         }
-            #     }, 401
-
-            # if not (user and "_id" in user):
-            #     return {
-            #         "status": 0,
-            #         "message": "Invalid Access. Please login again",
+            #         "message": "Invalid Access. Please login again.",
             #         "payload": {"redirectUrl": "/user/login", "logout": True},
             #     }, 403
 
@@ -56,7 +44,7 @@ def auth_required(**kwargs):
             #         "payload": {"redirectUrl": "/"},
             #     }, 401
 
-            return fn(*args, **kwargs, uid=uid["uid"], user=user)
+            return fn(*args, **kwargs, uid=uid, user=user)
 
         return wrapper
 
@@ -83,39 +71,41 @@ def validateAccess(uid, user, amac):
     return True
 
 
-def getAuthUser(uid, fields=None):
-    selectFields = ["id"]
 
+def getAuthUser(uid, fields=None):
+    selectFields = ["uid", "email", "mobile"]  
+    
     if fields:
         if isinstance(fields, dict):
             if "retriveAll" in fields:
-                selectFields = ["id", "name", "email", "created_at"]
+                selectFields = ["uid", "email", "mobile"]
             else:
                 selectFields = [field for field, value in fields.items() if value == 1]
 
-    user = DBHelper.find_one(table_name="users", id=uid, selectFields=selectFields)
-    return user
+    user_data = DBHelper.find_one("users", filters={"uid": uid}, select_fields=selectFields)
+
+    session_data = DBHelper.find_one("user_sessions", filters={"uid": uid}, select_fields=["ip_address", "session_id"])
+    # print(f"session_data: {session_data}")
+
+    if not user_data:
+        return None
+
+    user_data = dict(user_data) if isinstance(user_data, RealDictRow) else user_data
+
+    if session_data is None:
+        session_data = {}
+    merged_data = {**user_data, **session_data}
+
+    return merged_data
 
 
 def getAccessTokens(data):
-    print(f"data: {data}")
-    uid = data["_id"] if "_id" in data else ""
-    username = data["username"] if "username" in data else ""
-    id = data["_id"] if "_id" in data else ""
+    uid = data.get("uid")
+    if not uid:
+        raise ValueError("UID is required for token generation")
 
-    user = UserObject(
-        id=id,
-        uid=uid,
-        username=username,
-    )
-
-    # Convert UserObject to a dictionary before passing it
-    accessToken = create_access_token(
-        identity=user.to_dict(), expires_delta=G_ACCESS_EXPIRES
-    )
-    refreshToken = create_refresh_token(
-        identity=user.to_dict(), expires_delta=G_ACCESS_EXPIRES
-    )
+    accessToken = create_access_token(identity=uid, expires_delta=G_ACCESS_EXPIRES)
+    refreshToken = create_refresh_token(identity=uid, expires_delta=G_ACCESS_EXPIRES)
 
     return {
         "accessToken": accessToken,
@@ -124,8 +114,11 @@ def getAccessTokens(data):
 
 
 class UserObject:
-    def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
+    def __init__(self, uid):
+        self.uid = uid
 
     def to_dict(self):
-        return self.__dict__
+        return {"uid": self.uid}
+
+    def __repr__(self):
+        return f"UserObject(uid={self.uid})"
