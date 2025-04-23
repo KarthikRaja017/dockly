@@ -1,6 +1,4 @@
 from datetime import timedelta
-import os
-import subprocess
 
 from flask import Flask, send_from_directory
 from flask_jwt_extended import JWTManager
