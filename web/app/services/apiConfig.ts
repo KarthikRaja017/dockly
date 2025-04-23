@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "http://localhost:5000/server/api",
+  baseURL: "https://dockly.onrender.com/server/api",
   headers: {
     "Content-Type": "application/json",
   },
