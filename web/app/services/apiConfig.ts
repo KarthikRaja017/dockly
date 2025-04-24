@@ -1,17 +1,17 @@
 import axios from "axios";
 
-// const api = axios.create({
-//   baseURL: "https://dockly.onrender.com/server/api",
-//   headers: {
-//     "Content-Type": "application/json",
-//   },
-// });
 const api = axios.create({
-  baseURL: "http://192.168.1.11:5000/server/api",
+  baseURL: "https://dockly.onrender.com/server/api",
   headers: {
     "Content-Type": "application/json",
   },
 });
+// const api = axios.create({
+//   baseURL: "http://192.168.1.11:5000/server/api",
+//   headers: {
+//     "Content-Type": "application/json",
+//   },
+// });
 
 api.interceptors.request.use(
   (config) => {
