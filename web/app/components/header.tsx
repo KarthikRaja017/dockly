@@ -150,7 +150,8 @@ export default Header;
 const { TextArea } = Input;
 const { Title } = Typography;
 
-const NotesDropdown = ({ isOpen, setIsOpen }) => {
+const NotesDropdown = (props: any) => {
+  const { isOpen, setIsOpen } = props;
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
   const [reminder, setReminder] = useState(false);
@@ -266,7 +267,9 @@ const NotesDropdown = ({ isOpen, setIsOpen }) => {
 const { Dragger } = Upload;
 const { Text } = Typography;
 
-const UploadModal = ({ visible, setVisible }) => {
+const UploadModal = (props: any) => {
+  const { visible, setVisible } = props;
+
   const [category, setCategory] = useState<string | undefined>(undefined);
 
   const handleUpload = (info: any) => {
@@ -275,12 +278,12 @@ const UploadModal = ({ visible, setVisible }) => {
       info.file.name.endsWith(".doc") ||
       info.file.name.endsWith(".docx");
 
-    if (!isDocOrPdf) {
-      message.error("You can only upload .doc or .pdf files!");
-      return;
-    }
+    // if (!isDocOrPdf) {
+    //   message.error("You can only upload .doc or .pdf files!");
+    //   return;
+    // }
 
-    message.success(`${info.file.name} file uploaded successfully.`);
+    // message.success(`${info.file.name} file uploaded successfully.`);
   };
 
   return (
@@ -368,7 +371,8 @@ const UploadModal = ({ visible, setVisible }) => {
   );
 };
 
-const AddAccountModal = ({ visible, setVisible }) => {
+const AddAccountModal = (props: any) => {
+  const { visible, setVisible } = props;
   const cardStyle: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
@@ -463,7 +467,9 @@ const AddAccountModal = ({ visible, setVisible }) => {
   );
 };
 
-const BookmarksModal = ({ visible, setVisible }) => {
+const BookmarksModal = (props: any) => {
+  const { visible, setVisible } = props;
+
   // const [visible, setVisible] = useState(false);
   const [tab, setTab] = useState("Bookmarks");
 

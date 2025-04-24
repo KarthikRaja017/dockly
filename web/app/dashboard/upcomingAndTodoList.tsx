@@ -45,13 +45,13 @@ const UpcomingAndTodoList = () => {
     }
   };
 
-  const toggleTodo = (index) => {
+  const toggleTodo = (index:any) => {
     const updated = [...todos];
     updated[index].done = !updated[index].done;
     setTodos(updated);
   };
 
-  const removeTodo = (index) => {
+  const removeTodo = (index:any) => {
     const updated = [...todos];
     updated.splice(index, 1);
     setTodos(updated);
