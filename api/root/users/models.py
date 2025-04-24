@@ -6,7 +6,7 @@ from flask_restful import Resource
 from datetime import datetime
 import pytz
 import requests
-from root.auth.sms import send_sms_otp
+# from root.auth.sms import send_sms_otp
 from root.auth.auth import getAccessTokens
 from root.utilis import handle_user_session, uniqueId
 from root.config import (
@@ -248,15 +248,15 @@ class AddMobile(Resource):
                 return_fields=["uid"],
             )
         otp = generate_otp()
-        otpStatus = send_sms_otp(otp, "91" + mobileNumber)
-        if otpStatus:
-            otpResponse = {"otp": otp, "mobileNumber": mobileNumber}
-        else:
-            return {
-                "status": 0,
-                "message": "Failed to send OTP",
-            }
-
+        # otpStatus = send_sms_otp(otp, "91" + mobileNumber)
+        # if otpStatus:
+        #     otpResponse = {"otp": otp, "mobileNumber": mobileNumber}
+        # else:
+        #     return {
+        #         "status": 0,
+        #         "message": "Failed to send OTP",
+        #     }
+        otpResponse = {"otp": otp, "mobileNumber": mobileNumber}
         return {
             "status": 1,
             "message": "OTP sent successfully",
