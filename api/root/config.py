@@ -4,6 +4,7 @@ from datetime import timedelta
 import firebase_admin
 from firebase_admin import auth, credentials
 
+
 load_dotenv()  # Load variables from .env file
 
 # Configs
@@ -17,6 +18,9 @@ EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 G_ACCESS_EXPIRES = timedelta(minutes=50000000)
 G_REFRESH_EXPIRES = timedelta(days=30)
 G_SECRET_KEY = os.getenv("G_SECRET_KEY")
+
+
+
 
 # firebase_cred_path = os.getenv("FIREBASE_CRED_PATH")
 # cred = credentials.Certificate(firebase_cred_path)

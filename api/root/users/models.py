@@ -6,6 +6,7 @@ from flask_restful import Resource
 from datetime import datetime
 import pytz
 import requests
+from root.auth.sms import send_sms_otp
 from root.auth.auth import getAccessTokens
 from root.utilis import handle_user_session, uniqueId
 from root.config import (
@@ -25,7 +26,7 @@ def generate_otp():
 
 def send_otp_email(email, otp):
     msg = EmailMessage()
-    msg["Subject"] = "Your OTP Code"
+    msg["Subject"] = "Your OTP Code for Dockly"
     msg["From"] = EMAIL_SENDER
     msg["To"] = email
     msg.set_content(f"Your OTP is: {otp}\nValid for 10 minutes.")
@@ -71,19 +72,17 @@ def send_otp_sms(mobile, otp):
         }
 
 
-def maskMobile(value, ifEmpty=False):
-    pattern = (
-        "\s*(?:\+?(\d{1,3}))?[-. (]*(\d{2})[-. )]*(\d{5})[-. ]*(\d{3})(?: *x(\d+))?\s*"
-    )
-    result = re.findall(pattern, value)
+# def maskMobile(value, ifEmpty=False):
+#     pattern = ("\s*(?:\+?(\d{1,3}))?[-. (]*(\d{2})[-. )]*(\d{5})[-. ]*(\d{3})(?: *x(\d+))?\s*")
+#     result = re.findall(pattern, value)
 
-    if len(result) > 0:
-        result = result[0]
+#     if len(result) > 0:
+#         result = result[0]
 
-    if not (len(result) > 3):
-        return ifEmpty
+#     if not (len(result) > 3):
+#         return ifEmpty
 
-    return f"{result[1]}*****{result[3]}"
+#     return f"{result[1]}*****{result[3]}"
 
 
 def getUtcCurrentTime():
@@ -94,7 +93,6 @@ class RegisterUser(Resource):
     def post(self):
         data = request.get_json()
         email = data.get("email")
-        print(f"email: {email}")
 
         # Check if user exists
         existing_user = DBHelper.find_one("users", filters={"email": email})
@@ -112,6 +110,8 @@ class RegisterUser(Resource):
         )
         sessionInfo = handle_user_session(userId)
         otp = generate_otp()
+        otpResponse = send_otp_email(email, otp)
+        
 
         return {
             "status": 1,
@@ -196,15 +196,14 @@ class LoginUser(Resource):
             if not user:
                 return {"status": 0, "message": "User not found with this email"}
 
-            # otpResponse = send_otp_email(email, otp)
-            otpResponse = {"otp": otp, "email": email}
-            
+            otpResponse = send_otp_email(email, otp)
+            # otpResponse = {"otp": otp, "email": email}
 
         elif login_type == "mobile":
-            mobilenumber = inputData.get("mobile")
+            mobileNumber = inputData.get("mobile")
             user = DBHelper.find_one(
                 table_name="users",
-                filters={"mobile": mobilenumber},
+                filters={"mobile": mobileNumber},
                 select_fields=["uid"],
             )
 
@@ -214,7 +213,17 @@ class LoginUser(Resource):
                     "message": "User not found with this mobile number",
                 }
 
-            otpResponse = {"otp": otp, "mobile": mobilenumber}
+            # otpStatus = send_sms_otp(otp, mobileNumber)
+            # print(f"otpStatus: {otpStatus}")
+            # if otpStatus:
+            #     otpResponse = {"otp": otp, "mobileNumber": mobileNumber}
+            # else:
+            #     return {
+            #         "status": 0,
+            #         "message": "Failed to send OTP",
+            #     }
+            otpResponse = {"otp": otp, "mobileNumber": mobileNumber}
+            
         else:
             return {"status": 0, "message": "Invalid login type"}
 
@@ -239,8 +248,14 @@ class AddMobile(Resource):
                 return_fields=["uid"],
             )
         otp = generate_otp()
-        # otpStatus = send_otp_sms(mobileNumber, otp)
-        otpResponse = {"otp": otp, "mobileNumber": mobileNumber}
+        otpStatus = send_sms_otp(otp, "91" + mobileNumber)
+        if otpStatus:
+            otpResponse = {"otp": otp, "mobileNumber": mobileNumber}
+        else:
+            return {
+                "status": 0,
+                "message": "Failed to send OTP",
+            }
 
         return {
             "status": 1,

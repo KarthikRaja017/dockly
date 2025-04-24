@@ -21,20 +21,20 @@ const OTPInput: React.FC<OTPInputProps> = ({
   const inputRefs = useRef<Array<InputRef | null>>([]);
 
   // Sync state with storedOtp
-  useEffect(() => {
-    if (storedOtp) {
-      const updatedOtp = storedOtp
-        .padEnd(length, "")
-        .split("")
-        .slice(0, length);
-      setOtp(updatedOtp);
+  // useEffect(() => {
+  //   if (storedOtp) {
+  //     const updatedOtp = storedOtp
+  //       .padEnd(length, "")
+  //       .split("")
+  //       .slice(0, length);
+  //     setOtp(updatedOtp);
 
-      if (storedOtp.length === length) {
-        onChange(storedOtp);
-        onComplete(storedOtp);
-      }
-    }
-  }, [storedOtp, length, onChange, onComplete]);
+  //     if (storedOtp.length === length) {
+  //       onChange(storedOtp);
+  //       onComplete(storedOtp);
+  //     }
+  //   }
+  // }, [storedOtp, length, onChange, onComplete]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement>,

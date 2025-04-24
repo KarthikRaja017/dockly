@@ -1,9 +1,17 @@
+import Dashboard from "../components/dashboard";
+import HeaderBar from "../components/header";
+import Sidebar from "../components/sideBar";
+import Layout from "../layout";
+
 const DashBoard = () => {
   return (
-    <div className="flex flex-col items-center justify-center h-screen">
-      <h1 className="text-4xl font-bold">Dashboard</h1>
-      <p className="mt-4 text-lg">Welcome to the dashboard!</p>
-    </div>
+    <Layout>
+    <Sidebar />
+    <Layout>
+      <HeaderBar />
+      <Dashboard />
+    </Layout>
+  </Layout>
   );
 };
 export default DashBoard;
