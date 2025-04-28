@@ -64,15 +64,24 @@ export default function BankConnectFlow() {
       message.error("Please enter a valid Profile ID");
       return;
     }
-    const response: AxiosResponse<LoginResponse> = await bankSignup({
+    const response = await bankSignup({
       email: emailId,
     });
-    if (!response) {
-      const errorData = await response;
-      throw new Error(errorData || "Signup failed");
-    }
+    // if (!response) {
+    //   console.log("🚀 ~ handleEmailSubmit ~ response:", response)
+    //   const errorData = await response;
+    //   throw new Error(errorData || "Signup failed");
+    // }
 
-    const { token, userId, expiresAt } = response.data;
+    const { token, userId, expiresAt } = response.data[0]  || {};
+    console.log(
+      "🚀 ~ handleEmailSubmit ~ token:",
+      token,
+      "userId:",
+      userId,
+      "expiresAt:",
+      expiresAt
+    );
     importSession(token);
 
     console.log("New user created:", userId);
@@ -86,12 +95,14 @@ export default function BankConnectFlow() {
       return;
     }
     const response = await bankSignin({ profileId: profileId });
+    console.log("🚀 ~ handleProfileSubmit ~ response:", response)
     if (!response) {
       const errorData = await response;
       throw new Error(errorData || "Signup failed");
     }
 
-    const { token, userId, expiresAt } = response.data;
+    const { token, userId, expiresAt } = response.data[0] || {};
+console.log("🚀 ~ handleEmailSubmit ~ token:", token, "userId:", userId, "expiresAt:", expiresAt);
     importSession(token);
 
     console.log("New user created:", userId);
@@ -225,9 +236,7 @@ export default function BankConnectFlow() {
               subTitle="Click the button below to connect your bank using Quiltt."
               extra={
                 <QuilttButton
-                  connectorId={
-                    process.env.NEXT_PUBLIC_QUILTT_CONNECTOR_ID as string
-                  }
+                  connectorId={'lc9h19r4no'}
                   onExitSuccess={handleExitSuccess}
                   style={{
                     marginTop: 20,
@@ -274,7 +283,7 @@ export default function BankConnectFlow() {
               </Descriptions.Item>
             </Descriptions>
             <Divider />
-            <Button
+            {/* <Button
               type="default"
               block
               size="large"
@@ -285,7 +294,7 @@ export default function BankConnectFlow() {
               }}
             >
               Start Again
-            </Button>
+            </Button> */}
           </div>
         )}
       </Card>
