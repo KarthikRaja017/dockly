@@ -20,6 +20,7 @@ import {
 } from "@quiltt/react";
 import { Account } from "../../src/generated/graphql";
 import { gql, useQuery } from "@apollo/client";
+import { AxiosResponse } from "axios";
 const { Title, Text } = Typography;
 
 const QUERY = gql`
@@ -33,7 +34,11 @@ const QUERY = gql`
     }
   }
 `;
-
+interface LoginResponse {
+  token: string;
+  userId: number;
+  expiresAt: string;
+}
 export default function BankConnectFlow() {
   const [currentStep, setCurrentStep] = useState(0);
   console.log("🚀 ~ BankConnectFlow ~ currentStep:", currentStep);
@@ -59,13 +64,15 @@ export default function BankConnectFlow() {
       message.error("Please enter a valid Profile ID");
       return;
     }
-    const response = await bankSignup({ email: emailId });
+    const response: AxiosResponse<LoginResponse> = await bankSignup({
+      email: emailId,
+    });
     if (!response) {
       const errorData = await response;
       throw new Error(errorData || "Signup failed");
     }
 
-    const { token, userId, expiresAt } = await response;
+    const { token, userId, expiresAt } = response.data;
     importSession(token);
 
     console.log("New user created:", userId);
@@ -84,7 +91,7 @@ export default function BankConnectFlow() {
       throw new Error(errorData || "Signup failed");
     }
 
-    const { token, userId, expiresAt } = await response;
+    const { token, userId, expiresAt } = response.data;
     importSession(token);
 
     console.log("New user created:", userId);
