@@ -3,8 +3,6 @@ from psycopg2 import sql, pool
 from root.config import POSTGRES_URI  # Make sure this is defined properly
 import json
 import os
-
-
 class PostgreSQL:
     def __init__(self):
         self.connection_pool = None
@@ -12,11 +10,16 @@ class PostgreSQL:
     def init_app(self):
         """Initialize the PostgreSQL connection pool."""
         if not self.connection_pool:
-            self.connection_pool = psycopg2.pool.SimpleConnectionPool(
-                minconn=1,
-                maxconn=10,
-                dsn=POSTGRES_URI
-            )
+            try:
+                self.connection_pool = psycopg2.pool.SimpleConnectionPool(
+                    minconn=1,
+                    maxconn=10,
+                    dsn=POSTGRES_URI
+                )
+                print("✅ Postgres connection pool created successfully.")
+            except Exception as e:
+                print(f"❌ Failed to create Postgres connection pool: {e}")
+                self.connection_pool = None  # important to reset if failed
 
     def get_connection(self):
         if not self.connection_pool:
@@ -32,9 +35,9 @@ class PostgreSQL:
             self.connection_pool.closeall()
 
 
-# Initialize PostgreSQL connection pool
+# Initialize PostgreSQL object, but DO NOT connect yet
 postgres = PostgreSQL()
-postgres.init_app()
+# postgres.init_app()  # ❌ Do NOT call it immediately here!
 
 
 def init_tables_from_json():
@@ -51,6 +54,10 @@ def init_tables_from_json():
     cur = None
 
     try:
+        # Initialize the connection pool if not already initialized
+        if not postgres.connection_pool:
+            postgres.init_app()
+
         conn = postgres.get_connection()
         cur = conn.cursor()
 

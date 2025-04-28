@@ -28,7 +28,6 @@ def auth_required(amac=None, isOptional=False):
                 return fn(*args, **kwargs, uid=None, user=None)
 
             user = getAuthUser(uid)
-            # print(f"user: {user}")
 
             # if not user or "id" not in user:
             #     return {

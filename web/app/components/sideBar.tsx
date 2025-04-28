@@ -102,7 +102,7 @@ const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ isHovered }, ref) =>
         zIndex: 1000,
       }}
     >
-      <div style={{ marginBottom: '20px', display: 'flex', cursor: 'pointer' }}>
+      <div style={{ marginBottom: '20px', display: 'flex', cursor: 'pointer' }} onClick={() => router.push('/dashboard')}>
         <img
           src="/logoWhite.png"
           alt="Logo"

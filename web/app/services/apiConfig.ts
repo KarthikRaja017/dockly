@@ -1,21 +1,23 @@
 import axios from "axios";
 
-const api = axios.create({
-  baseURL: "https://dockly.onrender.com/server/api",
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
+export const API_URL = " http://127.0.0.1:5000/server/api";
+
 // const api = axios.create({
-//   baseURL: "http://192.168.1.11:5000/server/api",
+//   baseURL: "https://dockly.onrender.com/server/api",
 //   headers: {
 //     "Content-Type": "application/json",
 //   },
 // });
+const api = axios.create({
+  baseURL: API_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
 
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("Dtoken"); 
+    const token = localStorage.getItem("Dtoken");
 
     if (token) {
       config.headers["Authorization"] = `Bearer ${token}`;
@@ -51,6 +53,17 @@ export async function userDetails(params: any) {
 
 export async function userLogin(params: any) {
   return api.post("/user/sign-in", params);
+}
+export async function getBankDetails(params: any) {
+  return api.post("/get-bank-details", params);
+}
+
+export async function bankSignup(params: any) {
+  return api.post("/signup/bank", params);
+}
+
+export async function bankSignin(params: any) {
+  return api.post("/signin/bank", params);
 }
 
 export async function getSmartBookmarks(uid: string) {

@@ -9,7 +9,7 @@ from root.db.db import postgres
 
 api = Api()
 jwt = JWTManager()
-
+# postgres.initialize_pool()
 
 def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)

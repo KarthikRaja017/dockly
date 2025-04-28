@@ -19,7 +19,9 @@ G_ACCESS_EXPIRES = timedelta(minutes=50000000)
 G_REFRESH_EXPIRES = timedelta(days=30)
 G_SECRET_KEY = os.getenv("G_SECRET_KEY")
 
+AUTH_ENDPOINT = os.getenv('QUILTT_API_SECRET_KEY')
 
+API_SECRET_KEY='https://auth.quiltt.io/v1/users/sessions'
 
 
 # firebase_cred_path = os.getenv("FIREBASE_CRED_PATH")
