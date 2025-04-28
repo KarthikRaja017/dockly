@@ -1,8 +1,8 @@
-import ConnectButton from "./addbank";
+// import ConnectButton from "./addbank";
 
 
-const Bank = () => {
-  return <ConnectButton />;
-};
+// const Bank = () => {
+//   return <ConnectButton />;
+// };
 
-export default Bank;
+// export default Bank;
