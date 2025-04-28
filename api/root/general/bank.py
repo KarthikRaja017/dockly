@@ -34,13 +34,12 @@ class SignInBank(Resource):
         if response.status_code in [200, 201, 202]:
             print(f"response: {response}")
             result = response.json()
-            return (
-                {
+            return {
                     "token": result.get("token"),
                     "userId": result.get("userId"),
                     "expiresAt": result.get("expiresAt"),
                 },
-            )
+            
 
         else:
             error_data = response.json()
