@@ -1,19 +1,18 @@
-import AuthProvider from "./components/authProvider";
+import AuthProvider from "../pages/components/authProvider";
 
 export const metadata = {
-  title: 'Dockly',
-  description: 'A simple and elegant way to manage your containers',
-}
+  title: "Dockly",
+  description: "A simple and elegant way to manage your containers",
+  icons: {
+    icon: "/logoBlue.png", 
+  },
+};
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>
-        <AuthProvider> 
+        <AuthProvider>
           {children}
         </AuthProvider>
       </body>

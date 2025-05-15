@@ -1,10 +1,11 @@
 
 from root.general.currentUser import CurrentUser
-from .models import AddDetails, AddMobile, LoginUser, MobileVerification, OtpVerification, RegisterUser, SignInVerification
+from .models import AddDetails, AddMobile, LoginUser, MobileVerification, OtpVerification, RegisterUser, SaveUserEmail, SignInVerification
 from . import users_api
 
 
-users_api.add_resource(RegisterUser, "/sign-up")
+users_api.add_resource(RegisterUser, "/add/username")
+users_api.add_resource(SaveUserEmail, "/sign-up/email")
 users_api.add_resource(LoginUser, "/sign-in")
 users_api.add_resource(OtpVerification, "/email/otpVerification")
 users_api.add_resource(MobileVerification, "/mobile/otpVerification")

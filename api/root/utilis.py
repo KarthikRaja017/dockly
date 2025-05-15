@@ -108,11 +108,11 @@ def uniqueId(digit=4, isNum=False, ref={}, prefix=None, suffix=None):
     if suffix is not None:
         _id = f"{_id}X{suffix}"
 
-    existing = DBHelper.find_one("uuid", filters={"_id": _id})
+    existing = DBHelper.find_one("uuid", filters={"uid": _id})
 
     if existing:
         return uniqueId(digit, isNum, ref, prefix, suffix)
     else:
-        ref.pop("_id", None)
-        DBHelper.insert("uuid", return_column="_id", _id=_id, **ref)
+        ref.pop("uid", None)
+        DBHelper.insert("uuid", return_column="uid", uid=_id, **ref)
         return _id

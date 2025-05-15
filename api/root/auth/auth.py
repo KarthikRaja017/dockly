@@ -70,20 +70,25 @@ def validateAccess(uid, user, amac):
     return True
 
 
-
 def getAuthUser(uid, fields=None):
-    selectFields = ["uid", "email", "mobile"]  
-    
+    selectFields = ["uid", "email", "mobile", "username"]
+
     if fields:
         if isinstance(fields, dict):
             if "retriveAll" in fields:
-                selectFields = ["uid", "email", "mobile"]
+                selectFields = ["uid", "email", "mobile", "username"]
             else:
                 selectFields = [field for field, value in fields.items() if value == 1]
 
-    user_data = DBHelper.find_one("users", filters={"uid": uid}, select_fields=selectFields)
+    user_data = DBHelper.find_one(
+        "users", filters={"uid": uid}, select_fields=selectFields
+    )
 
-    session_data = DBHelper.find_one("user_sessions", filters={"uid": uid}, select_fields=["ip_address", "session_id"])
+    session_data = DBHelper.find_one(
+        "user_sessions",
+        filters={"uid": uid},
+        select_fields=["ip_address", "session_id"],
+    )
     # print(f"session_data: {session_data}")
 
     if not user_data:

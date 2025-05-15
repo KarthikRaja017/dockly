@@ -6,7 +6,6 @@ from flask_restful import Resource
 from datetime import datetime
 import pytz
 import requests
-# from root.auth.sms import send_sms_otp
 from root.auth.auth import getAccessTokens
 from root.utilis import handle_user_session, uniqueId
 from root.config import (
@@ -21,7 +20,7 @@ from email.message import EmailMessage
 
 
 def generate_otp():
-    return random.randint(100000, 999999)
+    return random.randint(1000, 9999)
 
 
 def send_otp_email(email, otp):
@@ -92,26 +91,68 @@ def getUtcCurrentTime():
 class RegisterUser(Resource):
     def post(self):
         data = request.get_json()
-        email = data.get("email")
+        userName = data.get("userName")
+        email = data.get("email", "")
 
         # Check if user exists
-        existing_user = DBHelper.find_one("users", filters={"email": email})
-        if existing_user:
-            return {
-                "status": 0,
-                "message": "Email already registered",
-                "payload": {},
-            }
-        uid = uniqueId(digit=5, isNum=True, prefix=f"USER")
-
-        # Start session
-        userId = DBHelper.insert(
-            "users", return_column="uid", uid=uid, email=email, mobile=""
+        existingUser = DBHelper.find_one(
+            "users",
+            filters={"username": userName},
+            select_fields=[
+                "email",
+                "is_email_verified",
+                "is_phone_verified",
+                "uid",
+            ],
         )
+
+        if existingUser:
+            docklyUser = None
+            if email:
+                docklyUser = DBHelper.find_one(
+                    "users",
+                    filters={"email": email},
+                    select_fields=["is_dockly_user"],
+                )
+            isDockly = docklyUser.get("is_dockly_user") if docklyUser else None
+            if isDockly is True:
+                userId = existingUser.get("uid")
+                sessionInfo = handle_user_session(userId)
+                token = getAccessTokens({"uid": userId})
+
+                return {
+                    "status": 1,
+                    "message": "Welcome back",
+                    "payload": {
+                        "userId": userId,
+                        "session": sessionInfo,
+                        "token": token["accessToken"],
+                        "redirectUrl": "/dashboard",
+                    },
+                }
+
+            if (isDockly is False or isDockly is None) and not email:
+                return {
+                    "status": 0,
+                    "message": "Username already exists and is unavailable",
+                    "payload": {},
+                }
+
+         # If username does not exist, register new dockly user
+        uid = uniqueId(digit=5, isNum=True, prefix="USER")
+        userId = DBHelper.insert(
+            "users",
+            return_column="uid",
+            uid=uid,
+            email=email or "",
+            mobile="",
+            username=userName,
+            is_email_verified=False,
+            is_phone_verified=False,
+            is_dockly_user=True,
+        )
+
         sessionInfo = handle_user_session(userId)
-        otp = generate_otp()
-        otpResponse = send_otp_email(email, otp)
-        
 
         return {
             "status": 1,
@@ -119,9 +160,41 @@ class RegisterUser(Resource):
             "payload": {
                 "userId": userId,
                 "session": sessionInfo,
-                "otp": otp,
-                "email": email,
+                "redirectUrl": "/sign-up",
             },
+        }
+
+class SaveUserEmail(Resource):
+    def post(self):
+        inputData = request.get_json(silent=True)
+        userId = inputData["userId"]
+        email = inputData["email"]
+
+        existingUser = DBHelper.find_one(
+            "users",
+            filters={"email": email},
+            select_fields=["uid"],
+        )
+        if existingUser:
+            return {
+                "status": 0,
+                "message": "Email already exists",
+                "payload": {},
+            }
+        else:
+            uid = DBHelper.update_one(
+                table_name="users",
+                filters={"uid": userId},
+                updates={"email": email},
+                return_fields=["uid"],
+            )
+        otp = generate_otp()
+        # otpResponse = send_otp_email(email, otp)
+        otpResponse = {"otp": otp, "email": email}
+        return {
+            "status": 1,
+            "message": "OTP sent successfully",
+            "payload": {"email": email, "otpStatus": otpResponse, "uid": uid},
         }
 
 
@@ -146,9 +219,24 @@ def is_otp_valid(otpData, otp):
 class OtpVerification(Resource):
     def post(self):
         inputData = request.get_json(silent=True)
+        print(f"inputData: {inputData}")
+        userId = inputData["userId"]
         otp = inputData.get("otp")
         response = is_otp_valid(inputData["storedOtp"], otp)
-        response["payload"]["email"] = inputData["email"]
+        uid = DBHelper.update_one(
+            table_name="users",
+            filters={"uid": userId},
+            updates={"is_email_verified": True},
+            return_fields=["uid", "email"],
+        )
+        userInfo = {
+            "uid": uid.get("uid"),
+        }
+        token = getAccessTokens(userInfo)
+        # handle_user_session(uid)
+        response["payload"]["token"] = token["accessToken"]
+        response["payload"]["userId"] = uid.get("uid")
+        response["payload"]["email"] = uid.get("email")
         return response
 
 
@@ -223,7 +311,7 @@ class LoginUser(Resource):
             #         "message": "Failed to send OTP",
             #     }
             otpResponse = {"otp": otp, "mobileNumber": mobileNumber}
-            
+
         else:
             return {"status": 0, "message": "Invalid login type"}
 

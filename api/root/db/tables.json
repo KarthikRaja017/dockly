@@ -4,8 +4,12 @@
       "table_name": "users",
       "columns": [
         "uid VARCHAR(255) PRIMARY KEY",
-        "email VARCHAR(150) UNIQUE NOT NULL",
+        "email VARCHAR(150) NOT NULL",
+        "username VARCHAR(100) NOT NULL",
         "mobile VARCHAR(15) NOT NULL",
+        "is_email_verified BOOLEAN DEFAULT FALSE",
+        "is_phone_verified BOOLEAN DEFAULT FALSE",
+        "is_dockly_user BOOLEAN DEFAULT FALSE",
         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
         "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
       ]
@@ -14,7 +18,7 @@
       "table_name": "user_sessions",
       "columns": [
         "id SERIAL PRIMARY KEY",
-        "uid VARCHAR(1024) REFERENCES users(uid) ON DELETE CASCADE",  
+        "uid VARCHAR(255) REFERENCES users(uid) ON DELETE CASCADE",
         "session_id VARCHAR(1024) NOT NULL",
         "ip_address VARCHAR(45) NOT NULL",
         "geo_location VARCHAR(1024)",
@@ -25,10 +29,64 @@
     {
       "table_name": "uuid",
       "columns": [
-        "_id VARCHAR(255) PRIMARY KEY",
+        "uid VARCHAR(255) PRIMARY KEY",
         "ref_type VARCHAR(100)",
         "ref_id VARCHAR(100)",
         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+      ]
+    },
+    {
+      "table_name": "bankDetails",
+      "columns": [
+        "uid VARCHAR(255) PRIMARY KEY REFERENCES users(uid) ON DELETE CASCADE",
+        "email VARCHAR(150) NOT NULL",
+        "profile_id VARCHAR(255) NOT NULL",
+        "isFinanceUser BOOLEAN DEFAULT FALSE",
+        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+      ]
+    },
+    {
+      "table_name": "connections",
+      "columns": [
+        "id TEXT PRIMARY KEY",
+        "user_id VARCHAR(255) REFERENCES users(uid)",
+        "institution_id TEXT",
+        "institution_name TEXT",
+        "institution_logo TEXT",
+        "status TEXT",
+        "externally_managed BOOLEAN",
+        "created_at TIMESTAMP DEFAULT now()"
+      ]
+    },
+    {
+      "table_name": "accounts",
+      "columns": [
+        "id TEXT PRIMARY KEY",
+        "connection_id TEXT REFERENCES connections(id)",
+        "name TEXT",
+        "provider TEXT",
+        "currency_code TEXT",
+        "verified BOOLEAN",
+        "transacted_first_on DATE",
+        "transacted_last_on DATE",
+        "balance_current NUMERIC",
+        "balance_available NUMERIC",
+        "balance_source TEXT",
+        "balance_at TIMESTAMP"
+      ]
+    },
+    {
+      "table_name": "transactions",
+      "columns": [
+        "id TEXT PRIMARY KEY",
+        "account_id TEXT REFERENCES accounts(id)",
+        "date DATE",
+        "description TEXT",
+        "amount NUMERIC",
+        "currency_code TEXT",
+        "entry_type TEXT",
+        "status TEXT"
       ]
     }
   ]
