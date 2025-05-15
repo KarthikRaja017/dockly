@@ -8,13 +8,45 @@ import { PlusOutlined, EditOutlined, MoreOutlined, PhoneOutlined, CalendarOutlin
 const { Content } = Layout;
 
 // Interfaces for dynamic data
-const HealthRecord = ({ name, source, category = 'Medical' }) => ({ name, source, category });
-const Provider = ({ name, specialty, contact, category = 'Medical' }) => ({ name, specialty, contact, category });
-const Appointment = ({ day, month, title, meta, time, status, badge, category = 'Medical' }) => ({ day, month, title, meta, time, status, badge, category });
-const Medication = ({ name, meta, schedule, refill, isSoon, category = 'Medical' }) => ({ name, meta, schedule, refill, isSoon, category });
-const Goal = ({ title, targetDate, current, target, progress, subtext, category }) => ({ title, targetDate, current, target, progress, subtext, category });
-const Activity = ({ icon, title, meta, value, date, category = 'Fitness' }) => ({ icon, title, meta, value, date, category });
-const Insurance = ({ provider, plan, subscriber, group, effectiveDate, copayLabel, copayValue, id, logo, category = 'Medical' }) => ({
+const HealthRecord = ({ name, source, category = 'Medical' }: { name: string; source: string; category?: string }) => ({ name, source, category });
+const Provider = ({ name, specialty, contact, category = 'Medical' }: { name: string; specialty: string; contact: string; category?: string }) => ({ name, specialty, contact, category });
+const Appointment = ({ day, month, title, meta, time, status, badge, category = 'Medical' }: { day: string; month: string; title: string; meta: string; time: string; status: string; badge: string; category?: string }) => ({ day, month, title, meta, time, status, badge, category });
+interface MedicationProps {
+  name: string;
+  meta: string;
+  schedule: string;
+  refill: string;
+  isSoon: boolean;
+  category?: string;
+}
+
+const Medication = ({ name, meta, schedule, refill, isSoon, category = 'Medical' }: MedicationProps) => ({ name, meta, schedule, refill, isSoon, category });
+interface GoalProps {
+  title: string;
+  targetDate: string;
+  current: string;
+  target: string;
+  progress: number;
+  subtext: string;
+  category: string;
+}
+
+const Goal = ({ title, targetDate, current, target, progress, subtext, category }: GoalProps) => ({ title, targetDate, current, target, progress, subtext, category });
+const Activity = ({ icon, title, meta, value, date, category = 'Fitness' }: { icon: string; title: string; meta: string; value: string; date: string; category?: string }) => ({ icon, title, meta, value, date, category });
+interface InsuranceProps {
+  provider: string;
+  plan: string;
+  subscriber: string;
+  group: string;
+  effectiveDate: string;
+  copayLabel: string;
+  copayValue: string;
+  id: string;
+  logo: string;
+  category?: string;
+}
+
+const Insurance = ({ provider, plan, subscriber, group, effectiveDate, copayLabel, copayValue, id, logo, category = 'Medical' }: InsuranceProps) => ({
   provider,
   plan,
   subscriber,
@@ -26,8 +58,22 @@ const Insurance = ({ provider, plan, subscriber, group, effectiveDate, copayLabe
   logo,
   category,
 });
-const MentalHealth = ({ title, description, date, category = 'Mental Health' }) => ({ title, description, date, category });
-const CustomSection = ({ id, title, category, content }) => ({ id, title, category, content });
+interface MentalHealthProps {
+  title: string;
+  description: string;
+  date: string;
+  category?: string;
+}
+
+const MentalHealth = ({ title, description, date, category = 'Mental Health' }: MentalHealthProps) => ({ title, description, date, category });
+interface CustomSectionProps {
+  id: string;
+  title: string;
+  category: string;
+  content: string;
+}
+
+const CustomSection = ({ id, title, category, content }: CustomSectionProps) => ({ id, title, category, content });
 
 const HealthDashboard = () => {
   // State for dynamic data
@@ -80,7 +126,7 @@ const HealthDashboard = () => {
     MentalHealth({ title: 'Meditation', description: '10-minute guided meditation', date: 'Apr 19, 2025' }),
   ]);
 
-  const [customSections, setCustomSections] = useState([]);
+  const [customSections, setCustomSections] = useState<CustomSectionProps[]>([]);
   const [activeTab, setActiveTab] = useState('Overview');
   const [isCustomSectionModalVisible, setIsCustomSectionModalVisible] = useState(false);
 
@@ -88,7 +134,7 @@ const HealthDashboard = () => {
   const [customSectionForm] = Form.useForm();
 
   // Handler for adding new custom section
-  const handleAddCustomSection = (values) => {
+  const handleAddCustomSection = (values:any) => {
     const newSection = CustomSection({
       id: Date.now().toString(),
       title: values.title,

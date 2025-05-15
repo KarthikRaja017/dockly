@@ -39,11 +39,12 @@ interface CloudService {
   folders?: number;
   shared?: number;
 }
+type FileItemType = "doc" | "xls" | "pdf" | "zip" | "ppt" | "folder" | "image";
 
 interface FileItem {
-  type: "folder" | "pdf" | "image" | "doc" | "xls" | "ppt" | "zip";
+  type: FileItemType
   name: string;
-  details: string;
+  details: any;
   path: string;
   storage?: string;
   size?: string;
@@ -161,6 +162,7 @@ const recentFiles = [
     size: "2.4 MB",
     modified: "Today, 9:45 AM",
     status: "Synced",
+    details: {},
   },
   {
     type: "xls",
@@ -170,6 +172,7 @@ const recentFiles = [
     size: "1.8 MB",
     modified: "Today, 10:12 AM",
     status: "Synced",
+    details: {},
   },
   {
     type: "pdf",
@@ -179,6 +182,7 @@ const recentFiles = [
     size: "4.2 MB",
     modified: "Yesterday, 3:22 PM",
     status: "Synced",
+    details: {},
   },
   {
     type: "zip",
@@ -188,6 +192,7 @@ const recentFiles = [
     size: "256 MB",
     modified: "Yesterday, 8:45 PM",
     status: "Synced",
+    details: {},
   },
   {
     type: "ppt",
@@ -197,6 +202,7 @@ const recentFiles = [
     size: "3.7 MB",
     modified: "2 days ago",
     status: "Synced",
+    details: {},
   },
 ];
 
@@ -678,7 +684,7 @@ const CloudConnectionPage: React.FC = () => {
           <Title level={4}>Recently Synced Files</Title>
           <Table
             columns={columns}
-            dataSource={recentFiles}
+            // dataSource={recentFiles}
             pagination={false}
             rowKey="name"
           />

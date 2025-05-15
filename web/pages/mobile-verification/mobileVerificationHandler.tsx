@@ -7,7 +7,6 @@ import { showNotification } from "../../utils/notification";
 import { AxiosResponse } from "axios";
 import { ApiResponse } from "../forms/signInForm";
 import { mobileVerification } from "../services/apiConfig";
-import { ROUTES } from "../../app/routes";
 
 const MobileVerificationHandler = () => {
   const router = useRouter();
@@ -39,7 +38,7 @@ const MobileVerificationHandler = () => {
         const token = payload?.token || "";
         localStorage.setItem("Dtoken", token);
         showNotification("Success", msg, "success");
-        router.push(`${ROUTES.dashBoard}?user=${encodeURIComponent(uid)}`);
+        // router.push(`${ROUTES.dashBoard}?user=${encodeURIComponent(uid)}`);
       }
     } catch (error: any) {
       console.error("SignUp Error:", error);

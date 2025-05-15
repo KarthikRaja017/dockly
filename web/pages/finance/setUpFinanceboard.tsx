@@ -363,7 +363,7 @@ const ConnectedAccountsSummary = (props: any) => {
   const { selectedAccounts, setCurrentStep } = props;
 
   // Group accounts by provider name
-  const groupedByProvider = selectedAccounts.reduce((acc: any, item: any) => {
+  const groupedByProvider = selectedAccounts.reduce((acc: Record<string, any>, item: { provider?: string; name: string; id: string; balance: { current: number } }) => {
     const provider = item.provider || "Unknown Provider";
     if (!acc[provider]) {
       acc[provider] = {
@@ -408,43 +408,43 @@ const ConnectedAccountsSummary = (props: any) => {
         }}
       >
         <Title level={5}>Connected Accounts ({accountsData.length})</Title>
-        {accountsData.map((item, index) => (
+        {accountsData.map((item: any, index: number) => (
           <div key={index} style={{ marginBottom: 20 }}>
             <Row align="middle">
               <Avatar
-                shape="square"
-                size={36}
-                style={{
-                  backgroundColor: "#1677ff",
-                  fontWeight: "bold",
-                  marginRight: 10,
-                }}
+          shape="square"
+          size={36}
+          style={{
+            backgroundColor: "#1677ff",
+            fontWeight: "bold",
+            marginRight: 10,
+          }}
               >
-                {item.icon}
+          {item.icon}
               </Avatar>
               <Title level={5} style={{ marginBottom: 0, marginTop: 0 }}>
-                {item.institution}
+          {item.institution}
               </Title>
             </Row>
 
             <div style={{ marginLeft: 46, marginTop: 10 }}>
-              {item.accounts.map((acc, idx) => (
-                <Row key={idx} justify="space-between">
-                  <Col>
-                    <Text>
-                      {acc.type} (••••{acc.number})
-                    </Text>
-                  </Col>
-                  <Col>
-                    <Text style={{ color: acc.balance < 0 ? "red" : "black" }}>
-                      {acc.balance < 0 ? "-" : ""}$
-                      {Math.abs(acc.balance).toLocaleString("en-US", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </Text>
-                  </Col>
-                </Row>
+              {item.accounts.map((acc: any, idx: number) => (
+          <Row key={idx} justify="space-between">
+            <Col>
+              <Text>
+                {acc.type} (••••{acc.number})
+              </Text>
+            </Col>
+            <Col>
+              <Text style={{ color: acc.balance < 0 ? "red" : "black" }}>
+                {acc.balance < 0 ? "-" : ""}$
+                {Math.abs(acc.balance).toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+                })}
+              </Text>
+            </Col>
+          </Row>
               ))}
             </div>
             {index !== accountsData.length - 1 && <Divider />}

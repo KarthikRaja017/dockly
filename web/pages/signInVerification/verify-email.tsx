@@ -90,7 +90,7 @@ const VerifyEmailPage: React.FC = () => {
           {otp.map((digit, idx) => (
             <Input
               key={idx}
-              ref={(el) => (inputsRef.current[idx] = el)}
+              // ref={(el) => (inputsRef.current[idx] = el)}
               value={digit}
               onChange={(e) => handleChange(e.target.value, idx)}
               onKeyDown={(e) => handleKeyDown(e, idx)}
