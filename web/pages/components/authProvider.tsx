@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ROUTES } from "../../app/routes";
-import { getCurrentUser } from "../services/apiConfig";
+import {getCurrentUser}  from "../../services/apiConfig";
 import MainLayout from "./mainLayout";
 import { UserContext } from "../../app/userContext";
 import { Spin } from "antd";
@@ -28,8 +28,8 @@ export default function AuthProvider({ children }: AuthProviderProps) {
   const fetchUser = async () => {
     const token = localStorage.getItem("Dtoken");
     const uid = localStorage.getItem("userId");
-    const storedSessionId = localStorage.getItem("session_id");
-    const storedIp = localStorage.getItem("ip_address");
+    // const storedSessionId = localStorage.getItem("session_id");
+    // const storedIp = localStorage.getItem("ip_address");
 
     if (!token && !isPublicRoute(pathname)) {
       router.replace(ROUTES.home);

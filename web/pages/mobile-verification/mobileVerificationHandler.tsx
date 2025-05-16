@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { showNotification } from "../../utils/notification";
 import { AxiosResponse } from "axios";
 import { ApiResponse } from "../forms/signInForm";
-import { mobileVerification } from "../services/apiConfig";
+import { mobileVerification } from "../../services/apiConfig";
 
 const MobileVerificationHandler = () => {
   const router = useRouter();

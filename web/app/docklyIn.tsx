@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Input, Button, Typography } from "antd";
 import { LowercaseInput, SIDEBAR_BG } from "./comman";
 import { useRouter } from "next/navigation";
@@ -7,7 +7,7 @@ import { AxiosResponse } from "axios";
 import { ApiResponse } from "../pages/forms/signInForm";
 import { showNotification } from "../utils/notification";
 import DocklyLoader from "../utils/docklyLoader";
-import { addUsername } from "../pages/services/user";
+import addUsername from "../services/user";
 
 const { Title, Text, Link } = Typography;
 
@@ -15,7 +15,13 @@ const DocklyLogin = () => {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
-  const email = localStorage.getItem("email") || "";
+  const [email, setemail] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setemail(localStorage.getItem("email"));
+    }
+  }, []);
 
   const handleSignUp = async (values: any) => {
     setLoading(true);
@@ -94,7 +100,7 @@ const DocklyLogin = () => {
         />
       </div>
       <Title level={3}>Welcome to Dockly</Title>
-      <Text type="secondary">Enter your Dockly URL to get started</Text>
+      <p>Enter your Dockly URL to get started</p>
 
       <div
         style={{
@@ -133,12 +139,12 @@ const DocklyLogin = () => {
         Get Started
       </Button>
 
-      <Text style={{ marginTop: 16 }}>
+      <p style={{ marginTop: 16 }}>
         Don’t have a Dockly URL?{" "}
-        <Link href="#" style={{ color: "#003cff" }}>
+        <a href="#" style={{ color: "#003cff" }}>
           Contact your admin
-        </Link>
-      </Text>
+        </a>
+      </p>
     </div>
   );
 };

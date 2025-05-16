@@ -115,10 +115,10 @@ const OTPVerification = (props: any) => {
   const { type, value, onSubmit, storedOtp } = props;
   const [otp, setOtp] = useState("");
 
-  const maskedValue =
-    type === "email"
-      ? value.replace(/^(.{2}).*(@.*)$/, "$1******$2")
-      : value.replace(/^(.{2}).*(.{2})$/, "$1******$2");
+  // const maskedValue =
+  //   type === "email"
+  //     ? value.replace(/^(.{2}).*(@.*)$/, "$1******$2")
+  //     : value.replace(/^(.{2}).*(.{2})$/, "$1******$2");
 
   const handleOTPComplete = (enteredOtp: string) => {
     setOtp(enteredOtp);
@@ -164,7 +164,7 @@ const OTPVerification = (props: any) => {
         }}
       >
         <Text>A 6-digit pin has been sent to your {type}</Text>
-        <Title level={4}>{maskedValue}</Title>
+        {/* <Title level={4}>{maskedValue}</Title> */}
       </div>
       <div>
         <Title level={5}>Enter PIN</Title>

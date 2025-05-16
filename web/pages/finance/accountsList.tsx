@@ -76,7 +76,7 @@ const AccountsList = (props: any) => {
         maxWidth: 1500,
       }}
     >
-      {accountDetails.map((acct: any, idx: any) => (
+      {(accountDetails ?? []).map((acct: any, idx: any) => (
         <AccountCard key={idx} {...acct} />
       ))}
 

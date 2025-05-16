@@ -22,3 +22,9 @@
 //     </div>
 //   );
 // }
+
+const ThemePreviewPage = () => {
+  return <></>;
+};
+
+export default ThemePreviewPage;

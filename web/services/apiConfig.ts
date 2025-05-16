@@ -1,27 +1,27 @@
 import axios from "axios";
 
 // export const API_URL = " http://127.0.0.1:5000/server/api";
-export const API_URL_DEPLOYMENT = " https://dockly.onrender.com/server/api";
+export const API_URL_DEPLOYMENT = "https://dockly.onrender.com/server/api";
 
- export const api = axios.create({
+export const api = axios.create({
   baseURL: API_URL_DEPLOYMENT,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("Dtoken");
-
-    if (token) {
-      config.headers["Authorization"] = `Bearer ${token}`;
-    }
-
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+if (typeof window !== "undefined") {
+  api.interceptors.request.use(
+    (config) => {
+      const token = localStorage.getItem("Dtoken"); // ✅ Now runs only on client
+      if (token) {
+        config.headers["Authorization"] = `Bearer ${token}`;
+      }
+      return config;
+    },
+    (error) => Promise.reject(error)
+  );
+}
 
 export async function emailVerification(params: any) {
   return api.post("/user/email/otpVerification", params);

@@ -8,23 +8,22 @@ import AccountsList from "./accountsList";
 import RecentTransactions from "./transactions";
 import MonthlyBudget from "./monthlyBudget";
 import { useQuilttSession } from "@quiltt/react";
-import { getBankAccount } from "../services/apiConfig";
+import { getBankAccount } from "../../services/apiConfig";
 
 const FinanceTabs = (props: any) => {
-  const { bankDetails } = props;
-  // const [bankDetails, setBankDetails] = React.useState<any>(null);
-  console.log("🚀 ~ FinanceTabs ~ bankDetails:", bankDetails);
-  // const { session } = useQuilttSession();
-  // const getUserBankAccount = async () => {
-  //   const response = await getBankAccount({ session: session });
-  //   const data = response?.data?.data;
-  //   if (data) {
-  //     setBankDetails(data);
-  //   }
-  // };
-  // useEffect(() => {
-  //   getUserBankAccount();
-  // }, []);
+  // const { bankDetails } = props;
+  const [bankDetails, setBankDetails] = React.useState<any>(null);
+  const { session } = useQuilttSession();
+  const getUserBankAccount = async () => {
+    const response = await getBankAccount({ session: session });
+    const data = response?.data?.data;
+    if (data) {
+      setBankDetails(data);
+    }
+  };
+  useEffect(() => {
+    getUserBankAccount();
+  }, []);
 
   const items = [
     {

@@ -1,12 +1,12 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Input, Button, Typography, Form } from "antd";
 import { MailOutlined } from "@ant-design/icons";
 import { useParams, useRouter } from "next/navigation";
 import { useCurrentUser } from "../../app/userContext";
 import { AxiosResponse } from "axios";
 import { ApiResponse } from "../forms/signInForm";
-import { userAddEmail } from "../services/user";
+import { userAddEmail } from "../../services/user";
 import { showNotification } from "../../utils/notification";
 import { LowercaseInput } from "../../app/comman";
 
@@ -16,9 +16,13 @@ const SignUpDockly = () => {
   const router = useRouter();
   const params = useParams() || {};
   const username = params.username;
-  const userId = localStorage.getItem("userId");
+  const [userId, setUserId] = useState("");
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState(false);
+  useEffect(() => {
+    const userId = localStorage.getItem("userId") || "";
+    setUserId(userId);
+  }, []);
 
   const onFinish = async (values: any) => {
     setLoading(true);

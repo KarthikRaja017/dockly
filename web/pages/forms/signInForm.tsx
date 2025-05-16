@@ -6,7 +6,7 @@ import { MailOutlined, PhoneOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation"; // ✅ App Router-compatible hook
 import { AxiosResponse } from "axios";
 import { showNotification } from "../../utils/notification";
-import { userLogin } from "../services/apiConfig";
+import { userLogin } from "../../services/apiConfig";
 
 const { Title, Text } = Typography;
 const { Option } = Select;

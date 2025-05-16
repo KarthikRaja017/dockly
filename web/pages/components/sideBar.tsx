@@ -16,8 +16,7 @@ import {
   PRIMARY_COLOR,
   SIDEBAR_BG,
 } from "../../app/comman";
-import {
-  FlatColorIconsCalendar,
+import FlatColorIconsCalendar, {
   FlatColorIconsHome,
   FluentColorPeopleCommunity48,
   FluentEmojiDollarBanknote,
@@ -69,10 +68,15 @@ const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
     const router = useRouter();
     const collapsed = !isHovered;
     const [currentPath, setCurrentPath] = useState<string>("dashboard");
-    const username = localStorage.getItem("username");
+    const [username, setUsername] = useState<string>("");
+
+    useEffect(() => {
+      const username = localStorage.getItem("username") || "";
+      setUsername(username);
+    }, []);
     const pathname = usePathname();
     if (!pathname) return null;
-    console.log("🚀 ~ collapsed:", collapsed);
+
     useEffect(() => {
       const pathSegments = pathname.split("/") || [];
       const currentPath = pathSegments[2] || "dashboard";

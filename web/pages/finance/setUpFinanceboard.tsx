@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Steps,
   Card,
@@ -19,7 +19,7 @@ import {
   useQuilttSession,
 } from "@quiltt/react";
 import { PRIMARY_COLOR } from "../../app/comman";
-import { getBankAccount } from "../services/apiConfig";
+import { getBankAccount } from "../../services/apiConfig";
 import { useRouter } from "next/navigation";
 
 const { Title, Paragraph, Text } = Typography;
@@ -363,24 +363,35 @@ const ConnectedAccountsSummary = (props: any) => {
   const { selectedAccounts, setCurrentStep } = props;
 
   // Group accounts by provider name
-  const groupedByProvider = selectedAccounts.reduce((acc: Record<string, any>, item: { provider?: string; name: string; id: string; balance: { current: number } }) => {
-    const provider = item.provider || "Unknown Provider";
-    if (!acc[provider]) {
-      acc[provider] = {
-        institution: provider,
-        icon: provider[0]?.toUpperCase() || "P",
-        accounts: [],
-      };
-    }
+  const groupedByProvider = selectedAccounts.reduce(
+    (
+      acc: Record<string, any>,
+      item: {
+        provider?: string;
+        name: string;
+        id: string;
+        balance: { current: number };
+      }
+    ) => {
+      const provider = item.provider || "Unknown Provider";
+      if (!acc[provider]) {
+        acc[provider] = {
+          institution: provider,
+          icon: provider[0]?.toUpperCase() || "P",
+          accounts: [],
+        };
+      }
 
-    acc[provider].accounts.push({
-      type: item.name,
-      number: item.id.slice(-4), // Use last 4 characters of account ID as number
-      balance: item.balance.current,
-    });
+      acc[provider].accounts.push({
+        type: item.name,
+        number: item.id.slice(-4), // Use last 4 characters of account ID as number
+        balance: item.balance.current,
+      });
 
-    return acc;
-  }, {});
+      return acc;
+    },
+    {}
+  );
 
   const accountsData = Object.values(groupedByProvider);
 
@@ -412,39 +423,39 @@ const ConnectedAccountsSummary = (props: any) => {
           <div key={index} style={{ marginBottom: 20 }}>
             <Row align="middle">
               <Avatar
-          shape="square"
-          size={36}
-          style={{
-            backgroundColor: "#1677ff",
-            fontWeight: "bold",
-            marginRight: 10,
-          }}
+                shape="square"
+                size={36}
+                style={{
+                  backgroundColor: "#1677ff",
+                  fontWeight: "bold",
+                  marginRight: 10,
+                }}
               >
-          {item.icon}
+                {item.icon}
               </Avatar>
               <Title level={5} style={{ marginBottom: 0, marginTop: 0 }}>
-          {item.institution}
+                {item.institution}
               </Title>
             </Row>
 
             <div style={{ marginLeft: 46, marginTop: 10 }}>
               {item.accounts.map((acc: any, idx: number) => (
-          <Row key={idx} justify="space-between">
-            <Col>
-              <Text>
-                {acc.type} (••••{acc.number})
-              </Text>
-            </Col>
-            <Col>
-              <Text style={{ color: acc.balance < 0 ? "red" : "black" }}>
-                {acc.balance < 0 ? "-" : ""}$
-                {Math.abs(acc.balance).toLocaleString("en-US", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-                })}
-              </Text>
-            </Col>
-          </Row>
+                <Row key={idx} justify="space-between">
+                  <Col>
+                    <Text>
+                      {acc.type} (••••{acc.number})
+                    </Text>
+                  </Col>
+                  <Col>
+                    <Text style={{ color: acc.balance < 0 ? "red" : "black" }}>
+                      {acc.balance < 0 ? "-" : ""}$
+                      {Math.abs(acc.balance).toLocaleString("en-US", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </Text>
+                  </Col>
+                </Row>
               ))}
             </div>
             {index !== accountsData.length - 1 && <Divider />}
@@ -468,7 +479,12 @@ const ConnectedAccountsSummary = (props: any) => {
 
 const FinanceBoardCompletedCard = () => {
   const router = useRouter();
-  const username = localStorage.getItem("username");
+  const [username, setUsername] = useState<string>("");
+
+  useEffect(() => {
+    const username = localStorage.getItem("username") || "";
+    setUsername(username);
+  }, []);
 
   return (
     <Card

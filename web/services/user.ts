@@ -1,6 +1,6 @@
 import { api } from "./apiConfig";
 
-export async function addUsername(params: any) {
+export default async function addUsername(params: any) {
   return api.post("/user/add/username", params);
 }
 

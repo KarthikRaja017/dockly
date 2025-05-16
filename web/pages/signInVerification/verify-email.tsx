@@ -1,10 +1,10 @@
 "use client";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Row, Col, Typography, Input, Button } from "antd";
 import { useParams, useRouter } from "next/navigation";
 import { AxiosResponse } from "axios";
 import { ApiResponse } from "../forms/signInForm";
-import { emailVerification, signInVerification } from "../services/apiConfig";
+import { emailVerification, signInVerification } from "../../services/apiConfig";
 import { showNotification } from "../../utils/notification";
 
 const { Title, Text, Link } = Typography;
@@ -14,8 +14,15 @@ const VerifyEmailPage: React.FC = () => {
   const router = useRouter();
   const params = useParams() || {};
   const username = params.username;
-  const userId = localStorage.getItem("userId");
-  const storedOtp = localStorage.getItem("storedOtp");
+  const [userId, setUserId] = useState<string | null>(null);
+  const [storedOtp, setStoredOtp] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setUserId(localStorage.getItem("userId"));
+      setStoredOtp(localStorage.getItem("storedOtp"));
+    }
+  }, []);
 
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -42,7 +49,6 @@ const VerifyEmailPage: React.FC = () => {
 
   const handleContinue = async () => {
     const code = otp.join("");
-    console.log("🚀 ~ handleContinue ~ code.length:", code.length);
     if (code.length > 4) {
       alert("Please enter a valid 4-digit code");
       showNotification("Error", "Please enter a valid 4-digit code", "error");

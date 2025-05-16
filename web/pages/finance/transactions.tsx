@@ -63,7 +63,9 @@ const TransactionItem = (props: any) => {
 };
 
 const RecentTransactions = (props: any) => {
-  const { transactions } = props;
+  const transactions = Array.isArray(props.transactions)
+    ? props.transactions
+    : [];
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
@@ -86,7 +88,7 @@ const RecentTransactions = (props: any) => {
       {currentData.map((tx: any, index: number) => (
         <TransactionItem key={tx.id || index} data={tx} />
       ))}
-      <div style={{display: "flex", justifyContent: "end"}}>
+      <div style={{ display: "flex", justifyContent: "end" }}>
         <Pagination
           current={currentPage}
           pageSize={pageSize}

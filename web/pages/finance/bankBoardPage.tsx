@@ -11,7 +11,7 @@ import {
   Spin,
 } from "antd";
 import Link from "next/link";
-import { getBankAccount } from "../services/apiConfig";
+import { getBankAccount } from "../../services/apiConfig";
 import {
   ConnectorSDKCallbackMetadata,
   QuilttButton,
@@ -30,8 +30,12 @@ export default function BankBoardPage() {
   const [bankDetails, setBankDetails] = useState<any>(null);
   const [loading, setLoading] = useState(true); // <-- Add loading state
   const [connectionId, setConnectionId] = useState<string>();
-  const username = localStorage.getItem("username");
+  const [username, setUsername] = useState<string>("");
 
+  useEffect(() => {
+    const username = localStorage.getItem("username") || "";
+    setUsername(username);
+  }, []);
 
   const { session } = useQuilttSession();
   const router = useRouter();
@@ -208,4 +212,3 @@ const FinanceProfileSetup = (props: any) => {
     </>
   );
 };
-

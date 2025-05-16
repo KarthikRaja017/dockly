@@ -132,5 +132,8 @@
 //     </div>
 //   );
 // };
+const MobileForm = () => {
+  return <></>;
+};
 
-// export default MobileForm;
+export default MobileForm;

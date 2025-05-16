@@ -9,7 +9,7 @@ import {
   PieChartOutlined,
 } from "@ant-design/icons";
 import { PRIMARY_COLOR } from "../../app/comman";
-import { bankConnect } from "../services/apiConfig";
+import { bankConnect } from "../../services/apiConfig";
 import { useQuilttSession } from "@quiltt/react";
 import { showNotification } from "../../utils/notification";
 import { useCurrentUser } from "../../app/userContext";

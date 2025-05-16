@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { showNotification } from "../../utils/notification";
 import { AxiosResponse } from "axios";
 import { ApiResponse } from "../forms/signInForm";
-import { emailVerification } from "../services/apiConfig";
+import { emailVerification } from "../../services/apiConfig";
 import { ROUTES } from "../../app/routes";
 
 const EmailOtpHandler = () => {
