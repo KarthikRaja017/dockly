@@ -1,28 +1,14 @@
-"use client";
-import React, { useState } from "react";
+
+'use client';
+import React, { useState } from 'react';
 import {
-  Steps,
-  Button,
-  Card,
-  List,
-  Input,
-  Tag,
-  Checkbox,
-  Space,
-  Typography,
-  Divider,
-  Progress,
-  Table,
-  Row,
-  Col,
-} from "antd";
+  Steps, Button, Input, Tag, Checkbox, Card, Space, List, Divider
+} from 'antd';
 import {
-  SearchOutlined,
-  FolderOutlined,
-  FilePdfOutlined,
-  FileImageOutlined,
-  CloudOutlined,
-} from "@ant-design/icons";
+  SearchOutlined, FolderOutlined, FilePdfOutlined,
+  FileImageOutlined, CloudOutlined, LockOutlined
+} from '@ant-design/icons';
+import Typography from 'antd/es/typography';
 
 const { Step } = Steps;
 const { Title, Text } = Typography;
@@ -39,12 +25,11 @@ interface CloudService {
   folders?: number;
   shared?: number;
 }
-type FileItemType = "doc" | "xls" | "pdf" | "zip" | "ppt" | "folder" | "image";
 
 interface FileItem {
-  type: FileItemType
+  type: 'folder' | 'pdf' | 'image' | 'doc' | 'xls' | 'ppt' | 'zip';
   name: string;
-  details: any;
+  details?: string;
   path: string;
   storage?: string;
   size?: string;
@@ -58,199 +43,66 @@ interface PinnedFile {
 }
 
 const initialCloudServices: CloudService[] = [
-  {
-    icon: "G",
-    name: "Google Drive",
-    description: "Documents, spreadsheets, presentations.",
-    connected: false,
-  },
-  {
-    icon: "D",
-    name: "Dropbox",
-    description: "Cloud storage for files and photos.",
-    connected: true,
-    email: "user@dropbox.com",
-    totalStorage: "2 TB",
-    usedPercentage: 10,
-    files: 583,
-    folders: 42,
-    shared: 15,
-  },
-  {
-    icon: "iC",
-    name: "iCloud Drive",
-    description: "Apple's cloud storage.",
-    connected: false,
-  },
-  {
-    icon: "O",
-    name: "OneDrive",
-    description: "Microsoft cloud storage.",
-    connected: false,
-    email: "user@outlook.com",
-    totalStorage: "1 TB",
-    usedPercentage: 35,
-    files: 1287,
-    folders: 93,
-    shared: 27,
-  },
-  {
-    icon: "GP",
-    name: "Google Photos",
-    description: "Photo and video storage.",
-    connected: false,
-  },
-  {
-    icon: "B",
-    name: "Box",
-    description: "Secure content management.",
-    connected: false,
-  },
+  { icon: 'G', name: 'Google Drive', description: 'Documents, spreadsheets, presentations, and more.', connected: false },
+  { icon: 'D', name: 'Dropbox', description: 'Cloud storage for all your files and photos.', connected: true, email: 'user@dropbox.com', totalStorage: '2 TB', usedPercentage: 10, files: 583, folders: 42, shared: 15 },
+  { icon: 'iC', name: 'iCloud Drive', description: "Apple's cloud storage for documents and data.", connected: false },
+  { icon: 'O', name: 'OneDrive', description: "Microsoft's cloud storage integrated with Office.", connected: false },
+  { icon: 'GP', name: 'Google Photos', description: 'Photo and video storage with smart organization.', connected: false },
+  { icon: 'B', name: 'Box', description: 'Secure content management and collaboration.', connected: false },
 ];
 
 const initialFiles: FileItem[] = [
-  {
-    type: "folder",
-    name: "Tax Documents",
-    details: "Folder with 8 items",
-    path: "My Drive/Important Documents/2023/Tax Documents",
-  },
-  {
-    type: "folder",
-    name: "Insurance",
-    details: "Folder with 4 items",
-    path: "My Drive/Important Documents/2023/Insurance",
-  },
-  {
-    type: "pdf",
-    name: "Home_Deed_2020.pdf",
-    details: "PDF • 2.4 MB • Apr 14, 2020",
-    path: "My Drive/Important Documents/2023/Home_Deed_2020.pdf",
-  },
-  {
-    type: "pdf",
-    name: "Mortgage_Agreement.pdf",
-    details: "PDF • 3.7 MB • Apr 13, 2020",
-    path: "My Drive/Important Documents/2023/Mortgage_Agreement.pdf",
-  },
-  {
-    type: "pdf",
-    name: "Home_Insurance_Policy.pdf",
-    details: "PDF • 1.8 MB • May 2, 2023",
-    path: "My Drive/Important Documents/2023/Home_Insurance_Policy.pdf",
-  },
-  {
-    type: "image",
-    name: "House_Front.jpg",
-    details: "JPG • 5.3 MB • Jul 10, 2020",
-    path: "My Drive/Important Documents/2023/House_Front.jpg",
-  },
-  {
-    type: "pdf",
-    name: "HOA_Bylaws.pdf",
-    details: "PDF • 1.2 MB • Apr 20, 2020",
-    path: "My Drive/Important Documents/2023/HOA_Bylaws.pdf",
-  },
-];
-
-const recentFiles = [
-  {
-    type: "doc",
-    name: "Q2 Financial Report.docx",
-    path: "Documents/Finance",
-    storage: "OneDrive",
-    size: "2.4 MB",
-    modified: "Today, 9:45 AM",
-    status: "Synced",
-    details: {},
-  },
-  {
-    type: "xls",
-    name: "Budget 2025.xlsx",
-    path: "Finance/Planning",
-    storage: "Google Drive",
-    size: "1.8 MB",
-    modified: "Today, 10:12 AM",
-    status: "Synced",
-    details: {},
-  },
-  {
-    type: "pdf",
-    name: "Home Insurance Policy.pdf",
-    path: "Documents/Insurance",
-    storage: "Dropbox",
-    size: "4.2 MB",
-    modified: "Yesterday, 3:22 PM",
-    status: "Synced",
-    details: {},
-  },
-  {
-    type: "zip",
-    name: "Family Vacation Photos.zip",
-    path: "Photos/2025/Spring",
-    storage: "Google Drive",
-    size: "256 MB",
-    modified: "Yesterday, 8:45 PM",
-    status: "Synced",
-    details: {},
-  },
-  {
-    type: "ppt",
-    name: "Project Timeline.pptx",
-    path: "Work/Projects/Q2",
-    storage: "OneDrive",
-    size: "3.7 MB",
-    modified: "2 days ago",
-    status: "Synced",
-    details: {},
-  },
+  { type: 'folder', name: 'Tax Documents', details: 'Folder with 8 items', path: 'My Drive/Important Documents/2023/Tax Documents' },
+  { type: 'folder', name: 'Insurance', details: 'Folder with 4 items', path: 'My Drive/Important Documents/2023/Insurance' },
+  { type: 'pdf', name: 'Home_Deed_2020.pdf', details: 'PDF • 2.4 MB • Apr 14, 2020', path: 'My Drive/Important Documents/2023/Home_Deed_2020.pdf' },
+  { type: 'pdf', name: 'Mortgage_Agreement.pdf', details: 'PDF • 3.7 MB • Apr 13, 2020', path: 'My Drive/Important Documents/2023/Mortgage_Agreement.pdf' },
+  { type: 'pdf', name: 'Home_Insurance_Policy.pdf', details: 'PDF • 1.8 MB • May 2, 2023', path: 'My Drive/Important Documents/2023/Home_Insurance_Policy.pdf' },
+  { type: 'image', name: 'House_Front.jpg', details: 'JPG • 5.3 MB • Jul 10, 2020', path: 'My Drive/Important Documents/2023/House_Front.jpg' },
+  { type: 'pdf', name: 'HOA_Bylaws.pdf', details: 'PDF • 1.2 MB • Apr 20, 2020', path: 'My Drive/Important Documents/2023/HOA_Bylaws.pdf' },
 ];
 
 const CloudConnectionPage: React.FC = () => {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [selectedService, setSelectedService] = useState<CloudService | null>(
-    null
-  );
-  const [currentPath, setCurrentPath] = useState(
-    "My Drive/Important Documents/2023"
-  );
+  const [currentStep, setCurrentStep] = useState<number>(0);
+  const [selectedService, setSelectedService] = useState<CloudService | null>(null);
+  const [currentPath, setCurrentPath] = useState<string>('My Drive/Important Documents/2023');
   const [files, setFiles] = useState<FileItem[]>(initialFiles);
   const [pinningFile, setPinningFile] = useState<FileItem | null>(null);
-  const [pinnedFiles, setPinnedFiles] = useState<PinnedFile[]>([]);
-  const [cloudServices, setCloudServices] =
-    useState<CloudService[]>(initialCloudServices);
-  const [showDashboard, setShowDashboard] = useState(false);
+  const [pinnedFiles, setPinnedFiles] = useState<PinnedFile[]>([
+    { name: 'Home Deed', boards: ['Home Management', 'Important Documents'] },
+    { name: 'Mortgage Agreement', boards: ['Home Management'] },
+    { name: 'Home Insurance Policy', boards: ['Home Management'] },
+  ]);
+  const [cloudServices, setCloudServices] = useState<CloudService[]>(initialCloudServices);
+  const [displayName, setDisplayName] = useState<string>('');
+  const [description, setDescription] = useState<string>('');
+  const [tags, setTags] = useState<string[]>(['home', 'legal', 'important']);
+  const [selectedBoards, setSelectedBoards] = useState<string[]>(['Home Management', 'Important Documents']);
 
   const handleSelectService = (service: CloudService) => {
     setSelectedService(service);
+    setCurrentStep(1);
   };
 
   const handleOpenFolder = (folder: FileItem) => {
     setCurrentPath(folder.path);
     setFiles([
-      {
-        type: "pdf",
-        name: `${folder.name}_Sample.pdf`,
-        details: "PDF • 1 MB • Jan 1, 2023",
-        path: `${folder.path}/Sample.pdf`,
-      },
+      { type: 'pdf', name: `${folder.name}_Sample.pdf`, details: 'PDF • 1 MB • Jan 1, 2023', path: `${folder.path}/Sample.pdf` },
     ]);
   };
 
   const handlePinFile = (file: FileItem) => {
     setPinningFile(file);
+    setDisplayName(file.name);
+    setDescription(`Property deed for our house on Main Street`);
     setCurrentStep(3);
   };
 
   const handlePinConfirm = () => {
     if (pinningFile) {
-      setPinnedFiles([
-        ...pinnedFiles,
-        {
-          name: pinningFile.name,
-          boards: ["Home Management", "Important Documents"],
-        },
-      ]);
+      setPinnedFiles([...pinnedFiles, {
+        name: displayName || pinningFile.name,
+        boards: selectedBoards
+      }]);
       setPinningFile(null);
       setCurrentStep(4);
     }
@@ -258,543 +110,385 @@ const CloudConnectionPage: React.FC = () => {
 
   const handleConnectService = () => {
     if (selectedService) {
-      setCloudServices(
-        cloudServices.map((s) =>
-          s.name === selectedService.name
-            ? {
-                ...s,
-                connected: true,
-                email: "user@example.com",
-                totalStorage: "15 GB",
-                usedPercentage: 75,
-                files: 2458,
-                folders: 146,
-                shared: 63,
-              }
-            : s
-        )
-      );
+      setCloudServices(cloudServices.map((s) =>
+        s.name === selectedService.name
+          ? { ...s, connected: true, email: 'user@example.com', totalStorage: '15 GB', usedPercentage: 75, files: 2458, folders: 146, shared: 63 }
+          : s
+      ));
       setCurrentStep(2);
     }
   };
 
-  const handleConnectAnother = () => {
-    setCurrentStep(0);
-    setSelectedService(null);
-    setCurrentPath("My Drive/Important Documents/2023");
-    setFiles(initialFiles);
-    setPinningFile(null);
+  const handleTagClose = (tag: string) => {
+    setTags(tags.filter(t => t !== tag));
   };
 
   const renderWizardContent = () => {
     switch (currentStep) {
-      case 0: // Select Storage
+      case 0:
         return (
-          <div style={{ padding: "20px" }}>
-            <Title level={4}>Connect a New Storage Service</Title>
-            <Text
-              style={{
-                display: "block",
-                marginBottom: "20px",
-                color: "#8c8c8c",
-              }}
-            >
-              Access and organize your files without moving them.
+          <div style={{ padding: '20px', maxWidth: '1200px', margin: '0' }}>
+            <Title level={2} style={{ fontSize: '24px', fontWeight: 600, marginBottom: '10px' }}>Connect Your Digital Vaults</Title>
+            <Text style={{ fontSize: '16px', color: '#666', display: 'block', marginBottom: '20px' }}>
+              Access and organize your files without moving them. Connect to your cloud storage to pin important documents to your Dockly dashboard.
             </Text>
-            <Card style={{ marginBottom: "20px", textAlign: "left" }}>
+            <Card style={{ marginBottom: '20px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
               <Space>
-                <span style={{ fontSize: "24px" }}>🔒</span>
-                <Text>Your files stay where they are.</Text>
+                <LockOutlined style={{ fontSize: '24px', color: '#1890ff' }} />
+                <Text style={{ fontSize: '14px' }}>
+                  Your files stay where they are. Dockly connects to your existing storage and helps you organize without duplicating content.
+                </Text>
               </Space>
             </Card>
             <List
-              grid={{ gutter: 16, xs: 1, sm: 2, md: 3 }}
+              grid={{ gutter: 16, xs: 1, sm: 2, md: 3, column: 3 }} 
               dataSource={cloudServices}
-              renderItem={(item) => (
+              renderItem={(item: CloudService) => (
                 <List.Item>
                   <Card
                     hoverable
-                    style={{
-                      border:
-                        selectedService?.name === item.name
-                          ? "2px solid #1890ff"
-                          : "1px solid #d9d9d9",
-                    }}
                     onClick={() => handleSelectService(item)}
+                    style={{
+                      border: selectedService?.name === item.name ? '2px solid #1890ff' : '1px solid #e8e8e8',
+                      borderRadius: '8px',
+                      textAlign: 'center',
+                      padding: '20px',
+                      cursor: 'pointer'
+                    }}
                   >
-                    <div style={{ fontSize: "24px", marginBottom: "10px" }}>
-                      {item.icon}
-                    </div>
-                    <Text strong>{item.name}</Text>
-                    <Text style={{ display: "block", color: "#8c8c8c" }}>
-                      {item.description}
-                    </Text>
-                    <div style={{ marginTop: "10px" }}>
-                      <Tag color={item.connected ? "green" : "default"}>
-                        {item.connected ? "Active" : "Not Connected"}
-                      </Tag>
-                    </div>
+                    <div style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '10px' }}>{item.icon}</div>
+                    <Text strong style={{ fontSize: '16px', display: 'block' }}>{item.name}</Text>
+                    <Text style={{ fontSize: '14px', color: '#666', display: 'block', marginBottom: '10px' }}>{item.description}</Text>
+                    <Tag color={item.connected ? 'green' : 'default'} style={{ marginBottom: '10px' }}>
+                      {item.connected ? '✓ Connected' : '○ Not Connected'}
+                    </Tag>
                     <Button
-                      type="link"
-                      style={{ marginTop: "10px" }}
-                      onClick={() => handleSelectService(item)}
+                      type="primary"
+                      style={{ borderRadius: '4px' }}
+                      onClick={(e) => { e.stopPropagation(); handleSelectService(item); }}
                     >
-                      Connect
+                      {item.connected ? 'Manage' : 'Connect'}
                     </Button>
                   </Card>
                 </List.Item>
               )}
             />
+            <Space style={{ marginTop: '20px', width: '100%', justifyContent: 'space-between' }}>
+              <Button style={{ borderRadius: '4px' }}>Back to Dashboard</Button>
+              <Button type="primary" style={{ borderRadius: '4px' }} onClick={() => setCurrentStep(1)}>Continue</Button>
+            </Space>
           </div>
         );
-
-      case 1: // Connect
+      case 1:
         return (
-          <div style={{ padding: "20px", textAlign: "center" }}>
-            <Title level={3}>Connect to {selectedService?.name}</Title>
-            <Text style={{ display: "block", marginBottom: "20px" }}>
-              Dockly will connect to your {selectedService?.name} to organize
-              files.
+          <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
+            <div style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '10px' }}>{selectedService?.icon}</div>
+            <Title level={3} style={{ fontSize: '20px', marginBottom: '20px' }}>Connect to {selectedService?.name}</Title>
+            <Text style={{ fontSize: '16px', display: 'block', marginBottom: '20px' }}>
+              Dockly will connect to your {selectedService?.name} to help you organize and access your important files.
             </Text>
-            <Card
-              style={{
-                margin: "20px auto",
-                maxWidth: "600px",
-                textAlign: "left",
-              }}
-            >
-              <Title level={5}>Dockly will be able to:</Title>
+            <Card style={{ borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', padding: '20px' }}>
+              <Title level={5} style={{ fontSize: '16px', marginBottom: '20px' }}>Dockly will be able to:</Title>
               <List
                 dataSource={[
-                  `View and list files in your ${selectedService?.name}`,
-                  "Download files when accessed",
-                  "Create reference links to your files",
-                  "Dockly cannot delete or modify your files",
-                  "Dockly does not store copies of your files",
+                  `View and list files and folders in your ${selectedService?.name}`,
+                  `Download files when you access them through Dockly`,
+                  `Create reference links to your files (without moving or copying them)`,
+                  `Dockly cannot delete or modify your original files`,
+                  `Dockly does not store copies of your complete files on its servers`,
                 ]}
-                renderItem={(item, index) => (
-                  <List.Item>
-                    <span style={{ marginRight: "10px" }}>
-                      {index < 3 ? "✓" : "✗"}
-                    </span>
-                    <Text>{item}</Text>
+                renderItem={(text, idx) => (
+                  <List.Item style={{ justifyContent: 'flex-start', padding: '8px 0' }}>
+                    <Text style={{ fontSize: '14px' }}>{idx < 3 ? '✓' : '✗'} {text}</Text>
                   </List.Item>
                 )}
               />
+              <Space style={{ marginTop: '20px' }}>
+                <Button style={{ borderRadius: '4px' }} onClick={() => setCurrentStep(0)}>Cancel</Button>
+                <Button type="primary" style={{ borderRadius: '4px' }} onClick={handleConnectService}>
+                  Connect {selectedService?.name}
+                </Button>
+              </Space>
             </Card>
           </div>
         );
-
-      case 2: // Browse Files
+      case 2:
         return (
-          <div style={{ padding: "20px" }}>
-            <Title level={3}>Browse {selectedService?.name} Files</Title>
-            <Text style={{ display: "block", marginBottom: "20px" }}>
-              Find and pin important documents.
+          <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
+            <Title level={3} style={{ fontSize: '20px', marginBottom: '10px' }}>Browse {selectedService?.name} Files</Title>
+            <Text style={{ fontSize: '16px', color: '#666', display: 'block', marginBottom: '20px' }}>
+              Find and pin important documents to your Dockly boards.
             </Text>
             <Input
-              placeholder="Search"
               prefix={<SearchOutlined />}
-              style={{ marginBottom: "20px", maxWidth: "300px" }}
+              placeholder="Search"
+              style={{ maxWidth: '300px', marginBottom: '20px', borderRadius: '4px' }}
             />
-            <Text style={{ display: "block", marginBottom: "10px" }}>
-              {currentPath}
-            </Text>
-            <Card>
-              <List
-                header={<Text strong>Name ↑</Text>}
-                dataSource={files}
-                renderItem={(item) => (
-                  <List.Item
-                    actions={[
-                      <Button
-                        type="link"
-                        onClick={() =>
-                          item.type === "folder"
-                            ? handleOpenFolder(item)
-                            : handlePinFile(item)
-                        }
-                      >
-                        {item.type === "folder" ? "Open" : "Pin to Dockly"}
-                      </Button>,
-                    ]}
-                  >
-                    <List.Item.Meta
-                      avatar={
-                        item.type === "folder" ? (
-                          <FolderOutlined style={{ fontSize: "24px" }} />
-                        ) : item.type === "pdf" ? (
-                          <FilePdfOutlined style={{ fontSize: "24px" }} />
-                        ) : item.type === "image" ? (
-                          <FileImageOutlined style={{ fontSize: "24px" }} />
-                        ) : (
-                          <CloudOutlined style={{ fontSize: "24px" }} />
-                        )
-                      }
-                      title={item.name}
-                      description={item.details}
-                    />
-                  </List.Item>
-                )}
-              />
-            </Card>
+            <Text style={{ fontSize: '14px', color: '#666', display: 'block', marginBottom: '20px' }}>{currentPath}</Text>
+            <List
+              header={<Text strong style={{ fontSize: '14px' }}>Name ↑</Text>}
+              dataSource={files}
+              renderItem={(item: FileItem) => (
+                <List.Item
+                  actions={[
+                    <Button
+                      type="link"
+                      style={{ color: '#1890ff' }}
+                      onClick={() => (item as FileItem).type === 'folder' ? handleOpenFolder(item as FileItem) : handlePinFile(item as FileItem)}
+                    >
+                      {(item as FileItem).type === 'folder' ? 'Open' : 'Pin to Dockly'}
+                    </Button>
+                  ]}
+                  style={{ padding: '10px 0', borderBottom: '1px solid #e8e8e8' }}
+                >
+                  <List.Item.Meta
+                    avatar={
+                      item.type === 'folder'
+                        ? <FolderOutlined style={{ fontSize: '24px', color: '#1890ff' }} />
+                        : item.type === 'pdf'
+                          ? <FilePdfOutlined style={{ fontSize: '24px', color: '#ff4d4f' }} />
+                          : item.type === 'image'
+                            ? <FileImageOutlined style={{ fontSize: '24px', color: '#faad14' }} />
+                            : <CloudOutlined style={{ fontSize: '24px', color: '#666' }} />
+                    }
+                    title={<Text style={{ fontSize: '14px' }}>{item.name}</Text>}
+                    description={<Text style={{ fontSize: '12px', color: '#666' }}>{(item as FileItem).details}</Text>}
+                  />
+                </List.Item>
+              )}
+            />
+            <Space style={{ marginTop: '20px', width: '100%', justifyContent: 'space-between' }}>
+              <Button style={{ borderRadius: '4px' }} onClick={() => setCurrentStep(1)}>Back</Button>
+              <Space>
+                <Button style={{ borderRadius: '4px' }} onClick={() => setCurrentStep(4)}>Skip File Selection</Button>
+                <Button type="primary" style={{ borderRadius: '4px' }} onClick={() => setCurrentStep(3)}>Continue</Button>
+              </Space>
+            </Space>
           </div>
         );
-
-      case 3: // Pin Details
+      case 3:
         return (
-          <div style={{ padding: "20px", textAlign: "center" }}>
-            <Title level={3}>Pinning: {pinningFile?.name}</Title>
-            <Text style={{ display: "block", marginBottom: "20px" }}>
-              Add details to organize this document.
+          <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
+            <Title level={3} style={{ fontSize: '20px', marginBottom: '20px' }}>
+              Pinning: {pinningFile?.name}
+            </Title>
+            <Text style={{ fontSize: '16px', color: '#666', display: 'block', marginBottom: '20px' }}>
+              Add details to help you find and organize this document in Dockly.
             </Text>
-            <Card
-              style={{
-                margin: "20px auto",
-                maxWidth: "600px",
-                textAlign: "left",
-              }}
-            >
-              {pinningFile?.type === "pdf" ? (
-                <FilePdfOutlined
-                  style={{ fontSize: "48px", marginBottom: "20px" }}
-                />
-              ) : (
-                <FileImageOutlined
-                  style={{ fontSize: "48px", marginBottom: "20px" }}
-                />
-              )}
+            <Card style={{ borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', padding: '20px' }}>
+              <Space style={{ marginBottom: '20px' }}>
+                {pinningFile?.type === 'pdf' ? (
+                  <FilePdfOutlined style={{ fontSize: '32px', color: '#ff4d4f' }} />
+                ) : (
+                  <FileImageOutlined style={{ fontSize: '32px', color: '#faad14' }} />
+                )}
+              </Space>
               <List
                 dataSource={[
-                  { label: "Source", value: pinningFile?.path },
-                  {
-                    label: "Type",
-                    value:
-                      pinningFile?.type === "pdf" ? "PDF Document" : "Image",
-                  },
-                  {
-                    label: "Size",
-                    value:
-                      pinningFile?.details.split("•")[1]?.trim() || "Unknown",
-                  },
-                  {
-                    label: "Modified",
-                    value:
-                      pinningFile?.details.split("•")[2]?.trim() || "Unknown",
-                  },
+                  { label: 'Source', value: pinningFile?.path ?? '' },
+                  { label: 'Type', value: pinningFile?.type === 'pdf' ? 'PDF Document' : 'Image' },
+                  { label: 'Size', value: pinningFile?.details?.split('•')[1]?.trim() ?? '' },
+                  { label: 'Modified', value: pinningFile?.details?.split('•')[2]?.trim() ?? '' },
                 ]}
-                renderItem={(item) => (
-                  <List.Item>
-                    <Text strong style={{ width: "100px" }}>
-                      {item.label}
-                    </Text>
-                    <Text>{item.value}</Text>
+                renderItem={(item: { label: string; value: string }) => (
+                  <List.Item style={{ padding: '8px 0' }}>
+                    <Text strong style={{ width: '100px', fontSize: '14px' }}>{item.label}:</Text>
+                    <Text style={{ fontSize: '14px' }}>{item.value}</Text>
                   </List.Item>
                 )}
               />
-              <Divider />
-              <Text strong>Display Name</Text>
+              <Divider style={{ margin: '20px 0' }} />
+              <Text strong style={{ fontSize: '14px', display: 'block', marginBottom: '10px' }}>Display Name</Text>
               <Input
-                defaultValue={pinningFile?.name}
-                style={{ margin: "10px 0" }}
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                style={{ marginBottom: '20px', borderRadius: '4px' }}
               />
-              <Text strong>Description (optional)</Text>
+              <Text strong style={{ fontSize: '14px', display: 'block', marginBottom: '10px' }}>Description (optional)</Text>
               <Input.TextArea
-                defaultValue={`Document: ${pinningFile?.name}`}
-                style={{ margin: "10px 0" }}
+                value={description}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
+                placeholder="Description"
+                style={{ marginBottom: '20px', borderRadius: '4px' }}
               />
-              <Text strong>Tags (optional)</Text>
-              <div style={{ margin: "10px 0" }}>
-                {["home", "legal", "important"].map((tag) => (
-                  <Tag key={tag} closable>
+              <Divider style={{ margin: '20px 0' }} />
+              <Text strong style={{ fontSize: '14px', display: 'block', marginBottom: '10px' }}>Tags (optional)</Text>
+              <Space style={{ marginBottom: '20px' }}>
+                {tags.map(tag => (
+                  <Tag
+                    key={tag}
+                    closable
+                    onClose={() => handleTagClose(tag)}
+                    style={{ borderRadius: '4px', padding: '2px 8px' }}
+                  >
                     {tag}
                   </Tag>
                 ))}
-              </div>
-              <Text strong>Pin to Boards</Text>
-              <div style={{ margin: "10px 0" }}>
-                {[
-                  "Home Management",
-                  "Family Hub",
-                  "Important Documents",
-                  "Finance",
-                ].map((board) => (
+              </Space>
+              <Text strong style={{ fontSize: '14px', display: 'block', marginBottom: '10px' }}>Pin to Boards</Text>
+              <Checkbox.Group
+                value={selectedBoards}
+                onChange={(values: string[]) => setSelectedBoards(values)}
+                style={{ display: 'block', marginBottom: '20px' }}
+              >
+                {['Home Management', 'Family Hub', 'Important Documents', 'Finance'].map((board) => (
                   <Checkbox
                     key={board}
-                    defaultChecked={[
-                      "Home Management",
-                      "Important Documents",
-                    ].includes(board)}
-                    style={{ display: "block", margin: "5px 0" }}
+                    value={board}
+                    style={{ display: 'block', margin: '8px 0', fontSize: '14px' }}
                   >
                     {board}
                   </Checkbox>
                 ))}
-              </div>
+              </Checkbox.Group>
+              <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+                <Button style={{ borderRadius: '4px' }} onClick={() => setCurrentStep(2)}>Cancel</Button>
+                <Button type="primary" style={{ borderRadius: '4px' }} onClick={handlePinConfirm}>Pin Document</Button>
+              </Space>
             </Card>
           </div>
         );
-
-      case 4: // Complete
+      case 4:
         return (
-          <div style={{ padding: "20px", textAlign: "center" }}>
-            <Title level={3}>Storage Successfully Connected!</Title>
-            <Text style={{ display: "block", marginBottom: "20px" }}>
-              You can now pin documents to your boards.
+          <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
+            <Title level={3} style={{ fontSize: '20px', marginBottom: '20px' }}>
+              <span style={{ color: '#52c41a', marginRight: '10px' }}>✓</span> Storage Successfully Connected!
+            </Title>
+            <Text style={{ fontSize: '16px', color: '#666', display: 'block', marginBottom: '20px' }}>
+              You've connected your cloud storage to Dockly. You can now pin documents from these services to your boards.
             </Text>
-            <Card
-              style={{
-                margin: "20px auto",
-                maxWidth: "600px",
-                textAlign: "left",
-              }}
-            >
-              <Title level={5}>Connected Storage Services</Title>
+            <Card style={{ borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', padding: '20px' }}>
+              <Title level={5} style={{ fontSize: '16px', marginBottom: '20px' }}>Connected Storage Services</Title>
               <List
-                grid={{ gutter: 16, xs: 1, sm: 3 }}
-                dataSource={cloudServices.filter((s) => s.connected)}
-                renderItem={(item) => (
+                grid={{ gutter: 16, xs: 1, sm: 2, md: 3 }}
+                dataSource={cloudServices.filter(s => s.connected)}
+                renderItem={(item: CloudService) => (
                   <List.Item>
-                    <Card>
-                      <div style={{ fontSize: "24px", marginBottom: "10px" }}>
-                        {item.icon}
-                      </div>
-                      <Text>{item.name}</Text>
+                    <Card style={{ borderRadius: '8px', textAlign: 'center', padding: '10px' }}>
+                      <div style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '10px' }}>{item.icon}</div>
+                      <Text style={{ fontSize: '14px' }}>{item.name}</Text>
                     </Card>
                   </List.Item>
                 )}
               />
-              <Divider />
-              <Title level={5}>Pinned Documents</Title>
+              <Divider style={{ margin: '20px 0' }} />
+              <Title level={5} style={{ fontSize: '16px', marginBottom: '20px' }}>Pinned Documents</Title>
               <List
                 dataSource={pinnedFiles}
                 renderItem={(item) => (
                   <List.Item>
-                    <Text>
-                      • {item.name} (pinned to {item.boards.join(", ")})
+                    <Text style={{ fontSize: '14px' }}>
+                      • {item.name} (pinned to {item.boards.join(', ')})
                     </Text>
                   </List.Item>
                 )}
               />
+              <Space style={{ marginTop: '20px', width: '100%', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <Button
+                  type="link"
+                  style={{ fontSize: '14px', display: 'flex', alignItems: 'center' }}
+                  onClick={() => setCurrentStep(2)}
+                >
+                  <span style={{ marginRight: '5px' }}>📎</span> Pin more documents
+                </Button>
+                <Button type="link" style={{ fontSize: '14px', display: 'flex', alignItems: 'center' }}>
+                  <span style={{ marginRight: '5px' }}>👨‍👩‍👧</span> Set up family sharing
+                </Button>
+                <Button type="link" style={{ fontSize: '14px', display: 'flex', alignItems: 'center' }}>
+                  <span style={{ marginRight: '5px' }}>📝</span> Customize your boards
+                </Button>
+              </Space>
             </Card>
-            <Space style={{ marginTop: "20px" }}>
-              <Button type="link" onClick={() => setCurrentStep(2)}>
-                📎 Pin more documents
-              </Button>
-              <Button type="link">👨‍👩‍👧 Set up family sharing</Button>
-              <Button type="link">📝 Customize your boards</Button>
-            </Space>
+            <Button type="primary" style={{ marginTop: '20px', borderRadius: '4px' }} onClick={() => setCurrentStep(5)}>
+              Continue
+            </Button>
           </div>
         );
-
+      case 5:
+        return (
+          <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
+            <Title level={3} style={{ fontSize: '20px', marginBottom: '20px' }}>
+              Storage Successfully Connected
+            </Title>
+            <Text style={{ fontSize: '16px', color: '#666', display: 'block', marginBottom: '20px' }}>
+              You've connected your cloud storage to Dockly. You can now pin documents from these services to your boards.
+            </Text>
+            <Card style={{ borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', padding: '20px', background: '#e6f7ff' }}>
+              <Title level={5} style={{ fontSize: '16px', marginBottom: '20px' }}>Connected Storage Services</Title>
+              <Space style={{ marginBottom: '20px', justifyContent: 'center' }}>
+                {cloudServices
+                  .filter(s => s.connected)
+                  .map((service) => (
+                    <div key={service.name} style={{ textAlign: 'center', margin: '0 10px' }}>
+                      <div style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '5px' }}>{service.icon}</div>
+                      <Text style={{ fontSize: '14px' }}>{service.name}</Text>
+                    </div>
+                  ))}
+              </Space>
+              <Divider style={{ margin: '20px 0', borderColor: '#d9d9d9' }} />
+              <Title level={5} style={{ fontSize: '16px', marginBottom: '20px' }}>Pinned Documents</Title>
+              <List
+                dataSource={pinnedFiles}
+                renderItem={(item) => (
+                  <List.Item style={{ justifyContent: 'center' }}>
+                    <Text style={{ fontSize: '14px' }}>
+                      • {item.name} (pinned to {item.boards.join(', ')})
+                    </Text>
+                  </List.Item>
+                )}
+              />
+              <Space style={{ marginTop: '20px', width: '100%', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <Button
+                  type="link"
+                  style={{ fontSize: '14px', display: 'flex', alignItems: 'center', color: '#1890ff' }}
+                  onClick={() => setCurrentStep(2)}
+                >
+                  <span style={{ marginRight: '5px' }}>📎</span> Pin more documents
+                </Button>
+                <Button
+                  type="link"
+                  style={{ fontSize: '14px', display: 'flex', alignItems: 'center', color: '#faad14' }}
+                >
+                  <span style={{ marginRight: '5px' }}>👨‍👩‍👧</span> Set up family sharing
+                </Button>
+                <Button
+                  type="link"
+                  style={{ fontSize: '14px', display: 'flex', alignItems: 'center', color: '#fa541c' }}
+                >
+                  <span style={{ marginRight: '5px' }}>📝</span> Customize your boards
+                </Button>
+              </Space>
+            </Card>
+            <Button
+              type="link"
+              style={{ marginTop: '20px', fontSize: '14px', color: '#666' }}
+              onClick={() => setCurrentStep(0)}
+            >
+              Return to Dashboard
+            </Button>
+          </div>
+        );
       default:
         return null;
     }
   };
 
-  const CloudStorageDashboard: React.FC = () => {
-    const columns = [
-      { title: "File Name", dataIndex: "name", key: "name" },
-      { title: "Storage", dataIndex: "path", key: "path" },
-      { title: "Service", dataIndex: "storage", key: "storage" },
-      { title: "Size", dataIndex: "size", key: "size" },
-      { title: "Modified", dataIndex: "modified", key: "modified" },
-      { title: "Status", dataIndex: "status", key: "status" },
-      {
-        title: "Actions",
-        key: "actions",
-        render: (_: any, record: FileItem) => (
-          <Button type="link" onClick={() => alert(`Opening ${record.name}`)}>
-            Open
-          </Button>
-        ),
-      },
-    ];
-
-    return (
-      <div style={{ padding: "20px", maxWidth: "1200px",margin: "80px 10px 10px 60px" }}>
-        <Title level={2} style={{ textAlign: "center", marginBottom: "20px" }}>
-          Dockly Cloud Storage
-        </Title>
-        <Card style={{ marginBottom: "20px" }}>
-          <Title level={4}>Connected Cloud Storage</Title>
-          <Space style={{ marginBottom: "20px" }}>
-            <Text>Total Storage: 7.8 TB</Text>
-            <Progress percent={41} size="small" style={{ width: "200px" }} />
-            <Text>Used: 3.2 TB (41%)</Text>
-          </Space>
-          <Space style={{ marginBottom: "20px" }}>
-            <Text>
-              Connected Accounts:{" "}
-              {cloudServices.filter((s) => s.connected).length}
-            </Text>
-            <Text>Files Synced: 4,328</Text>
-            <Text>Last Sync: Today, 10:23 AM</Text>
-          </Space>
-        </Card>
-        <Card style={{ marginBottom: "20px" }}>
-          <Title level={4}>Connected Storage Services</Title>
-          <List
-            grid={{ gutter: 16, xs: 1, sm: 2, md: 3 }}
-            dataSource={cloudServices.filter((s) => s.connected)}
-            renderItem={(item) => (
-              <List.Item>
-                <Card>
-                  <div style={{ fontSize: "24px", marginBottom: "10px" }}>
-                    {item.icon}
-                  </div>
-                  <Text strong>{item.name}</Text>
-                  <Text style={{ display: "block" }}>{item.email}</Text>
-                  <Tag color="green">Active</Tag>
-                  <div style={{ marginTop: "10px" }}>
-                    <Text>
-                      {item.totalStorage} Total, {item.usedPercentage}% Used
-                    </Text>
-                    <Progress percent={item.usedPercentage} size="small" />
-                  </div>
-                  <div style={{ marginTop: "10px" }}>
-                    <Text>Files: {item.files}</Text>
-                    <Text style={{ marginLeft: "10px" }}>
-                      Folders: {item.folders}
-                    </Text>
-                    <Text style={{ marginLeft: "10px" }}>
-                      Shared: {item.shared}
-                    </Text>
-                  </div>
-                  <Button
-                    type="link"
-                    style={{ marginTop: "10px" }}
-                    onClick={() => setCurrentStep(2)}
-                  >
-                    View Files
-                  </Button>
-                </Card>
-              </List.Item>
-            )}
-          />
-          <Button
-            type="primary"
-            style={{ marginTop: "20px" }}
-            onClick={handleConnectAnother}
-          >
-            Connect New
-          </Button>
-        </Card>
-        <Card style={{ marginBottom: "20px" }}>
-          <Title level={4}>Recently Synced Files</Title>
-          <Table
-            columns={columns}
-            // dataSource={recentFiles}
-            pagination={false}
-            rowKey="name"
-          />
-          <Button type="link" style={{ marginTop: "10px" }}>
-            View All
-          </Button>
-        </Card>
-        <Card>
-          <Title level={4}>Storage Usage by Type</Title>
-          <List
-            dataSource={[
-              { type: "Documents", percentage: 25, size: "800 GB" },
-              { type: "Photos", percentage: 10, size: "320 GB" },
-              { type: "Videos", percentage: 15, size: "480 GB" },
-              { type: "Audio", percentage: 8, size: "256 GB" },
-              { type: "Archives", percentage: 5, size: "160 GB" },
-              { type: "Other", percentage: 12, size: "384 GB" },
-            ]}
-            renderItem={(item) => (
-              <List.Item>
-                <Text>
-                  {item.type}: {item.percentage}% - {item.size}
-                </Text>
-                <Progress
-                  percent={item.percentage}
-                  size="small"
-                  style={{ width: "200px", marginLeft: "10px" }}
-                />
-              </List.Item>
-            )}
-          />
-        </Card>
-      </div>
-    );
-  };
-
-  if (showDashboard) {
-    return <CloudStorageDashboard />;
-  }
-
   return (
-    <div style={{ padding: "20px", maxWidth: "1200px", margin: "40px 10px 10px 60px" }}>
-      <Title level={2} style={{ textAlign: "center", marginBottom: "20px" }}>
-        Dockly
-      </Title>
-      <Steps
-        current={currentStep}
-        style={{ marginBottom: "20px", cursor: "default" }}
-        onChange={undefined}
-      >
-        <Step title="Select Storage" style={{ cursor: "default" }} />
-        <Step title="Connect" style={{ cursor: "default" }} />
-        <Step title="Browse Files" style={{ cursor: "default" }} />
-        <Step title="Complete" style={{ cursor: "default" }} />
-      </Steps>
-      {renderWizardContent()}
-      <Row justify="space-between" style={{ marginTop: "20px" }}>
-        <Col>
-          {currentStep > 0 && (
-            <Button
-              onClick={() => {
-                if (currentStep === 3) setPinningFile(null);
-                setCurrentStep(currentStep - 1);
-              }}
-            >
-              {currentStep === 3 ? "Cancel" : "Back"}
-            </Button>
-          )}
-          {currentStep === 0 && (
-            <Button onClick={() => setShowDashboard(true)}>
-              Back to Dashboard
-            </Button>
-          )}
-        </Col>
-        <Col>
-          {currentStep < 4 && (
-            <Button
-              type="primary"
-              disabled={currentStep === 0 && !selectedService}
-              onClick={() => {
-                if (currentStep === 1) {
-                  handleConnectService();
-                } else if (currentStep === 3) {
-                  handlePinConfirm();
-                } else {
-                  setCurrentStep(currentStep + 1);
-                }
-              }}
-            >
-              {currentStep === 0
-                ? "Continue"
-                : currentStep === 1
-                ? `Connect ${selectedService?.name || "Service"}`
-                : currentStep === 2
-                ? "Skip File Selection"
-                : "Pin Document"}
-            </Button>
-          )}
-          {currentStep === 4 && (
-            <Space>
-              <Button type="primary" onClick={handleConnectAnother}>
-                Connect Another Service
-              </Button>
-              <Button type="primary" onClick={() => setShowDashboard(true)}>
-                Return to Dashboard
-              </Button>
-            </Space>
-          )}
-        </Col>
-      </Row>
+    <div style={{ background: '#f5f5f5', minHeight: '100vh' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px 0' }}>
+        <Title level={2} style={{ fontSize: '24px', marginBottom: '20px', textAlign: 'center', color: '#1890ff' }}>
+          Dockly
+        </Title>
+        <Steps current={currentStep} style={{ marginBottom: '20px', background: '#fff', padding: '20px', borderRadius: '8px' }}>
+          <Step title="Select Storage" />
+          <Step title="Connect" />
+          <Step title="Browse Files" />
+          <Step title="Pin Files" />
+          <Step title="Complete" />
+          <Step title="Summary" />
+        </Steps>
+        {renderWizardContent()}
+      </div>
     </div>
   );
 };

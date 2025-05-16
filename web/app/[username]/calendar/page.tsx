@@ -68,12 +68,10 @@ const ConnectCalendars = () => {
     padding: "24px",
     minHeight: "100vh",
     backgroundColor: "#f3f4f6",
-    margin: "80px 10px 10px 60px",
   };
 
   const cardStyle: React.CSSProperties = {
     backgroundColor: "#fff",
-    // borderRadius: '15px',
     boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
     padding: "24px",
     maxWidth: "600px",
@@ -89,7 +87,7 @@ const ConnectCalendars = () => {
   };
 
   const renderStep1 = () => (
-    <div style={{ width: "100%" }}>
+    <>
       <h2
         style={{
           fontSize: "20px",
@@ -178,7 +176,7 @@ const ConnectCalendars = () => {
           Next
         </button>
       </div>
-    </div>
+    </>
   );
 
   const renderStep2 = () => (
@@ -270,52 +268,188 @@ const ConnectCalendars = () => {
 
   const renderStep3 = () => (
     <>
-      <h3 style={{ fontSize: "18px", fontWeight: 600, marginBottom: "16px" }}>
-        Permissions
-      </h3>
+      <p style={{ fontSize: "14px", color: "#111827", marginBottom: "16px" }}>
+        Dockly needs the following permissions to connect and sync your
+        calendars.
+      </p>
       <div
         style={{
-          backgroundColor: "#f3f4f6",
+          backgroundColor: "#f9fafb",
           padding: "16px",
           borderRadius: "8px",
-          border: "1px solid #d1d5db",
-          marginBottom: "12px",
+          border: "1px solid #e5e7eb",
+          marginBottom: "16px",
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
         }}
       >
-        <p style={{ fontSize: "14px", fontWeight: 500, marginBottom: "4px" }}>
-          Sign in to authorize
-        </p>
-        <p style={{ fontSize: "12px", color: "#6b7280" }}>
-          Allow Dockly access to {selectedCalendar}
+        <div
+          style={{
+            width: "20px",
+            height: "20px",
+            borderRadius: "50%",
+            border: "2px solid #d1d5db",
+          }}
+        ></div>
+        <p style={{ fontSize: "14px", color: "#111827" }}>
+          <span style={{ fontWeight: 500 }}>
+            You'll be redirected to sign in
+          </span>
+          <br />
+          <span style={{ color: "#6b7280" }}>
+            For each selected calendar, you'll need to sign in and authorize
+            Dockly.
+          </span>
         </p>
       </div>
-      <ul
+      <div
         style={{
-          listStyle: "disc",
-          backgroundColor: "#f3f4f6",
+          backgroundColor: "#f9fafb",
           padding: "16px",
           borderRadius: "8px",
-          border: "1px solid #d1d5db",
-          fontSize: "14px",
-          color: "#1f2937",
+          border: "1px solid #e5e7eb",
+          marginBottom: "16px",
+        }}
+      >
+        <p
+          style={{
+            fontSize: "14px",
+            fontWeight: 500,
+            color: "#111827",
+            marginBottom: "8px",
+          }}
+        >
+          Dockly will be able to:
+        </p>
+        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+          <li
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              marginBottom: "8px",
+            }}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              stroke="#22c55e"
+              fill="none"
+              strokeWidth="2"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+            <span style={{ fontSize: "14px", color: "#111827" }}>
+              Read calendar events and details
+            </span>
+          </li>
+          <li
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              marginBottom: "8px",
+            }}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              stroke="#22c55e"
+              fill="none"
+              strokeWidth="2"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+            <span style={{ fontSize: "14px", color: "#111827" }}>
+              Create new events and reminders in Dockly
+            </span>
+          </li>
+          <li
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              marginBottom: "8px",
+            }}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              stroke="#22c55e"
+              fill="none"
+              strokeWidth="2"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+            <span style={{ fontSize: "14px", color: "#111827" }}>
+              Modify or delete events created by Dockly
+            </span>
+          </li>
+          <li style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              stroke="#ef4444"
+              fill="none"
+              strokeWidth="2"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+            <span style={{ fontSize: "14px", color: "#111827" }}>
+              Cannot modify or delete events created outside of Dockly
+            </span>
+          </li>
+        </ul>
+      </div>
+      <div
+        style={{
+          backgroundColor: "#f9fafb",
+          padding: "16px",
+          borderRadius: "8px",
+          border: "1px solid #e5e7eb",
           marginBottom: "24px",
         }}
       >
-        <li>Read calendar events and details</li>
-        <li>Create new events and reminders</li>
-        <li>Modify or delete events created by Dockly</li>
-        <li style={{ color: "#ef4444", textDecoration: "line-through" }}>
-          Can't delete non-Dockly events
-        </li>
-      </ul>
-      {/* <ul>
-        <li style={{ fontSize: '14px', fontWeight: 500, marginBottom: '4px' }}> 
-          Dockly syncs caledar dat securely and doesn't share your information withthird parties.You can disconnect calendars at any time.          </li>
-      </ul> */}
+        <p style={{ fontSize: "14px", color: "#111827" }}>
+          <span style={{ fontWeight: 500 }}>Data & Privacy</span>
+          <br />
+          <span style={{ color: "#6b7280" }}>
+            Dockly syncs calendar data securely and doesn't share your
+            information with third parties. You can disconnect calendars at any
+            time.
+          </span>
+        </p>
+      </div>
       <div style={{ display: "flex", justifyContent: "space-between" }}>
         <button
           onClick={() => setStep(2)}
-          style={{ ...buttonBase, background: "none", color: "#6b7280" }}
+          style={{
+            ...buttonBase,
+            background: "none",
+            color: "#6b7280",
+            border: "1px solid #d1d5db",
+          }}
         >
           Back
         </button>
@@ -396,17 +530,18 @@ const ConnectCalendars = () => {
       >
         {selectedCalendar[0]}
       </div>
-      {/* <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '12px' }}>Redirecting...</p> */}
     </div>
   );
 
   return (
-    <div style={containerStyle}>
-      <div style={cardStyle}>
-        {step === 1 && renderStep1()}
-        {step === 2 && renderStep2()}
-        {step === 3 && renderStep3()}
-        {step === 4 && renderStep4()}
+    <div style={{ margin: "80px 10px 10px 60px" }}>
+      <div style={containerStyle}>
+        <div style={cardStyle}>
+          {step === 1 && renderStep1()}
+          {step === 2 && renderStep2()}
+          {step === 3 && renderStep3()}
+          {step === 4 && renderStep4()}
+        </div>
       </div>
     </div>
   );
