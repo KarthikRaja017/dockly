@@ -189,8 +189,8 @@ class SaveUserEmail(Resource):
                 return_fields=["uid"],
             )
         otp = generate_otp()
-        # otpResponse = send_otp_email(email, otp)
-        otpResponse = {"otp": otp, "email": email}
+        otpResponse = send_otp_email(email, otp)
+        # otpResponse = {"otp": otp, "email": email}
         return {
             "status": 1,
             "message": "OTP sent successfully",
