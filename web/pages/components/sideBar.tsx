@@ -25,6 +25,7 @@ import FlatColorIconsCalendar, {
   IconParkFolderLock,
   MaterialIconThemeFolderConnectionOpen,
   NotoKey,
+  RiDashboardFill,
   TwemojiPuzzlePiece,
 } from "./icons";
 
@@ -84,6 +85,11 @@ const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
     }, [pathname]);
 
     const mainMenuItems = [
+      {
+        key: "dashboard",
+        icon: <RiDashboardFill />,
+        label: "Dashboard",
+      },
       { key: "calendar", icon: <FlatColorIconsCalendar />, label: "Calendar" },
       { key: "home", icon: <FlatColorIconsHome />, label: "Home" },
       {
@@ -138,8 +144,8 @@ const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
             cursor: "pointer",
             alignItems: "center",
             // paddingLeft: collapsed ? 0 : 10,
-            backgroundColor:
-              currentPath === "dashboard" ? ACTIVE_BG_COLOR : "transparent",
+            // backgroundColor:
+            //   currentPath === "dashboard" ? ACTIVE_BG_COLOR : "transparent",
             padding: "10px 20px",
             borderRadius: "8px",
             transition: "all 0.3s ease-in-out",

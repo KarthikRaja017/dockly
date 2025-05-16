@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Progress,
   List,
@@ -19,22 +19,27 @@ const { Content } = Layout;
 
 const rawSteps = [
   {
+    key: "profileCompleted",
     title: "Complete your profile",
     description: "Add your personal details and preferences",
   },
   {
+    key: "accountsCompleted",
     title: "Connect your first account",
     description: "Link your bank, email, or other service",
   },
   {
+    key: "boardCreated",
     title: "Create your first board",
     description: "Organize your accounts by category",
   },
   {
+    key: "documentUploaded",
     title: "Upload a document",
     description: "Store important files securely in Dockly",
   },
   {
+    key: "notificationsSetup",
     title: "Set up notifications",
     description: "Stay on top of bills and important dates",
   },
@@ -42,11 +47,43 @@ const rawSteps = [
 
 const DashboardPage = () => {
   const [completedSteps, setCompletedSteps] = useState(0);
+  const [savedCompletion, setSavedCompletion] = useState<{ [key: string]: boolean }>({});
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = JSON.parse(localStorage.getItem("docklySetup") || "{}");
+      setSavedCompletion(saved);
+
+      let count = 0;
+      rawSteps.forEach((step) => {
+        if (saved[step.key]) count++;
+      });
+      setCompletedSteps(count);
+    }
+  }, []);
+
   const totalSteps = rawSteps.length;
   const percent = Math.round((completedSteps / totalSteps) * 100);
 
   const handleNextStep = () => {
-    if (completedSteps < totalSteps) {
+    const currentStep = rawSteps[completedSteps];
+    if (typeof window !== "undefined") {
+      const username = localStorage.getItem("username") || "user";
+
+      // Save step as completed
+      const updated = {
+        ...savedCompletion,
+        [currentStep.key]: true,
+      };
+      localStorage.setItem("docklySetup", JSON.stringify(updated));
+      setSavedCompletion(updated);
+
+      // If account connection, redirect
+      if (currentStep.key === "accountsCompleted") {
+        window.location.href = `/${username}/accounts`;
+        return;
+      }
+
       setCompletedSteps((prev) => prev + 1);
     }
   };
@@ -54,7 +91,7 @@ const DashboardPage = () => {
   const steps = rawSteps.map((step, index) => ({
     ...step,
     icon:
-      completedSteps > index ? (
+      savedCompletion[step.key] || completedSteps > index ? (
         <CheckCircleTwoTone twoToneColor="#52c41a" />
       ) : (
         <Avatar size={32}>{index + 1}</Avatar>
@@ -77,8 +114,6 @@ const DashboardPage = () => {
         marginRight: 15,
       }}
     >
-      {" "}
-      {/* padding: '24px',  */}
       <div
         style={{
           background: "#fff",
@@ -109,8 +144,7 @@ const DashboardPage = () => {
 
         <Title level={4}>Welcome to Dockly!</Title>
         <Text>
-          Let's get your account set up. Follow these steps to get started with
-          Dockly.
+          Let's get your account set up. Follow these steps to get started with Dockly.
         </Text>
 
         <div style={{ marginTop: 24 }}>
@@ -127,10 +161,7 @@ const DashboardPage = () => {
 
         {completedSteps === totalSteps ? (
           <div className="text-center">
-            <CheckCircleTwoTone
-              twoToneColor="#52c41a"
-              style={{ fontSize: 32 }}
-            />
+            <CheckCircleTwoTone twoToneColor="#52c41a" style={{ fontSize: 32 }} />
             <p className="mt-2 text-green-600 font-semibold">You're all set!</p>
           </div>
         ) : (
@@ -167,6 +198,7 @@ const DashboardPage = () => {
           />
         )}
       </div>
+
       <div style={{ marginTop: 20, display: "flex", gap: 20 }}>
         <UpcomingAndTodoList />
         <CalendarEventWidget />
