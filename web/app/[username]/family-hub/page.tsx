@@ -1,7 +1,36 @@
-'use client'
+"use client";
 import React, { useState } from "react";
-import { Card, Row, Col, Button, Typography, List, Input, Select, DatePicker, Divider, Checkbox, Calendar, Badge, Modal, Avatar } from "antd";
-import { PlusOutlined, EditOutlined, LeftOutlined, RightOutlined, UserOutlined, FileTextOutlined, ScheduleOutlined, CheckSquareOutlined, PhoneOutlined, FolderOutlined, BulbOutlined, FileAddOutlined } from "@ant-design/icons";
+import {
+  Card,
+  Row,
+  Col,
+  Button,
+  Typography,
+  List,
+  Input,
+  Select,
+  DatePicker,
+  Divider,
+  Checkbox,
+  Calendar,
+  Badge,
+  Modal,
+  Avatar,
+} from "antd";
+import {
+  PlusOutlined,
+  EditOutlined,
+  LeftOutlined,
+  RightOutlined,
+  UserOutlined,
+  FileTextOutlined,
+  ScheduleOutlined,
+  CheckSquareOutlined,
+  PhoneOutlined,
+  FolderOutlined,
+  BulbOutlined,
+  FileAddOutlined,
+} from "@ant-design/icons";
 import dayjs, { Dayjs } from "dayjs";
 
 const { Title, Text } = Typography;
@@ -73,14 +102,21 @@ interface Section {
 }
 
 const MainLayout: React.FC<MainLayoutProps> = ({ children }) => (
-  <div style={{ minHeight: "100vh", backgroundColor: "#f5f7fa" }}>{children}</div>
+  <div style={{ minHeight: "100vh", backgroundColor: "#f5f7fa" }}>
+    {children}
+  </div>
 );
 
 const FamilySharing: React.FC = () => {
   const [step, setStep] = useState<string>("intro");
   const [selectedMethod, setSelectedMethod] = useState<string>("Email");
   const [relationship, setRelationship] = useState<string>("Spouse/Partner");
-  const [formData, setFormData] = useState<FormData>({ email: "", phone: "", accessCode: "", name: "" });
+  const [formData, setFormData] = useState<FormData>({
+    email: "",
+    phone: "",
+    accessCode: "",
+    name: "",
+  });
   const [permissions, setPermissions] = useState<PermissionState>({
     type: "Custom Access",
     allowAdd: false,
@@ -89,19 +125,41 @@ const FamilySharing: React.FC = () => {
     allowInvite: false,
     notify: true,
   });
-  const [sharedItems, setSharedItems] = useState<{ [category: string]: string[] }>({});
+  const [sharedItems, setSharedItems] = useState<{
+    [category: string]: string[];
+  }>({});
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [pendingMember, setPendingMember] = useState<FamilyMember | null>(null);
-  const [familyGuidelines, setFamilyGuidelines] = useState<string[]>(["Homework First", "Chores Done", "Screen Time", "Bedtime Schedule"]);
+  const [familyGuidelines, setFamilyGuidelines] = useState<string[]>([
+    "Homework First",
+    "Chores Done",
+    "Screen Time",
+    "Bedtime Schedule",
+  ]);
   const [newGuideline, setNewGuideline] = useState<string>("");
-  const [editGuidelineIndex, setEditGuidelineIndex] = useState<number | null>(null);
-  const [familyNotes, setFamilyNotes] = useState<string[]>(["Grocery List", "Vacation Ideas"]);
+  const [editGuidelineIndex, setEditGuidelineIndex] = useState<number | null>(
+    null
+  );
+  const [familyNotes, setFamilyNotes] = useState<string[]>([
+    "Grocery List",
+    "Vacation Ideas",
+  ]);
   const [newNote, setNewNote] = useState<string>("");
   const [editNoteIndex, setEditNoteIndex] = useState<number | null>(null);
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([
-    { title: "Sarah’s Birthday - Family - All day - REMEMBER to order cake!", color: "#ff6347", date: dayjs("2025-05-01") },
+    {
+      title: "Sarah’s Birthday - Family - All day - REMEMBER to order cake!",
+      color: "#ff6347",
+      date: dayjs("2025-05-01"),
+    },
   ]);
-  const [newEvent, setNewEvent] = useState<NewEvent>({ title: "", category: "School", date: null, timeRange: [], period: "AM" });
+  const [newEvent, setNewEvent] = useState<NewEvent>({
+    title: "",
+    category: "School",
+    date: null,
+    timeRange: [],
+    period: "AM",
+  });
   const [tasks, setTasks] = useState<Task[]>([
     { title: "Take-out-trash", assignee: "JS", completed: true },
     { title: "Grocery-shopping", assignee: "S", completed: true },
@@ -119,14 +177,34 @@ const FamilySharing: React.FC = () => {
   const [newTaskAssignee, setNewTaskAssignee] = useState<string>("");
   const [editTaskIndex, setEditTaskIndex] = useState<number | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([
-    { name: "Dr. Robert Williams", role: "Family Doctor", phone: "(555) 123-4567" },
-    { name: "Dr. Wilson Pediatric Dentistry", role: "Dentist", phone: "(555) 987-6543" },
+    {
+      name: "Dr. Robert Williams",
+      role: "Family Doctor",
+      phone: "(555) 123-4567",
+    },
+    {
+      name: "Dr. Wilson Pediatric Dentistry",
+      role: "Dentist",
+      phone: "(555) 987-6543",
+    },
     { name: "Martha Smith", role: "John's Mother", phone: "(555) 789-1231" },
     { name: "Michael Johnson", role: "Family Friend", phone: "(555) 234-5678" },
-    { name: "Springfield High School", role: "Emma's School", phone: "(555) 345-6789" },
-    { name: "Cedar Elementary School", role: "Liam's School", phone: "(555) 456-7890" },
+    {
+      name: "Springfield High School",
+      role: "Emma's School",
+      phone: "(555) 345-6789",
+    },
+    {
+      name: "Cedar Elementary School",
+      role: "Liam's School",
+      phone: "(555) 456-7890",
+    },
   ]);
-  const [newContact, setNewContact] = useState<Contact>({ name: "", role: "", phone: "" });
+  const [newContact, setNewContact] = useState<Contact>({
+    name: "",
+    role: "",
+    phone: "",
+  });
   const [editContactIndex, setEditContactIndex] = useState<number | null>(null);
   const [documents, setDocuments] = useState<Document[]>([
     { title: "Passport - S", category: "Passports" },
@@ -136,20 +214,48 @@ const FamilySharing: React.FC = () => {
     { title: "Home Insurance Policy", category: "Insurance" },
     { title: "Car Insurance Policy", category: "Insurance" },
   ]);
-  const [newDocument, setNewDocument] = useState<Document>({ title: "", category: "" });
-  const [editDocumentIndex, setEditDocumentIndex] = useState<number | null>(null);
+  const [newDocument, setNewDocument] = useState<Document>({
+    title: "",
+    category: "",
+  });
+  const [editDocumentIndex, setEditDocumentIndex] = useState<number | null>(
+    null
+  );
   const [sections, setSections] = useState<Section[]>([]);
-  const [newSection, setNewSection] = useState<Section>({ title: "", content: "" });
+  const [newSection, setNewSection] = useState<Section>({
+    title: "",
+    content: "",
+  });
   const [editSectionIndex, setEditSectionIndex] = useState<number | null>(null);
   const [currentMonth, setCurrentMonth] = useState<Dayjs>(dayjs("2025-05-01"));
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
   const [selectedDateEvents, setSelectedDateEvents] = useState<Event[]>([]);
 
   const contentCategories = [
-    { label: "Home Management", children: ["Property Information", "Mortgage & Loans", "Home Maintenance", "Utilities", "Insurance", "Important Documents"] },
+    {
+      label: "Home Management",
+      children: [
+        "Property Information",
+        "Mortgage & Loans",
+        "Home Maintenance",
+        "Utilities",
+        "Insurance",
+        "Important Documents",
+      ],
+    },
     { label: "Financial Dashboard", children: [] },
-    { label: "Family Hub", children: ["Family Calendar", "Shared Tasks", "Contact Information"] },
-    { label: "Health Records", children: ["Insurance Information", "Medical Records", "Emergency Contacts"] },
+    {
+      label: "Family Hub",
+      children: ["Family Calendar", "Shared Tasks", "Contact Information"],
+    },
+    {
+      label: "Health Records",
+      children: [
+        "Insurance Information",
+        "Medical Records",
+        "Emergency Contacts",
+      ],
+    },
     { label: "Travel Planning", children: [] },
   ];
 
@@ -158,26 +264,33 @@ const FamilySharing: React.FC = () => {
   };
 
   const handlePermissionChange = (field: keyof PermissionState) => {
-    setPermissions(prev => ({ ...prev, [field]: !prev[field] }));
+    setPermissions((prev) => ({ ...prev, [field]: !prev[field] }));
   };
 
   const toggleParent = (category: string, checked: boolean) => {
-    const children = contentCategories.find(c => c.label === category)?.children || [];
-    setSharedItems(prev => ({ ...prev, [category]: checked ? children : [] }));
+    const children =
+      contentCategories.find((c) => c.label === category)?.children || [];
+    setSharedItems((prev) => ({
+      ...prev,
+      [category]: checked ? children : [],
+    }));
   };
 
   const toggleChild = (category: string, item: string) => {
-    setSharedItems(prev => {
+    setSharedItems((prev) => {
       const current = prev[category] || [];
-      const updated = current.includes(item) ? current.filter(i => i !== item) : [...current, item];
+      const updated = current.includes(item)
+        ? current.filter((i) => i !== item)
+        : [...current, item];
       return { ...prev, [category]: updated };
     });
   };
 
   const isParentChecked = (category: string) => {
-    const children = contentCategories.find(c => c.label === category)?.children || [];
+    const children =
+      contentCategories.find((c) => c.label === category)?.children || [];
     const selected = sharedItems[category] || [];
-    return children.length > 0 && children.every(c => selected.includes(c));
+    return children.length > 0 && children.every((c) => selected.includes(c));
   };
 
   const handleAddMember = () => {
@@ -194,12 +307,19 @@ const FamilySharing: React.FC = () => {
 
   const handleDone = () => {
     if (pendingMember) {
-      setFamilyMembers(prev => [...prev, pendingMember]);
+      setFamilyMembers((prev) => [...prev, pendingMember]);
       setPendingMember(null);
     }
     setFormData({ email: "", phone: "", accessCode: "", name: "" });
     setRelationship("Spouse/Partner");
-    setPermissions({ type: "Custom Access", allowAdd: false, allowEdit: true, allowDelete: false, allowInvite: false, notify: true });
+    setPermissions({
+      type: "Custom Access",
+      allowAdd: false,
+      allowEdit: true,
+      allowDelete: false,
+      allowInvite: false,
+      notify: true,
+    });
     setSharedItems({});
     setSelectedMethod("Email");
     setStep("intro");
@@ -207,7 +327,7 @@ const FamilySharing: React.FC = () => {
 
   const handleAddGuideline = () => {
     if (newGuideline.trim()) {
-      setFamilyGuidelines(prev => [...prev, newGuideline.trim()]);
+      setFamilyGuidelines((prev) => [...prev, newGuideline.trim()]);
       setNewGuideline("");
       setStep("intro");
     } else {
@@ -217,7 +337,7 @@ const FamilySharing: React.FC = () => {
 
   const handleEditGuideline = () => {
     if (editGuidelineIndex !== null && newGuideline.trim()) {
-      setFamilyGuidelines(prev => {
+      setFamilyGuidelines((prev) => {
         const updated = [...prev];
         updated[editGuidelineIndex] = newGuideline.trim();
         return updated;
@@ -232,7 +352,7 @@ const FamilySharing: React.FC = () => {
 
   const handleAddNote = () => {
     if (newNote.trim()) {
-      setFamilyNotes(prev => [...prev, newNote.trim()]);
+      setFamilyNotes((prev) => [...prev, newNote.trim()]);
       setNewNote("");
       setStep("intro");
     } else {
@@ -242,7 +362,7 @@ const FamilySharing: React.FC = () => {
 
   const handleEditNote = () => {
     if (editNoteIndex !== null && newNote.trim()) {
-      setFamilyNotes(prev => {
+      setFamilyNotes((prev) => {
         const updated = [...prev];
         updated[editNoteIndex] = newNote.trim();
         return updated;
@@ -263,17 +383,32 @@ const FamilySharing: React.FC = () => {
     }
 
     const color = category === "Health" ? "#ffa500" : "#ff6347";
-    const formattedTime = `${timeRange[0].format("h:mm")} ${period} - ${timeRange[1].format("h:mm")} ${period}`;
+    const formattedTime = `${timeRange[0].format(
+      "h:mm"
+    )} ${period} - ${timeRange[1].format("h:mm")} ${period}`;
     const eventTitle = `${title} - ${category} - ${formattedTime}`;
 
-    setUpcomingEvents(prev => [...prev, { title: eventTitle, color, date }]);
-    setNewEvent({ title: "", category: "School", date: null, timeRange: [], period: "AM" });
+    setUpcomingEvents((prev) => [...prev, { title: eventTitle, color, date }]);
+    setNewEvent({
+      title: "",
+      category: "School",
+      date: null,
+      timeRange: [],
+      period: "AM",
+    });
     setStep("intro");
   };
 
   const handleAddTask = () => {
     if (newTask.trim() && newTaskAssignee.trim()) {
-      setTasks(prev => [...prev, { title: newTask.trim(), assignee: newTaskAssignee.trim(), completed: false }]);
+      setTasks((prev) => [
+        ...prev,
+        {
+          title: newTask.trim(),
+          assignee: newTaskAssignee.trim(),
+          completed: false,
+        },
+      ]);
       setNewTask("");
       setNewTaskAssignee("");
       setStep("intro");
@@ -284,9 +419,13 @@ const FamilySharing: React.FC = () => {
 
   const handleEditTask = () => {
     if (editTaskIndex !== null && newTask.trim() && newTaskAssignee.trim()) {
-      setTasks(prev => {
+      setTasks((prev) => {
         const updated = [...prev];
-        updated[editTaskIndex] = { ...updated[editTaskIndex], title: newTask.trim(), assignee: newTaskAssignee.trim() };
+        updated[editTaskIndex] = {
+          ...updated[editTaskIndex],
+          title: newTask.trim(),
+          assignee: newTaskAssignee.trim(),
+        };
         return updated;
       });
       setNewTask("");
@@ -299,7 +438,7 @@ const FamilySharing: React.FC = () => {
   };
 
   const handleToggleTask = (index: number) => {
-    setTasks(prev => {
+    setTasks((prev) => {
       const updated = [...prev];
       updated[index].completed = !updated[index].completed;
       return updated;
@@ -309,7 +448,10 @@ const FamilySharing: React.FC = () => {
   const handleAddContact = () => {
     const { name, role, phone } = newContact;
     if (name.trim() && role.trim() && phone.trim()) {
-      setContacts(prev => [...prev, { name: name.trim(), role: role.trim(), phone: phone.trim() }]);
+      setContacts((prev) => [
+        ...prev,
+        { name: name.trim(), role: role.trim(), phone: phone.trim() },
+      ]);
       setNewContact({ name: "", role: "", phone: "" });
       setStep("intro");
     } else {
@@ -318,11 +460,19 @@ const FamilySharing: React.FC = () => {
   };
 
   const handleEditContact = () => {
-    if (editContactIndex !== null && newContact.name.trim() && newContact.role.trim() && newContact.phone.trim()) {
-      setContacts(prev => {
+    if (
+      editContactIndex !== null &&
+      newContact.name.trim() &&
+      newContact.role.trim() &&
+      newContact.phone.trim()
+    ) {
+      setContacts((prev) => {
         const updated = [...prev];
         if (editContactIndex !== null) {
-          updated[editContactIndex] = { ...updated[editContactIndex], ...newContact };
+          updated[editContactIndex] = {
+            ...updated[editContactIndex],
+            ...newContact,
+          };
         }
         return updated;
       });
@@ -337,7 +487,10 @@ const FamilySharing: React.FC = () => {
   const handleAddDocument = () => {
     const { title, category } = newDocument;
     if (title.trim() && category.trim()) {
-      setDocuments(prev => [...prev, { title: title.trim(), category: category.trim() }]);
+      setDocuments((prev) => [
+        ...prev,
+        { title: title.trim(), category: category.trim() },
+      ]);
       setNewDocument({ title: "", category: "" });
       setStep("intro");
     } else {
@@ -346,10 +499,17 @@ const FamilySharing: React.FC = () => {
   };
 
   const handleEditDocument = () => {
-    if (editDocumentIndex !== null && newDocument.title.trim() && newDocument.category.trim()) {
-      setDocuments(prev => {
+    if (
+      editDocumentIndex !== null &&
+      newDocument.title.trim() &&
+      newDocument.category.trim()
+    ) {
+      setDocuments((prev) => {
         const updated = [...prev];
-        updated[editDocumentIndex] = { ...updated[editDocumentIndex], ...newDocument };
+        updated[editDocumentIndex] = {
+          ...updated[editDocumentIndex],
+          ...newDocument,
+        };
         return updated;
       });
       setNewDocument({ title: "", category: "" });
@@ -363,7 +523,10 @@ const FamilySharing: React.FC = () => {
   const handleAddSection = () => {
     const { title, content } = newSection;
     if (title.trim() && content.trim()) {
-      setSections(prev => [...prev, { title: title.trim(), content: content.trim() }]);
+      setSections((prev) => [
+        ...prev,
+        { title: title.trim(), content: content.trim() },
+      ]);
       setNewSection({ title: "", content: "" });
       setStep("intro");
     } else {
@@ -372,10 +535,17 @@ const FamilySharing: React.FC = () => {
   };
 
   const handleEditSection = () => {
-    if (editSectionIndex !== null && newSection.title.trim() && newSection.content.trim()) {
-      setSections(prev => {
+    if (
+      editSectionIndex !== null &&
+      newSection.title.trim() &&
+      newSection.content.trim()
+    ) {
+      setSections((prev) => {
         const updated = [...prev];
-        updated[editSectionIndex] = { ...updated[editSectionIndex], ...newSection };
+        updated[editSectionIndex] = {
+          ...updated[editSectionIndex],
+          ...newSection,
+        };
         return updated;
       });
       setNewSection({ title: "", content: "" });
@@ -391,16 +561,29 @@ const FamilySharing: React.FC = () => {
   };
 
   const dateCellRender = (value: Dayjs) => {
-    const events = upcomingEvents.filter(event => event.date.isSame(value, 'day'));
+    const events = upcomingEvents.filter((event) =>
+      event.date.isSame(value, "day")
+    );
     return (
       <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
         {events.map((event, index) => (
           <li key={index}>
-            <Badge color={event.color} text={
-              <span style={{ fontSize: "10px", color: event.color, cursor: "pointer" }}>
-                {event.title.split(" - ")[0].length > 10 ? `${event.title.split(" - ")[0].substring(0, 10)}...` : event.title.split(" - ")[0]}
-              </span>
-            } />
+            <Badge
+              color={event.color}
+              text={
+                <span
+                  style={{
+                    fontSize: "10px",
+                    color: event.color,
+                    cursor: "pointer",
+                  }}
+                >
+                  {event.title.split(" - ")[0].length > 10
+                    ? `${event.title.split(" - ")[0].substring(0, 10)}...`
+                    : event.title.split(" - ")[0]}
+                </span>
+              }
+            />
           </li>
         ))}
       </ul>
@@ -416,7 +599,9 @@ const FamilySharing: React.FC = () => {
   };
 
   const handleDateSelect = (value: Dayjs) => {
-    const events = upcomingEvents.filter(event => event.date.isSame(value, 'day'));
+    const events = upcomingEvents.filter((event) =>
+      event.date.isSame(value, "day")
+    );
     setSelectedDateEvents(events);
     setIsModalVisible(true);
   };
@@ -426,10 +611,30 @@ const FamilySharing: React.FC = () => {
 
     const renderDefaultRightSections = () => (
       <>
-        <Card style={{ borderRadius: "10px", boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)", marginBottom: "16px" }}>
-          <div style={{ display: "flex", alignItems: "center", marginBottom: "20px" }}>
-            <FolderOutlined style={{ fontSize: "20px", color: "#722ed1", marginRight: "10px" }} />
-            <Title level={4} style={{ color: "#722ed1", margin: 0 }}>Important Documents</Title>
+        <Card
+          style={{
+            borderRadius: "10px",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+            marginBottom: "16px",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              marginBottom: "20px",
+            }}
+          >
+            <FolderOutlined
+              style={{
+                fontSize: "20px",
+                color: "#722ed1",
+                marginRight: "10px",
+              }}
+            />
+            <Title level={4} style={{ color: "#722ed1", margin: 0 }}>
+              Important Documents
+            </Title>
           </div>
           <List
             dataSource={documents}
@@ -452,7 +657,11 @@ const FamilySharing: React.FC = () => {
               >
                 <List.Item.Meta
                   title={<Text style={{ fontSize: "14px" }}>{doc.title}</Text>}
-                  description={<Text style={{ fontSize: "12px", color: "#666" }}>{doc.category}</Text>}
+                  description={
+                    <Text style={{ fontSize: "12px", color: "#666" }}>
+                      {doc.category}
+                    </Text>
+                  }
                 />
               </List.Item>
             )}
@@ -467,10 +676,30 @@ const FamilySharing: React.FC = () => {
           </Button>
         </Card>
 
-        <Card style={{ borderRadius: "10px", boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)", marginBottom: "16px" }}>
-          <div style={{ display: "flex", alignItems: "center", marginBottom: "20px" }}>
-            <FileTextOutlined style={{ fontSize: "20px", color: "#1890ff", marginRight: "10px" }} />
-            <Title level={4} style={{ color: "#1890ff", margin: 0 }}>Family Guidelines</Title>
+        <Card
+          style={{
+            borderRadius: "10px",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+            marginBottom: "16px",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              marginBottom: "20px",
+            }}
+          >
+            <FileTextOutlined
+              style={{
+                fontSize: "20px",
+                color: "#1890ff",
+                marginRight: "10px",
+              }}
+            />
+            <Title level={4} style={{ color: "#1890ff", margin: 0 }}>
+              Family Guidelines
+            </Title>
           </div>
           <List
             dataSource={familyGuidelines}
@@ -505,10 +734,30 @@ const FamilySharing: React.FC = () => {
           </Button>
         </Card>
 
-        <Card style={{ borderRadius: "10px", boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)", marginBottom: "16px" }}>
-          <div style={{ display: "flex", alignItems: "center", marginBottom: "20px" }}>
-            <BulbOutlined style={{ fontSize: "20px", color: "#fadb14", marginRight: "10px" }} />
-            <Title level={4} style={{ color: "#fadb14", margin: 0 }}>Family Notes</Title>
+        <Card
+          style={{
+            borderRadius: "10px",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+            marginBottom: "16px",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              marginBottom: "20px",
+            }}
+          >
+            <BulbOutlined
+              style={{
+                fontSize: "20px",
+                color: "#fadb14",
+                marginRight: "10px",
+              }}
+            />
+            <Title level={4} style={{ color: "#fadb14", margin: 0 }}>
+              Family Notes
+            </Title>
           </div>
           <List
             dataSource={familyNotes}
@@ -543,13 +792,34 @@ const FamilySharing: React.FC = () => {
           </Button>
         </Card>
 
-        <Card style={{ borderRadius: "10px", boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)" }}>
-          <div style={{ display: "flex", alignItems: "center", marginBottom: "20px" }}>
-            <FileAddOutlined style={{ fontSize: "20px", color: "#13c2c2", marginRight: "10px" }} />
-            <Title level={4} style={{ color: "#13c2c2", margin: 0 }}>Add Section</Title>
+        <Card
+          style={{
+            borderRadius: "10px",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              marginBottom: "20px",
+            }}
+          >
+            <FileAddOutlined
+              style={{
+                fontSize: "20px",
+                color: "#13c2c2",
+                marginRight: "10px",
+              }}
+            />
+            <Title level={4} style={{ color: "#13c2c2", margin: 0 }}>
+              Add Section
+            </Title>
           </div>
           {sections.length === 0 ? (
-            <Text style={{ fontSize: "14px", color: "#666" }}>No sections added yet.</Text>
+            <Text style={{ fontSize: "14px", color: "#666" }}>
+              No sections added yet.
+            </Text>
           ) : (
             <List
               dataSource={sections}
@@ -571,8 +841,14 @@ const FamilySharing: React.FC = () => {
                   ]}
                 >
                   <List.Item.Meta
-                    title={<Text style={{ fontSize: "14px" }}>{section.title}</Text>}
-                    description={<Text style={{ fontSize: "12px", color: "#666" }}>{section.content}</Text>}
+                    title={
+                      <Text style={{ fontSize: "14px" }}>{section.title}</Text>
+                    }
+                    description={
+                      <Text style={{ fontSize: "12px", color: "#666" }}>
+                        {section.content}
+                      </Text>
+                    }
                   />
                 </List.Item>
               )}
@@ -601,45 +877,98 @@ const FamilySharing: React.FC = () => {
 
     return (
       <div style={{ padding: "20px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-          <Title level={3} style={{ margin: 0, color: "#000" }}>Family Hub</Title>
-          <Button type="primary" onClick={() => setStep("add")} style={{ borderRadius: "20px", padding: "5px 15px" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "20px",
+          }}
+        >
+          <Title level={3} style={{ margin: 0, color: "#000" }}>
+            Family Hub
+          </Title>
+          <Button
+            type="primary"
+            onClick={() => setStep("add")}
+            style={{ borderRadius: "20px", padding: "5px 15px" }}
+          >
             Add Family Member
           </Button>
         </div>
         <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
-          <Button type="primary" style={{ borderRadius: "20px", padding: "5px 15px" }}>Table</Button>
-          <Button style={{ borderRadius: "20px", padding: "5px 15px" }}>Calendar</Button>
-          <Button style={{ borderRadius: "20px", padding: "5px 15px" }}>Activity</Button>
+          <Button
+            type="primary"
+            style={{ borderRadius: "20px", padding: "5px 15px" }}
+          >
+            Table
+          </Button>
+          <Button style={{ borderRadius: "20px", padding: "5px 15px" }}>
+            Calendar
+          </Button>
+          <Button style={{ borderRadius: "20px", padding: "5px 15px" }}>
+            Activity
+          </Button>
         </div>
 
         <Row gutter={[16, 16]}>
           <Col xs={24} md={16}>
-            <Card style={{ borderRadius: "10px", boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)", marginBottom: "16px" }}>
-              <div style={{ display: "flex", alignItems: "center", marginBottom: "20px" }}>
-                <UserOutlined style={{ fontSize: "20px", color: "#ff6347", marginRight: "10px" }} />
-                <Title level={4} style={{ color: "#ff6347", margin: 0 }}>Family Members</Title>
+            <Card
+              style={{
+                borderRadius: "10px",
+                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+                marginBottom: "16px",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  marginBottom: "20px",
+                }}
+              >
+                <UserOutlined
+                  style={{
+                    fontSize: "20px",
+                    color: "#ff6347",
+                    marginRight: "10px",
+                  }}
+                />
+                <Title level={4} style={{ color: "#ff6347", margin: 0 }}>
+                  Family Members
+                </Title>
               </div>
               {familyMembers.length === 0 ? (
-                <Text style={{ fontSize: "14px", color: "#666" }}>No family members added yet.</Text>
+                <Text style={{ fontSize: "14px", color: "#666" }}>
+                  No family members added yet.
+                </Text>
               ) : (
                 <div style={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
                   {familyMembers.map((member, index) => (
-                    <div key={index} style={{ textAlign: "center", width: "100px" }}>
+                    <div
+                      key={index}
+                      style={{ textAlign: "center", width: "100px" }}
+                    >
                       <Avatar
                         size={64}
                         style={{
-                          backgroundColor: index % 2 === 0 ? "#1890ff" : "#ff4d4f",
+                          backgroundColor:
+                            index % 2 === 0 ? "#1890ff" : "#ff4d4f",
                           marginBottom: "10px",
                         }}
                         icon={<UserOutlined />}
                       >
                         {member.name.charAt(0).toUpperCase()}
                       </Avatar>
-                      <Text style={{ fontWeight: "normal", fontSize: "14px" }}>{member.name}</Text>
+                      <Text style={{ fontWeight: "normal", fontSize: "14px" }}>
+                        {member.name}
+                      </Text>
                       <br />
                       <Text style={{ fontSize: "12px", color: "#666" }}>
-                        {member.relationship.replace("❤️", "").replace("👶", "").replace("👴", "")}
+                        {member.relationship
+                          .replace("❤️", "")
+                          .replace("👶", "")
+                          .replace("👴", "")}
                       </Text>
                     </div>
                   ))}
@@ -647,17 +976,58 @@ const FamilySharing: React.FC = () => {
               )}
             </Card>
 
-            <Card style={{ borderRadius: "10px", boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)", marginBottom: "16px" }}>
-              <div style={{ display: "flex", alignItems: "center", marginBottom: "20px" }}>
-                <ScheduleOutlined style={{ fontSize: "20px", color: "#ffa500", marginRight: "10px" }} />
-                <Title level={4} style={{ color: "#ffa500", margin: 0 }}>Family Calendar</Title>
+            <Card
+              style={{
+                borderRadius: "10px",
+                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+                marginBottom: "16px",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  marginBottom: "20px",
+                }}
+              >
+                <ScheduleOutlined
+                  style={{
+                    fontSize: "20px",
+                    color: "#ffa500",
+                    marginRight: "10px",
+                  }}
+                />
+                <Title level={4} style={{ color: "#ffa500", margin: 0 }}>
+                  Family Calendar
+                </Title>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-                <Button icon={<LeftOutlined />} onClick={handlePrevMonth} style={{ border: "none" }} />
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: "10px",
+                }}
+              >
+                <Button
+                  icon={<LeftOutlined />}
+                  onClick={handlePrevMonth}
+                  style={{ border: "none" }}
+                />
                 <Text strong>{currentMonth.format("MMMM YYYY")}</Text>
-                <Button icon={<RightOutlined />} onClick={handleNextMonth} style={{ border: "none" }} />
+                <Button
+                  icon={<RightOutlined />}
+                  onClick={handleNextMonth}
+                  style={{ border: "none" }}
+                />
               </div>
-              <Text style={{ display: "block", marginBottom: "10px", color: "#666" }}>
+              <Text
+                style={{
+                  display: "block",
+                  marginBottom: "10px",
+                  color: "#666",
+                }}
+              >
                 Current Date & Time: {currentDateTime}
               </Text>
               <Calendar
@@ -667,17 +1037,35 @@ const FamilySharing: React.FC = () => {
                 onSelect={handleDateSelect}
                 style={{ padding: "10px" }}
               />
-              <Text strong style={{ display: "block", margin: "10px 0", color: "#ffa500" }}>Upcoming Events</Text>
+              <Text
+                strong
+                style={{ display: "block", margin: "10px 0", color: "#ffa500" }}
+              >
+                Upcoming Events
+              </Text>
               <List
                 itemLayout="horizontal"
-                dataSource={upcomingEvents.filter(event => event.date.isSame(currentMonth, 'month'))}
+                dataSource={upcomingEvents.filter((event) =>
+                  event.date.isSame(currentMonth, "month")
+                )}
                 renderItem={(item) => (
                   <List.Item>
                     <List.Item.Meta
-                      avatar={<div style={{ width: "8px", height: "8px", backgroundColor: item.color, borderRadius: "50%" }} />}
-                      title={<Text style={{ fontSize: "14px", color: item.color }}>
-                        {item.date.format("D")} {item.title}
-                      </Text>}
+                      avatar={
+                        <div
+                          style={{
+                            width: "8px",
+                            height: "8px",
+                            backgroundColor: item.color,
+                            borderRadius: "50%",
+                          }}
+                        />
+                      }
+                      title={
+                        <Text style={{ fontSize: "14px", color: item.color }}>
+                          {item.date.format("D")} {item.title}
+                        </Text>
+                      }
                     />
                   </List.Item>
                 )}
@@ -692,17 +1080,49 @@ const FamilySharing: React.FC = () => {
               </Button>
             </Card>
 
-            <Card style={{ borderRadius: "10px", boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)", marginBottom: "16px" }}>
-              <div style={{ display: "flex", alignItems: "center", marginBottom: "20px" }}>
-                <CheckSquareOutlined style={{ fontSize: "20px", color: "#52c41a", marginRight: "10px" }} />
-                <Title level={4} style={{ color: "#52c41a", margin: 0 }}>Shared Tasks</Title>
+            <Card
+              style={{
+                borderRadius: "10px",
+                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+                marginBottom: "16px",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  marginBottom: "20px",
+                }}
+              >
+                <CheckSquareOutlined
+                  style={{
+                    fontSize: "20px",
+                    color: "#52c41a",
+                    marginRight: "10px",
+                  }}
+                />
+                <Title level={4} style={{ color: "#52c41a", margin: 0 }}>
+                  Shared Tasks
+                </Title>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                <Text strong style={{ color: "#52c41a" }}>Weekly Chores</Text>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "10px",
+                }}
+              >
+                <Text strong style={{ color: "#52c41a" }}>
+                  Weekly Chores
+                </Text>
                 {tasks.slice(0, 7).map((task, index) => (
                   <div
                     key={index}
-                    style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
                   >
                     <div style={{ display: "flex", alignItems: "center" }}>
                       <Checkbox
@@ -710,10 +1130,14 @@ const FamilySharing: React.FC = () => {
                         onChange={() => handleToggleTask(index)}
                         style={{ marginRight: "10px" }}
                       />
-                      <Text style={{ fontWeight: "normal", fontSize: "14px" }}>{task.title}</Text>
+                      <Text style={{ fontWeight: "normal", fontSize: "14px" }}>
+                        {task.title}
+                      </Text>
                     </div>
                     <div style={{ display: "flex", alignItems: "center" }}>
-                      <Text style={{ marginRight: "10px", fontSize: "14px" }}>{task.assignee}</Text>
+                      <Text style={{ marginRight: "10px", fontSize: "14px" }}>
+                        {task.assignee}
+                      </Text>
                       <Button
                         type="link"
                         icon={<EditOutlined />}
@@ -730,11 +1154,17 @@ const FamilySharing: React.FC = () => {
                     </div>
                   </div>
                 ))}
-                <Text strong style={{ marginTop: "10px", color: "#52c41a" }}>School Responsibilities</Text>
+                <Text strong style={{ marginTop: "10px", color: "#52c41a" }}>
+                  School Responsibilities
+                </Text>
                 {tasks.slice(7).map((task, index) => (
                   <div
                     key={index + 7}
-                    style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
                   >
                     <div style={{ display: "flex", alignItems: "center" }}>
                       <Checkbox
@@ -742,10 +1172,14 @@ const FamilySharing: React.FC = () => {
                         onChange={() => handleToggleTask(index + 7)}
                         style={{ marginRight: "10px" }}
                       />
-                      <Text style={{ fontWeight: "normal", fontSize: "14px" }}>{task.title}</Text>
+                      <Text style={{ fontWeight: "normal", fontSize: "14px" }}>
+                        {task.title}
+                      </Text>
                     </div>
                     <div style={{ display: "flex", alignItems: "center" }}>
-                      <Text style={{ marginRight: "10px", fontSize: "14px" }}>{task.assignee}</Text>
+                      <Text style={{ marginRight: "10px", fontSize: "14px" }}>
+                        {task.assignee}
+                      </Text>
                       <Button
                         type="link"
                         icon={<EditOutlined />}
@@ -773,10 +1207,29 @@ const FamilySharing: React.FC = () => {
               </Button>
             </Card>
 
-            <Card style={{ borderRadius: "10px", boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)" }}>
-              <div style={{ display: "flex", alignItems: "center", marginBottom: "20px" }}>
-                <PhoneOutlined style={{ fontSize: "20px", color: "#ff4d4f", marginRight: "10px" }} />
-                <Title level={4} style={{ color: "#ff4d4f", margin: "0" }}>Emergency Contacts</Title>
+            <Card
+              style={{
+                borderRadius: "10px",
+                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  marginBottom: "20px",
+                }}
+              >
+                <PhoneOutlined
+                  style={{
+                    fontSize: "20px",
+                    color: "#ff4d4f",
+                    marginRight: "10px",
+                  }}
+                />
+                <Title level={4} style={{ color: "#ff4d4f", margin: "0" }}>
+                  Emergency Contacts
+                </Title>
               </div>
               <List
                 dataSource={contacts}
@@ -798,8 +1251,14 @@ const FamilySharing: React.FC = () => {
                     ]}
                   >
                     <List.Item.Meta
-                      title={<Text style={{ fontSize: "14px" }}>{contact.name}</Text>}
-                      description={<Text style={{ fontSize: "12px", color: "#666" }}>{contact.role} - {contact.phone}</Text>}
+                      title={
+                        <Text style={{ fontSize: "14px" }}>{contact.name}</Text>
+                      }
+                      description={
+                        <Text style={{ fontSize: "12px", color: "#666" }}>
+                          {contact.role} - {contact.phone}
+                        </Text>
+                      }
                     />
                   </List.Item>
                 )}
@@ -816,8 +1275,15 @@ const FamilySharing: React.FC = () => {
           </Col>
 
           <Col xs={24} md={8}>
-            {["add", "permissions", "share", "review", "sent"].includes(step) ? (
-              <Card style={{ borderRadius: "10px", boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)" }}>
+            {["add", "permissions", "share", "review", "sent"].includes(
+              step
+            ) ? (
+              <Card
+                style={{
+                  borderRadius: "10px",
+                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+                }}
+              >
                 {renderAddMemberSteps()}
               </Card>
             ) : (
@@ -843,8 +1309,21 @@ const FamilySharing: React.FC = () => {
               renderItem={(item) => (
                 <List.Item>
                   <List.Item.Meta
-                    avatar={<div style={{ width: "8px", height: "8px", backgroundColor: item.color, borderRadius: "50%" }} />}
-                    title={<Text style={{ fontSize: "14px", color: item.color }}>{item.title}</Text>}
+                    avatar={
+                      <div
+                        style={{
+                          width: "8px",
+                          height: "8px",
+                          backgroundColor: item.color,
+                          borderRadius: "50%",
+                        }}
+                      />
+                    }
+                    title={
+                      <Text style={{ fontSize: "14px", color: item.color }}>
+                        {item.title}
+                      </Text>
+                    }
                   />
                 </List.Item>
               )}
@@ -861,9 +1340,12 @@ const FamilySharing: React.FC = () => {
     const handleContinue = () => {
       const { email, phone, accessCode, name } = formData;
       if (!relationship) return alert("Please select a relationship.");
-      if (selectedMethod === "Email" && (!email || !name)) return alert("Please enter a valid email and name.");
-      if (selectedMethod === "Mobile" && (!phone || !name)) return alert("Please enter a valid phone number and name.");
-      if (selectedMethod === "Access Code" && (!accessCode || !name)) return alert("Please enter a valid access code and name.");
+      if (selectedMethod === "Email" && (!email || !name))
+        return alert("Please enter a valid email and name.");
+      if (selectedMethod === "Mobile" && (!phone || !name))
+        return alert("Please enter a valid phone number and name.");
+      if (selectedMethod === "Access Code" && (!accessCode || !name))
+        return alert("Please enter a valid access code and name.");
       setStep("permissions");
     };
 
@@ -879,25 +1361,37 @@ const FamilySharing: React.FC = () => {
     return (
       <div style={{ padding: "20px" }}>
         <div style={{ textAlign: "center", marginBottom: "20px" }}>
-          <div style={{
-            width: "60px",
-            height: "60px",
-            backgroundColor: "rgba(0, 0, 0, 0.05)",
-            borderRadius: "50%",
-            margin: "0 auto 10px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}>
+          <div
+            style={{
+              width: "60px",
+              height: "60px",
+              backgroundColor: "rgba(0, 0, 0, 0.05)",
+              borderRadius: "50%",
+              margin: "0 auto 10px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
             <span style={{ fontSize: "30px" }}>👨‍👩‍👧</span>
           </div>
-          <h2 style={{ margin: "0", fontSize: "24px", fontWeight: "bold" }}>Add a Family Member</h2>
+          <h2 style={{ margin: "0", fontSize: "24px", fontWeight: "bold" }}>
+            Add a Family Member
+          </h2>
           <p style={{ color: "#666", fontSize: "14px", margin: "10px 0" }}>
-            Safely share important information with your family members while maintaining privacy for your sensitive data.
+            Safely share important information with your family members while
+            maintaining privacy for your sensitive data.
           </p>
         </div>
-        <div style={{ display: "flex", justifyContent: "center", gap: "10px", marginBottom: "20px" }}>
-          {["Email", "Mobile", "Access Code"].map(method => (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            gap: "10px",
+            marginBottom: "20px",
+          }}
+        >
+          {["Email", "Mobile", "Access Code"].map((method) => (
             <Button
               key={method}
               type={selectedMethod === method ? "primary" : "default"}
@@ -909,7 +1403,8 @@ const FamilySharing: React.FC = () => {
                 height: "auto",
                 backgroundColor: selectedMethod === method ? "#1890ff" : "#fff",
                 color: selectedMethod === method ? "#fff" : "#000",
-                border: selectedMethod === method ? "none" : "1px solid #d9d9d9",
+                border:
+                  selectedMethod === method ? "none" : "1px solid #d9d9d9",
               }}
             >
               {method}
@@ -918,7 +1413,9 @@ const FamilySharing: React.FC = () => {
         </div>
         {selectedMethod === "Email" && (
           <div style={{ marginBottom: "20px" }}>
-            <p style={{ margin: "0 0 5px", fontSize: "12px", color: "#666" }}>Frame 682816</p>
+            <p style={{ margin: "0 0 5px", fontSize: "12px", color: "#666" }}>
+              Frame 682816
+            </p>
             <Input
               type="email"
               name="email"
@@ -936,7 +1433,9 @@ const FamilySharing: React.FC = () => {
         )}
         {selectedMethod === "Mobile" && (
           <div style={{ marginBottom: "20px" }}>
-            <p style={{ margin: "0 0 5px", fontSize: "12px", color: "#666" }}>Frame 682816</p>
+            <p style={{ margin: "0 0 5px", fontSize: "12px", color: "#666" }}>
+              Frame 682816
+            </p>
             <Input
               type="tel"
               name="phone"
@@ -954,7 +1453,9 @@ const FamilySharing: React.FC = () => {
         )}
         {selectedMethod === "Access Code" && (
           <div style={{ marginBottom: "20px" }}>
-            <p style={{ margin: "0 0 5px", fontSize: "12px", color: "#666" }}>Frame 682816</p>
+            <p style={{ margin: "0 0 5px", fontSize: "12px", color: "#666" }}>
+              Frame 682816
+            </p>
             <Input
               type="text"
               name="accessCode"
@@ -971,7 +1472,15 @@ const FamilySharing: React.FC = () => {
           </div>
         )}
         <div style={{ marginBottom: "20px" }}>
-          <p style={{ margin: "0 0 5px", fontSize: "12px", color: "rgb(102, 102, 102)" }}>Frame 682817</p>
+          <p
+            style={{
+              margin: "0 0 5px",
+              fontSize: "12px",
+              color: "rgb(102, 102, 102)",
+            }}
+          >
+            Frame 682817
+          </p>
           <Input
             type="text"
             name="name"
@@ -986,9 +1495,18 @@ const FamilySharing: React.FC = () => {
             }}
           />
         </div>
-        <p style={{ margin: "0 0 10px", fontSize: "14px", color: "#666" }}>Relationship</p>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "30px" }}>
-          {["❤️Spouse/Partner", "👶Child", "👴Parent", "Other"].map(rel => (
+        <p style={{ margin: "0 0 10px", fontSize: "14px", color: "#666" }}>
+          Relationship
+        </p>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "10px",
+            marginBottom: "30px",
+          }}
+        >
+          {["❤️Spouse/Partner", "👶Child", "👴Parent", "Other"].map((rel) => (
             <Button
               key={rel}
               type={relationship === rel ? "primary" : "default"}
@@ -1048,13 +1566,31 @@ const FamilySharing: React.FC = () => {
       <Input
         type="text"
         value={newGuideline}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewGuideline(e.target.value)}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+          setNewGuideline(e.target.value)
+        }
         placeholder="Enter a guideline"
         style={{ margin: "10px 0", borderRadius: "5px", padding: "10px" }}
       />
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: "30px" }}>
-        <Button onClick={() => setStep("intro")} style={{ borderRadius: "20px", padding: "5px 20px" }}>Cancel</Button>
-        <Button type="primary" disabled={!newGuideline.trim()} onClick={handleAddGuideline} style={{ borderRadius: "20px", padding: "5px 20px" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginTop: "30px",
+        }}
+      >
+        <Button
+          onClick={() => setStep("intro")}
+          style={{ borderRadius: "20px", padding: "5px 20px" }}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="primary"
+          disabled={!newGuideline.trim()}
+          onClick={handleAddGuideline}
+          style={{ borderRadius: "20px", padding: "5px 20px" }}
+        >
           Add Guideline
         </Button>
       </div>
@@ -1067,13 +1603,31 @@ const FamilySharing: React.FC = () => {
       <Input
         type="text"
         value={newGuideline}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewGuideline(e.target.value)}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+          setNewGuideline(e.target.value)
+        }
         placeholder="Enter a guideline"
         style={{ margin: "10px 0", borderRadius: "5px", padding: "10px" }}
       />
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: "30px" }}>
-        <Button onClick={() => setStep("intro")} style={{ borderRadius: "20px", padding: "5px 20px" }}>Cancel</Button>
-        <Button type="primary" disabled={!newGuideline.trim()} onClick={handleEditGuideline} style={{ borderRadius: "20px", padding: "5px 20px" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginTop: "30px",
+        }}
+      >
+        <Button
+          onClick={() => setStep("intro")}
+          style={{ borderRadius: "20px", padding: "5px 20px" }}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="primary"
+          disabled={!newGuideline.trim()}
+          onClick={handleEditGuideline}
+          style={{ borderRadius: "20px", padding: "5px 20px" }}
+        >
           Save Changes
         </Button>
       </div>
@@ -1086,13 +1640,31 @@ const FamilySharing: React.FC = () => {
       <Input
         type="text"
         value={newNote}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewNote(e.target.value)}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+          setNewNote(e.target.value)
+        }
         placeholder="Enter your note"
         style={{ margin: "10px 0", borderRadius: "5px", padding: "10px" }}
       />
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: "30px" }}>
-        <Button onClick={() => setStep("intro")} style={{ borderRadius: "20px", padding: "5px 20px" }}>Cancel</Button>
-        <Button type="primary" disabled={!newNote.trim()} onClick={handleAddNote} style={{ borderRadius: "20px", padding: "5px 20px" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginTop: "30px",
+        }}
+      >
+        <Button
+          onClick={() => setStep("intro")}
+          style={{ borderRadius: "20px", padding: "5px 20px" }}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="primary"
+          disabled={!newNote.trim()}
+          onClick={handleAddNote}
+          style={{ borderRadius: "20px", padding: "5px 20px" }}
+        >
           Add Note
         </Button>
       </div>
@@ -1105,13 +1677,31 @@ const FamilySharing: React.FC = () => {
       <Input
         type="text"
         value={newNote}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewNote(e.target.value)}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+          setNewNote(e.target.value)
+        }
         placeholder="Enter your note"
         style={{ margin: "10px 0", borderRadius: "5px", padding: "10px" }}
       />
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: "30px" }}>
-        <Button onClick={() => setStep("intro")} style={{ borderRadius: "20px", padding: "5px 20px" }}>Cancel</Button>
-        <Button type="primary" disabled={!newNote.trim()} onClick={handleEditNote} style={{ borderRadius: "20px", padding: "5px 20px" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginTop: "30px",
+        }}
+      >
+        <Button
+          onClick={() => setStep("intro")}
+          style={{ borderRadius: "20px", padding: "5px 20px" }}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="primary"
+          disabled={!newNote.trim()}
+          onClick={handleEditNote}
+          style={{ borderRadius: "20px", padding: "5px 20px" }}
+        >
           Save Changes
         </Button>
       </div>
@@ -1130,13 +1720,17 @@ const FamilySharing: React.FC = () => {
         <Input
           type="text"
           value={newEvent.title}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewEvent({ ...newEvent, title: e.target.value })}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setNewEvent({ ...newEvent, title: e.target.value })
+          }
           placeholder="Enter event title"
           style={{ margin: "10px 0", borderRadius: "5px", padding: "10px" }}
         />
         <Select
           value={newEvent.category}
-          onChange={(value: string) => setNewEvent({ ...newEvent, category: value })}
+          onChange={(value: string) =>
+            setNewEvent({ ...newEvent, category: value })
+          }
           style={{ margin: "10px 0", width: "100%", borderRadius: "5px" }}
         >
           <Option value="School">School</Option>
@@ -1151,15 +1745,21 @@ const FamilySharing: React.FC = () => {
         />
         <RangePicker
           value={newEvent.timeRange as any}
-          onChange={(dates: [Dayjs | null, Dayjs | null] | null, dateStrings: [string, string]) => {
-            setNewEvent({ ...newEvent, timeRange: dates ? (dates as Dayjs[]) : [] });
+          onChange={(
+            dates: [Dayjs | null, Dayjs | null] | null,
+            dateStrings: [string, string]
+          ) => {
+            setNewEvent({
+              ...newEvent,
+              timeRange: dates ? (dates as Dayjs[]) : [],
+            });
           }}
           format="h:mm A"
           use12Hours
           style={{ margin: "10px 0", width: "100%", borderRadius: "5px" }}
         />
         <div style={{ display: "flex", justifyContent: "center", gap: "10px" }}>
-          {["AM", "PM"].map(period => (
+          {["AM", "PM"].map((period) => (
             <Button
               key={period}
               type={newEvent.period === period ? "primary" : "default"}
@@ -1170,13 +1770,29 @@ const FamilySharing: React.FC = () => {
             </Button>
           ))}
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "30px" }}>
-          <Button onClick={() => setStep("intro")} style={{ borderRadius: "20px", padding: "5px 20px" }}>Cancel</Button>
-          <Button type="primary" disabled={!isEventFormValid()} onClick={handleAddEvent} style={{ borderRadius: "20px", padding: "5px 20px" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginTop: "30px",
+          }}
+        >
+          <Button
+            onClick={() => setStep("intro")}
+            style={{ borderRadius: "20px", padding: "5px 20px" }}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="primary"
+            disabled={!isEventFormValid()}
+            onClick={handleAddEvent}
+            style={{ borderRadius: "20px", padding: "5px 20px" }}
+          >
             Add Event
           </Button>
         </div>
-    </div>
+      </div>
     );
   };
 
@@ -1189,20 +1805,40 @@ const FamilySharing: React.FC = () => {
         <Input
           type="text"
           value={newTask}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTask(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setNewTask(e.target.value)
+          }
           placeholder="Enter task title"
           style={{ margin: "10px 0", borderRadius: "5px", padding: "10px" }}
         />
         <Input
           type="text"
           value={newTaskAssignee}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTaskAssignee(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setNewTaskAssignee(e.target.value)
+          }
           placeholder="Enter assignee (e.g., JS)"
           style={{ margin: "10px 0", borderRadius: "5px", padding: "10px" }}
         />
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "30px" }}>
-          <Button onClick={() => setStep("intro")} style={{ borderRadius: "20px", padding: "5px 20px" }}>Cancel</Button>
-          <Button type="primary" disabled={!isTaskFormValid()} onClick={handleAddTask} style={{ borderRadius: "20px", padding: "5px 20px" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginTop: "30px",
+          }}
+        >
+          <Button
+            onClick={() => setStep("intro")}
+            style={{ borderRadius: "20px", padding: "5px 20px" }}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="primary"
+            disabled={!isTaskFormValid()}
+            onClick={handleAddTask}
+            style={{ borderRadius: "20px", padding: "5px 20px" }}
+          >
             Add Task
           </Button>
         </div>
@@ -1219,20 +1855,40 @@ const FamilySharing: React.FC = () => {
         <Input
           type="text"
           value={newTask}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTask(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setNewTask(e.target.value)
+          }
           placeholder="Enter task title"
           style={{ margin: "10px 0", borderRadius: "5px", padding: "10px" }}
         />
         <Input
           type="text"
           value={newTaskAssignee}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTaskAssignee(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setNewTaskAssignee(e.target.value)
+          }
           placeholder="Enter assignee (e.g., JS)"
           style={{ margin: "10px 0", borderRadius: "5px", padding: "10px" }}
         />
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "30px" }}>
-          <Button onClick={() => setStep("intro")} style={{ borderRadius: "20px", padding: "5px 20px" }}>Cancel</Button>
-          <Button type="primary" disabled={!isTaskFormValid()} onClick={handleEditTask} style={{ borderRadius: "20px", padding: "5px 20px" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginTop: "30px",
+          }}
+        >
+          <Button
+            onClick={() => setStep("intro")}
+            style={{ borderRadius: "20px", padding: "5px 20px" }}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="primary"
+            disabled={!isTaskFormValid()}
+            onClick={handleEditTask}
+            style={{ borderRadius: "20px", padding: "5px 20px" }}
+          >
             Save Changes
           </Button>
         </div>
@@ -1241,7 +1897,10 @@ const FamilySharing: React.FC = () => {
   };
 
   const renderAddContactForm = () => {
-    const isContactFormValid = () => newContact.name.trim() && newContact.role.trim() && newContact.phone.trim();
+    const isContactFormValid = () =>
+      newContact.name.trim() &&
+      newContact.role.trim() &&
+      newContact.phone.trim();
 
     return (
       <div style={{ padding: "20px" }}>
@@ -1249,27 +1908,49 @@ const FamilySharing: React.FC = () => {
         <Input
           type="text"
           value={newContact.name}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewContact({ ...newContact, name: e.target.value })}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setNewContact({ ...newContact, name: e.target.value })
+          }
           placeholder="Enter name"
           style={{ margin: "10px 0", borderRadius: "5px", padding: "10px" }}
         />
         <Input
           type="text"
           value={newContact.role}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewContact({ ...newContact, role: e.target.value })}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setNewContact({ ...newContact, role: e.target.value })
+          }
           placeholder="Enter role"
           style={{ margin: "10px 0", borderRadius: "5px", padding: "10px" }}
         />
         <Input
           type="text"
           value={newContact.phone}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewContact({ ...newContact, phone: e.target.value })}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setNewContact({ ...newContact, phone: e.target.value })
+          }
           placeholder="Enter phone number"
           style={{ margin: "10px 0", borderRadius: "5px", padding: "10px" }}
         />
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "30px" }}>
-          <Button onClick={() => setStep("intro")} style={{ borderRadius: "20px", padding: "5px 20px" }}>Cancel</Button>
-          <Button type="primary" disabled={!isContactFormValid()} onClick={handleAddContact} style={{ borderRadius: "20px", padding: "5px 20px" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginTop: "30px",
+          }}
+        >
+          <Button
+            onClick={() => setStep("intro")}
+            style={{ borderRadius: "20px", padding: "5px 20px" }}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="primary"
+            disabled={!isContactFormValid()}
+            onClick={handleAddContact}
+            style={{ borderRadius: "20px", padding: "5px 20px" }}
+          >
             Add Contact
           </Button>
         </div>
@@ -1278,7 +1959,10 @@ const FamilySharing: React.FC = () => {
   };
 
   const renderEditContactForm = () => {
-    const isContactFormValid = () => newContact.name.trim() && newContact.role.trim() && newContact.phone.trim();
+    const isContactFormValid = () =>
+      newContact.name.trim() &&
+      newContact.role.trim() &&
+      newContact.phone.trim();
 
     return (
       <div style={{ padding: "20px" }}>
@@ -1286,27 +1970,49 @@ const FamilySharing: React.FC = () => {
         <Input
           type="text"
           value={newContact.name}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewContact({ ...newContact, name: e.target.value })}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setNewContact({ ...newContact, name: e.target.value })
+          }
           placeholder="Enter name"
           style={{ margin: "10px 0", borderRadius: "5px", padding: "10px" }}
         />
         <Input
           type="text"
           value={newContact.role}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewContact({ ...newContact, role: e.target.value })}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setNewContact({ ...newContact, role: e.target.value })
+          }
           placeholder="Enter role"
           style={{ margin: "10px 0", borderRadius: "5px", padding: "10px" }}
         />
         <Input
           type="text"
           value={newContact.phone}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewContact({ ...newContact, phone: e.target.value })}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setNewContact({ ...newContact, phone: e.target.value })
+          }
           placeholder="Enter phone number"
           style={{ margin: "10px 0", borderRadius: "5px", padding: "10px" }}
         />
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "30px" }}>
-          <Button onClick={() => setStep("intro")} style={{ borderRadius: "20px", padding: "5px 20px" }}>Cancel</Button>
-          <Button type="primary" disabled={!isContactFormValid()} onClick={handleEditContact} style={{ borderRadius: "20px", padding: "5px 20px" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginTop: "30px",
+          }}
+        >
+          <Button
+            onClick={() => setStep("intro")}
+            style={{ borderRadius: "20px", padding: "5px 20px" }}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="primary"
+            disabled={!isContactFormValid()}
+            onClick={handleEditContact}
+            style={{ borderRadius: "20px", padding: "5px 20px" }}
+          >
             Save Changes
           </Button>
         </div>
@@ -1315,7 +2021,8 @@ const FamilySharing: React.FC = () => {
   };
 
   const renderAddDocumentForm = () => {
-    const isDocumentFormValid = () => newDocument.title.trim() && newDocument.category.trim();
+    const isDocumentFormValid = () =>
+      newDocument.title.trim() && newDocument.category.trim();
 
     return (
       <div style={{ padding: "20px" }}>
@@ -1323,20 +2030,40 @@ const FamilySharing: React.FC = () => {
         <Input
           type="text"
           value={newDocument.title}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewDocument({ ...newDocument, title: e.target.value })}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setNewDocument({ ...newDocument, title: e.target.value })
+          }
           placeholder="Enter document title"
           style={{ margin: "10px 0", borderRadius: "5px", padding: "10px" }}
         />
         <Input
           type="text"
           value={newDocument.category}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewDocument({ ...newDocument, category: e.target.value })}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setNewDocument({ ...newDocument, category: e.target.value })
+          }
           placeholder="Enter category (e.g., Passports, Insurance)"
           style={{ margin: "10px 0", borderRadius: "5px", padding: "10px" }}
         />
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "30px" }}>
-          <Button onClick={() => setStep("intro")} style={{ borderRadius: "20px", padding: "5px 20px" }}>Cancel</Button>
-          <Button type="primary" disabled={!isDocumentFormValid()} onClick={handleAddDocument} style={{ borderRadius: "20px", padding: "5px 20px" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginTop: "30px",
+          }}
+        >
+          <Button
+            onClick={() => setStep("intro")}
+            style={{ borderRadius: "20px", padding: "5px 20px" }}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="primary"
+            disabled={!isDocumentFormValid()}
+            onClick={handleAddDocument}
+            style={{ borderRadius: "20px", padding: "5px 20px" }}
+          >
             Add Document
           </Button>
         </div>
@@ -1345,7 +2072,8 @@ const FamilySharing: React.FC = () => {
   };
 
   const renderEditDocumentForm = () => {
-    const isDocumentFormValid = () => newDocument.title.trim() && newDocument.category.trim();
+    const isDocumentFormValid = () =>
+      newDocument.title.trim() && newDocument.category.trim();
 
     return (
       <div style={{ padding: "20px" }}>
@@ -1353,20 +2081,40 @@ const FamilySharing: React.FC = () => {
         <Input
           type="text"
           value={newDocument.title}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewDocument({ ...newDocument, title: e.target.value })}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setNewDocument({ ...newDocument, title: e.target.value })
+          }
           placeholder="Enter document title"
           style={{ margin: "10px 0", borderRadius: "5px", padding: "10px" }}
         />
         <Input
           type="text"
           value={newDocument.category}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewDocument({ ...newDocument, category: e.target.value })}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setNewDocument({ ...newDocument, category: e.target.value })
+          }
           placeholder="Enter category (e.g., Passports, Insurance)"
           style={{ margin: "10px 0", borderRadius: "5px", padding: "10px" }}
         />
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "30px" }}>
-          <Button onClick={() => setStep("intro")} style={{ borderRadius: "20px", padding: "5px 20px" }}>Cancel</Button>
-          <Button type="primary" disabled={!isDocumentFormValid()} onClick={handleEditDocument} style={{ borderRadius: "20px", padding: "5px 20px" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginTop: "30px",
+          }}
+        >
+          <Button
+            onClick={() => setStep("intro")}
+            style={{ borderRadius: "20px", padding: "5px 20px" }}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="primary"
+            disabled={!isDocumentFormValid()}
+            onClick={handleEditDocument}
+            style={{ borderRadius: "20px", padding: "5px 20px" }}
+          >
             Save Changes
           </Button>
         </div>
@@ -1375,7 +2123,8 @@ const FamilySharing: React.FC = () => {
   };
 
   const renderAddSectionForm = () => {
-    const isSectionFormValid = () => newSection.title.trim() && newSection.content.trim();
+    const isSectionFormValid = () =>
+      newSection.title.trim() && newSection.content.trim();
 
     return (
       <div style={{ padding: "20px" }}>
@@ -1383,20 +2132,40 @@ const FamilySharing: React.FC = () => {
         <Input
           type="text"
           value={newSection.title}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewSection({ ...newSection, title: e.target.value })}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setNewSection({ ...newSection, title: e.target.value })
+          }
           placeholder="Enter section title"
           style={{ margin: "10px 0", borderRadius: "5px", padding: "10px" }}
         />
         <Input
           type="text"
           value={newSection.content}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewSection({ ...newSection, content: e.target.value })}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setNewSection({ ...newSection, content: e.target.value })
+          }
           placeholder="Enter section content"
           style={{ margin: "10px 0", borderRadius: "5px", padding: "10px" }}
         />
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "30px" }}>
-          <Button onClick={() => setStep("intro")} style={{ borderRadius: "20px", padding: "5px 20px" }}>Cancel</Button>
-          <Button type="primary" disabled={!isSectionFormValid()} onClick={handleAddSection} style={{ borderRadius: "20px", padding: "5px 20px" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginTop: "30px",
+          }}
+        >
+          <Button
+            onClick={() => setStep("intro")}
+            style={{ borderRadius: "20px", padding: "5px 20px" }}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="primary"
+            disabled={!isSectionFormValid()}
+            onClick={handleAddSection}
+            style={{ borderRadius: "20px", padding: "5px 20px" }}
+          >
             Add Section
           </Button>
         </div>
@@ -1405,7 +2174,8 @@ const FamilySharing: React.FC = () => {
   };
 
   const renderEditSectionForm = () => {
-    const isSectionFormValid = () => newSection.title.trim() && newSection.content.trim();
+    const isSectionFormValid = () =>
+      newSection.title.trim() && newSection.content.trim();
 
     return (
       <div style={{ padding: "20px" }}>
@@ -1413,20 +2183,40 @@ const FamilySharing: React.FC = () => {
         <Input
           type="text"
           value={newSection.title}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewSection({ ...newSection, title: e.target.value })}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setNewSection({ ...newSection, title: e.target.value })
+          }
           placeholder="Enter section title"
           style={{ margin: "10px 0", borderRadius: "5px", padding: "10px" }}
         />
         <Input
           type="text"
           value={newSection.content}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewSection({ ...newSection, content: e.target.value })}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setNewSection({ ...newSection, content: e.target.value })
+          }
           placeholder="Enter section content"
           style={{ margin: "10px 0", borderRadius: "5px", padding: "10px" }}
         />
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "30px" }}>
-          <Button onClick={() => setStep("intro")} style={{ borderRadius: "20px", padding: "5px 20px" }}>Cancel</Button>
-          <Button type="primary" disabled={!isSectionFormValid()} onClick={handleEditSection} style={{ borderRadius: "20px", padding: "5px 20px" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginTop: "30px",
+          }}
+        >
+          <Button
+            onClick={() => setStep("intro")}
+            style={{ borderRadius: "20px", padding: "5px 20px" }}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="primary"
+            disabled={!isSectionFormValid()}
+            onClick={handleEditSection}
+            style={{ borderRadius: "20px", padding: "5px 20px" }}
+          >
             Save Changes
           </Button>
         </div>
@@ -1438,7 +2228,7 @@ const FamilySharing: React.FC = () => {
     <div style={{ padding: "20px" }}>
       <h3>Set Permissions for: {formData.name}</h3>
       <div style={{ display: "flex", gap: "10px" }}>
-        {["Full Access", "Custom Access"].map(type => (
+        {["Full Access", "Custom Access"].map((type) => (
           <Button
             key={type}
             type={permissions.type === type ? "primary" : "default"}
@@ -1451,11 +2241,19 @@ const FamilySharing: React.FC = () => {
       </div>
       {permissions.type === "Custom Access" && (
         <div style={{ marginTop: "20px" }}>
-          {["allowAdd", "allowEdit", "allowDelete", "allowInvite", "notify"].map((key) => (
+          {[
+            "allowAdd",
+            "allowEdit",
+            "allowDelete",
+            "allowInvite",
+            "notify",
+          ].map((key) => (
             <div key={key} style={{ marginBottom: "8px" }}>
               <Checkbox
                 checked={Boolean(permissions[key as keyof PermissionState])}
-                onChange={() => handlePermissionChange(key as keyof PermissionState)}
+                onChange={() =>
+                  handlePermissionChange(key as keyof PermissionState)
+                }
               >
                 {key.replace("allow", "Allow ").replace(/([A-Z])/g, " $1")}
               </Checkbox>
@@ -1463,15 +2261,34 @@ const FamilySharing: React.FC = () => {
           ))}
         </div>
       )}
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: "30px" }}>
-        <Button onClick={() => setStep("add")} style={{ borderRadius: "20px", padding: "5px 20px" }}>Back</Button>
-        <Button type="primary" onClick={() => setStep("share")} style={{ borderRadius: "20px", padding: "5px 20px" }}>Continue</Button>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginTop: "30px",
+        }}
+      >
+        <Button
+          onClick={() => setStep("add")}
+          style={{ borderRadius: "20px", padding: "5px 20px" }}
+        >
+          Back
+        </Button>
+        <Button
+          type="primary"
+          onClick={() => setStep("share")}
+          style={{ borderRadius: "20px", padding: "5px 20px" }}
+        >
+          Continue
+        </Button>
       </div>
     </div>
   );
 
   const renderSharingOptions = () => {
-    const hasSelectedItems = Object.values(sharedItems).some(items => items.length > 0);
+    const hasSelectedItems = Object.values(sharedItems).some(
+      (items) => items.length > 0
+    );
     return (
       <div style={{ padding: "20px" }}>
         <h3>Select What to Share</h3>
@@ -1485,7 +2302,7 @@ const FamilySharing: React.FC = () => {
             </Checkbox>
             {children.length > 0 && (
               <div style={{ marginLeft: "20px" }}>
-                {children.map(child => (
+                {children.map((child) => (
                   <div key={child}>
                     <Checkbox
                       checked={sharedItems[label]?.includes(child) || false}
@@ -1499,32 +2316,76 @@ const FamilySharing: React.FC = () => {
             )}
           </div>
         ))}
-        {!hasSelectedItems && <p style={{ color: "red" }}>Please select at least one item to share before continuing.</p>}
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "30px" }}>
-          <Button onClick={() => setStep("permissions")} style={{ borderRadius: "20px", padding: "5px 20px" }}>Back</Button>
-          <Button type="primary" disabled={!hasSelectedItems} onClick={() => setStep("review")} style={{ borderRadius: "20px", padding: "5px 20px" }}>
+        {!hasSelectedItems && (
+          <p style={{ color: "red" }}>
+            Please select at least one item to share before continuing.
+          </p>
+        )}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginTop: "30px",
+          }}
+        >
+          <Button
+            onClick={() => setStep("permissions")}
+            style={{ borderRadius: "20px", padding: "5px 20px" }}
+          >
+            Back
+          </Button>
+          <Button
+            type="primary"
+            disabled={!hasSelectedItems}
+            onClick={() => setStep("review")}
+            style={{ borderRadius: "20px", padding: "5px 20px" }}
+          >
             Continue
           </Button>
         </div>
-    </div>
+      </div>
     );
   };
 
   const renderReview = () => (
     <div style={{ padding: "20px" }}>
       <h3>Review Invitation</h3>
-      <p><strong>To:</strong> {selectedMethod === "Email" ? formData.email : formData.phone}</p>
-      <p><strong>Name:</strong> {formData.name}</p>
-      <p><strong>Relationship:</strong> {relationship}</p>
-      <p><strong>Access:</strong> {permissions.type}</p>
+      <p>
+        <strong>To:</strong>{" "}
+        {selectedMethod === "Email" ? formData.email : formData.phone}
+      </p>
+      <p>
+        <strong>Name:</strong> {formData.name}
+      </p>
+      <p>
+        <strong>Relationship:</strong> {relationship}
+      </p>
+      <p>
+        <strong>Access:</strong> {permissions.type}
+      </p>
       <ul>
         {Object.entries(sharedItems).flatMap(([category, items]) =>
-          items.map(item => <li key={category + item}>{item}</li>)
+          items.map((item) => <li key={category + item}>{item}</li>)
         )}
       </ul>
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: "20px" }}>
-        <Button onClick={() => setStep("share")} style={{ borderRadius: "20px", padding: "5px 20px" }}>Back</Button>
-        <Button type="primary" onClick={handleAddMember} style={{ borderRadius: "20px", padding: "5px 20px" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginTop: "20px",
+        }}
+      >
+        <Button
+          onClick={() => setStep("share")}
+          style={{ borderRadius: "20px", padding: "5px 20px" }}
+        >
+          Back
+        </Button>
+        <Button
+          type="primary"
+          onClick={handleAddMember}
+          style={{ borderRadius: "20px", padding: "5px 20px" }}
+        >
           Send Invitation
         </Button>
       </div>
@@ -1534,17 +2395,31 @@ const FamilySharing: React.FC = () => {
   const renderSent = () => (
     <div style={{ textAlign: "center", padding: "20px" }}>
       <h3>Invitation Sent!</h3>
-      <p>An invitation has been sent to {pendingMember?.name || "the family member"}.</p>
-      <Button type="primary" onClick={handleDone} style={{ marginTop: "20px", borderRadius: "20px", padding: "5px 20px" }}>
+      <p>
+        An invitation has been sent to{" "}
+        {pendingMember?.name || "the family member"}.
+      </p>
+      <Button
+        type="primary"
+        onClick={handleDone}
+        style={{ marginTop: "20px", borderRadius: "20px", padding: "5px 20px" }}
+      >
         Done
       </Button>
     </div>
   );
 
-  const isFullPageStep = !["intro", "add", "permissions", "share", "review", "sent"].includes(step);
+  const isFullPageStep = ![
+    "intro",
+    "add",
+    "permissions",
+    "share",
+    "review",
+    "sent",
+  ].includes(step);
 
   return (
-    <MainLayout>
+    <div style={{ margin: "50px 0px 0px 20px" }}>
       <div style={{ padding: "30px" }}>
         {isFullPageStep ? (
           <>
@@ -1566,7 +2441,7 @@ const FamilySharing: React.FC = () => {
           renderIntro()
         )}
       </div>
-    </MainLayout>
+    </div>
   );
 };
 
