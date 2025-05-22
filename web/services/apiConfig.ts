@@ -1,10 +1,10 @@
 import axios from "axios";
 
-// export const API_URL = " http://127.0.0.1:5000/server/api";
-export const API_URL_DEPLOYMENT = "https://dockly.onrender.com/server/api";
+export const API_URL = " http://127.0.0.1:5000/server/api";
+// export const API_URL = "https://dockly.onrender.com/server/api"; //DEPLOYMENT
 
 export const api = axios.create({
-  baseURL: API_URL_DEPLOYMENT,
+  baseURL: API_URL,
   headers: {
     "Content-Type": "application/json",
   },

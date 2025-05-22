@@ -139,12 +139,12 @@ const DocklyLogin = () => {
         Get Started
       </Button>
 
-      <p style={{ marginTop: 16 }}>
+      {/* <p style={{ marginTop: 16 }}>
         Don’t have a Dockly URL?{" "}
         <a href="#" style={{ color: "#003cff" }}>
           Contact your admin
         </a>
-      </p>
+      </p> */}
     </div>
   );
 };

@@ -115,6 +115,7 @@ class RegisterUser(Resource):
                     select_fields=["is_dockly_user"],
                 )
             isDockly = docklyUser.get("is_dockly_user") if docklyUser else None
+            print(f"isDockly: {isDockly}")
             if isDockly is True:
                 userId = existingUser.get("uid")
                 sessionInfo = handle_user_session(userId)
