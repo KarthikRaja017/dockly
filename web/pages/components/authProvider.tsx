@@ -14,7 +14,7 @@ const PUBLIC_ROUTE_PATTERNS = [
   /^\/$/,
   /^\/[^/]+\/sign-up$/,
   /^\/[^/]+\/verify-email$/,
-  /^\/[^/]+\/dashboard$/,
+  // /^\/[^/]+\/dashboard$/,
 ];
 
 export default function AuthProvider({ children }: AuthProviderProps) {

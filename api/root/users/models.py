@@ -107,12 +107,12 @@ class RegisterUser(Resource):
             ],
         )
 
-        # 🚨 CASE 1: User exists
+        #  CASE 1: User exists
         if existingUser:
             isDockly = existingUser.get("is_dockly_user")
-            userId = existingUser.get("uid")
+            
+            
             dbEmail = existingUser.get("email")
-            print(f"dbEmail: {dbEmail}")
 
             # ✅ If Dockly user, log in
             if isDockly and inputEmail == dbEmail:
@@ -130,23 +130,15 @@ class RegisterUser(Resource):
                     },
                 }
 
-            # 🚧 If not Dockly user, but email is provided, register as Dockly user (depends on your policy)
-            if not isDockly and inputEmail != dbEmail:
-                return {
-                    "status": 0,
-                    "message": "Username already exists and is unavailable",
-                    "payload": {},
-                }
 
             # ⚠️ If email not given in input, send OTP to existing DB email for verification
-            if isDockly and not inputEmail:
+            if isDockly and not inputEmail and dbEmail:
                 otp = generate_otp()
-                otpResponse = send_otp_email(
-                    dbEmail, otp
-                )  # You need to implement this function
+                otpResponse = send_otp_email(dbEmail, otp)
+                # You need to implement this function
 
                 return {
-                    "status": 2,
+                    "status": 1,
                     "message": f"OTP sent to {dbEmail} for email verification",
                     "payload": {
                         "redirectUrl": "/verify-email",
@@ -156,14 +148,22 @@ class RegisterUser(Resource):
                     },
                 }
 
-        # 🆕 CASE 2: New User (username not found)
+            # 🚧 If not Dockly user, but email is provided, register as Dockly user (depends on your policy)
+            if isDockly and inputEmail != dbEmail:
+                return {
+                    "status": 0,
+                    "message": "Username already exists and is unavailable",
+                    "payload": {},
+                }
+                
+        # CASE 2: New User (username not found)
         uid = uniqueId(digit=5, isNum=True, prefix="USER")
         userId = DBHelper.insert(
             "users",
             return_column="uid",
             uid=uid,
             email="",
-            mobile="",      
+            mobile="",
             username=userName,
             is_email_verified=False,
             is_phone_verified=False,
@@ -188,33 +188,50 @@ class SaveUserEmail(Resource):
         inputData = request.get_json(silent=True)
         userId = inputData["userId"]
         email = inputData["email"]
-
-        existingUser = DBHelper.find_one(
-            "users",
-            filters={"email": email},
-            select_fields=["uid"],
-        )
-        if existingUser:
+        if userId:
+            existingUser = DBHelper.find_one(
+                "users",
+                filters={"email": email},
+                select_fields=["uid"],
+            )
+            if existingUser:
+                return {
+                    "status": 0,
+                    "message": "Email already exists",
+                    "payload": {},
+                }
+            else:
+                uid = DBHelper.update_one(
+                    table_name="users",
+                    filters={"uid": userId},
+                    updates={"email": email},
+                    return_fields=["uid"],
+                )
+            otp = generate_otp()
+            otpResponse = send_otp_email(email, otp)
+            # otpResponse = {"otp": otp, "email": email}
             return {
-                "status": 0,
-                "message": "Email already exists",
-                "payload": {},
+                "status": 1,
+                "message": "OTP sent successfully",
+                "payload": {"email": email, "otpStatus": otpResponse, "uid": uid},
             }
         else:
-            uid = DBHelper.update_one(
-                table_name="users",
-                filters={"uid": userId},
-                updates={"email": email},
-                return_fields=["uid"],
+            existingUser = DBHelper.find_one(
+                "users",
+                filters={"email": email},
+                select_fields=["uid"],
             )
-        otp = generate_otp()
-        otpResponse = send_otp_email(email, otp)
-        # otpResponse = {"otp": otp, "email": email}
-        return {
-            "status": 1,
-            "message": "OTP sent successfully",
-            "payload": {"email": email, "otpStatus": otpResponse, "uid": uid},
-        }
+            otp = generate_otp()
+            otpResponse = send_otp_email(email, otp)
+            # otpResponse = {"otp": otp, "email": email}
+            uid = existingUser.get("uid")
+            
+            return {
+                "status": 1,
+                "message": "OTP sent successfully",
+                "payload": {"email": email, "otpStatus": otpResponse, "uid": uid},
+            }
+            
 
 
 def is_otp_valid(otpData, otp):
