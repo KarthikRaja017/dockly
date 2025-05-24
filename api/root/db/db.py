@@ -16,6 +16,7 @@ class PostgreSQL:
                     maxconn=10,
                     dsn=POSTGRES_URI
                 )
+                print(f"POSTGRES_URI: {POSTGRES_URI}")
                 print("✅ Postgres connection pool created successfully.")
             except Exception as e:
                 print(f"❌ Failed to create Postgres connection pool: {e}")

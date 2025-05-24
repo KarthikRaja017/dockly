@@ -15,12 +15,14 @@ const VerifyEmailPage: React.FC = () => {
   const params = useParams() || {};
   const username = params.username;
   const [userId, setUserId] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
   const [storedOtp, setStoredOtp] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       setUserId(localStorage.getItem("userId"));
       setStoredOtp(localStorage.getItem("storedOtp"));
+      setEmail(localStorage.getItem("email"));
     }
   }, []);
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
@@ -65,7 +67,6 @@ const VerifyEmailPage: React.FC = () => {
       if (status) {
         const token = payload?.token || "";
         localStorage.setItem("Dtoken", token);
-        localStorage.setItem("email", payload?.email || "");
         showNotification("Success", msg, "success");
         router.push(`/${username}/dashboard`);
       }
@@ -81,7 +82,7 @@ const VerifyEmailPage: React.FC = () => {
       <Col span={24} style={{ maxWidth: 400 }}>
         <Title level={2}>Verify your email</Title>
         <Text type="secondary">
-          Enter the 4-digit code sent to @example.com
+          Enter the 4-digit code sent to {email}
         </Text>
 
         <div
