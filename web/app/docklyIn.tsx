@@ -41,6 +41,9 @@ const DocklyLogin = () => {
         showNotification("Success", msg, "success");
         localStorage.setItem("userId", payload.userId);
         localStorage.setItem("username", username);
+        if (payload?.otpStatus?.otp) {
+          localStorage.setItem("storedOtp", payload?.otpStatus.otp || "");
+        }
         router.push(`/${username}${payload.redirectUrl}`);
       }
     } catch (error: any) {

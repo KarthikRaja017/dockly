@@ -23,7 +23,6 @@ const VerifyEmailPage: React.FC = () => {
       setStoredOtp(localStorage.getItem("storedOtp"));
     }
   }, []);
-
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
   const handleChange = (value: string, index: number) => {
@@ -96,7 +95,9 @@ const VerifyEmailPage: React.FC = () => {
           {otp.map((digit, idx) => (
             <Input
               key={idx}
-              // ref={(el) => (inputsRef.current[idx] = el)}
+              ref={(el) => {
+                inputsRef.current[idx] = el?.input || null;
+              }}
               value={digit}
               onChange={(e) => handleChange(e.target.value, idx)}
               onKeyDown={(e) => handleKeyDown(e, idx)}

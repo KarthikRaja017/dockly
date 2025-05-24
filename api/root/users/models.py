@@ -92,32 +92,30 @@ class RegisterUser(Resource):
     def post(self):
         data = request.get_json()
         userName = data.get("userName")
-        email = data.get("email", "")
+        print(f"userName: {userName}")
+        inputEmail = data.get("email", "")
 
-        # Check if user exists
+        # Check if user with the username exists
         existingUser = DBHelper.find_one(
             "users",
             filters={"username": userName},
             select_fields=[
                 "email",
                 "is_email_verified",
-                "is_phone_verified",
                 "uid",
+                "is_dockly_user",
             ],
         )
 
+        # 🚨 CASE 1: User exists
         if existingUser:
-            docklyUser = None
-            if email:
-                docklyUser = DBHelper.find_one(
-                    "users",
-                    filters={"email": email},
-                    select_fields=["is_dockly_user"],
-                )
-            isDockly = docklyUser.get("is_dockly_user") if docklyUser else None
-            print(f"isDockly: {isDockly}")
-            if isDockly is True:
-                userId = existingUser.get("uid")
+            isDockly = existingUser.get("is_dockly_user")
+            userId = existingUser.get("uid")
+            dbEmail = existingUser.get("email")
+            print(f"dbEmail: {dbEmail}")
+
+            # ✅ If Dockly user, log in
+            if isDockly and inputEmail == dbEmail:
                 sessionInfo = handle_user_session(userId)
                 token = getAccessTokens({"uid": userId})
 
@@ -132,20 +130,39 @@ class RegisterUser(Resource):
                     },
                 }
 
-            if (isDockly is False or isDockly is None) and not email:
+            # 🚧 If not Dockly user, but email is provided, register as Dockly user (depends on your policy)
+            if not isDockly and inputEmail != dbEmail:
                 return {
                     "status": 0,
                     "message": "Username already exists and is unavailable",
                     "payload": {},
                 }
 
-         # If username does not exist, register new dockly user
+            # ⚠️ If email not given in input, send OTP to existing DB email for verification
+            if isDockly and not inputEmail:
+                otp = generate_otp()
+                otpResponse = send_otp_email(
+                    dbEmail, otp
+                )  # You need to implement this function
+
+                return {
+                    "status": 2,
+                    "message": f"OTP sent to {dbEmail} for email verification",
+                    "payload": {
+                        "redirectUrl": "/verify-email",
+                        "email": dbEmail,
+                        "userId": userId,
+                        "otpStatus": otpResponse,
+                    },
+                }
+
+        # 🆕 CASE 2: New User (username not found)
         uid = uniqueId(digit=5, isNum=True, prefix="USER")
         userId = DBHelper.insert(
             "users",
             return_column="uid",
             uid=uid,
-            email=email or "",
+            email=inputEmail,
             mobile="",
             username=userName,
             is_email_verified=False,
@@ -164,6 +181,7 @@ class RegisterUser(Resource):
                 "redirectUrl": "/sign-up",
             },
         }
+
 
 class SaveUserEmail(Resource):
     def post(self):
