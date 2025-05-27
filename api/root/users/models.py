@@ -92,7 +92,7 @@ class RegisterUser(Resource):
     def post(self):
         data = request.get_json()
         userName = data.get("userName")
-        print(f"userName: {userName}")
+        userId = ""
         inputEmail = data.get("email", "")
 
         # Check if user with the username exists
@@ -110,8 +110,7 @@ class RegisterUser(Resource):
         #  CASE 1: User exists
         if existingUser:
             isDockly = existingUser.get("is_dockly_user")
-            
-            
+            userId = existingUser.get("uid")
             dbEmail = existingUser.get("email")
 
             # ✅ If Dockly user, log in
@@ -129,7 +128,6 @@ class RegisterUser(Resource):
                         "redirectUrl": "/dashboard",
                     },
                 }
-
 
             # ⚠️ If email not given in input, send OTP to existing DB email for verification
             if isDockly and not inputEmail and dbEmail:
@@ -155,7 +153,7 @@ class RegisterUser(Resource):
                     "message": "Username already exists and is unavailable",
                     "payload": {},
                 }
-                
+
         # CASE 2: New User (username not found)
         uid = uniqueId(digit=5, isNum=True, prefix="USER")
         userId = DBHelper.insert(
@@ -225,13 +223,12 @@ class SaveUserEmail(Resource):
             otpResponse = send_otp_email(email, otp)
             # otpResponse = {"otp": otp, "email": email}
             uid = existingUser.get("uid")
-            
+
             return {
                 "status": 1,
                 "message": "OTP sent successfully",
                 "payload": {"email": email, "otpStatus": otpResponse, "uid": uid},
             }
-            
 
 
 def is_otp_valid(otpData, otp):
