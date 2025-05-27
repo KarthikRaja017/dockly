@@ -16,11 +16,11 @@ const SignUpDockly = () => {
   const router = useRouter();
   const params = useParams() || {};
   const username = params.username;
-  const [userId, setUserId] = useState("");
+  const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState(false);
   useEffect(() => {
-    const userId = localStorage.getItem("userId") || "";
+    const userId = localStorage.getItem("userId") || null;
     setUserId(userId);
   }, []);
 
@@ -38,7 +38,8 @@ const SignUpDockly = () => {
       showNotification("Success", msg, "success");
       localStorage.setItem("storedOtp", payload?.otpStatus.otp || "");
       localStorage.setItem("email", payload?.email || "");
-      router.push(`/${username}/verify-email?email=${payload.email}`);
+      localStorage.setItem("userId", payload?.uid || "");
+      router.push(`/${payload?.username}/verify-email?email=${payload.email}`);
     }
     setLoading(false);
   };

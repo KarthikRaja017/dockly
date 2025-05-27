@@ -190,7 +190,7 @@ class SaveUserEmail(Resource):
             existingUser = DBHelper.find_one(
                 "users",
                 filters={"email": email},
-                select_fields=["uid"],
+                select_fields=["uid", "username"],
             )
             if existingUser:
                 return {
@@ -211,24 +211,61 @@ class SaveUserEmail(Resource):
             return {
                 "status": 1,
                 "message": "OTP sent successfully",
-                "payload": {"email": email, "otpStatus": otpResponse, "uid": uid},
+                "payload": {
+                    "email": email,
+                    "otpStatus": otpResponse,
+                    "uid": uid,
+                    "username": existingUser.get("username"),
+                },
             }
         else:
             existingUser = DBHelper.find_one(
                 "users",
                 filters={"email": email},
-                select_fields=["uid"],
+                select_fields=["uid", "username"],
             )
             otp = generate_otp()
             otpResponse = send_otp_email(email, otp)
             # otpResponse = {"otp": otp, "email": email}
-            uid = existingUser.get("uid")
+            if existingUser:
+                uid = existingUser.get("uid")
 
-            return {
-                "status": 1,
-                "message": "OTP sent successfully",
-                "payload": {"email": email, "otpStatus": otpResponse, "uid": uid},
-            }
+                return {
+                    "status": 1,
+                    "message": "OTP sent successfully",
+                    "payload": {
+                        "email": email,
+                        "otpStatus": otpResponse,
+                        "uid": uid,
+                        "username": existingUser.get("username"),
+                    },
+                }
+            else:
+                usernamePrefix = email.split("@")[0]
+                uid = uniqueId(digit=5, isNum=True, prefix="USER")
+                username = f"{usernamePrefix}{uid}"
+                print(f"username: {username}")
+                userId = DBHelper.insert(
+                    "users",
+                    return_column="uid",
+                    uid=uid,
+                    email="",
+                    mobile="",
+                    username=username,
+                    is_email_verified=False,
+                    is_phone_verified=False,
+                    is_dockly_user=True,
+                )
+                return {
+                    "status": 1,
+                    "message": "User registered and Otp sent Successfully",
+                    "payload": {
+                        "email": email,
+                        "otpStatus": otpResponse,
+                        "uid": uid,
+                        "username": username,
+                    },
+                }
 
 
 def is_otp_valid(otpData, otp):
@@ -252,7 +289,6 @@ def is_otp_valid(otpData, otp):
 class OtpVerification(Resource):
     def post(self):
         inputData = request.get_json(silent=True)
-        print(f"inputData: {inputData}")
         userId = inputData["userId"]
         otp = inputData.get("otp")
         response = is_otp_valid(inputData["storedOtp"], otp)
