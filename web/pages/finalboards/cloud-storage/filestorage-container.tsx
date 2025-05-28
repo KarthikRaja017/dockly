@@ -1,11 +1,11 @@
-'use client';
+// 'use client';
 
-import dynamic from 'next/dynamic';
+// import dynamic from 'next/dynamic';
 
-const FilesStorage = dynamic(() => import('./filesStorage'), {
-  ssr: false,
-});
+// const FilesStorage = dynamic(() => import('./filesStorage'), {
+//   ssr: false,
+// });
 
-export default function FilesStorageClientWrapper() {
-  return <FilesStorage />;
-}
+// export default function FilesStorageClientWrapper() {
+//   return <FilesStorage />;
+// }

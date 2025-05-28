@@ -1,6 +1,6 @@
-import FilesStorageClientWrapper from "../../../../pages/finalboards/cloud-storage/filestorage-container";
+// import FilesStorageClientWrapper from "../../../../pages/finalboards/cloud-storage/filestorage-container";
 
 const Cloudboard = () => {
-  return <FilesStorageClientWrapper />;
+  return <></>;
 };
 export default Cloudboard;
