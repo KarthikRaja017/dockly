@@ -96,6 +96,7 @@ def getUtcCurrentTime():
 class RegisterUser(Resource):
     def post(self):
         data = request.get_json()
+        print(f"data: {data}")
         userName = data.get("userName")
         inputEmail = data.get("email", "")
         userId = ""
