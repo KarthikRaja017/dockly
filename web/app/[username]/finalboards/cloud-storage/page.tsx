@@ -1,6 +1,9 @@
-import FilesStorage from "../../../../pages/finalboards/cloud-storage/cloudsboard";
+import dynamic from 'next/dynamic';
 
-const Cloudboard = () => {
+const FilesStorage = dynamic(() => import('../../../../pages/finalboards/cloud-storage/filesStorage'), { ssr: false });
+
+const FilesStoragePage = () => {
   return <FilesStorage />;
 };
-export default Cloudboard;
+
+export default FilesStoragePage;
