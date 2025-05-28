@@ -123,7 +123,7 @@ class RegisterUser(Resource):
                         "userId": userId,
                         # "session": sessionInfo,
                         "token": token["accessToken"],
-                        "redirectUrl": "/dashboard"
+                        "redirectUrl": "/dashboard",
                     },
                 }
 
@@ -211,7 +211,7 @@ class SaveUserEmail(Resource):
                     "email": email,
                     "otpStatus": otpResponse,
                     "uid": uid,
-                    "username": existingUser.get("username"),
+                    "username": existingUser.get("username", ""),
                 },
             }
         else:
