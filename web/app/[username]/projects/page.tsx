@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Head from "next/head";
 import { Progress, Button, List, Tabs, Modal, Input } from "antd";
 import { EditOutlined, PlusOutlined, FileOutlined } from "@ant-design/icons";
+import { useRouter } from "next/navigation";
 
 const { TabPane } = Tabs;
 
@@ -153,6 +154,18 @@ const ProjectDashboard: React.FC = () => {
     { label: "Decor", date: "May 15", completed: false },
     { label: "Complete", date: "May 30", completed: false },
   ];
+  const [username, setUsername] = useState<string>("");
+    console.log("🚀 ~ HealthDashboard ~ username:", username)
+    const router = useRouter();
+  
+    useEffect(() => {
+      const username = localStorage.getItem("username") || "";
+      setUsername(username);
+      if (localStorage.getItem('projectss') === null) {
+        router.push(`/${username}/projects/setup`);
+      }
+    }, []);
+  
 
   return (
     <>
@@ -787,14 +800,14 @@ const ProjectDashboard: React.FC = () => {
                   alignItems: "center",
                   fontSize: "16px",
                   fontWeight: "bold",
-                  color: "#000",
+                  color: "rgb(131, 4, 4)",
                   margin: 0,
                 }}
               >
                 <span style={{ marginRight: "10px" }}>Project Checklist</span>
                 <EditOutlined style={{ color: "#1890ff", fontSize: "14px" }} />
               </h3>
-              if ()
+              {/* if () */}
               <List
                 dataSource={projectChecklist}
                 renderItem={(item) => (

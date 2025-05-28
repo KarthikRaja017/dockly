@@ -1,5 +1,6 @@
 import random
 import re
+from threading import Thread
 import bcrypt
 from flask import request
 from flask_restful import Resource
@@ -24,18 +25,22 @@ def generate_otp():
 
 
 def send_otp_email(email, otp):
-    msg = EmailMessage()
-    msg["Subject"] = "Your OTP Code for Dockly"
-    msg["From"] = EMAIL_SENDER
-    msg["To"] = email
-    msg.set_content(f"Your OTP is: {otp}\nValid for 10 minutes.")
+    try:
+        msg = EmailMessage()
+        msg["Subject"] = "Your OTP Code for Dockly"
+        msg["From"] = EMAIL_SENDER
+        msg["To"] = email
+        msg.set_content(f"Your OTP is: {otp}\nValid for 10 minutes.")
 
-    server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
-    server.starttls()
-    server.login(EMAIL_SENDER, EMAIL_PASSWORD)
-    server.send_message(msg)
-    server.quit()
-    return {"otp": otp, "email": email}
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(EMAIL_SENDER, EMAIL_PASSWORD)
+            server.send_message(msg)
+
+        return {"otp": otp, "email": email}
+    except Exception as e:
+        # Optional: Add error logging
+        return {"otp": None, "email": email, "error": str(e)}
 
 
 def format_phone_number(mobile):
@@ -92,49 +97,40 @@ class RegisterUser(Resource):
     def post(self):
         data = request.get_json()
         userName = data.get("userName")
-        userId = ""
         inputEmail = data.get("email", "")
+        userId = ""
 
-        # Check if user with the username exists
+        # 1. Check if user exists by username
         existingUser = DBHelper.find_one(
             "users",
             filters={"username": userName},
-            select_fields=[
-                "email",
-                "is_email_verified",
-                "uid",
-                "is_dockly_user",
-            ],
+            select_fields=["email", "uid", "is_dockly_user"],
         )
-
         #  CASE 1: User exists
         if existingUser:
-            isDockly = existingUser.get("is_dockly_user")
             userId = existingUser.get("uid")
             dbEmail = existingUser.get("email")
+            isDockly = existingUser.get("is_dockly_user")
 
-            # ✅ If Dockly user, log in
+            # Case: Dockly user with matching email — login
             if isDockly and inputEmail == dbEmail:
-                sessionInfo = handle_user_session(userId)
+                # sessionInfo = handle_user_session(userId)
                 token = getAccessTokens({"uid": userId})
-
                 return {
                     "status": 1,
                     "message": "Welcome back",
                     "payload": {
                         "userId": userId,
-                        "session": sessionInfo,
+                        # "session": sessionInfo,
                         "token": token["accessToken"],
-                        "redirectUrl": "/dashboard",
+                        "redirectUrl": "/dashboard"
                     },
                 }
 
             # ⚠️ If email not given in input, send OTP to existing DB email for verification
             if isDockly and not inputEmail and dbEmail:
                 otp = generate_otp()
-                otpResponse = send_otp_email(dbEmail, otp)
-                # You need to implement this function
-
+                Thread(target=send_otp_email, args=(dbEmail, otp)).start()
                 return {
                     "status": 1,
                     "message": f"OTP sent to {dbEmail} for email verification",
@@ -142,17 +138,17 @@ class RegisterUser(Resource):
                         "redirectUrl": "/verify-email",
                         "email": dbEmail,
                         "userId": userId,
-                        "otpStatus": otpResponse,
+                        "otpStatus": {"otp": otp, "email": dbEmail},
                     },
                 }
 
             # 🚧 If not Dockly user, but email is provided, register as Dockly user (depends on your policy)
-            if isDockly and inputEmail != dbEmail:
-                return {
-                    "status": 0,
-                    "message": "Username already exists and is unavailable",
-                    "payload": {},
-                }
+            # if isDockly and inputEmail != dbEmail:
+            return {
+                "status": 0,
+                "message": "Username already exists and is unavailable",
+                "payload": {},
+            }
 
         # CASE 2: New User (username not found)
         uid = uniqueId(digit=5, isNum=True, prefix="USER")
@@ -168,14 +164,14 @@ class RegisterUser(Resource):
             is_dockly_user=True,
         )
 
-        sessionInfo = handle_user_session(userId)
+        # sessionInfo = handle_user_session(userId)
 
         return {
             "status": 1,
             "message": "User registered and session created",
             "payload": {
                 "userId": userId,
-                "session": sessionInfo,
+                # "session": sessionInfo,
                 "redirectUrl": "/sign-up",
             },
         }

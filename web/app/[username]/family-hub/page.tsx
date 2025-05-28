@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState, useEffect } from 'react';
 import { Row, Col, Card, Button, Avatar, Input, Checkbox, List, Modal, Upload, Select, Switch, Calendar, Typography, message } from 'antd';
@@ -6,6 +5,7 @@ import { UserOutlined, FolderOutlined, FileTextOutlined, BulbOutlined, FileAddOu
 import type { UploadFile, UploadProps } from 'antd';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
+import { useRouter } from 'next/navigation';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -60,9 +60,20 @@ interface Note {
   editedTime?: Dayjs;
 }
 
+interface Task {
+  title: string;
+  assignee: string;
+  completed: boolean;
+  addedBy: string;
+  addedTime: Dayjs;
+  editedBy?: string;
+  editedTime?: Dayjs;
+}
+
 interface Section {
   title: string;
   content: string;
+  tasks: Task[];
   addedBy: string;
   addedTime: Dayjs;
   editedBy?: string;
@@ -73,16 +84,6 @@ interface Event {
   date: Dayjs;
   title: string;
   color: string;
-  addedBy: string;
-  addedTime: Dayjs;
-  editedBy?: string;
-  editedTime?: Dayjs;
-}
-
-interface Task {
-  title: string;
-  assignee: string;
-  completed: boolean;
   addedBy: string;
   addedTime: Dayjs;
   editedBy?: string;
@@ -121,7 +122,6 @@ const FamilySharing: React.FC = () => {
   });
   const [selectedMethod, setSelectedMethod] = useState<string>("Email");
 
-  // State for selecting the current user from family members
   const [selectedUser, setSelectedUser] = useState<string>(familyMembers.length > 0 ? familyMembers[0].name : "");
 
   const [documents, setDocuments] = useState<Document[]>([
@@ -164,8 +164,10 @@ const FamilySharing: React.FC = () => {
   const [editNoteIndex, setEditNoteIndex] = useState<number | null>(null);
 
   const [sections, setSections] = useState<Section[]>([]);
-  const [newSection, setNewSection] = useState<Section>({ title: "", content: "", addedBy: selectedUser, addedTime: dayjs() });
+  const [newSection, setNewSection] = useState<Section>({ title: "", content: "", tasks: [], addedBy: selectedUser, addedTime: dayjs() });
   const [editSectionIndex, setEditSectionIndex] = useState<number | null>(null);
+  const [newSectionTask, setNewSectionTask] = useState<string>("");
+  const [newSectionTaskAssignee, setNewSectionTaskAssignee] = useState<string>("");
 
   const [currentMonth, setCurrentMonth] = useState<Dayjs>(dayjs());
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([
@@ -200,12 +202,16 @@ const FamilySharing: React.FC = () => {
   const [editContactIndex, setEditContactIndex] = useState<number | null>(null);
 
   const contentCategories = [
-    { label: "Home Management", children: ["Property Information", "Mortgage & Loans", "Home Maintenance", "Utilities", "Insurance", "Important Documents",'others'] },
+    { label: "Home Management", children: ["Property Information", "Mortgage & Loans", "Home Maintenance", "Utilities", "Insurance", "Important Documents", "others"] },
     { label: "Financial Dashboard", children: [] },
-    // { label: "Family Hub", children: [ "Shared Tasks", "Contact Information"] },
     { label: "Health Records", children: ["Insurance Information", "Medical Records"] },
     { label: "Travel Planning", children: [] },
   ];
+
+  // Debug step changes
+  useEffect(() => {
+    console.log("Current step:", step);
+  }, [step]);
 
   // Update selectedUser when familyMembers change
   useEffect(() => {
@@ -221,6 +227,17 @@ const FamilySharing: React.FC = () => {
     }
   }, [familyMembers]);
 
+  const [username, setUsername] = useState<string>("");
+    console.log("🚀 ~ Familysharing ~ username:", username)
+    const router = useRouter();
+  
+    useEffect(() => {
+      const username = localStorage.getItem("username") || "";
+      setUsername(username);
+      if (localStorage.getItem('family-hub') === null) {
+        router.push(`/${username}/family-hub/setup`);
+      }
+    }, []);
   const uploadProps: UploadProps = {
     beforeUpload: (file) => {
       const isLt2M = file.size / 1024 / 1024 < 2;
@@ -350,6 +367,33 @@ const FamilySharing: React.FC = () => {
     setStep("intro");
   };
 
+  const handleAddSectionTask = () => {
+    if (!newSectionTask.trim() || !newSectionTaskAssignee.trim()) return;
+    setNewSection({
+      ...newSection,
+      tasks: [
+        ...newSection.tasks,
+        {
+          title: newSectionTask,
+          assignee: newSectionTaskAssignee,
+          completed: false,
+          addedBy: selectedUser,
+          addedTime: dayjs(),
+        },
+      ],
+    });
+    setNewSectionTask("");
+    setNewSectionTaskAssignee("");
+  };
+
+  const handleToggleSectionTask = (sectionIndex: number, taskIndex: number) => {
+    const updatedSections = [...sections];
+    updatedSections[sectionIndex].tasks[taskIndex].completed = !updatedSections[sectionIndex].tasks[taskIndex].completed;
+    updatedSections[sectionIndex].tasks[taskIndex].editedBy = selectedUser;
+    updatedSections[sectionIndex].tasks[taskIndex].editedTime = dayjs();
+    setSections(updatedSections);
+  };
+
   const handleAddSection = () => {
     if (!newSection.title.trim() || !newSection.content.trim() || !selectedUser) return;
     setSections([...sections, {
@@ -357,7 +401,9 @@ const FamilySharing: React.FC = () => {
       addedBy: selectedUser,
       addedTime: dayjs(),
     }]);
-    setNewSection({ title: "", content: "", addedBy: selectedUser, addedTime: dayjs() });
+    setNewSection({ title: "", content: "", tasks: [], addedBy: selectedUser, addedTime: dayjs() });
+    setNewSectionTask("");
+    setNewSectionTaskAssignee("");
     setStep("intro");
     message.success("Section added successfully!");
   };
@@ -373,7 +419,9 @@ const FamilySharing: React.FC = () => {
       editedTime: dayjs(),
     };
     setSections(updatedSections);
-    setNewSection({ title: "", content: "", addedBy: selectedUser, addedTime: dayjs() });
+    setNewSection({ title: "", content: "", tasks: [], addedBy: selectedUser, addedTime: dayjs() });
+    setNewSectionTask("");
+    setNewSectionTaskAssignee("");
     setEditSectionIndex(null);
     setStep("intro");
     message.success("Section updated successfully!");
@@ -509,6 +557,7 @@ const FamilySharing: React.FC = () => {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log("Input changed:", e.target.name, e.target.value);
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
@@ -523,11 +572,11 @@ const FamilySharing: React.FC = () => {
     const children = contentCategories.find(c => c.label === category)?.children || [];
     setFormData(prev => ({
       ...prev,
-      sharedItems: { 
-        ...prev.sharedItems, 
-        [category]: checked 
-          ? (children.filter((c): c is string => typeof c === "string") as string[]) 
-          : [] 
+      sharedItems: {
+        ...prev.sharedItems,
+        [category]: checked
+          ? (children.filter((c): c is string => typeof c === "string") as string[])
+          : []
       },
     }));
   };
@@ -547,7 +596,7 @@ const FamilySharing: React.FC = () => {
   };
 
   const renderIntro = () => {
-    const currentDateTime = "06:47 PM IST on Thursday, May 22, 2025";
+    const currentDateTime = "02:29 PM IST on Friday, May 23, 2025";
 
     const renderDefaultRightSections = () => (
       <>
@@ -778,6 +827,44 @@ const FamilySharing: React.FC = () => {
                       <div>
                         <Text style={{ fontSize: "12px", color: "#666" }}>{item.content}</Text>
                         <br />
+                        {item.tasks.length > 0 && (
+                          <>
+                            <Text strong style={{ display: "block", marginTop: "10px", color: "#13c2c2" }}>Tasks</Text>
+                            {item.tasks.map((task, taskIndex) => (
+                              <div
+                                key={taskIndex}
+                                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "10px" }}
+                              >
+                                <div style={{ display: "flex", alignItems: "center", flex: 1 }}>
+                                  <Checkbox
+                                    checked={task.completed}
+                                    onChange={() => handleToggleSectionTask(index, taskIndex)}
+                                    style={{ marginRight: "10px" }}
+                                  />
+                                  <div>
+                                    <Text style={{ fontWeight: "normal", fontSize: "14px" }}>{task.title}</Text>
+                                    <br />
+                                    <Text style={{ fontSize: "12px", color: "#666" }}>
+                                      Added by {task.addedBy} on {task.addedTime.format("MMM D, YYYY h:mm A")}
+                                    </Text>
+                                    {task.editedBy && task.editedTime && (
+                                      <>
+                                        <br />
+                                        <Text style={{ fontSize: "12px", color: "#666" }}>
+                                          Edited by {task.editedBy} on {task.editedTime.format("MMM D, YYYY h:mm A")}
+                                        </Text>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                                <div style={{ display: "flex", alignItems: "center" }}>
+                                  <Text style={{ marginRight: "10px", fontSize: "14px" }}>{task.assignee}</Text>
+                                </div>
+                              </div>
+                            ))}
+                          </>
+                        )}
+                        <br />
                         <Text style={{ fontSize: "12px", color: "#666" }}>
                           Added by {item.addedBy} on {item.addedTime.format("MMM D, YYYY h:mm A")}
                         </Text>
@@ -833,7 +920,14 @@ const FamilySharing: React.FC = () => {
                   ← Back to Dashboard
                 </a>
                 <h2 style={{ margin: 0, textAlign: "center", flex: 1 }}>Family Sharing</h2>
-                <Button type="primary" onClick={() => setStep("add")} style={{ borderRadius: "20px", padding: "5px 15px" }}>
+                <Button
+                  type="primary"
+                  onClick={() => {
+                    console.log("Add Family Member button clicked, setting step to 'add'");
+                    setStep("add");
+                  }}
+                  style={{ borderRadius: "20px", padding: "5px 15px" }}
+                >
                   Add Family Member
                 </Button>
               </div>
@@ -861,7 +955,14 @@ const FamilySharing: React.FC = () => {
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
                 <Title level={2} style={{ margin: 0, color: "#000" }}>Family Hub</Title>
-                <Button type="primary" onClick={() => setStep("add")} style={{ borderRadius: "20px", padding: "5px 15px" }}>
+                <Button
+                  type="primary"
+                  onClick={() => {
+                    console.log("Add Family Member button clicked, setting step to 'add'");
+                    setStep("add");
+                  }}
+                  style={{ borderRadius: "20px", padding: "5px 15px" }}
+                >
                   Add Family Member
                 </Button>
               </div>
@@ -1136,7 +1237,7 @@ const FamilySharing: React.FC = () => {
                 </Col>
 
                 <Col xs={24} md={8}>
-                  {["add", "permissions", "share", "review", "sent"].includes(step) ? (
+                  {step === "add" || step === "permissions" || step === "share" || step === "review" || step === "sent" ? (
                     <Card style={{ borderRadius: "10px", boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)" }}>
                       {step === "add" && renderAddForm()}
                       {step === "permissions" && renderPermissions()}
@@ -1201,22 +1302,33 @@ const FamilySharing: React.FC = () => {
 
   const renderAddForm = () => {
     const isFormValid = () => {
-      if (!formData.name || !formData.relationship) return false;
-      if (selectedMethod === "Email" && !formData.email) return false;
-      if (selectedMethod === "Mobile" && !formData.phone) return false;
-      if (selectedMethod === "Access Code" && !formData.accessCode) return false;
-      return true;
+      const valid = !!(formData.name && formData.relationship &&
+        (selectedMethod === "Email" ? formData.email : true) &&
+        (selectedMethod === "Mobile" ? formData.phone : true) &&
+        (selectedMethod === "Access Code" ? formData.accessCode : true));
+      console.log("isFormValid:", valid, { name: formData.name, relationship: formData.relationship, email: formData.email, phone: formData.phone, accessCode: formData.accessCode, selectedMethod });
+      return valid;
     };
 
     return (
-      <div>
+      <div style={{ backgroundColor: "#f0f0f0", padding: "20px" }}>
         <h2>Add a Family Member</h2>
         <div style={{ display: "flex", justifyContent: "center", gap: "10px" }}>
           {["Email", "Mobile", "Access Code"].map(method => (
             <Button
               key={method}
               type={selectedMethod === method ? "primary" : "default"}
-              onClick={() => setSelectedMethod(method)}
+              onClick={() => {
+                console.log("Selected method:", method);
+                setSelectedMethod(method);
+                setFormData(prev => ({
+                  ...prev,
+                  method,
+                  email: method === "Email" ? prev.email : "",
+                  phone: method === "Mobile" ? prev.phone : "",
+                  accessCode: method === "Access Code" ? prev.accessCode : "",
+                }));
+              }}
               style={{ borderRadius: "20px", padding: "5px 15px" }}
             >
               {method}
@@ -1224,34 +1336,43 @@ const FamilySharing: React.FC = () => {
           ))}
         </div>
         {selectedMethod === "Email" && (
-          <Input
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleInputChange}
-            placeholder="Email Address"
-            style={{ margin: "10px 0", borderRadius: "5px", padding: "10px" }}
-          />
+          <>
+            <Input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              placeholder="Email Address"
+              style={{ margin: "10px 0", borderRadius: "5px", padding: "10px" }}
+            />
+            {!formData.email && <Text style={{ color: "red" }}>Please enter an email address.</Text>}
+          </>
         )}
         {selectedMethod === "Mobile" && (
-          <Input
-            type="tel"
-            name="phone"
-            value={formData.phone}
-            onChange={handleInputChange}
-            placeholder="Phone Number"
-            style={{ margin: "10px 0", borderRadius: "5px", padding: "10px" }}
-          />
+          <>
+            <Input
+              type="tel"
+              name="phone"
+              value={formData.phone}
+              onChange={handleInputChange}
+              placeholder="Phone Number"
+              style={{ margin: "10px 0", borderRadius: "5px", padding: "10px" }}
+            />
+            {!formData.phone && <Text style={{ color: "red" }}>Please enter a phone number.</Text>}
+          </>
         )}
         {selectedMethod === "Access Code" && (
-          <Input
-            type="text"
-            name="accessCode"
-            value={formData.accessCode}
-            onChange={handleInputChange}
-            placeholder="Access Code"
-            style={{ margin: "10px 0", borderRadius: "5px", padding: "10px" }}
-          />
+          <>
+            <Input
+              type="text"
+              name="accessCode"
+              value={formData.accessCode}
+              onChange={handleInputChange}
+              placeholder="Access Code"
+              style={{ margin: "10px 0", borderRadius: "5px", padding: "10px" }}
+            />
+            {!formData.accessCode && <Text style={{ color: "red" }}>Please enter an access code.</Text>}
+          </>
         )}
         <Input
           type="text"
@@ -1261,6 +1382,7 @@ const FamilySharing: React.FC = () => {
           placeholder="Display Name"
           style={{ margin: "10px 0", borderRadius: "5px", padding: "10px" }}
         />
+        {!formData.name && <Text style={{ color: "red" }}>Please enter a display name.</Text>}
         <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
           {["❤️Spouse/Partner", "👶Child", "👴Parent", "Other"].map(rel => (
             <Button
@@ -1273,6 +1395,7 @@ const FamilySharing: React.FC = () => {
             </Button>
           ))}
         </div>
+        {!formData.relationship && <Text style={{ color: "red" }}>Please select a relationship.</Text>}
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: "30px" }}>
           <Button
             onClick={() => setStep("intro")}
@@ -1283,7 +1406,10 @@ const FamilySharing: React.FC = () => {
           <Button
             type="primary"
             disabled={!isFormValid()}
-            onClick={() => setStep("permissions")}
+            onClick={() => {
+              console.log("Proceeding to permissions step");
+              setStep("permissions");
+            }}
             style={{ borderRadius: "20px", padding: "5px 15px" }}
           >
             Continue
@@ -1313,7 +1439,7 @@ const FamilySharing: React.FC = () => {
           {["allowAdd", "allowEdit", "allowDelete", "allowInvite", "notify"].map((key) => (
             <div key={key} style={{ marginBottom: "8px" }}>
               <Checkbox
-                checked={typeof formData.permissions[key as keyof PermissionState] === "boolean" ? formData.permissions[key as keyof PermissionState] as boolean : undefined}
+                checked={typeof formData.permissions[key as keyof PermissionState] === "boolean" ? formData.permissions[key as keyof PermissionState] as boolean : false}
                 onChange={() => handlePermissionChange(key as keyof PermissionState)}
               >
                 {key.replace("allow", "Allow ").replace(/([A-Z])/g, " $1")}
@@ -1389,928 +1515,995 @@ const FamilySharing: React.FC = () => {
             Continue
           </Button>
         </div>
+      </div>
+    );
+  };
+
+  const renderReview = () => (
+    <div>
+      <h3>Review Invitation</h3>
+      <p><strong>To:</strong> {formData.method === "Email" ? formData.email : formData.method === "Mobile" ? formData.phone : formData.accessCode}</p>
+      <p><strong>Name:</strong> {formData.name}</p>
+      <p><strong>Relationship:</strong> {formData.relationship.replace("❤️", "").replace("👶", "").replace("👴", "")}</p>
+      <p><strong>Access:</strong> {formData.permissions.type}</p>
+      <ul>
+        {Object.entries(formData.sharedItems).flatMap(([category, items]) =>
+          items.map(item => <li key={category + item}>{item}</li>)
+        )}
+      </ul>
+      <div style={{ display: "flex", justifyContent: "space-between", marginTop: "20px" }}>
+        <Button
+          onClick={() => setStep("share")}
+          style={{ borderRadius: "20px", padding: "5px 15px" }}
+        >
+          Back
+        </Button>
+        <Button
+          type="primary"
+          onClick={() => setStep("sent")}
+          style={{ borderRadius: "20px", padding: "5px 15px" }}
+        >
+          Send Invitation
+        </Button>
+      </div>
     </div>
   );
-};
 
-const renderReview = () => (
-  <div>
-    <h3>Review Invitation</h3>
-    <p><strong>To:</strong> {formData.method === "Email" ? formData.email : formData.method === "Mobile" ? formData.phone : formData.accessCode}</p>
-    <p><strong>Name:</strong> {formData.name}</p>
-    <p><strong>Relationship:</strong> {formData.relationship.replace("❤️", "").replace("👶", "").replace("👴", "")}</p>
-    <p><strong>Access:</strong> {formData.permissions.type}</p>
-    <ul>
-      {Object.entries(formData.sharedItems).flatMap(([category, items]) =>
-        items.map(item => <li key={category + item}>{item}</li>)
+  const renderSent = () => (
+    <div style={{ textAlign: "center" }}>
+      <h3>Invitation Sent!</h3>
+      <p>An invitation has been sent to {pendingMember?.name || "the family member"}.</p>
+      <Button
+        type="primary"
+        onClick={handleDone}
+        style={{ marginTop: "20px", borderRadius: "20px", padding: "5px 15px" }}
+      >
+        Done
+      </Button>
+    </div>
+  );
+
+  const renderAddGuidelineForm = () => (
+    <div style={{ padding: "20px" }}>
+      <h3>Add a Family Guideline</h3>
+      {familyMembers.length === 0 ? (
+        <Text style={{ color: "red" }}>Please add a family member first.</Text>
+      ) : (
+        <>
+          <Input
+            value={newGuideline}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewGuideline(e.target.value)}
+            placeholder="Enter guideline (e.g., No screen time after 9 PM)"
+            style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
+          />
+          <Select
+            value={newGuidelineAddedBy}
+            onChange={(value) => setNewGuidelineAddedBy(value)}
+            placeholder="Select family member"
+            style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
+          >
+            {familyMembers.map(member => (
+              <Option key={member.name} value={member.name}>{member.name}</Option>
+            ))}
+          </Select>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <Button
+              onClick={() => setStep("intro")}
+              style={{
+                borderRadius: "20px",
+                padding: "5px 20px",
+                fontSize: "14px",
+                height: "auto",
+                border: "1px solid #d9d9d9",
+                backgroundColor: "#fff",
+                color: "#000",
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="primary"
+              disabled={!newGuideline.trim() || !newGuidelineAddedBy}
+              onClick={handleAddGuideline}
+              style={{
+                borderRadius: "20px",
+                padding: "5px 20px",
+                fontSize: "14px",
+                height: "auto",
+                backgroundColor: newGuideline.trim() && newGuidelineAddedBy ? "#1890ff" : "#d9d9d9",
+                border: "none",
+              }}
+            >
+              Add Guideline
+            </Button>
+          </div>
+        </>
       )}
-    </ul>
-    <div style={{ display: "flex", justifyContent: "space-between", marginTop: "20px" }}>
-      <Button
-        onClick={() => setStep("share")}
-        style={{ borderRadius: "20px", padding: "5px 15px" }}
-      >
-        Back
-      </Button>
-      <Button
-        type="primary"
-        onClick={() => setStep("sent")}
-        style={{ borderRadius: "20px", padding: "5px 15px" }}
-      >
-        Send Invitation
-      </Button>
     </div>
-  </div>
-);
+  );
 
-const renderSent = () => (
-  <div style={{ textAlign: "center" }}>
-    <h3>Invitation Sent!</h3>
-    <p>An invitation has been sent to {pendingMember?.name || "the family member"}.</p>
-    <Button
-      type="primary"
-      onClick={handleDone}
-      style={{ marginTop: "20px", borderRadius: "20px", padding: "5px 15px" }}
-    >
-      Done
-    </Button>
-  </div>
-);
-
-const renderAddGuidelineForm = () => (
-  <div style={{ padding: "20px" }}>
-    <h3>Add a Family Guideline</h3>
-    {familyMembers.length === 0 ? (
-      <Text style={{ color: "red" }}>Please add a family member first.</Text>
-    ) : (
-      <>
-        <Input
-          value={newGuideline}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewGuideline(e.target.value)}
-          placeholder="Enter guideline (e.g., No screen time after 9 PM)"
-          style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
-        />
-        <Select
-          value={newGuidelineAddedBy}
-          onChange={(value) => setNewGuidelineAddedBy(value)}
-          placeholder="Select family member"
-          style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
+  const renderEditGuidelineForm = () => (
+    <div style={{ padding: "20px" }}>
+      <h3>Edit Guideline</h3>
+      <Input
+        value={newGuideline}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewGuideline(e.target.value)}
+        placeholder="Enter guideline"
+        style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
+      />
+      <Select
+        value={newGuidelineAddedBy}
+        onChange={(value) => setNewGuidelineAddedBy(value)}
+        placeholder="Select family member"
+        style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
+      >
+        {familyMembers.map(member => (
+          <Option key={member.name} value={member.name}>{member.name}</Option>
+        ))}
+      </Select>
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <Button
+          onClick={() => setStep("intro")}
+          style={{
+            borderRadius: "20px",
+            padding: "5px 20px",
+            fontSize: "14px",
+            height: "auto",
+            border: "1px solid #d9d9d9",
+            backgroundColor: "#fff",
+            color: "#000",
+          }}
         >
-          {familyMembers.map(member => (
-            <Option key={member.name} value={member.name}>{member.name}</Option>
-          ))}
-        </Select>
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <Button
-            onClick={() => setStep("intro")}
-            style={{
-              borderRadius: "20px",
-              padding: "5px 20px",
-              fontSize: "14px",
-              height: "auto",
-              border: "1px solid #d9d9d9",
-              backgroundColor: "#fff",
-              color: "#000",
-            }}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="primary"
-            disabled={!newGuideline.trim() || !newGuidelineAddedBy}
-            onClick={handleAddGuideline}
-            style={{
-              borderRadius: "20px",
-              padding: "5px 20px",
-              fontSize: "14px",
-              height: "auto",
-              backgroundColor: newGuideline.trim() && newGuidelineAddedBy ? "#1890ff" : "#d9d9d9",
-              border: "none",
-            }}
-          >
-            Add Guideline
-          </Button>
-        </div>
-      </>
-    )}
-  </div>
-);
-
-const renderEditGuidelineForm = () => (
-  <div style={{ padding: "20px" }}>
-    <h3>Edit Guideline</h3>
-    <Input
-      value={newGuideline}
-      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewGuideline(e.target.value)}
-      placeholder="Enter guideline"
-      style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
-    />
-    <Select
-      value={newGuidelineAddedBy}
-      onChange={(value) => setNewGuidelineAddedBy(value)}
-      placeholder="Select family member"
-      style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
-    >
-      {familyMembers.map(member => (
-        <Option key={member.name} value={member.name}>{member.name}</Option>
-      ))}
-    </Select>
-    <div style={{ display: "flex", justifyContent: "space-between" }}>
-      <Button
-        onClick={() => setStep("intro")}
-        style={{
-          borderRadius: "20px",
-          padding: "5px 20px",
-          fontSize: "14px",
-          height: "auto",
-          border: "1px solid #d9d9d9",
-          backgroundColor: "#fff",
-          color: "#000",
-        }}
-      >
-        Cancel
-      </Button>
-      <Button
-        type="primary"
-        disabled={!newGuideline.trim() || !newGuidelineAddedBy}
-        onClick={handleEditGuideline}
-        style={{
-          borderRadius: "20px",
-          padding: "5px 20px",
-          fontSize: "14px",
-          height: "auto",
-          backgroundColor: newGuideline.trim() && newGuidelineAddedBy ? "#1890ff" : "#d9d9d9",
-          border: "none",
-        }}
-      >
-        Save Changes
-      </Button>
+          Cancel
+        </Button>
+        <Button
+          type="primary"
+          disabled={!newGuideline.trim() || !newGuidelineAddedBy}
+          onClick={handleEditGuideline}
+          style={{
+            borderRadius: "20px",
+            padding: "5px 20px",
+            fontSize: "14px",
+            height: "auto",
+            backgroundColor: newGuideline.trim() && newGuidelineAddedBy ? "#1890ff" : "#d9d9d9",
+            border: "none",
+          }}
+        >
+          Save Changes
+        </Button>
+      </div>
     </div>
-  </div>
-);
+  );
 
-const renderAddNoteForm = () => (
-  <div style={{ padding: "20px" }}>
-    <h3>Add a Family Note</h3>
-    {familyMembers.length === 0 ? (
-      <Text style={{ color: "red" }}>Please add a family member first.</Text>
-    ) : (
-      <>
-        <Input
-          value={newNote}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewNote(e.target.value)}
-          placeholder="Enter note (e.g., Buy groceries on Saturday)"
-          style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
-        />
-        <Select
-          value={newNoteAddedBy}
-          onChange={(value) => setNewNoteAddedBy(value)}
-          placeholder="Select family member"
-          style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
-        >
-          {familyMembers.map(member => (
-            <Option key={member.name} value={member.name}>{member.name}</Option>
-          ))}
-        </Select>
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <Button
-            onClick={() => setStep("intro")}
-            style={{
-              borderRadius: "20px",
-              padding: "5px 20px",
-              fontSize: "14px",
-              height: "auto",
-              border: "1px solid #d9d9d9",
-              backgroundColor: "#fff",
-              color: "#000",
-            }}
+  const renderAddNoteForm = () => (
+    <div style={{ padding: "20px" }}>
+      <h3>Add a Family Note</h3>
+      {familyMembers.length === 0 ? (
+        <Text style={{ color: "red" }}>Please add a family member first.</Text>
+      ) : (
+        <>
+          <Input
+            value={newNote}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewNote(e.target.value)}
+            placeholder="Enter note (e.g., Buy groceries on Saturday)"
+            style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
+          />
+          <Select
+            value={newNoteAddedBy}
+            onChange={(value) => setNewNoteAddedBy(value)}
+            placeholder="Select family member"
+            style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
           >
-            Cancel
-          </Button>
-          <Button
-            type="primary"
-            disabled={!newNote.trim() || !newNoteAddedBy}
-            onClick={handleAddNote}
-            style={{
-              borderRadius: "20px",
-              padding: "5px 20px",
-              fontSize: "14px",
-              height: "auto",
-              backgroundColor: newNote.trim() && newNoteAddedBy ? "#1890ff" : "#d9d9d9",
-              border: "none",
-            }}
-          >
-            Add Note
-          </Button>
-        </div>
-      </>
-    )}
-  </div>
-);
-
-const renderEditNoteForm = () => (
-  <div style={{ padding: "20px" }}>
-    <h3>Edit Note</h3>
-    <Input
-      value={newNote}
-      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewNote(e.target.value)}
-      placeholder="Enter note"
-      style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
-    />
-    <Select
-      value={newNoteAddedBy}
-      onChange={(value) => setNewNoteAddedBy(value)}
-      placeholder="Select family member"
-      style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
-    >
-      {familyMembers.map(member => (
-        <Option key={member.name} value={member.name}>{member.name}</Option>
-      ))}
-    </Select>
-    <div style={{ display: "flex", justifyContent: "space-between" }}>
-      <Button
-        onClick={() => setStep("intro")}
-        style={{
-          borderRadius: "20px",
-          padding: "5px 20px",
-          fontSize: "14px",
-          height: "auto",
-          border: "1px solid #d9d9d9",
-          backgroundColor: "#fff",
-          color: "#000",
-        }}
-      >
-        Cancel
-      </Button>
-      <Button
-        type="primary"
-        disabled={!newNote.trim() || !newNoteAddedBy}
-        onClick={handleEditNote}
-        style={{
-          borderRadius: "20px",
-          padding: "5px 20px",
-          fontSize: "14px",
-          height: "auto",
-          backgroundColor: newNote.trim() && newNoteAddedBy ? "#1890ff" : "#d9d9d9",
-          border: "none",
-        }}
-      >
-        Save Changes
-      </Button>
+            {familyMembers.map(member => (
+              <Option key={member.name} value={member.name}>{member.name}</Option>
+            ))}
+          </Select>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <Button
+              onClick={() => setStep("intro")}
+              style={{
+                borderRadius: "20px",
+                padding: "5px 20px",
+                fontSize: "14px",
+                height: "auto",
+                border: "1px solid #d9d9d9",
+                backgroundColor: "#fff",
+                color: "#000",
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="primary"
+              disabled={!newNote.trim() || !newNoteAddedBy}
+              onClick={handleAddNote}
+              style={{
+                borderRadius: "20px",
+                padding: "5px 20px",
+                fontSize: "14px",
+                height: "auto",
+                backgroundColor: newNote.trim() && newNoteAddedBy ? "#1890ff" : "#d9d9d9",
+                border: "none",
+              }}
+            >
+              Add Note
+            </Button>
+          </div>
+        </>
+      )}
     </div>
-  </div>
-);
+  );
 
-const renderAddSectionForm = () => (
-  <div style={{ padding: "20px" }}>
-    <h3>Add a Section</h3>
-    {familyMembers.length === 0 ? (
-      <Text style={{ color: "red" }}>Please add a family member first.</Text>
-    ) : (
-      <>
-        <Input
-          value={newSection.title}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewSection({ ...newSection, title: e.target.value })}
-          placeholder="Section title"
-          style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
-        />
-        <Input
-          value={newSection.content}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewSection({ ...newSection, content: e.target.value })}
-          placeholder="Section content"
-          style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
-        />
-        <Select
-          value={selectedUser}
-          onChange={(value) => setSelectedUser(value)}
-          placeholder="Select family member"
-          style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
+  const renderEditNoteForm = () => (
+    <div style={{ padding: "20px" }}>
+      <h3>Edit Note</h3>
+      <Input
+        value={newNote}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewNote(e.target.value)}
+        placeholder="Enter note"
+        style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
+      />
+      <Select
+        value={newNoteAddedBy}
+        onChange={(value) => setNewNoteAddedBy(value)}
+        placeholder="Select family member"
+        style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
+      >
+        {familyMembers.map(member => (
+          <Option key={member.name} value={member.name}>{member.name}</Option>
+        ))}
+      </Select>
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <Button
+          onClick={() => setStep("intro")}
+          style={{
+            borderRadius: "20px",
+            padding: "5px 20px",
+            fontSize: "14px",
+            height: "auto",
+            border: "1px solid #d9d9d9",
+            backgroundColor: "#fff",
+            color: "#000",
+          }}
         >
-          {familyMembers.map(member => (
-            <Option key={member.name} value={member.name}>{member.name}</Option>
-          ))}
-        </Select>
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <Button
-            onClick={() => setStep("intro")}
-            style={{
-              borderRadius: "20px",
-              padding: "5px 20px",
-              fontSize: "14px",
-              height: "auto",
-              border: "1px solid #d9d9d9",
-              backgroundColor: "#fff",
-              color: "#000",
-            }}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="primary"
-            disabled={!newSection.title.trim() || !newSection.content.trim() || !selectedUser}
-            onClick={handleAddSection}
-            style={{
-              borderRadius: "20px",
-              padding: "5px 20px",
-              fontSize: "14px",
-              height: "auto",
-              backgroundColor: newSection.title.trim() && newSection.content.trim() && selectedUser ? "#1890ff" : "#d9d9d9",
-              border: "none",
-            }}
-          >
-            Add Section
-          </Button>
-        </div>
-      </>
-    )}
-  </div>
-);
-
-const renderEditSectionForm = () => (
-  <div style={{ padding: "20px" }}>
-    <h3>Edit Section</h3>
-    <Input
-      value={newSection.title}
-      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewSection({ ...newSection, title: e.target.value })}
-      placeholder="Section title"
-      style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
-    />
-    <Input
-      value={newSection.content}
-      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewSection({ ...newSection, content: e.target.value })}
-      placeholder="Section content"
-      style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
-    />
-    <Select
-      value={selectedUser}
-      onChange={(value) => setSelectedUser(value)}
-      placeholder="Select family member"
-      style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
-    >
-      {familyMembers.map(member => (
-        <Option key={member.name} value={member.name}>{member.name}</Option>
-      ))}
-    </Select>
-    <div style={{ display: "flex", justifyContent: "space-between" }}>
-      <Button
-        onClick={() => setStep("intro")}
-        style={{
-          borderRadius: "20px",
-          padding: "5px 20px",
-          fontSize: "14px",
-          height: "auto",
-          border: "1px solid #d9d9d9",
-          backgroundColor: "#fff",
-          color: "#000",
-        }}
-      >
-        Cancel
-      </Button>
-      <Button
-        type="primary"
-        disabled={!newSection.title.trim() || !newSection.content.trim() || !selectedUser}
-        onClick={handleEditSection}
-        style={{
-          borderRadius: "20px",
-          padding: "5px 20px",
-          fontSize: "14px",
-          height: "auto",
-          backgroundColor: newSection.title.trim() && newSection.content.trim() && selectedUser ? "#1890ff" : "#d9d9d9",
-          border: "none",
-        }}
-      >
-        Save Changes
-      </Button>
+          Cancel
+        </Button>
+        <Button
+          type="primary"
+          disabled={!newNote.trim() || !newNoteAddedBy}
+          onClick={handleEditNote}
+          style={{
+            borderRadius: "20px",
+            padding: "5px 20px",
+            fontSize: "14px",
+            height: "auto",
+            backgroundColor: newNote.trim() && newNoteAddedBy ? "#1890ff" : "#d9d9d9",
+            border: "none",
+          }}
+        >
+          Save Changes
+        </Button>
+      </div>
     </div>
-  </div>
-);
+  );
 
-const renderAddEventForm = () => (
-  <div style={{ padding: "20px" }}>
-    <h3>Add an Event</h3>
-    {familyMembers.length === 0 ? (
-      <Text style={{ color: "red" }}>Please add a family member first.</Text>
-    ) : (
-      <>
+  const renderAddSectionForm = () => (
+    <div style={{ padding: "20px" }}>
+      <h3>Add a Section</h3>
+      {familyMembers.length === 0 ? (
+        <Text style={{ color: "red" }}>Please add a family member first.</Text>
+      ) : (        <>
+          <Input
+            value={newSection.title}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewSection({ ...newSection, title: e.target.value })}
+            placeholder="Section title"
+            style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
+          />
+          <Input.TextArea
+            value={newSection.content}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewSection({ ...newSection, content: e.target.value })}
+            placeholder="Section content"
+            rows={4}
+            style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
+          />
+          <div style={{ marginBottom: "20px" }}>
+            <Input
+              value={newSectionTask}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewSectionTask(e.target.value)}
+              placeholder="Task title"
+              style={{ marginBottom: "10px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
+            />
+            <Select
+              value={newSectionTaskAssignee}
+              onChange={(value) => setNewSectionTaskAssignee(value)}
+              placeholder="Assign to"
+              style={{ width: "100%", marginBottom: "10px", borderRadius: "5px" }}
+            >
+              {familyMembers.map(member => (
+                <Option key={member.name} value={member.name}>{member.name}</Option>
+              ))}
+            </Select>
+            <Button
+              type="primary"
+              disabled={!newSectionTask.trim() || !newSectionTaskAssignee.trim()}
+              onClick={handleAddSectionTask}
+              style={{
+                borderRadius: "20px",
+                padding: "5px 20px",
+                fontSize: "14px",
+                height: "auto",
+                backgroundColor: newSectionTask.trim() && newSectionTaskAssignee.trim() ? "#1890ff" : "#d9d9d9",
+                border: "none",
+              }}
+            >
+              Add Task
+            </Button>
+          </div>
+          {newSection.tasks.length > 0 && (
+            <List
+              dataSource={newSection.tasks}
+              renderItem={(task, index) => (
+                <List.Item>
+                  <Text>{task.title} (Assigned to: {task.assignee})</Text>
+                </List.Item>
+              )}
+            />
+          )}
+          <Select
+            value={newSection.addedBy}
+            onChange={(value) => setNewSection({ ...newSection, addedBy: value })}
+            placeholder="Select family member"
+            style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
+          >
+            {familyMembers.map(member => (
+              <Option key={member.name} value={member.name}>{member.name}</Option>
+            ))}
+          </Select>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <Button
+              onClick={() => setStep("intro")}
+              style={{
+                borderRadius: "20px",
+                padding: "5px 20px",
+                fontSize: "14px",
+                height: "auto",
+                border: "1px solid #d9d9d9",
+                backgroundColor: "#fff",
+                color: "#000",
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="primary"
+              disabled={!newSection.title.trim() || !newSection.content.trim() || !newSection.addedBy}
+              onClick={handleAddSection}
+              style={{
+                borderRadius: "20px",
+                padding: "5px 20px",
+                fontSize: "14px",
+                height: "auto",
+                backgroundColor: newSection.title.trim() && newSection.content.trim() && newSection.addedBy ? "#1890ff" : "#d9d9d9",
+                border: "none",
+              }}
+            >
+              Add Section
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  const renderEditSectionForm = () => (
+    <div style={{ padding: "20px" }}>
+      <h3>Edit Section</h3>
+      <Input
+        value={newSection.title}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewSection({ ...newSection, title: e.target.value })}
+        placeholder="Section title"
+        style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
+      />
+      <Input.TextArea
+        value={newSection.content}
+        onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewSection({ ...newSection, content: e.target.value })}
+        placeholder="Section content"
+        rows={4}
+        style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
+      />
+      <div style={{ marginBottom: "20px" }}>
         <Input
-          value={newEvent.title}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewEvent({ ...newEvent, title: e.target.value })}
-          placeholder="Event title"
-          style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
+          value={newSectionTask}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewSectionTask(e.target.value)}
+          placeholder="Task title"
+          style={{ marginBottom: "10px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
         />
         <Select
-          value={newEvent.color}
-          onChange={(value) => setNewEvent({ ...newEvent, color: value })}
-          placeholder="Select event color"
-          style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
-        >
-          <Option value="#1890ff">Blue</Option>
-          <Option value="#ff4d4f">Red</Option>
-          <Option value="#52c41a">Green</Option>
-        </Select>
-        <Select
-          value={selectedUser}
-          onChange={(value) => setSelectedUser(value)}
-          placeholder="Select family member"
-          style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
-        >
-          {familyMembers.map(member => (
-            <Option key={member.name} value={member.name}>{member.name}</Option>
-          ))}
-        </Select>
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <Button
-            onClick={() => setStep("intro")}
-            style={{
-              borderRadius: "20px",
-              padding: "5px 20px",
-              fontSize: "14px",
-              height: "auto",
-              border: "1px solid #d9d9d9",
-              backgroundColor: "#fff",
-              color: "#000",
-            }}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="primary"
-            disabled={!newEvent.title.trim() || !selectedUser}
-            onClick={handleAddEvent}
-            style={{
-              borderRadius: "20px",
-              padding: "5px 20px",
-              fontSize: "14px",
-              height: "auto",
-              backgroundColor: newEvent.title.trim() && selectedUser ? "#1890ff" : "#d9d9d9",
-              border: "none",
-            }}
-          >
-            Add Event
-          </Button>
-        </div>
-      </>
-    )}
-  </div>
-);
-
-const renderAddTaskForm = () => (
-  <div style={{ padding: "20px" }}>
-    <h3>Add a Task</h3>
-    {familyMembers.length === 0 ? (
-      <Text style={{ color: "red" }}>Please add a family member first.</Text>
-    ) : (
-      <>
-        <Input
-          value={newTask}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTask(e.target.value)}
-          placeholder="Task title (e.g., Take out trash)"
-          style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
-        />
-        <Select
-          value={newTaskAssignee}
-          onChange={(value) => setNewTaskAssignee(value)}
+          value={newSectionTaskAssignee}
+          onChange={(value) => setNewSectionTaskAssignee(value)}
           placeholder="Assign to"
-          style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
+          style={{ width: "100%", marginBottom: "10px", borderRadius: "5px" }}
         >
           {familyMembers.map(member => (
             <Option key={member.name} value={member.name}>{member.name}</Option>
           ))}
         </Select>
-        <Select
-          value={newTaskAddedBy}
-          onChange={(value) => setNewTaskAddedBy(value)}
-          placeholder="Select family member"
-          style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
+        <Button
+          type="primary"
+          disabled={!newSectionTask.trim() || !newSectionTaskAssignee.trim()}
+          onClick={handleAddSectionTask}
+          style={{
+            borderRadius: "20px",
+            padding: "5px 20px",
+            fontSize: "14px",
+            height: "auto",
+            backgroundColor: newSectionTask.trim() && newSectionTaskAssignee.trim() ? "#1890ff" : "#d9d9d9",
+            border: "none",
+          }}
         >
-          {familyMembers.map(member => (
-            <Option key={member.name} value={member.name}>{member.name}</Option>
-          ))}
-        </Select>
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <Button
-            onClick={() => setStep("intro")}
-            style={{
-              borderRadius: "20px",
-              padding: "5px 20px",
-              fontSize: "14px",
-              height: "auto",
-              border: "1px solid #d9d9d9",
-              backgroundColor: "#fff",
-              color: "#000",
-            }}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="primary"
-            disabled={!newTask.trim() || !newTaskAssignee || !newTaskAddedBy}
-            onClick={handleAddTask}
-            style={{
-              borderRadius: "20px",
-              padding: "5px 20px",
-              fontSize: "14px",
-              height: "auto",
-              backgroundColor: newTask.trim() && newTaskAssignee && newTaskAddedBy ? "#1890ff" : "#d9d9d9",
-              border: "none",
-            }}
-          >
-            Add Task
-          </Button>
-        </div>
-      </>
-    )}
-  </div>
-);
-
-const renderEditTaskForm = () => (
-  <div style={{ padding: "20px" }}>
-    <h3>Edit Task</h3>
-    <Input
-      value={newTask}
-      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTask(e.target.value)}
-      placeholder="Task title"
-      style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
-    />
-    <Select
-      value={newTaskAssignee}
-      onChange={(value) => setNewTaskAssignee(value)}
-      placeholder="Assign to"
-      style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
-    >
-      {familyMembers.map(member => (
-        <Option key={member.name} value={member.name}>{member.name}</Option>
-      ))}
-    </Select>
-    <Select
-      value={newTaskAddedBy}
-      onChange={(value) => setNewTaskAddedBy(value)}
-      placeholder="Select family member"
-      style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
-    >
-      {familyMembers.map(member => (
-        <Option key={member.name} value={member.name}>{member.name}</Option>
-      ))}
-    </Select>
-    <div style={{ display: "flex", justifyContent: "space-between" }}>
-      <Button
-        onClick={() => setStep("intro")}
-        style={{
-          borderRadius: "20px",
-          padding: "5px 20px",
-          fontSize: "14px",
-          height: "auto",
-          border: "1px solid #d9d9d9",
-          backgroundColor: "#fff",
-          color: "#000",
-        }}
+          Add Task
+        </Button>
+      </div>
+      {newSection.tasks.length > 0 && (
+        <List
+          dataSource={newSection.tasks}
+          renderItem={(task, index) => (
+            <List.Item>
+              <Text>{task.title} (Assigned to: {task.assignee})</Text>
+            </List.Item>
+          )}
+        />
+      )}
+      <Select
+        value={newSection.addedBy}
+        onChange={(value) => setNewSection({ ...newSection, addedBy: value })}
+        placeholder="Select family member"
+        style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
       >
-        Cancel
-      </Button>
-      <Button
-        type="primary"
-        disabled={!newTask.trim() || !newTaskAssignee || !newTaskAddedBy}
-        onClick={handleEditTask}
-        style={{
-          borderRadius: "20px",
-          padding: "5px 20px",
-          fontSize: "14px",
-          height: "auto",
-          backgroundColor: newTask.trim() && newTaskAssignee && newTaskAddedBy ? "#1890ff" : "#d9d9d9",
-          border: "none",
-        }}
-      >
-        Save Changes
-      </Button>
+        {familyMembers.map(member => (
+          <Option key={member.name} value={member.name}>{member.name}</Option>
+        ))}
+      </Select>
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <Button
+          onClick={() => setStep("intro")}
+          style={{
+            borderRadius: "20px",
+            padding: "5px 20px",
+            fontSize: "14px",
+            height: "auto",
+            border: "1px solid #d9d9d9",
+            backgroundColor: "#fff",
+            color: "#000",
+          }}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="primary"
+          disabled={!newSection.title.trim() || !newSection.content.trim() || !newSection.addedBy}
+          onClick={handleEditSection}
+          style={{
+            borderRadius: "20px",
+            padding: "5px 20px",
+            fontSize: "14px",
+            height: "auto",
+            backgroundColor: newSection.title.trim() && newSection.content.trim() && newSection.addedBy ? "#1890ff" : "#d9d9d9",
+            border: "none",
+          }}
+        >
+          Save Changes
+        </Button>
+      </div>
     </div>
-  </div>
-);
+  );
 
-const renderAddContactForm = () => (
-  <div style={{ padding: "20px" }}>
-    <h3>Add a Contact</h3>
-    {familyMembers.length === 0 ? (
-      <Text style={{ color: "red" }}>Please add a family member first.</Text>
-    ) : (
-      <>
-        <Input
-          value={newContact.name}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewContact({ ...newContact, name: e.target.value })}
-          placeholder="Contact name"
-          style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
-        />
-        <Input
-          value={newContact.role}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewContact({ ...newContact, role: e.target.value })}
-          placeholder="Role (e.g., Family Doctor)"
-          style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
-        />
-        <Input
-          value={newContact.phone}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewContact({ ...newContact, phone: e.target.value })}
-          placeholder="Phone number"
-          style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
-        />
-        <Select
-          value={selectedUser}
-          onChange={(value) => setSelectedUser(value)}
-          placeholder="Select family member"
-          style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
-        >
-          {familyMembers.map(member => (
-            <Option key={member.name} value={member.name}>{member.name}</Option>
-          ))}
-        </Select>
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <Button
-            onClick={() => setStep("intro")}
-            style={{
-              borderRadius: "20px",
-              padding: "5px 20px",
-              fontSize: "14px",
-              height: "auto",
-              border: "1px solid #d9d9d9",
-              backgroundColor: "#fff",
-              color: "#000",
-            }}
+  const renderAddDocumentForm = () => (
+    <div style={{ padding: "20px" }}>
+      <h3>Add a Document</h3>
+      {familyMembers.length === 0 ? (
+        <Text style={{ color: "red" }}>Please add a family member first.</Text>
+      ) : (
+        <>
+          <Input
+            value={newDocument.title}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewDocument({ ...newDocument, title: e.target.value })}
+            placeholder="Document title"
+            style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
+          />
+          <Select
+            value={newDocument.category}
+            onChange={(value) => setNewDocument({ ...newDocument, category: value })}
+            placeholder="Select category"
+            style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
           >
-            Cancel
-          </Button>
-          <Button
-            type="primary"
-            disabled={!newContact.name.trim() || !newContact.role.trim() || !newContact.phone.trim() || !selectedUser}
-            onClick={handleAddContact}
-            style={{
-              borderRadius: "20px",
-              padding: "5px 20px",
-              fontSize: "14px",
-              height: "auto",
-              backgroundColor: newContact.name.trim() && newContact.role.trim() && newContact.phone.trim() && selectedUser ? "#1890ff" : "#d9d9d9",
-              border: "none",
-            }}
+            {contentCategories.flatMap(category => category.children).map(child => (
+              <Option key={child} value={child}>{child}</Option>
+            ))}
+            {contentCategories.map(category => (
+              <Option key={category.label} value={category.label}>{category.label}</Option>
+            ))}
+          </Select>
+          <Upload {...uploadProps}>
+            <Button icon={<UploadOutlined />} style={{ borderRadius: "5px" }}>Upload File</Button>
+          </Upload>
+          <Select
+            value={newDocument.addedBy}
+            onChange={(value) => setNewDocument({ ...newDocument, addedBy: value, uploadedBy: value })}
+            placeholder="Select family member"
+            style={{ width: "100%", marginTop: "20px", marginBottom: "20px", borderRadius: "5px" }}
           >
-            Add Contact
-          </Button>
-        </div>
-      </>
-    )}
-  </div>
-);
-
-const renderEditContactForm = () => (
-  <div style={{ padding: "20px" }}>
-    <h3>Edit Contact</h3>
-    <Input
-      value={newContact.name}
-      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewContact({ ...newContact, name: e.target.value })}
-      placeholder="Contact name"
-      style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
-    />
-    <Input
-      value={newContact.role}
-      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewContact({ ...newContact, role: e.target.value })}
-      placeholder="Role"
-      style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
-    />
-    <Input
-      value={newContact.phone}
-      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewContact({ ...newContact, phone: e.target.value })}
-      placeholder="Phone number"
-      style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
-    />
-    <Select
-      value={selectedUser}
-      onChange={(value) => setSelectedUser(value)}
-      placeholder="Select family member"
-      style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
-    >
-      {familyMembers.map(member => (
-        <Option key={member.name} value={member.name}>{member.name}</Option>
-      ))}
-    </Select>
-    <div style={{ display: "flex", justifyContent: "space-between" }}>
-      <Button
-        onClick={() => setStep("intro")}
-        style={{
-          borderRadius: "20px",
-          padding: "5px 20px",
-          fontSize: "14px",
-          height: "auto",
-          border: "1px solid #d9d9d9",
-          backgroundColor: "#fff",
-          color: "#000",
-        }}
-      >
-        Cancel
-      </Button>
-      <Button
-        type="primary"
-        disabled={!newContact.name.trim() || !newContact.role.trim() || !newContact.phone.trim() || !selectedUser}
-        onClick={handleEditContact}
-        style={{
-          borderRadius: "20px",
-          padding: "5px 20px",
-          fontSize: "14px",
-          height: "auto",
-          backgroundColor: newContact.name.trim() && newContact.role.trim() && newContact.phone.trim() && selectedUser ? "#1890ff" : "#d9d9d9",
-          border: "none",
-        }}
-      >
-        Save Changes
-      </Button>
+            {familyMembers.map(member => (
+              <Option key={member.name} value={member.name}>{member.name}</Option>
+            ))}
+          </Select>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <Button
+              onClick={() => setStep("intro")}
+              style={{
+                borderRadius: "20px",
+                padding: "5px 20px",
+                fontSize: "14px",
+                height: "auto",
+                border: "1px solid #d9d9d9",
+                backgroundColor: "#fff",
+                color: "#000",
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="primary"
+              disabled={!newDocument.title.trim() || !newDocument.category || !newDocument.file || !newDocument.addedBy}
+              onClick={handleAddDocument}
+              style={{
+                borderRadius: "20px",
+                padding: "5px 20px",
+                fontSize: "14px",
+                height: "auto",
+                backgroundColor: newDocument.title.trim() && newDocument.category && newDocument.file && newDocument.addedBy ? "#1890ff" : "#d9d9d9",
+                border: "none",
+              }}
+            >
+              Add Document
+            </Button>
+          </div>
+        </>
+      )}
     </div>
-  </div>
-);
+  );
 
-const renderAddDocumentForm = () => (
-  <div style={{ padding: "20px" }}>
-    <h3>Add a Document</h3>
-    {familyMembers.length === 0 ? (
-      <Text style={{ color: "red" }}>Please add a family member first.</Text>
-    ) : (
-      <>
-        <Input
-          value={newDocument.title}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewDocument({ ...newDocument, title: e.target.value })}
-          placeholder="Document title"
-          style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
-        />
-        <Select
-          value={newDocument.category}
-          onChange={(value) => setNewDocument({ ...newDocument, category: value })}
-          placeholder="Select category"
-          style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
+  const renderEditDocumentForm = () => (
+    <div style={{ padding: "20px" }}>
+      <h3>Edit Document</h3>
+      <Input
+        value={newDocument.title}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewDocument({ ...newDocument, title: e.target.value })}
+        placeholder="Document title"
+        style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
+      />
+      <Select
+        value={newDocument.category}
+        onChange={(value) => setNewDocument({ ...newDocument, category: value })}
+        placeholder="Select category"
+        style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
+      >
+        {contentCategories.flatMap(category => category.children).map(child => (
+          <Option key={child} value={child}>{child}</Option>
+        ))}
+        {contentCategories.map(category => (
+          <Option key={category.label} value={category.label}>{category.label}</Option>
+        ))}
+      </Select>
+      <Upload {...uploadProps}>
+        <Button icon={<UploadOutlined />} style={{ borderRadius: "5px" }}>Upload File</Button>
+      </Upload>
+      <Select
+        value={newDocument.addedBy}
+        onChange={(value) => setNewDocument({ ...newDocument, addedBy: value, uploadedBy: value })}
+        placeholder="Select family member"
+        style={{ width: "100%", marginTop: "20px", marginBottom: "20px", borderRadius: "5px" }}
+      >
+        {familyMembers.map(member => (
+          <Option key={member.name} value={member.name}>{member.name}</Option>
+        ))}
+      </Select>
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <Button
+          onClick={() => setStep("intro")}
+          style={{
+            borderRadius: "20px",
+            padding: "5px 20px",
+            fontSize: "14px",
+            height: "auto",
+            border: "1px solid #d9d9d9",
+            backgroundColor: "#fff",
+            color: "#000",
+          }}
         >
-          {contentCategories.flatMap(category => category.children).map(child => (
-            <Option key={child} value={child}>{child}</Option>
-          ))}
-        </Select>
-        <Upload {...uploadProps}>
-          <Button
-            icon={<UploadOutlined />}
-            style={{
-              borderRadius: "5px",
-              padding: "5px 10px",
-              fontSize: "14px",
-              border: "1px solid #d9d9d9",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: "20px",
-            }}
-          >
-            Upload Document
-          </Button>
-        </Upload>
-        <Select
-          value={selectedUser}
-          onChange={(value) => setSelectedUser(value)}
-          placeholder="Select family member"
-          style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
+          Cancel
+        </Button>
+        <Button
+          type="primary"
+          disabled={!newDocument.title.trim() || !newDocument.category || !newDocument.addedBy}
+          onClick={handleEditDocument}
+          style={{
+            borderRadius: "20px",
+            padding: "5px 20px",
+            fontSize: "14px",
+            height: "auto",
+            backgroundColor: newDocument.title.trim() && newDocument.category && newDocument.addedBy ? "#1890ff" : "#d9d9d9",
+            border: "none",
+          }}
         >
-          {familyMembers.map(member => (
-            <Option key={member.name} value={member.name}>{member.name}</Option>
-          ))}
-        </Select>
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <Button
-            onClick={() => setStep("intro")}
-            style={{
-              borderRadius: "20px",
-              padding: "5px 20px",
-              fontSize: "14px",
-              height: "auto",
-              border: "1px solid #d9d9d9",
-              backgroundColor: "#fff",
-              color: "#000",
-            }}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="primary"
-            disabled={!newDocument.title.trim() || !newDocument.category || !newDocument.file || !selectedUser}
-            onClick={handleAddDocument}
-            style={{
-              borderRadius: "20px",
-              padding: "5px 20px",
-              fontSize: "14px",
-              height: "auto",
-              backgroundColor: newDocument.title.trim() && newDocument.category && newDocument.file && selectedUser ? "#1890ff" : "#d9d9d9",
-              border: "none",
-            }}
-          >
-            Add Document
-          </Button>
-        </div>
-      </>
-    )}
-  </div>
-);
-
-const renderEditDocumentForm = () => (
-  <div style={{ padding: "20px" }}>
-    <h3>Edit Document</h3>
-    <Input
-      value={newDocument.title}
-      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewDocument({ ...newDocument, title: e.target.value })}
-      placeholder="Document title"
-      style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
-    />
-    <Select
-      value={newDocument.category}
-      onChange={(value) => setNewDocument({ ...newDocument, category: value })}
-      placeholder="Select category"
-      style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
-    >
-      {contentCategories.flatMap(category => category.children).map(child => (
-        <Option key={child} value={child}>{child}</Option>
-      ))}
-    </Select>
-    <Upload {...uploadProps}>
-      <Button
-        icon={<UploadOutlined />}
-        style={{
-          borderRadius: "5px",
-          padding: "5px 10px",
-          fontSize: "14px",
-          border: "1px solid #d9d9d9",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          marginBottom: "20px",
-        }}
-      >
-        Upload Document
-      </Button>
-    </Upload>
-    <Select
-      value={selectedUser}
-      onChange={(value) => setSelectedUser(value)}
-      placeholder="Select family member"
-      style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
-    >
-      {familyMembers.map(member => (
-        <Option key={member.name} value={member.name}>{member.name}</Option>
-      ))}
-    </Select>
-    <div style={{ display: "flex", justifyContent: "space-between" }}>
-      <Button
-        onClick={() => setStep("intro")}
-        style={{
-          borderRadius: "20px",
-          padding: "5px 20px",
-          fontSize: "14px",
-          height: "auto",
-          border: "1px solid #d9d9d9",
-          backgroundColor: "#fff",
-          color: "#000",
-        }}
-      >
-        Cancel
-      </Button>
-      <Button
-        type="primary"
-        disabled={!newDocument.title.trim() || !newDocument.category || !selectedUser}
-        onClick={handleEditDocument}
-        style={{
-          borderRadius: "20px",
-          padding: "5px 20px",
-          fontSize: "14px",
-          height: "auto",
-          backgroundColor: newDocument.title.trim() && newDocument.category && selectedUser ? "#1890ff" : "#d9d9d9",
-          border: "none",
-        }}
-      >
-        Save Changes
-      </Button>
+          Save Changes
+        </Button>
+      </div>
     </div>
-  </div>
-);
+  );
 
-return (
-  <MainLayout>
-    {step === "intro" && renderIntro()}
-    {step === "add" && renderAddForm()}
-    {step === "permissions" && renderPermissions()}
-    {step === "share" && renderSharingOptions()}
-    {step === "review" && renderReview()}
-    {step === "sent" && renderSent()}
-    {step === "addGuideline" && renderAddGuidelineForm()}
-    {step === "editGuideline" && renderEditGuidelineForm()}
-    {step === "addNote" && renderAddNoteForm()}
-    {step === "editNote" && renderEditNoteForm()}
-    {step === "addSection" && renderAddSectionForm()}
-    {step === "editSection" && renderEditSectionForm()}
-    {step === "addEvent" && renderAddEventForm()}
-    {step === "addTask" && renderAddTaskForm()}
-    {step === "editTask" && renderEditTaskForm()}
-    {step === "addContact" && renderAddContactForm()}
-    {step === "editContact" && renderEditContactForm()}
-    {step === "addDocument" && renderAddDocumentForm()}
-    {step === "editDocument" && renderEditDocumentForm()}
-  </MainLayout>
-);
+  const renderAddEventForm = () => (
+    <div style={{ padding: "20px" }}>
+      <h3>Add an Event</h3>
+      {familyMembers.length === 0 ? (
+        <Text style={{ color: "red" }}>Please add a family member first.</Text>
+      ) : (
+        <>
+          <Input
+            value={newEvent.title}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewEvent({ ...newEvent, title: e.target.value })}
+            placeholder="Event title"
+            style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
+          />
+          <Calendar
+            fullscreen={false}
+            value={newEvent.date}
+            onSelect={(date: Dayjs) => setNewEvent({ ...newEvent, date })}
+            style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", border: "1px solid #d9d9d9" }}
+          />
+          <Select
+            value={newEvent.color}
+            onChange={(value) => setNewEvent({ ...newEvent, color: value })}
+            placeholder="Select color"
+            style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
+          >
+            <Option value="#1890ff">Blue</Option>
+            <Option value="#ff4d4f">Red</Option>
+            <Option value="#52c41a">Green</Option>
+            <Option value="#fadb14">Yellow</Option>
+          </Select>
+          <Select
+            value={newEvent.addedBy}
+            onChange={(value) => setNewEvent({ ...newEvent, addedBy: value })}
+            placeholder="Select family member"
+            style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
+          >
+            {familyMembers.map(member => (
+              <Option key={member.name} value={member.name}>{member.name}</Option>
+            ))}
+          </Select>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <Button
+              onClick={() => setStep("intro")}
+              style={{
+                borderRadius: "20px",
+                padding: "5px 20px",
+                fontSize: "14px",
+                height: "auto",
+                border: "1px solid #d9d9d9",
+                backgroundColor: "#fff",
+                color: "#000",
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="primary"
+              disabled={!newEvent.title.trim() || !newEvent.addedBy}
+              onClick={handleAddEvent}
+              style={{
+                borderRadius: "20px",
+                padding: "5px 20px",
+                fontSize: "14px",
+                height: "auto",
+                backgroundColor: newEvent.title.trim() && newEvent.addedBy ? "#1890ff" : "#d9d9d9",
+                border: "none",
+              }}
+            >
+              Add Event
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  const renderAddTaskForm = () => (
+    <div style={{ padding: "20px" }}>
+      <h3>Add a Task</h3>
+      {familyMembers.length === 0 ? (
+        <Text style={{ color: "red" }}>Please add a family member first.</Text>
+      ) : (
+        <>
+          <Input
+            value={newTask}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTask(e.target.value)}
+            placeholder="Task title"
+            style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
+          />
+          <Select
+            value={newTaskAssignee}
+            onChange={(value) => setNewTaskAssignee(value)}
+            placeholder="Assign to"
+            style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
+          >
+            {familyMembers.map(member => (
+              <Option key={member.name} value={member.name}>{member.name}</Option>
+            ))}
+          </Select>
+          <Select
+            value={newTaskAddedBy}
+            onChange={(value) => setNewTaskAddedBy(value)}
+            placeholder="Added by"
+            style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
+          >
+            {familyMembers.map(member => (
+              <Option key={member.name} value={member.name}>{member.name}</Option>
+            ))}
+          </Select>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <Button
+              onClick={() => setStep("intro")}
+              style={{
+                borderRadius: "20px",
+                padding: "5px 20px",
+                fontSize: "14px",
+                height: "auto",
+                border: "1px solid #d9d9d9",
+                backgroundColor: "#fff",
+                color: "#000",
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="primary"
+              disabled={!newTask.trim() || !newTaskAssignee.trim() || !newTaskAddedBy}
+              onClick={handleAddTask}
+              style={{
+                borderRadius: "20px",
+                padding: "5px 20px",
+                fontSize: "14px",
+                height: "auto",
+                backgroundColor: newTask.trim() && newTaskAssignee.trim() && newTaskAddedBy ? "#1890ff" : "#d9d9d9",
+                border: "none",
+              }}
+            >
+              Add Task
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  const renderEditTaskForm = () => (
+    <div style={{ padding: "20px" }}>
+      <h3>Edit Task</h3>
+      <Input
+        value={newTask}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTask(e.target.value)}
+        placeholder="Task title"
+        style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
+      />
+      <Select
+        value={newTaskAssignee}
+        onChange={(value) => setNewTaskAssignee(value)}
+        placeholder="Assign to"
+        style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
+      >
+        {familyMembers.map(member => (
+          <Option key={member.name} value={member.name}>{member.name}</Option>
+        ))}
+      </Select>
+      <Select
+        value={newTaskAddedBy}
+        onChange={(value) => setNewTaskAddedBy(value)}
+        placeholder="Added by"
+        style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
+      >
+        {familyMembers.map(member => (
+          <Option key={member.name} value={member.name}>{member.name}</Option>
+        ))}
+      </Select>
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <Button
+          onClick={() => setStep("intro")}
+          style={{
+            borderRadius: "20px",
+            padding: "5px 20px",
+            fontSize: "14px",
+            height: "auto",
+            border: "1px solid #d9d9d9",
+            backgroundColor: "#fff",
+            color: "#000",
+          }}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="primary"
+          disabled={!newTask.trim() || !newTaskAssignee.trim() || !newTaskAddedBy}
+          onClick={handleEditTask}
+          style={{
+            borderRadius: "20px",
+            padding: "5px 20px",
+            fontSize: "14px",
+            height: "auto",
+            backgroundColor: newTask.trim() && newTaskAssignee.trim() && newTaskAddedBy ? "#1890ff" : "#d9d9d9",
+            border: "none",
+          }}
+        >
+          Save Changes
+        </Button>
+      </div>
+    </div>
+  );
+
+  const renderAddContactForm = () => (
+    <div style={{ padding: "20px" }}>
+      <h3>Add an Emergency Contact</h3>
+      {familyMembers.length === 0 ? (
+        <Text style={{ color: "red" }}>Please add a family member first.</Text>
+      ) : (
+        <>
+          <Input
+            value={newContact.name}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewContact({ ...newContact, name: e.target.value })}
+            placeholder="Contact name"
+            style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
+          />
+          <Input
+            value={newContact.role}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewContact({ ...newContact, role: e.target.value })}
+            placeholder="Role (e.g., Family Doctor)"
+            style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
+          />
+          <Input
+            value={newContact.phone}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewContact({ ...newContact, phone: e.target.value })}
+            placeholder="Phone number"
+            style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
+          />
+          <Select
+            value={newContact.addedBy}
+            onChange={(value) => setNewContact({ ...newContact, addedBy: value })}
+            placeholder="Select family member"
+            style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
+          >
+            {familyMembers.map(member => (
+              <Option key={member.name} value={member.name}>{member.name}</Option>
+            ))}
+          </Select>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <Button
+              onClick={() => setStep("intro")}
+              style={{
+                borderRadius: "20px",
+                padding: "5px 20px",
+                fontSize: "14px",
+                height: "auto",
+                border: "1px solid #d9d9d9",
+                backgroundColor: "#fff",
+                color: "#000",
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="primary"
+              disabled={!newContact.name.trim() || !newContact.role.trim() || !newContact.phone.trim() || !newContact.addedBy}
+              onClick={handleAddContact}
+              style={{
+                borderRadius: "20px",
+                padding: "5px 20px",
+                fontSize: "14px",
+                height: "auto",
+                backgroundColor: newContact.name.trim() && newContact.role.trim() && newContact.phone.trim() && newContact.addedBy ? "#1890ff" : "#d9d9d9",
+                border: "none",
+              }}
+            >
+              Add Contact
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+
+  const renderEditContactForm = () => (
+    <div style={{ padding: "20px" }}>
+      <h3>Edit Emergency Contact</h3>
+      <Input
+        value={newContact.name}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewContact({ ...newContact, name: e.target.value })}
+        placeholder="Contact name"
+        style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
+      />
+      <Input
+        value={newContact.role}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewContact({ ...newContact, role: e.target.value })}
+        placeholder="Role (e.g., Family Doctor)"
+        style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
+      />
+      <Input
+        value={newContact.phone}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewContact({ ...newContact, phone: e.target.value })}
+        placeholder="Phone number"
+        style={{ marginBottom: "20px", borderRadius: "5px", padding: "10px", fontSize: "14px", border: "1px solid #d9d9d9" }}
+      />
+      <Select
+        value={newContact.addedBy}
+        onChange={(value) => setNewContact({ ...newContact, addedBy: value })}
+        placeholder="Select family member"
+        style={{ width: "100%", marginBottom: "20px", borderRadius: "5px" }}
+      >
+        {familyMembers.map(member => (
+          <Option key={member.name} value={member.name}>{member.name}</Option>
+        ))}
+      </Select>
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <Button
+          onClick={() => setStep("intro")}
+          style={{
+            borderRadius: "20px",
+            padding: "5px 20px",
+            fontSize: "14px",
+            height: "auto",
+            border: "1px solid #d9d9d9",
+            backgroundColor: "#fff",
+            color: "#000",
+          }}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="primary"
+          disabled={!newContact.name.trim() || !newContact.role.trim() || !newContact.phone.trim() || !newContact.addedBy}
+          onClick={handleEditContact}
+          style={{
+            borderRadius: "20px",
+            padding: "5px 20px",
+            fontSize: "14px",
+            height: "auto",
+            backgroundColor: newContact.name.trim() && newContact.role.trim() && newContact.phone.trim() && newContact.addedBy ? "#1890ff" : "#d9d9d9",
+            border: "none",
+          }}
+        >
+          Save Changes
+        </Button>
+      </div>
+    </div>
+  );
+
+  return (
+    <MainLayout>
+      {step === "intro" && renderIntro()}
+      {step === "addGuideline" && renderAddGuidelineForm()}
+      {step === "editGuideline" && renderEditGuidelineForm()}
+      {step === "addNote" && renderAddNoteForm()}
+      {step === "editNote" && renderEditNoteForm()}
+      {step === "addSection" && renderAddSectionForm()}
+      {step === "editSection" && renderEditSectionForm()}
+      {step === "addDocument" && renderAddDocumentForm()}
+      {step === "editDocument" && renderEditDocumentForm()}
+      {step === "addEvent" && renderAddEventForm()}
+      {step === "addTask" && renderAddTaskForm()}
+      {step === "editTask" && renderEditTaskForm()}
+      {step === "addContact" && renderAddContactForm()}
+      {step === "editContact" && renderEditContactForm()}
+    </MainLayout>
+  );
 };
 
 export default FamilySharing;
