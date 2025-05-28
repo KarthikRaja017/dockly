@@ -9,3 +9,8 @@
 // export default function FilesStorageClientWrapper() {
 //   return <FilesStorage />;
 // }
+
+const FilesStorageClientWrapper = () => {
+  return <></>;
+};
+export default FilesStorageClientWrapper;

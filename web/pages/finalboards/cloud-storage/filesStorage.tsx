@@ -221,3 +221,9 @@
 // };
 
 // export default FilesStorage;
+
+
+const FilesStorageWrapper = () => {
+  return <></>;
+}
+export default FilesStorageWrapper;
