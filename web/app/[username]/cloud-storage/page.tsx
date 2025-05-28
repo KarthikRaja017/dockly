@@ -1,20 +1,20 @@
-
 'use client';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  Steps, Button, Input, Tag, Checkbox, Card, Space, List, Divider
+  Steps, Button, Input, Tag, Checkbox, Card, Space, List, Divider, Upload, message
 } from 'antd';
 import {
   SearchOutlined, FolderOutlined, FilePdfOutlined,
-  FileImageOutlined, CloudOutlined, LockOutlined
+  FileImageOutlined, CloudOutlined, LockOutlined, UploadOutlined
 } from '@ant-design/icons';
 import Typography from 'antd/es/typography';
+import { useRouter } from 'next/navigation';
 
 const { Step } = Steps;
 const { Title, Text } = Typography;
 
 interface CloudService {
-  icon: string;
+  imageUrl: string; // Changed from icon to imageUrl
   name: string;
   description: string;
   connected: boolean;
@@ -42,13 +42,54 @@ interface PinnedFile {
   boards: string[];
 }
 
+interface UploadedImage {
+  name: string;
+  url: string;
+}
+
 const initialCloudServices: CloudService[] = [
-  { icon: 'G', name: 'Google Drive', description: 'Documents, spreadsheets, presentations, and more.', connected: false },
-  { icon: 'D', name: 'Dropbox', description: 'Cloud storage for all your files and photos.', connected: true, email: 'user@dropbox.com', totalStorage: '2 TB', usedPercentage: 10, files: 583, folders: 42, shared: 15 },
-  { icon: 'iC', name: 'iCloud Drive', description: "Apple's cloud storage for documents and data.", connected: false },
-  { icon: 'O', name: 'OneDrive', description: "Microsoft's cloud storage integrated with Office.", connected: false },
-  { icon: 'GP', name: 'Google Photos', description: 'Photo and video storage with smart organization.', connected: false },
-  { icon: 'B', name: 'Box', description: 'Secure content management and collaboration.', connected: false },
+  { 
+    imageUrl: '/manager/drive.jpg', // Placeholder for Google Drive logo
+    name: 'Google Drive', 
+    description: 'Documents, spreadsheets, presentations, and more.', 
+    connected: false 
+  },
+  { 
+    imageUrl: '/manager/dropbox.jpg', // Placeholder for Dropbox logo
+    name: 'Dropbox', 
+    description: 'Cloud storage for all your files and photos.', 
+    connected: true, 
+    email: 'user@dropbox.com', 
+    totalStorage: '2 TB', 
+    usedPercentage: 10, 
+    files: 583, 
+    folders: 42, 
+    shared: 15 
+  },
+  { 
+    imageUrl: '/manager/cloud.jpg', // Placeholder for iCloud Drive logo
+    name: 'iCloud Drive', 
+    description: "Apple's cloud storage for documents and data.", 
+    connected: false 
+  },
+  { 
+    imageUrl: '/manager/1drive.png', // Placeholder for OneDrive logo
+    name: 'OneDrive', 
+    description: "Microsoft's cloud storage integrated with Office.", 
+    connected: false 
+  },
+  { 
+    imageUrl: '/manager/gphotos.png', // Placeholder for Google Photos logo
+    name: 'Google Photos', 
+    description: 'Photo and video storage with smart organization.', 
+    connected: false 
+  },
+  { 
+    imageUrl: '/manager/box.png', // Placeholder for Box logo
+    name: 'Box', 
+    description: 'Secure content management and collaboration.', 
+    connected: false 
+  },
 ];
 
 const initialFiles: FileItem[] = [
@@ -77,6 +118,56 @@ const CloudConnectionPage: React.FC = () => {
   const [description, setDescription] = useState<string>('');
   const [tags, setTags] = useState<string[]>(['home', 'legal', 'important']);
   const [selectedBoards, setSelectedBoards] = useState<string[]>(['Home Management', 'Important Documents']);
+  const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
+
+
+  const [username, setUsername] = useState<string>("");
+    console.log("🚀 ~ CloudConnectionPage ~ username:", username)
+    const router = useRouter();
+  
+    useEffect(() => {
+      const username = localStorage.getItem("username") || "";
+      setUsername(username);
+      if (localStorage.getItem('cloud-storage') === null) {
+        router.push(`/${username}/cloud-storage/setup`);
+      }
+    }, []);
+
+    const handlesubmit = () => {
+        localStorage.setItem('cloud-storage', '1');
+        router.push(`/${username}/finalboards/cloud-storage`);
+};
+
+  
+
+  const handleImageUpload = (file: any): boolean => {
+    const isImage = file.type.startsWith('image/');
+    if (!isImage) {
+      message.error('You can only upload image files!');
+      return false;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const imageUrl = e.target?.result as string;
+      setUploadedImages((prev) => [
+        ...prev,
+        { name: file.name, url: imageUrl },
+      ]);
+      message.success(`${file.name} uploaded successfully!`);
+    };
+    reader.readAsDataURL(file);
+    return false;
+  };
+
+  // New function to set an uploaded image as a cloud service image
+  const handleSetServiceImage = (serviceName: string, imageUrl: string) => {
+    setCloudServices((prev) =>
+      prev.map((s) =>
+        s.name === serviceName ? { ...s, imageUrl } : s
+      )
+    );
+    message.success(`Image set for ${serviceName}`);
+  };
 
   const handleSelectService = (service: CloudService) => {
     setSelectedService(service);
@@ -89,6 +180,7 @@ const CloudConnectionPage: React.FC = () => {
       { type: 'pdf', name: `${folder.name}_Sample.pdf`, details: 'PDF • 1 MB • Jan 1, 2023', path: `${folder.path}/Sample.pdf` },
     ]);
   };
+
 
   const handlePinFile = (file: FileItem) => {
     setPinningFile(file);
@@ -127,8 +219,10 @@ const CloudConnectionPage: React.FC = () => {
     switch (currentStep) {
       case 0:
         return (
-          <div style={{ padding: '20px', maxWidth: '1200px', margin: '0' }}>
-            <Title level={2} style={{ fontSize: '24px', fontWeight: 600, marginBottom: '10px' }}>Connect Your Digital Vaults</Title>
+          <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
+            <Title level={2} style={{ fontSize: '24px', fontWeight: 600, marginBottom: '10px' }}>
+              Connect Your Digital Vaults
+            </Title>
             <Text style={{ fontSize: '16px', color: '#666', display: 'block', marginBottom: '20px' }}>
               Access and organize your files without moving them. Connect to your cloud storage to pin important documents to your Dockly dashboard.
             </Text>
@@ -140,8 +234,11 @@ const CloudConnectionPage: React.FC = () => {
                 </Text>
               </Space>
             </Card>
+            <Title level={4} style={{ fontSize: '18px', marginBottom: '10px' }}>
+              Cloud Services
+            </Title>
             <List
-              grid={{ gutter: 16, xs: 1, sm: 2, md: 3, column: 3 }} 
+              grid={{ gutter: 16, xs: 1, sm: 2, md: 3 }}
               dataSource={cloudServices}
               renderItem={(item: CloudService) => (
                 <List.Item>
@@ -152,13 +249,20 @@ const CloudConnectionPage: React.FC = () => {
                       border: selectedService?.name === item.name ? '2px solid #1890ff' : '1px solid #e8e8e8',
                       borderRadius: '8px',
                       textAlign: 'center',
-                      padding: '20px',
+                      // width:'400px',
+                      padding: '10px',
                       cursor: 'pointer'
                     }}
                   >
-                    <div style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '10px' }}>{item.icon}</div>
+                    <img
+                      src={item.imageUrl}
+                      alt={item.name}
+                      style={{ maxWidth: '45px', maxHeight: '55px', objectFit: 'contain', marginBottom: '10px' }}
+                    />
                     <Text strong style={{ fontSize: '16px', display: 'block' }}>{item.name}</Text>
-                    <Text style={{ fontSize: '14px', color: '#666', display: 'block', marginBottom: '10px' }}>{item.description}</Text>
+                    <Text style={{ fontSize: '14px', color: '#666', display: 'block', marginBottom: '10px' }}>
+                      {item.description}
+                    </Text>
                     <Tag color={item.connected ? 'green' : 'default'} style={{ marginBottom: '10px' }}>
                       {item.connected ? '✓ Connected' : '○ Not Connected'}
                     </Tag>
@@ -175,14 +279,20 @@ const CloudConnectionPage: React.FC = () => {
             />
             <Space style={{ marginTop: '20px', width: '100%', justifyContent: 'space-between' }}>
               <Button style={{ borderRadius: '4px' }}>Back to Dashboard</Button>
-              <Button type="primary" style={{ borderRadius: '4px' }} onClick={() => setCurrentStep(1)}>Continue</Button>
+              <Button type="primary" style={{ borderRadius: '4px' }} onClick={() => setCurrentStep(1)}>
+                Continue
+              </Button>
             </Space>
           </div>
         );
       case 1:
         return (
           <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
-            <div style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '10px' }}>{selectedService?.icon}</div>
+            <img
+              src={selectedService?.imageUrl}
+              alt={selectedService?.name}
+              style={{ maxWidth: '32px', maxHeight: '32px', objectFit: 'contain', marginBottom: '10px' }}
+            />
             <Title level={3} style={{ fontSize: '20px', marginBottom: '20px' }}>Connect to {selectedService?.name}</Title>
             <Text style={{ fontSize: '16px', display: 'block', marginBottom: '20px' }}>
               Dockly will connect to your {selectedService?.name} to help you organize and access your important files.
@@ -365,7 +475,11 @@ const CloudConnectionPage: React.FC = () => {
                 renderItem={(item: CloudService) => (
                   <List.Item>
                     <Card style={{ borderRadius: '8px', textAlign: 'center', padding: '10px' }}>
-                      <div style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '10px' }}>{item.icon}</div>
+                      <img
+                        src={item.imageUrl}
+                        alt={item.name}
+                        style={{ maxWidth: '24px', maxHeight: '24px', objectFit: 'contain', marginBottom: '10px' }}
+                      />
                       <Text style={{ fontSize: '14px' }}>{item.name}</Text>
                     </Card>
                   </List.Item>
@@ -399,71 +513,7 @@ const CloudConnectionPage: React.FC = () => {
                 </Button>
               </Space>
             </Card>
-            <Button type="primary" style={{ marginTop: '20px', borderRadius: '4px' }} onClick={() => setCurrentStep(5)}>
-              Continue
-            </Button>
-          </div>
-        );
-      case 5:
-        return (
-          <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
-            <Title level={3} style={{ fontSize: '20px', marginBottom: '20px' }}>
-              Storage Successfully Connected
-            </Title>
-            <Text style={{ fontSize: '16px', color: '#666', display: 'block', marginBottom: '20px' }}>
-              You've connected your cloud storage to Dockly. You can now pin documents from these services to your boards.
-            </Text>
-            <Card style={{ borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', padding: '20px', background: '#e6f7ff' }}>
-              <Title level={5} style={{ fontSize: '16px', marginBottom: '20px' }}>Connected Storage Services</Title>
-              <Space style={{ marginBottom: '20px', justifyContent: 'center' }}>
-                {cloudServices
-                  .filter(s => s.connected)
-                  .map((service) => (
-                    <div key={service.name} style={{ textAlign: 'center', margin: '0 10px' }}>
-                      <div style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '5px' }}>{service.icon}</div>
-                      <Text style={{ fontSize: '14px' }}>{service.name}</Text>
-                    </div>
-                  ))}
-              </Space>
-              <Divider style={{ margin: '20px 0', borderColor: '#d9d9d9' }} />
-              <Title level={5} style={{ fontSize: '16px', marginBottom: '20px' }}>Pinned Documents</Title>
-              <List
-                dataSource={pinnedFiles}
-                renderItem={(item) => (
-                  <List.Item style={{ justifyContent: 'center' }}>
-                    <Text style={{ fontSize: '14px' }}>
-                      • {item.name} (pinned to {item.boards.join(', ')})
-                    </Text>
-                  </List.Item>
-                )}
-              />
-              <Space style={{ marginTop: '20px', width: '100%', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <Button
-                  type="link"
-                  style={{ fontSize: '14px', display: 'flex', alignItems: 'center', color: '#1890ff' }}
-                  onClick={() => setCurrentStep(2)}
-                >
-                  <span style={{ marginRight: '5px' }}>📎</span> Pin more documents
-                </Button>
-                <Button
-                  type="link"
-                  style={{ fontSize: '14px', display: 'flex', alignItems: 'center', color: '#faad14' }}
-                >
-                  <span style={{ marginRight: '5px' }}>👨‍👩‍👧</span> Set up family sharing
-                </Button>
-                <Button
-                  type="link"
-                  style={{ fontSize: '14px', display: 'flex', alignItems: 'center', color: '#fa541c' }}
-                >
-                  <span style={{ marginRight: '5px' }}>📝</span> Customize your boards
-                </Button>
-              </Space>
-            </Card>
-            <Button
-              type="link"
-              style={{ marginTop: '20px', fontSize: '14px', color: '#666' }}
-              onClick={() => setCurrentStep(0)}
-            >
+            <Button type="link" style={{ marginTop: '20px', fontSize: '14px', color: '#666' }} onClick={handlesubmit}>
               Return to Dashboard
             </Button>
           </div>
@@ -485,7 +535,6 @@ const CloudConnectionPage: React.FC = () => {
           <Step title="Browse Files" />
           <Step title="Pin Files" />
           <Step title="Complete" />
-          <Step title="Summary" />
         </Steps>
         {renderWizardContent()}
       </div>

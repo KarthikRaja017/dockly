@@ -1,10 +1,11 @@
 import HomeIntroBoard from "../../../../pages/home/home-setup";
 
-
 const HomeSetup = () => {
-    return (
-        <HomeIntroBoard/>
-    )
-}
+  return (
+    <div style={{ margin: 20 }}>
+      <HomeIntroBoard />
+    </div>
+  );
+};
 
 export default HomeSetup;

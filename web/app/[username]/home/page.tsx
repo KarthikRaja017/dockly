@@ -1,7 +1,7 @@
 // HomeManagement.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Layout,
   Button,
@@ -28,6 +28,10 @@ import {
   UploadOutlined,
 } from "@ant-design/icons";
 import dayjs, { Dayjs } from "dayjs";
+import { useRouter } from "next/navigation";
+
+// Assuming MainLayout is a TypeScript component
+import MainLayout from "../../../pages/components/mainLayout";
 
 const { Content } = Layout;
 const { Title, Text } = Typography;
@@ -103,100 +107,62 @@ const HomeManagement: React.FC = () => {
     { key: "Property Tax ID", value: "SN-37849221" },
   ]);
   const [mortgageData, setMortgageData] = useState<Mortgage[]>([
-    {
-      name: "Chase Mortgage",
-      meta: "Primary Mortgage • $1,450/month",
-      color: PRIMARY_COLOR,
-    },
-    {
-      name: "Santander HELOC",
-      meta: "Home Equity Line • $220/month",
-      color: PRIMARY_COLOR,
-    },
+    { name: "Chase Mortgage", meta: "Primary Mortgage • $1,450/month", color: PRIMARY_COLOR },
+    { name: "Santander HELOC", meta: "Home Equity Line • $220/month", color: PRIMARY_COLOR },
   ]);
   const [mortgageDetails, setMortgageDetails] = useState<CustomSectionData[]>([
-    {
-      key: "Primary Mortgage",
-      value: "30-year fixed at 4.25%, $245,000 remaining balance",
-    },
+    { key: "Primary Mortgage", value: "30-year fixed at 4.25%, $245,000 remaining balance" },
     { key: "HELOC", value: "$50,000 line, $32,500 drawn, variable rate 6.5%" },
-    {
-      key: "Refinance Notes",
-      value: "Last refinanced June 2022, Loan Officer: Michael Johnson",
-    },
+    { key: "Refinance Notes", value: "Last refinanced June 2022, Loan Officer: Michael Johnson" },
   ]);
   const [utilitiesData, setUtilitiesData] = useState<Utility[]>([
-    {
-      name: "City Water",
-      meta: "Account #WTR-849302 • $65/month",
-      color: PRIMARY_COLOR,
-    },
-    {
-      name: "Electric Co.",
-      meta: "Account #ELC-392847 • $120/month",
-      color: PRIMARY_COLOR,
-    },
-    {
-      name: "Gas Services",
-      meta: "Account #GAS-573920 • $45/month",
-      color: PRIMARY_COLOR,
-    },
-    {
-      name: "Waste Mgmt",
-      meta: "Account #WST-194857 • $30/month",
-      color: PRIMARY_COLOR,
-    },
+    { name: "City Water", meta: "Account #WTR-849302 • $65/month", color: PRIMARY_COLOR },
+    { name: "Electric Co.", meta: "Account #ELC-392847 • $120/month", color: PRIMARY_COLOR },
+    { name: "Gas Services", meta: "Account #GAS-573920 • $45/month", color: PRIMARY_COLOR },
+    { name: "Waste Mgmt", meta: "Account #WST-194857 • $30/month", color: PRIMARY_COLOR },
   ]);
   const [insuranceData, setInsuranceData] = useState<Insurance[]>([
-    {
-      name: "State Farm Insurance",
-      meta: "Policy #HO-58392 • $1,250/year",
-      color: PRIMARY_COLOR,
-    },
+    { name: "State Farm Insurance", meta: "Policy #HO-58392 • $1,250/year", color: PRIMARY_COLOR },
   ]);
-  const [insuranceDetails, setInsuranceDetails] = useState<CustomSectionData[]>(
-    [
-      { key: "Dwelling", value: "$350,000" },
-      { key: "Personal Property", value: "$175,000" },
-      { key: "Liability", value: "$300,000" },
-      { key: "Deductible", value: "$1,000" },
-    ]
-  );
+  const [insuranceDetails, setInsuranceDetails] = useState<CustomSectionData[]>([
+    { key: "Dwelling", value: "$350,000" },
+    { key: "Personal Property", value: "$175,000" },
+    { key: "Liability", value: "$300,000" },
+    { key: "Deductible", value: "$1,000" },
+  ]);
   const [maintenanceData, setMaintenanceData] = useState<MaintenanceTask[]>([
     { name: "Replace HVAC filters", date: "Apr 10, 2025", completed: true },
-    {
-      name: "Schedule annual A/C maintenance",
-      date: "May 1, 2025",
-      completed: false,
-    },
+    { name: "Schedule annual A/C maintenance", date: "May 1, 2025", completed: false },
     { name: "Clean gutters", date: "May 15, 2025", completed: false },
-    {
-      name: "Lawn fertilization treatment",
-      date: "May 20, 2025",
-      completed: false,
-    },
+    { name: "Lawn fertilization treatment", date: "May 20, 2025", completed: false },
     { name: "Check smoke detectors", date: "Jun 1, 2025", completed: false },
   ]);
   const [notesData, setNotesData] = useState<Note[]>([
     {
-      content:
-        "Need to call contractor about basement finishing quote next week.",
+      content: "Need to call contractor about basement finishing quote next week.",
       date: "Apr 16, 2023",
     },
   ]);
 
-  const [isMaintenanceModalOpen, setIsMaintenanceModalOpen] =
-    useState<boolean>(false);
+  const [isMaintenanceModalOpen, setIsMaintenanceModalOpen] = useState<boolean>(false);
   const [isNoteModalOpen, setIsNoteModalOpen] = useState<boolean>(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
-  const [isCustomSectionModalOpen, setIsCustomSectionModalOpen] =
-    useState<boolean>(false);
+  const [isCustomSectionModalOpen, setIsCustomSectionModalOpen] = useState<boolean>(false);
   const [editSection, setEditSection] = useState<string>("");
   const [editSectionData, setEditSectionData] = useState<any[]>([]);
   const [maintenanceForm] = Form.useForm();
   const [noteForm] = Form.useForm();
   const [editForm] = Form.useForm();
   const [customSectionForm] = Form.useForm();
+
+  const router = useRouter();
+  
+  useEffect(() => {
+    const username = localStorage.getItem("username") || "";
+    if (localStorage.getItem('home') === null) {
+      router.push(`/${username}/home/setup`);
+    }
+  }, []);
 
   // Click Handlers for Tabs
   const handleTabClick = (tab: string): void => {
@@ -270,11 +236,7 @@ const HomeManagement: React.FC = () => {
     noteForm.validateFields().then((values) => {
       const newNote: Note = {
         content: values.content,
-        date: new Date().toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        }),
+        date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
       };
       setNotesData([...notesData, newNote]);
       noteForm.resetFields();
@@ -396,16 +358,8 @@ const HomeManagement: React.FC = () => {
         ]);
       } else if (editSection === "Mortgage & Loans") {
         setMortgageData([
-          {
-            name: values.mortgage1Name,
-            meta: values.mortgage1Meta,
-            color: PRIMARY_COLOR,
-          },
-          {
-            name: values.mortgage2Name,
-            meta: values.mortgage2Meta,
-            color: PRIMARY_COLOR,
-          },
+          { name: values.mortgage1Name, meta: values.mortgage1Meta, color: PRIMARY_COLOR },
+          { name: values.mortgage2Name, meta: values.mortgage2Meta, color: PRIMARY_COLOR },
         ]);
         setMortgageDetails([
           { key: "Primary Mortgage", value: values.primaryMortgage },
@@ -414,34 +368,14 @@ const HomeManagement: React.FC = () => {
         ]);
       } else if (editSection === "Utilities") {
         setUtilitiesData([
-          {
-            name: values.utility1Name,
-            meta: values.utility1Meta,
-            color: PRIMARY_COLOR,
-          },
-          {
-            name: values.utility2Name,
-            meta: values.utility2Meta,
-            color: PRIMARY_COLOR,
-          },
-          {
-            name: values.utility3Name,
-            meta: values.utility3Meta,
-            color: PRIMARY_COLOR,
-          },
-          {
-            name: values.utility4Name,
-            meta: values.utility4Meta,
-            color: PRIMARY_COLOR,
-          },
+          { name: values.utility1Name, meta: values.utility1Meta, color: PRIMARY_COLOR },
+          { name: values.utility2Name, meta: values.utility2Meta, color: PRIMARY_COLOR },
+          { name: values.utility3Name, meta: values.utility3Meta, color: PRIMARY_COLOR },
+          { name: values.utility4Name, meta: values.utility4Meta, color: PRIMARY_COLOR },
         ]);
       } else if (editSection === "Insurance") {
         setInsuranceData([
-          {
-            name: values.insuranceName,
-            meta: values.insuranceMeta,
-            color: PRIMARY_COLOR,
-          },
+          { name: values.insuranceName, meta: values.insuranceMeta, color: PRIMARY_COLOR },
         ]);
         setInsuranceDetails([
           { key: "Dwelling", value: values.dwelling },
@@ -451,31 +385,11 @@ const HomeManagement: React.FC = () => {
         ]);
       } else if (editSection === "Home Maintenance") {
         setMaintenanceData([
-          {
-            name: values.task1Name,
-            date: values.task1Date,
-            completed: maintenanceData[0]?.completed || false,
-          },
-          {
-            name: values.task2Name,
-            date: values.task2Date,
-            completed: maintenanceData[1]?.completed || false,
-          },
-          {
-            name: values.task3Name,
-            date: values.task3Date,
-            completed: maintenanceData[2]?.completed || false,
-          },
-          {
-            name: values.task4Name,
-            date: values.task4Date,
-            completed: maintenanceData[3]?.completed || false,
-          },
-          {
-            name: values.task5Name,
-            date: values.task5Date,
-            completed: maintenanceData[4]?.completed || false,
-          },
+          { name: values.task1Name, date: values.task1Date, completed: maintenanceData[0]?.completed || false },
+          { name: values.task2Name, date: values.task2Date, completed: maintenanceData[1]?.completed || false },
+          { name: values.task3Name, date: values.task3Date, completed: maintenanceData[2]?.completed || false },
+          { name: values.task4Name, date: values.task4Date, completed: maintenanceData[3]?.completed || false },
+          { name: values.task5Name, date: values.task5Date, completed: maintenanceData[4]?.completed || false },
         ]);
       } else {
         const newData: CustomSectionData[] = [];
@@ -487,7 +401,7 @@ const HomeManagement: React.FC = () => {
           }
         }
         setCustomSections(
-          customSections.map((section) =>
+          customSections.map(section =>
             section.title === editSection
               ? { ...section, title: values.title, data: newData }
               : section
@@ -527,7 +441,7 @@ const HomeManagement: React.FC = () => {
         } else if (section === "Notes") {
           setNotesData([]);
         } else {
-          setCustomSections(customSections.filter((s) => s.title !== section));
+          setCustomSections(customSections.filter(s => s.title !== section));
         }
         message.success(`${section} section deleted successfully!`);
       },
@@ -545,450 +459,155 @@ const HomeManagement: React.FC = () => {
     if (editSection === "Property Information") {
       return (
         <>
-          <Form.Item
-            name="address"
-            label="Address"
-            rules={[{ required: true, message: "Please enter address!" }]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter address"
-            />
+          <Form.Item name="address" label="Address" rules={[{ required: true, message: "Please enter address!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter address" />
           </Form.Item>
-          <Form.Item
-            name="purchaseDate"
-            label="Purchase Date"
-            rules={[{ required: true, message: "Please enter purchase date!" }]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter purchase date"
-            />
+          <Form.Item name="purchaseDate" label="Purchase Date" rules={[{ required: true, message: "Please enter purchase date!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter purchase date" />
           </Form.Item>
-          <Form.Item
-            name="purchasePrice"
-            label="Purchase Price"
-            rules={[
-              { required: true, message: "Please enter purchase price!" },
-            ]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter purchase price"
-            />
+          <Form.Item name="purchasePrice" label="Purchase Price" rules={[{ required: true, message: "Please enter purchase price!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter purchase price" />
           </Form.Item>
-          <Form.Item
-            name="squareFootage"
-            label="Square Footage"
-            rules={[
-              { required: true, message: "Please enter square footage!" },
-            ]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter square footage"
-            />
+          <Form.Item name="squareFootage" label="Square Footage" rules={[{ required: true, message: "Please enter square footage!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter square footage" />
           </Form.Item>
-          <Form.Item
-            name="lotSize"
-            label="Lot Size"
-            rules={[{ required: true, message: "Please enter lot size!" }]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter lot size"
-            />
+          <Form.Item name="lotSize" label="Lot Size" rules={[{ required: true, message: "Please enter lot size!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter lot size" />
           </Form.Item>
-          <Form.Item
-            name="propertyTaxId"
-            label="Property Tax ID"
-            rules={[
-              { required: true, message: "Please enter property tax ID!" },
-            ]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter property tax ID"
-            />
+          <Form.Item name="propertyTaxId" label="Property Tax ID" rules={[{ required: true, message: "Please enter property tax ID!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter property tax ID" />
           </Form.Item>
         </>
       );
     } else if (editSection === "Mortgage & Loans") {
       return (
         <>
-          <Form.Item
-            name="mortgage1Name"
-            label="Mortgage 1 Name"
-            rules={[{ required: true, message: "Please enter mortgage name!" }]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter mortgage name"
-            />
+          <Form.Item name="mortgage1Name" label="Mortgage 1 Name" rules={[{ required: true, message: "Please enter mortgage name!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter mortgage name" />
           </Form.Item>
-          <Form.Item
-            name="mortgage1Meta"
-            label="Mortgage 1 Meta"
-            rules={[{ required: true, message: "Please enter mortgage meta!" }]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter mortgage meta"
-            />
+          <Form.Item name="mortgage1Meta" label="Mortgage 1 Meta" rules={[{ required: true, message: "Please enter mortgage meta!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter mortgage meta" />
           </Form.Item>
-          <Form.Item
-            name="mortgage2Name"
-            label="Mortgage 2 Name"
-            rules={[{ required: true, message: "Please enter mortgage name!" }]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter mortgage name"
-            />
+          <Form.Item name="mortgage2Name" label="Mortgage 2 Name" rules={[{ required: true, message: "Please enter mortgage name!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter mortgage name" />
           </Form.Item>
-          <Form.Item
-            name="mortgage2Meta"
-            label="Mortgage 2 Meta"
-            rules={[{ required: true, message: "Please enter mortgage meta!" }]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter mortgage meta"
-            />
+          <Form.Item name="mortgage2Meta" label="Mortgage 2 Meta" rules={[{ required: true, message: "Please enter mortgage meta!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter mortgage meta" />
           </Form.Item>
-          <Form.Item
-            name="primaryMortgage"
-            label="Primary Mortgage Details"
-            rules={[{ required: true, message: "Please enter details!" }]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter primary mortgage details"
-            />
+          <Form.Item name="primaryMortgage" label="Primary Mortgage Details" rules={[{ required: true, message: "Please enter details!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter primary mortgage details" />
           </Form.Item>
-          <Form.Item
-            name="heloc"
-            label="HELOC Details"
-            rules={[{ required: true, message: "Please enter HELOC details!" }]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter HELOC details"
-            />
+          <Form.Item name="heloc" label="HELOC Details" rules={[{ required: true, message: "Please enter HELOC details!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter HELOC details" />
           </Form.Item>
-          <Form.Item
-            name="refinanceNotes"
-            label="Refinance Notes"
-            rules={[
-              { required: true, message: "Please enter refinance notes!" },
-            ]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter refinance notes"
-            />
+          <Form.Item name="refinanceNotes" label="Refinance Notes" rules={[{ required: true, message: "Please enter refinance notes!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter refinance notes" />
           </Form.Item>
         </>
       );
     } else if (editSection === "Utilities") {
       return (
         <>
-          <Form.Item
-            name="utility1Name"
-            label="Utility 1 Name"
-            rules={[{ required: true, message: "Please enter utility name!" }]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter utility name"
-            />
+          <Form.Item name="utility1Name" label="Utility 1 Name" rules={[{ required: true, message: "Please enter utility name!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter utility name" />
           </Form.Item>
-          <Form.Item
-            name="utility1Meta"
-            label="Utility 1 Meta"
-            rules={[{ required: true, message: "Please enter utility meta!" }]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter utility meta"
-            />
+          <Form.Item name="utility1Meta" label="Utility 1 Meta" rules={[{ required: true, message: "Please enter utility meta!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter utility meta" />
           </Form.Item>
-          <Form.Item
-            name="utility2Name"
-            label="Utility 2 Name"
-            rules={[{ required: true, message: "Please enter utility name!" }]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter utility name"
-            />
+          <Form.Item name="utility2Name" label="Utility 2 Name" rules={[{ required: true, message: "Please enter utility name!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter utility name" />
           </Form.Item>
-          <Form.Item
-            name="utility2Meta"
-            label="Utility 2 Meta"
-            rules={[{ required: true, message: "Please enter utility meta!" }]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter utility meta"
-            />
+          <Form.Item name="utility2Meta" label="Utility 2 Meta" rules={[{ required: true, message: "Please enter utility meta!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter utility meta" />
           </Form.Item>
-          <Form.Item
-            name="utility3Name"
-            label="Utility 3 Name"
-            rules={[{ required: true, message: "Please enter utility name!" }]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter utility name"
-            />
+          <Form.Item name="utility3Name" label="Utility 3 Name" rules={[{ required: true, message: "Please enter utility name!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter utility name" />
           </Form.Item>
-          <Form.Item
-            name="utility3Meta"
-            label="Utility 3 Meta"
-            rules={[{ required: true, message: "Please enter utility meta!" }]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter utility meta"
-            />
+          <Form.Item name="utility3Meta" label="Utility 3 Meta" rules={[{ required: true, message: "Please enter utility meta!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter utility meta" />
           </Form.Item>
-          <Form.Item
-            name="utility4Name"
-            label="Utility 4 Name"
-            rules={[{ required: true, message: "Please enter utility name!" }]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter utility name"
-            />
+          <Form.Item name="utility4Name" label="Utility 4 Name" rules={[{ required: true, message: "Please enter utility name!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter utility name" />
           </Form.Item>
-          <Form.Item
-            name="utility4Meta"
-            label="Utility 4 Meta"
-            rules={[{ required: true, message: "Please enter utility meta!" }]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter utility meta"
-            />
+          <Form.Item name="utility4Meta" label="Utility 4 Meta" rules={[{ required: true, message: "Please enter utility meta!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter utility meta" />
           </Form.Item>
         </>
       );
     } else if (editSection === "Insurance") {
       return (
         <>
-          <Form.Item
-            name="insuranceName"
-            label="Insurance Name"
-            rules={[
-              { required: true, message: "Please enter insurance name!" },
-            ]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter insurance name"
-            />
+          <Form.Item name="insuranceName" label="Insurance Name" rules={[{ required: true, message: "Please enter insurance name!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter insurance name" />
           </Form.Item>
-          <Form.Item
-            name="insuranceMeta"
-            label="Insurance Meta"
-            rules={[
-              { required: true, message: "Please enter insurance meta!" },
-            ]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter insurance meta"
-            />
+          <Form.Item name="insuranceMeta" label="Insurance Meta" rules={[{ required: true, message: "Please enter insurance meta!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter insurance meta" />
           </Form.Item>
-          <Form.Item
-            name="dwelling"
-            label="Dwelling"
-            rules={[
-              { required: true, message: "Please enter dwelling value!" },
-            ]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter dwelling value"
-            />
+          <Form.Item name="dwelling" label="Dwelling" rules={[{ required: true, message: "Please enter dwelling value!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter dwelling value" />
           </Form.Item>
-          <Form.Item
-            name="personalProperty"
-            label="Personal Property"
-            rules={[
-              {
-                required: true,
-                message: "Please enter personal property value!",
-              },
-            ]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter personal property value"
-            />
+          <Form.Item name="personalProperty" label="Personal Property" rules={[{ required: true, message: "Please enter personal property value!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter personal property value" />
           </Form.Item>
-          <Form.Item
-            name="liability"
-            label="Liability"
-            rules={[
-              { required: true, message: "Please enter liability value!" },
-            ]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter liability value"
-            />
+          <Form.Item name="liability" label="Liability" rules={[{ required: true, message: "Please enter liability value!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter liability value" />
           </Form.Item>
-          <Form.Item
-            name="deductible"
-            label="Deductible"
-            rules={[
-              { required: true, message: "Please enter deductible value!" },
-            ]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter deductible value"
-            />
+          <Form.Item name="deductible" label="Deductible" rules={[{ required: true, message: "Please enter deductible value!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter deductible value" />
           </Form.Item>
         </>
       );
     } else if (editSection === "Home Maintenance") {
       return (
         <>
-          <Form.Item
-            name="task1Name"
-            label="Task 1 Name"
-            rules={[{ required: true, message: "Please enter task name!" }]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter task name"
-            />
+          <Form.Item name="task1Name" label="Task 1 Name" rules={[{ required: true, message: "Please enter task name!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter task name" />
           </Form.Item>
-          <Form.Item
-            name="task1Date"
-            label="Task 1 Date"
-            rules={[{ required: true, message: "Please enter task date!" }]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter task date"
-            />
+          <Form.Item name="task1Date" label="Task 1 Date" rules={[{ required: true, message: "Please enter task date!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter task date" />
           </Form.Item>
-          <Form.Item
-            name="task2Name"
-            label="Task 2 Name"
-            rules={[{ required: true, message: "Please enter task name!" }]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter task name"
-            />
+          <Form.Item name="task2Name" label="Task 2 Name" rules={[{ required: true, message: "Please enter task name!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter task name" />
           </Form.Item>
-          <Form.Item
-            name="task2Date"
-            label="Task 2 Date"
-            rules={[{ required: true, message: "Please enter task date!" }]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter task date"
-            />
+          <Form.Item name="task2Date" label="Task 2 Date" rules={[{ required: true, message: "Please enter task date!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter task date" />
           </Form.Item>
-          <Form.Item
-            name="task3Name"
-            label="Task 3 Name"
-            rules={[{ required: true, message: "Please enter task name!" }]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter task name"
-            />
+          <Form.Item name="task3Name" label="Task 3 Name" rules={[{ required: true, message: "Please enter task name!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter task name" />
           </Form.Item>
-          <Form.Item
-            name="task3Date"
-            label="Task 3 Date"
-            rules={[{ required: true, message: "Please enter task date!" }]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter task date"
-            />
+          <Form.Item name="task3Date" label="Task 3 Date" rules={[{ required: true, message: "Please enter task date!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter task date" />
           </Form.Item>
-          <Form.Item
-            name="task4Name"
-            label="Task 4 Name"
-            rules={[{ required: true, message: "Please enter task name!" }]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter task name"
-            />
+          <Form.Item name="task4Name" label="Task 4 Name" rules={[{ required: true, message: "Please enter task name!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter task name" />
           </Form.Item>
-          <Form.Item
-            name="task4Date"
-            label="Task 4 Date"
-            rules={[{ required: true, message: "Please enter task date!" }]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter task date"
-            />
+          <Form.Item name="task4Date" label="Task 4 Date" rules={[{ required: true, message: "Please enter task date!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter task date" />
           </Form.Item>
-          <Form.Item
-            name="task5Name"
-            label="Task 5 Name"
-            rules={[{ required: true, message: "Please enter task name!" }]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter task name"
-            />
+          <Form.Item name="task5Name" label="Task 5 Name" rules={[{ required: true, message: "Please enter task name!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter task name" />
           </Form.Item>
-          <Form.Item
-            name="task5Date"
-            label="Task 5 Date"
-            rules={[{ required: true, message: "Please enter task date!" }]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter task date"
-            />
+          <Form.Item name="task5Date" label="Task 5 Date" rules={[{ required: true, message: "Please enter task date!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter task date" />
           </Form.Item>
         </>
       );
     } else {
       return (
         <>
-          <Form.Item
-            name="title"
-            label="Section Title"
-            rules={[{ required: true, message: "Please enter section title!" }]}
-          >
-            <AntInput
-              style={{ padding: "5px", borderRadius: "4px" }}
-              placeholder="Enter section title"
-            />
+          <Form.Item name="title" label="Section Title" rules={[{ required: true, message: "Please enter section title!" }]}>
+            <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter section title" />
           </Form.Item>
           {Array.from({ length: 10 }).map((_, index) => (
             <Row key={index} style={{ marginBottom: "16px" }}>
               <Col span={12} style={{ paddingRight: "8px" }}>
                 <Form.Item name={`key${index}`} label={`Key ${index + 1}`}>
-                  <AntInput
-                    style={{ padding: "5px", borderRadius: "4px" }}
-                    placeholder="Enter key"
-                  />
+                  <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter key" />
                 </Form.Item>
               </Col>
               <Col span={12} style={{ paddingLeft: "8px" }}>
                 <Form.Item name={`value${index}`} label={`Value ${index + 1}`}>
-                  <AntInput
-                    style={{ padding: "5px", borderRadius: "4px" }}
-                    placeholder="Enter value"
-                  />
+                  <AntInput style={{ padding: "5px", borderRadius: "4px" }} placeholder="Enter value" />
                 </Form.Item>
               </Col>
             </Row>
@@ -1005,8 +624,7 @@ const HomeManagement: React.FC = () => {
         <Card
           title={
             <span>
-              <span style={{ marginRight: "8px" }}>🏠</span> Property
-              Information
+              <span style={{ marginRight: "8px" }}>🏠</span> Property Information
             </span>
           }
           extra={
@@ -1014,20 +632,14 @@ const HomeManagement: React.FC = () => {
               <Button
                 type="default"
                 onClick={() => handleEdit("Property Information", propertyData)}
-                style={{
-                  borderColor: "#d9d9d9",
-                  backgroundColor: "transparent",
-                }}
+                style={{ borderColor: "#d9d9d9", backgroundColor: "transparent" }}
               >
                 <EditOutlined />
               </Button>
               <Button
                 type="default"
                 onClick={() => handleDelete("Property Information")}
-                style={{
-                  borderColor: "#d9d9d9",
-                  backgroundColor: "transparent",
-                }}
+                style={{ borderColor: "#d9d9d9", backgroundColor: "transparent" }}
               >
                 <DeleteOutlined />
               </Button>
@@ -1062,20 +674,14 @@ const HomeManagement: React.FC = () => {
               <Button
                 type="default"
                 onClick={() => handleEdit("Mortgage & Loans", mortgageDetails)}
-                style={{
-                  borderColor: "#d9d9d9",
-                  backgroundColor: "transparent",
-                }}
+                style={{ borderColor: "#d9d9d9", backgroundColor: "transparent" }}
               >
                 <EditOutlined />
               </Button>
               <Button
                 type="default"
                 onClick={() => handleDelete("Mortgage & Loans")}
-                style={{
-                  borderColor: "#d9d9d9",
-                  backgroundColor: "transparent",
-                }}
+                style={{ borderColor: "#d9d9d9", backgroundColor: "transparent" }}
               >
                 <DeleteOutlined />
               </Button>
@@ -1110,19 +716,8 @@ const HomeManagement: React.FC = () => {
                 style={{ borderBottom: "1px solid #f0f0f0", padding: "8px 0" }}
               >
                 <List.Item.Meta
-                  avatar={
-                    <Avatar
-                      style={{
-                        backgroundColor: item.color,
-                        borderRadius: "50%",
-                      }}
-                    >
-                      {item.name[0]}
-                    </Avatar>
-                  }
-                  title={
-                    <Text style={{ fontWeight: "bold" }}>{item.name}</Text>
-                  }
+                  avatar={<Avatar style={{ backgroundColor: item.color, borderRadius: "50%" }}>{item.name[0]}</Avatar>}
+                  title={<Text style={{ fontWeight: "bold" }}>{item.name}</Text>}
                   description={item.meta}
                 />
               </List.Item>
@@ -1151,20 +746,14 @@ const HomeManagement: React.FC = () => {
               <Button
                 type="default"
                 onClick={() => handleEdit("Utilities", utilitiesData)}
-                style={{
-                  borderColor: "#d9d9d9",
-                  backgroundColor: "transparent",
-                }}
+                style={{ borderColor: "#d9d9d9", backgroundColor: "transparent" }}
               >
                 <EditOutlined />
               </Button>
               <Button
                 type="default"
                 onClick={() => handleDelete("Utilities")}
-                style={{
-                  borderColor: "#d9d9d9",
-                  backgroundColor: "transparent",
-                }}
+                style={{ borderColor: "#d9d9d9", backgroundColor: "transparent" }}
               >
                 <DeleteOutlined />
               </Button>
@@ -1199,19 +788,8 @@ const HomeManagement: React.FC = () => {
                 style={{ borderBottom: "1px solid #f0f0f0", padding: "8px 0" }}
               >
                 <List.Item.Meta
-                  avatar={
-                    <Avatar
-                      style={{
-                        backgroundColor: item.color,
-                        borderRadius: "50%",
-                      }}
-                    >
-                      {item.name[0]}
-                    </Avatar>
-                  }
-                  title={
-                    <Text style={{ fontWeight: "bold" }}>{item.name}</Text>
-                  }
+                  avatar={<Avatar style={{ backgroundColor: item.color, borderRadius: "50%" }}>{item.name[0]}</Avatar>}
+                  title={<Text style={{ fontWeight: "bold" }}>{item.name}</Text>}
                   description={item.meta}
                 />
               </List.Item>
@@ -1220,35 +798,22 @@ const HomeManagement: React.FC = () => {
         </Card>
         <Card
           title={
-            <Space
-              style={{
-                width: "100%",
-                display: "flex",
-                justifyContent: "space-between",
-              }}
-            >
+            <Space style={{ width: "100%", display: "flex", justifyContent: "space-between" }}>
               <span>
-                <span style={{ marginRight: "8px" }}>📄</span> Important
-                Documents
+                <span style={{ marginRight: "8px" }}>📄</span> Important Documents
               </span>
               <Space>
                 <Button
                   type="default"
                   onClick={showModal}
-                  style={{
-                    borderColor: "#d9d9d9",
-                    backgroundColor: "transparent",
-                  }}
+                  style={{ borderColor: "#d9d9d9", backgroundColor: "transparent" }}
                 >
                   Upload Document
                 </Button>
                 <Button
                   type="default"
                   onClick={() => handleDelete("Important Documents")}
-                  style={{
-                    borderColor: "#d9d9d9",
-                    backgroundColor: "transparent",
-                  }}
+                  style={{ borderColor: "#d9d9d9", backgroundColor: "transparent" }}
                 >
                   <DeleteOutlined />
                 </Button>
@@ -1265,20 +830,9 @@ const HomeManagement: React.FC = () => {
             itemLayout="horizontal"
             dataSource={documentsData}
             renderItem={(item) => (
-              <List.Item
-                style={{ padding: "8px 0", borderBottom: "1px solid #f0f0f0" }}
-              >
+              <List.Item style={{ padding: "8px 0", borderBottom: "1px solid #f0f0f0" }}>
                 <List.Item.Meta
-                  avatar={
-                    <Avatar
-                      style={{
-                        backgroundColor: item.color,
-                        borderRadius: "50%",
-                      }}
-                    >
-                      {item.type[0]}
-                    </Avatar>
-                  }
+                  avatar={<Avatar style={{ backgroundColor: item.color, borderRadius: "50%" }}>{item.type[0]}</Avatar>}
                   title={
                     <Text
                       style={{
@@ -1302,13 +856,7 @@ const HomeManagement: React.FC = () => {
       <Col span={12} style={{ padding: "0 12px" }}>
         <Card
           title={
-            <Space
-              style={{
-                width: "100%",
-                display: "flex",
-                justifyContent: "space-between",
-              }}
-            >
+            <Space style={{ width: "100%", display: "flex", justifyContent: "space-between" }}>
               <span>
                 <span style={{ marginRight: "8px" }}>🔧</span> Home Maintenance
               </span>
@@ -1316,20 +864,14 @@ const HomeManagement: React.FC = () => {
                 <Button
                   type="default"
                   onClick={showMaintenanceModal}
-                  style={{
-                    borderColor: "#d9d9d9",
-                    backgroundColor: "transparent",
-                  }}
+                  style={{ borderColor: "#d9d9d9", backgroundColor: "transparent" }}
                 >
                   Add Task
                 </Button>
                 <Button
                   type="default"
                   onClick={() => handleDelete("Home Maintenance")}
-                  style={{
-                    borderColor: "#d9d9d9",
-                    backgroundColor: "transparent",
-                  }}
+                  style={{ borderColor: "#d9d9d9", backgroundColor: "transparent" }}
                 >
                   <DeleteOutlined />
                 </Button>
@@ -1347,27 +889,16 @@ const HomeManagement: React.FC = () => {
             itemLayout="horizontal"
             dataSource={maintenanceData}
             renderItem={(item, index) => (
-              <List.Item
-                style={{ padding: "8px 0", borderBottom: "1px solid #f0f0f0" }}
-              >
+              <List.Item style={{ padding: "8px 0", borderBottom: "1px solid #f0f0f0" }}>
                 <List.Item.Meta
-                  avatar={
-                    <Checkbox
-                      checked={item.completed}
-                      onChange={() => handleCheckboxChange(index)}
-                    />
-                  }
+                  avatar={<Checkbox checked={item.completed} onChange={() => handleCheckboxChange(index)} />}
                   title={
-                    <Text
-                      style={{ color: item.completed ? "#8c8c8c" : "#000" }}
-                    >
+                    <Text style={{ color: item.completed ? "#8c8c8c" : "#000" }}>
                       {item.name}
                     </Text>
                   }
                   description={
-                    <Text
-                      style={{ color: item.completed ? "#8c8c8c" : "#000" }}
-                    >
+                    <Text style={{ color: item.completed ? "#8c8c8c" : "#000" }}>
                       {item.date}
                     </Text>
                   }
@@ -1379,7 +910,7 @@ const HomeManagement: React.FC = () => {
         <Card
           title={
             <span>
-              <span style={{ marginRight: "8px" }}>🛡</span> Insurance
+              <span style={{ marginRight: "8px" }}>🛡️</span> Insurance
             </span>
           }
           extra={
@@ -1387,20 +918,14 @@ const HomeManagement: React.FC = () => {
               <Button
                 type="default"
                 onClick={() => handleEdit("Insurance", insuranceDetails)}
-                style={{
-                  borderColor: "#d9d9d9",
-                  backgroundColor: "transparent",
-                }}
+                style={{ borderColor: "#d9d9d9", backgroundColor: "transparent" }}
               >
                 <EditOutlined />
               </Button>
               <Button
                 type="default"
                 onClick={() => handleDelete("Insurance")}
-                style={{
-                  borderColor: "#d9d9d9",
-                  backgroundColor: "transparent",
-                }}
+                style={{ borderColor: "#d9d9d9", backgroundColor: "transparent" }}
               >
                 <DeleteOutlined />
               </Button>
@@ -1435,19 +960,8 @@ const HomeManagement: React.FC = () => {
                 style={{ padding: "8px 0", borderBottom: "1px solid #f0f0f0" }}
               >
                 <List.Item.Meta
-                  avatar={
-                    <Avatar
-                      style={{
-                        backgroundColor: item.color,
-                        borderRadius: "50%",
-                      }}
-                    >
-                      {item.name[0]}
-                    </Avatar>
-                  }
-                  title={
-                    <Text style={{ fontWeight: "bold" }}>{item.name}</Text>
-                  }
+                  avatar={<Avatar style={{ backgroundColor: item.color, borderRadius: "50%" }}>{item.name[0]}</Avatar>}
+                  title={<Text style={{ fontWeight: "bold" }}>{item.name}</Text>}
                   description={item.meta}
                 />
               </List.Item>
@@ -1467,13 +981,7 @@ const HomeManagement: React.FC = () => {
         </Card>
         <Card
           title={
-            <Space
-              style={{
-                width: "100%",
-                display: "flex",
-                justifyContent: "space-between",
-              }}
-            >
+            <Space style={{ width: "100%", display: "flex", justifyContent: "space-between" }}>
               <span>
                 <span style={{ marginRight: "8px" }}>📝</span> Notes
               </span>
@@ -1481,20 +989,14 @@ const HomeManagement: React.FC = () => {
                 <Button
                   type="default"
                   onClick={showNoteModal}
-                  style={{
-                    borderColor: "#d9d9d9",
-                    backgroundColor: "transparent",
-                  }}
+                  style={{ borderColor: "#d9d9d9", backgroundColor: "transparent" }}
                 >
                   Add Note
                 </Button>
                 <Button
                   type="default"
                   onClick={() => handleDelete("Notes")}
-                  style={{
-                    borderColor: "#d9d9d9",
-                    backgroundColor: "transparent",
-                  }}
+                  style={{ borderColor: "#d9d9d9", backgroundColor: "transparent" }}
                 >
                   <DeleteOutlined />
                 </Button>
@@ -1522,9 +1024,7 @@ const HomeManagement: React.FC = () => {
               >
                 <List.Item.Meta
                   title={<Text>{item.content}</Text>}
-                  description={
-                    <Text style={{ color: "#8c8c8c" }}>{item.date}</Text>
-                  }
+                  description={<Text style={{ color: "#8c8c8c" }}>{item.date}</Text>}
                 />
               </List.Item>
             )}
@@ -1534,13 +1034,7 @@ const HomeManagement: React.FC = () => {
           <Card
             key={index}
             title={
-              <Space
-                style={{
-                  width: "100%",
-                  display: "flex",
-                  justifyContent: "space-between",
-                }}
-              >
+              <Space style={{ width: "100%", display: "flex", justifyContent: "space-between" }}>
                 <span>
                   <span style={{ marginRight: "8px" }}>📌</span> {section.title}
                 </span>
@@ -1548,20 +1042,14 @@ const HomeManagement: React.FC = () => {
                   <Button
                     type="default"
                     onClick={() => handleEdit(section.title, section.data)}
-                    style={{
-                      borderColor: "#d9d9d9",
-                      backgroundColor: "transparent",
-                    }}
+                    style={{ borderColor: "#d9d9d9", backgroundColor: "transparent" }}
                   >
                     <EditOutlined />
                   </Button>
                   <Button
                     type="default"
                     onClick={() => handleDelete(section.title)}
-                    style={{
-                      borderColor: "#d9d9d9",
-                      backgroundColor: "transparent",
-                    }}
+                    style={{ borderColor: "#d9d9d9", backgroundColor: "transparent" }}
                   >
                     <DeleteOutlined />
                   </Button>
@@ -1587,9 +1075,7 @@ const HomeManagement: React.FC = () => {
                 style={{ border: "1px solid #d9d9d9", borderRadius: "4px" }}
               />
             ) : (
-              <Text style={{ color: "#8c8c8c" }}>
-                No data available for this section.
-              </Text>
+              <Text style={{ color: "#8c8c8c" }}>No data available for this section.</Text>
             )}
           </Card>
         ))}
@@ -1620,13 +1106,7 @@ const HomeManagement: React.FC = () => {
             >
               <span style={{ fontSize: "24px", color: PRIMARY_COLOR }}>+</span>
             </div>
-            <Text
-              style={{
-                fontWeight: "bold",
-                display: "block",
-                marginBottom: "4px",
-              }}
-            >
+            <Text style={{ fontWeight: "bold", display: "block", marginBottom: "4px" }}>
               Add a new section
             </Text>
             <Text style={{ color: "#8c8c8c" }}>
@@ -1668,9 +1148,7 @@ const HomeManagement: React.FC = () => {
               ...maintenanceData.map((task) => ({
                 category: "Maintenance",
                 name: task.name,
-                details: `${task.date} • ${
-                  task.completed ? "Completed" : "Pending"
-                }`,
+                details: `${task.date} • ${task.completed ? "Completed" : "Pending"}`,
               })),
               ...notesData.map((note) => ({
                 category: "Notes",
@@ -1715,40 +1193,36 @@ const HomeManagement: React.FC = () => {
   );
 
   const renderCalendarView = () => {
-    const dateCellRender = (value: Dayjs) => {
-      const formattedDate = value.format("MMM D, YYYY");
-      const tasks = maintenanceData.filter(
-        (task) => task.date === formattedDate
-      );
-      if (tasks.length > 0) {
-        return (
-          <div style={{ position: "relative", textAlign: "center" }}>
-            <Badge
-              count={tasks.length}
-              style={{
-                backgroundColor: PRIMARY_COLOR,
-                color: "#fff",
-                borderRadius: "50%",
-                position: "absolute",
-                top: "-5px",
-                right: "-5px",
-                fontSize: "10px",
-                padding: "2px 5px",
-              }}
-            />
-            <div
-              style={{
-                color: tasks.some((task) => !task.completed)
-                  ? PRIMARY_COLOR
-                  : "#8c8c8c",
-              }}
-            >
-              {value.date()}
+    // Use Dayjs for Ant Design Calendar
+    const cellRender = (current: Dayjs, info: { type: string }) => {
+      if (info.type === "date") {
+        const formattedDate = current.format("MMM D, YYYY");
+        const tasks = maintenanceData.filter((task) => task.date === formattedDate);
+        if (tasks.length > 0) {
+          return (
+            <div style={{ position: "relative", textAlign: "center" }}>
+              <Badge
+                count={tasks.length}
+                style={{
+                  backgroundColor: PRIMARY_COLOR,
+                  color: "#fff",
+                  borderRadius: "50%",
+                  position: "absolute",
+                  top: "-5px",
+                  right: "-5px",
+                  fontSize: "10px",
+                  padding: "2px 5px",
+                }}
+              />
+              <div style={{ color: tasks.some((task) => !task.completed) ? PRIMARY_COLOR : "#8c8c8c" }}>
+                {current.date()}
+              </div>
             </div>
-          </div>
-        );
+          );
+        }
+        return <span>{current.date()}</span>;
       }
-      return <span>{value.date()}</span>;
+      return null;
     };
 
     return (
@@ -1757,8 +1231,7 @@ const HomeManagement: React.FC = () => {
           <Card
             title={
               <span>
-                <span style={{ marginRight: "8px" }}>📅</span> Maintenance
-                Schedule
+                <span style={{ marginRight: "8px" }}>📅</span> Maintenance Schedule
               </span>
             }
             style={{
@@ -1769,43 +1242,24 @@ const HomeManagement: React.FC = () => {
           >
             <Calendar
               fullscreen={false}
-              dateCellRender={dateCellRender}
-              onSelect={(date: Dayjs) => {
+              cellRender={cellRender}
+              onSelect={(date) => {
                 const formattedDate = date.format("MMM D, YYYY");
-                const tasks = maintenanceData.filter(
-                  (task) => task.date === formattedDate
-                );
+                const tasks = maintenanceData.filter((task) => task.date === formattedDate);
                 if (tasks.length) {
-                  message.info(
-                    `Tasks on ${formattedDate}: ${tasks
-                      .map((t) => t.name)
-                      .join(", ")}`
-                  );
+                  message.info(`Tasks on ${formattedDate}: ${tasks.map((t) => t.name).join(", ")}`);
                 } else {
                   message.info(`No tasks scheduled for ${formattedDate}`);
                 }
               }}
-              style={{
-                border: "1px solid #d9d9d9",
-                borderRadius: "4px",
-                padding: "8px",
-              }}
+              style={{ border: "1px solid #d9d9d9", borderRadius: "4px", padding: "8px" }}
             />
             <List
-              header={
-                <Text style={{ fontWeight: "bold" }}>Upcoming Tasks</Text>
-              }
+              header={<Text style={{ fontWeight: "bold" }}>Upcoming Tasks</Text>}
               dataSource={maintenanceData.filter((task) => !task.completed)}
               renderItem={(item) => (
-                <List.Item
-                  style={{
-                    padding: "8px 0",
-                    borderBottom: "1px solid #f0f0f0",
-                  }}
-                >
-                  <Text>
-                    {item.name} - {item.date}
-                  </Text>
+                <List.Item style={{ padding: "8px 0", borderBottom: "1px solid #f0f0f0" }}>
+                  <Text>{item.name} - {item.date}</Text>
                 </List.Item>
               )}
               style={{ marginTop: "16px" }}
@@ -1830,20 +1284,14 @@ const HomeManagement: React.FC = () => {
               <Button
                 type="default"
                 onClick={() => handleEdit("Utilities", utilitiesData)}
-                style={{
-                  borderColor: "#d9d9d9",
-                  backgroundColor: "transparent",
-                }}
+                style={{ borderColor: "#d9d9d9", backgroundColor: "transparent" }}
               >
                 <EditOutlined />
               </Button>
               <Button
                 type="default"
                 onClick={() => handleDelete("Utilities")}
-                style={{
-                  borderColor: "#d9d9d9",
-                  backgroundColor: "transparent",
-                }}
+                style={{ borderColor: "#d9d9d9", backgroundColor: "transparent" }}
               >
                 <DeleteOutlined />
               </Button>
@@ -1878,19 +1326,8 @@ const HomeManagement: React.FC = () => {
                 style={{ padding: "12px 0", borderBottom: "1px solid #f0f0f0" }}
               >
                 <List.Item.Meta
-                  avatar={
-                    <Avatar
-                      style={{
-                        backgroundColor: item.color,
-                        borderRadius: "50%",
-                      }}
-                    >
-                      {item.name[0]}
-                    </Avatar>
-                  }
-                  title={
-                    <Text style={{ fontWeight: "bold" }}>{item.name}</Text>
-                  }
+                  avatar={<Avatar style={{ backgroundColor: item.color, borderRadius: "50%" }}>{item.name[0]}</Avatar>}
+                  title={<Text style={{ fontWeight: "bold" }}>{item.name}</Text>}
                   description={item.meta}
                 />
               </List.Item>
@@ -1901,35 +1338,22 @@ const HomeManagement: React.FC = () => {
       <Col span={12} style={{ padding: "0 12px" }}>
         <Card
           title={
-            <Space
-              style={{
-                width: "100%",
-                display: "flex",
-                justifyContent: "space-between",
-              }}
-            >
+            <Space style={{ width: "100%", display: "flex", justifyContent: "space-between" }}>
               <span>
-                <span style={{ marginRight: "8px" }}>🔧</span> Home Maintenance
-                Overview
+                <span style={{ marginRight: "8px" }}>🔧</span> Home Maintenance Overview
               </span>
               <Space>
                 <Button
                   type="default"
                   onClick={showMaintenanceModal}
-                  style={{
-                    borderColor: "#d9d9d9",
-                    backgroundColor: "transparent",
-                  }}
+                  style={{ borderColor: "#d9d9d9", backgroundColor: "transparent" }}
                 >
                   Add Task
                 </Button>
                 <Button
                   type="default"
                   onClick={() => handleDelete("Home Maintenance")}
-                  style={{
-                    borderColor: "#d9d9d9",
-                    backgroundColor: "transparent",
-                  }}
+                  style={{ borderColor: "#d9d9d9", backgroundColor: "transparent" }}
                 >
                   <DeleteOutlined />
                 </Button>
@@ -1949,26 +1373,14 @@ const HomeManagement: React.FC = () => {
             renderItem={(item, index) => (
               <List.Item style={{ padding: "8px 0", borderBottom: "none" }}>
                 <List.Item.Meta
-                  avatar={
-                    <Checkbox
-                      checked={item.completed}
-                      onChange={() => handleCheckboxChange(index)}
-                    />
-                  }
+                  avatar={<Checkbox checked={item.completed} onChange={() => handleCheckboxChange(index)} />}
                   title={
-                    <Text
-                      style={{ color: item.completed ? "#8c8c8c" : "#000" }}
-                    >
+                    <Text style={{ color: item.completed ? "#8c8c8c" : "#000" }}>
                       {item.name}
                     </Text>
                   }
                   description={
-                    <Text
-                      style={{
-                        color: item.completed ? "#8c8c8c" : "#000",
-                        fontSize: "12px",
-                      }}
-                    >
+                    <Text style={{ color: item.completed ? "#8c8c8c" : "#000", fontSize: "12px" }}>
                       {item.date}
                     </Text>
                   }
@@ -1982,13 +1394,7 @@ const HomeManagement: React.FC = () => {
   );
 
   return (
-    <Layout
-      style={{
-        minHeight: "100vh",
-        backgroundColor: "#f0f2f5",
-        margin: "80px 0px 0px 60px",
-      }}
-    >
+    <Layout style={{ minHeight: "100vh", backgroundColor: "#f0f2f5" }}>
       <Content style={{ padding: "24px" }}>
         <Title
           level={3}
@@ -2004,8 +1410,7 @@ const HomeManagement: React.FC = () => {
               style={{
                 fontWeight: activeTab === tab ? "bold" : "normal",
                 color: activeTab === tab ? PRIMARY_COLOR : "#000",
-                borderBottom:
-                  activeTab === tab ? `2px solid ${PRIMARY_COLOR}` : "none",
+                borderBottom: activeTab === tab ? `2px solid ${PRIMARY_COLOR}` : "none",
                 padding: "0 8px",
               }}
               onClick={() => handleTabClick(tab)}
@@ -2014,12 +1419,12 @@ const HomeManagement: React.FC = () => {
             </Button>
           ))}
         </Space>
-        <div>
+        <MainLayout>
           {activeTab === "Board" && renderBoardView()}
           {activeTab === "Table" && renderTableView()}
           {activeTab === "Calendar" && renderCalendarView()}
           {activeTab === "Activity" && renderActivityView()}
-        </div>
+        </MainLayout>
         <Modal
           title="Upload Document"
           open={isModalOpen}
@@ -2033,13 +1438,14 @@ const HomeManagement: React.FC = () => {
               label="Upload PDF Document"
               rules={[{ required: true, message: "Please upload a PDF file!" }]}
             >
-              <Upload accept=".pdf" beforeUpload={() => false} maxCount={1}>
+              <Upload
+                accept=".pdf"
+                beforeUpload={() => false}
+                maxCount={1}
+              >
                 <Button
                   icon={<UploadOutlined />}
-                  style={{
-                    borderColor: "#d9d9d9",
-                    backgroundColor: "transparent",
-                  }}
+                  style={{ borderColor: "#d9d9d9", backgroundColor: "transparent" }}
                 >
                   Select PDF File
                 </Button>
@@ -2090,17 +1496,11 @@ const HomeManagement: React.FC = () => {
             <Form.Item
               name="content"
               label="Note Content"
-              rules={[
-                { required: true, message: "Please enter note content!" },
-              ]}
+              rules={[{ required: true, message: "Please enter note content!" }]}
             >
               <AntInput.TextArea
                 id="note-content"
-                style={{
-                  padding: "5px",
-                  borderRadius: "4px",
-                  minHeight: "100px",
-                }}
+                style={{ padding: "5px", borderRadius: "4px", minHeight: "100px" }}
                 placeholder="Enter note content"
                 rows={4}
               />
@@ -2118,9 +1518,7 @@ const HomeManagement: React.FC = () => {
             <Form.Item
               name="title"
               label="Section Title"
-              rules={[
-                { required: true, message: "Please enter section title!" },
-              ]}
+              rules={[{ required: true, message: "Please enter section title!" }]}
             >
               <AntInput
                 id="section-title"
@@ -2139,10 +1537,7 @@ const HomeManagement: React.FC = () => {
                   </Form.Item>
                 </Col>
                 <Col span={12} style={{ paddingLeft: "8px" }}>
-                  <Form.Item
-                    name={`value${index}`}
-                    label={`Value ${index + 1}`}
-                  >
+                  <Form.Item name={`value${index}`} label={`Value ${index + 1}`}>
                     <AntInput
                       style={{ padding: "5px", borderRadius: "4px" }}
                       placeholder="Enter value"
