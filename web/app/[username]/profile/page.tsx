@@ -13,13 +13,13 @@ const ProfilePage: React.FC = () => {
   const [username, setUsername] = useState<string>("");
   const router = useRouter();
 
-  useEffect(() => {
-    const storedUsername = localStorage.getItem("username") || "";
-    setUsername(storedUsername);
-    if (localStorage.getItem("profile") === null) {
-      router.push(`/${storedUsername}/profile/setup`);
-    }
-  }, [router]);
+//   useEffect(() => {
+//     const storedUsername = localStorage.getItem("username") || "";
+//     setUsername(storedUsername);
+//     if (localStorage.getItem("profile") === null) {
+//       router.push(`/${storedUsername}/profile/setup`);
+//     }
+//   }, [router]);
 
   const handleUpload = (info: any) => {
     const file = info.file.originFileObj;
