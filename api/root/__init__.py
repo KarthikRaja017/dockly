@@ -14,7 +14,7 @@ api = Api()
 jwt = JWTManager()
 CLIENT_ID = "52380704783-9r3c0t19grths574i6pstsanmtt0dc39.apps.googleusercontent.com"
 CLIENT_SECRET = "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"
-REDIRECT_URI = "http://localhost:5000/auth/google/callback"
+REDIRECT_URI = "https://dockly.onrender.com/auth/google/callback"
 SCOPE = "https://www.googleapis.com/auth/calendar"
 
 
@@ -102,6 +102,6 @@ def create_app(test_config=None):
         })
 
         # Redirect back to frontend with tokens
-        return redirect(f"http://localhost:3001/{username}/calendar?{query}")
+        return redirect(f"https://dockly.vercel.app/{username}/calendar?{query}")
 
     return app
