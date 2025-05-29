@@ -37,7 +37,7 @@ const CalendarStepThree = (props: any) => {
 
   const handleConnect = async () => {
     if (selectedCalendars.includes("Google Calendar")) {
-      window.location.href = `http://localhost:5000/auth/google/initiate?username=${username}`;
+      window.location.href = `https://dockly.onrender.com/auth/google/initiate?username=${username}`;
     } else {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       setConnectedCalendars(selectedCalendars);
