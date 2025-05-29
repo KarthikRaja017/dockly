@@ -76,6 +76,9 @@ const Header = (props: any) => {
             Profile
           </div>
         ),
+        onClick: () => {
+          router.push(`/${userName}/profile`);
+        },
       },
       {
         key: "settings",
@@ -85,6 +88,9 @@ const Header = (props: any) => {
             Settings
           </div>
         ),
+        onClick: () => {
+          router.push(`/${userName}/settings`);
+        },
       },
       // {
       //   key: "adminSettings",

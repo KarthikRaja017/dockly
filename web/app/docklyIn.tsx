@@ -47,6 +47,9 @@ const DocklyLogin = () => {
           localStorage.setItem("storedOtp", payload?.otpStatus.otp || "");
           localStorage.setItem("email", payload?.email || "");
         }
+        if (payload?.token) {
+          localStorage.setItem("Dtoken", payload?.token || "");
+        }
         router.push(`/${username}${payload.redirectUrl}`);
       }
     } catch (error: any) {
