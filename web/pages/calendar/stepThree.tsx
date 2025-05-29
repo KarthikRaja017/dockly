@@ -2,10 +2,33 @@
 import { Button, Typography } from "antd";
 import addGoogle from "../../services/google";
 import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 const { Text } = Typography;
 const CalendarStepThree = (props: any) => {
   const { setStep, selectedCalendars, setConnectedCalendars } = props;
   const [username, setUsername] = useState<string | null>(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams) {
+      const access_token = searchParams.get("access_token");
+      const refresh_token = searchParams.get("refresh_token");
+      const uname = searchParams.get("username");
+      console.log("🚀 ~ useEffect ~ uname:", uname)
+
+      if (access_token && refresh_token && uname) {
+        localStorage.setItem("google_access_token", access_token);
+        localStorage.setItem("google_refresh_token", refresh_token);
+        localStorage.setItem("username", uname);
+
+        console.log("✅ Tokens saved to localStorage");
+        router.push(`/${uname}/calendar`);
+      } else {
+        console.error("❌ Missing tokens in URL");
+      }
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const username = localStorage.getItem("username") || null;
@@ -14,19 +37,7 @@ const CalendarStepThree = (props: any) => {
 
   const handleConnect = async () => {
     if (selectedCalendars.includes("Google Calendar")) {
-    // const authUrl =
-    //   `https://accounts.google.com/o/oauth2/v2/auth?` +
-    //   `client_id=${process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}&` +
-    //   `redirect_uri=${encodeURIComponent(
-    //     "http://localhost:3000/dashboard"
-    //   )}&` +
-    //   `response_type=code&` +
-    //   `scope=${encodeURIComponent(
-    //     "https://www.googleapis.com/auth/calendar.readonly"
-    //   )}&` +
-    //   `access_type=offline&prompt=consent`;
-    window.location.href = `http://localhost:5000/auth/google/initiate?username=${username}`;
-    // const response = await addGoogle({ username: username });
+      window.location.href = `http://localhost:5000/auth/google/initiate?username=${username}`;
     } else {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       setConnectedCalendars(selectedCalendars);

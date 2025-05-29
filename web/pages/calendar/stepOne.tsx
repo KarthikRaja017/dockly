@@ -22,12 +22,17 @@ const textColors: { [key: string]: string } = {
   "Outlook Calendar": "#FFFFFF",
   "Yahoo Calendar": "#FFFFFF",
 };
+interface CalendarStepOneProps {
+  setStep: (step: number) => void;
+  selectedCalendars: string[];
+  setSelectedCalendars: React.Dispatch<React.SetStateAction<string[]>>;
+}
 
-const CalendarStepOne = ({
+const CalendarStepOne: React.FC<CalendarStepOneProps> = ({
   setStep,
-  selectedCalendars,
+  selectedCalendars = [],
   setSelectedCalendars,
-}: any) => {
+}) => {
   const handleCalendarSelect = (provider: string) => {
     setSelectedCalendars((prev: any) =>
       prev.includes(provider)
@@ -51,10 +56,10 @@ const CalendarStepOne = ({
         style={{
           width: "100%",
           height: "75vh",
-            maxWidth: "960px",
+          maxWidth: "960px",
           borderRadius: "16px",
           boxShadow: "0 8px 24px rgba(0,0,0,0.05)",
-        //   padding: "32px",
+          //   padding: "32px",
           backgroundColor: "#ffffff",
         }}
       >
