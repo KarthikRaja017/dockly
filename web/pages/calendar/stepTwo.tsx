@@ -3,8 +3,12 @@ import { Typography, Button } from "antd";
 const { Title, Paragraph, Text } = Typography;
 
 const CalendarStepTwo = (props: any) => {
-  const { selectedCalendars, setSelectedOptions, selectedOptions, setStep } =
-    props;
+  const {
+  selectedCalendars = [],
+  setSelectedOptions = () => {},
+  selectedOptions = {},
+  setStep = () => {},
+} = props || {};
   const toggleOption = (option: keyof typeof selectedOptions) => {
     setSelectedOptions((prev: any) => ({
       ...prev,
@@ -38,7 +42,7 @@ const CalendarStepTwo = (props: any) => {
         <Paragraph
           style={{ marginBottom: "0px", fontSize: "16px", color: "#374151" }}
         >
-          Select import options for {selectedCalendars.join(", ")}.
+          Select import options for {(selectedCalendars || []).join(", ")}.
         </Paragraph>
         <Text
           style={{
