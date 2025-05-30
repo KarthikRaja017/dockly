@@ -3,6 +3,7 @@ import json
 from flask import make_response, redirect, request, session
 from flask_jwt_extended import create_access_token
 from flask_restful import Resource
+from root.config import API_URL
 
 import requests
 
@@ -10,7 +11,7 @@ from root.auth.auth import auth_required
 
 CLIENT_ID = "52380704783-9r3c0t19grths574i6pstsanmtt0dc39.apps.googleusercontent.com"
 CLIENT_SECRET = "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"
-REDIRECT_URI = "http://localhost:5000/server/api/auth/callback/google"
+REDIRECT_URI = f"{API_URL}/auth/callback/google"
 SCOPE = "email profile https://www.googleapis.com/auth/calendar"
 
 
