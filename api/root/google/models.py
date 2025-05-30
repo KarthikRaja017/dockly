@@ -3,7 +3,7 @@ import json
 from flask import make_response, redirect, request, session
 from flask_jwt_extended import create_access_token
 from flask_restful import Resource
-from root.config import API_URL
+from root.config import API_URL, WEB_URL
 
 import requests
 
@@ -107,6 +107,6 @@ class GoogleCallback(Resource):
         )
         username = session.get("username", user["name"])
         redirect_url = (
-            f"http://localhost:3000/{username}/oauth/callback?token={jwt_token}"
+            f"{WEB_URL}{username}/oauth/callback?token={jwt_token}"
         )
         return redirect(redirect_url)
