@@ -7,6 +7,8 @@ import moment, { Moment } from "moment";
 import CalendarStepOne from "../../../pages/calendar/stepOne";
 import CalendarStepTwo from "../../../pages/calendar/stepTwo";
 import CalendarStepThree from "../../../pages/calendar/stepThree";
+import CalendarStepFour from "../../../pages/calendar/stepFour";
+import CalendarDashboard from "../../../pages/calendar/calendarDashboard";
 
 interface ToDoItem {
   task: string;
@@ -45,13 +47,16 @@ const Dashboard: React.FC = () => {
   ]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [selectedDate, setSelectedDate] = useState<Moment>(moment());
+  const [user, setUser] = useState<any>(null);
 
-  const calendarProviders = [
-    "Google Calendar",
-    "Apple Calendar",
-    "Outlook Calendar",
-    "Yahoo Calendar",
-  ];
+  useEffect(() => {
+    const calendarUser = localStorage.getItem("user");
+    setUser(calendarUser);
+    if (calendarUser) {
+      setStep(4);
+      localStorage.setItem("calendar", "1");
+    }
+  }, [user]);
 
   const router = useRouter();
 
@@ -61,56 +66,6 @@ const Dashboard: React.FC = () => {
       router.push(`/${username}/calendar/setup`);
     }
   }, []);
-
-  const providerColors: { [key: string]: string } = {
-    "Google Calendar": "#F3F4F6",
-    "Apple Calendar": "#111827",
-    "Outlook Calendar": "#2563EB",
-    "Yahoo Calendar": "#8B5CF6",
-  };
-
-  const textColors: { [key: string]: string } = {
-    "Google Calendar": "#DC2626",
-    "Apple Calendar": "#FFFFFF",
-    "Outlook Calendar": "#FFFFFF",
-    "Yahoo Calendar": "#FFFFFF",
-  };
-
-  const handleCalendarSelect = (provider: string) => {
-    setSelectedCalendars((prev) =>
-      prev.includes(provider)
-        ? prev.filter((cal) => cal !== provider)
-        : [...prev, provider]
-    );
-  };
-
-  const toggleOption = (option: keyof typeof selectedOptions) => {
-    setSelectedOptions((prev) => ({
-      ...prev,
-      [option]: !prev[option],
-    }));
-  };
-
-  const handleConnect = async () => {
-    if (selectedCalendars.includes("Google Calendar")) {
-      const authUrl =
-        `https://accounts.google.com/o/oauth2/v2/auth?` +
-        `client_id=${process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}&` +
-        `redirect_uri=${encodeURIComponent(
-          "http://localhost:3000/dashboard"
-        )}&` +
-        `response_type=code&` +
-        `scope=${encodeURIComponent(
-          "https://www.googleapis.com/auth/calendar.readonly"
-        )}&` +
-        `access_type=offline&prompt=consent`;
-      window.location.href = authUrl;
-    } else {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setConnectedCalendars(selectedCalendars);
-      setStep(4);
-    }
-  };
 
   const fetchGoogleCalendarEvents = async (
     accessToken: string,
@@ -274,83 +229,6 @@ const Dashboard: React.FC = () => {
       </ul>
     );
   };
-
-  const renderStep4 = () => (
-    <div style={cardStyle}>
-      <div
-        style={{
-          minHeight: "300px",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          textAlign: "center",
-        }}
-      >
-        <div
-          style={{
-            width: "80px",
-            height: "80px",
-            backgroundColor: "#dcfce7",
-            borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            marginBottom: "16px",
-          }}
-        >
-          <svg
-            width="36"
-            height="36"
-            viewBox="0 0 24 24"
-            stroke="green"
-            fill="none"
-            strokeWidth="2"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M5 13l4 4L19 7"
-            />
-          </svg>
-        </div>
-        <h3
-          style={{
-            fontSize: "20px",
-            fontWeight: "bold",
-            color: "#111827",
-            marginBottom: "4px",
-          }}
-        >
-          Calendars Connected!
-        </h3>
-        <p style={{ fontSize: "14px", color: "#6b7280", marginBottom: "16px" }}>
-          Your calendars have been successfully connected to Dockly.
-        </p>
-        <div style={{ display: "flex", gap: "8px" }}>
-          {selectedCalendars.map((cal) => (
-            <div
-              key={cal}
-              style={{
-                width: "36px",
-                height: "36px",
-                borderRadius: "50%",
-                backgroundColor: providerColors[cal],
-                color: textColors[cal],
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontWeight: "bold",
-                fontSize: "14px",
-              }}
-            >
-              {cal[0]}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
 
   const renderDashboard = () => (
     <div>
@@ -886,8 +764,8 @@ const Dashboard: React.FC = () => {
           selectedCalendars={selectedCalendars}
         />
       )}
-      {step === 4 && renderStep4()}
-      {step === 5 && renderDashboard()}
+      {step === 4 && <CalendarStepFour selectedCalendars={selectedCalendars} />}
+      {step === 5 && <CalendarDashboard />}
     </div>
   );
 };

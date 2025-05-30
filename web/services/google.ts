@@ -1,5 +1,7 @@
 import { api } from "./apiConfig";
 
-export default async function addGoogle(params: any) {
-  return api.post("/add-googleAccount", params);
+export default async function addGoogleCalendar(params: any) {
+  return api.get("/add-googleCalendar", {
+    params,
+  });
 }

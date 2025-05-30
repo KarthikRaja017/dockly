@@ -9,14 +9,14 @@ const calendarProviders = [
   "Yahoo Calendar",
 ];
 
-const providerColors: { [key: string]: string } = {
+export const providerColors: { [key: string]: string } = {
   "Google Calendar": "#F3F4F6",
   "Apple Calendar": "#111827",
   "Outlook Calendar": "#2563EB",
   "Yahoo Calendar": "#8B5CF6",
 };
 
-const textColors: { [key: string]: string } = {
+export const textColors: { [key: string]: string } = {
   "Google Calendar": "#DC2626",
   "Apple Calendar": "#FFFFFF",
   "Outlook Calendar": "#FFFFFF",

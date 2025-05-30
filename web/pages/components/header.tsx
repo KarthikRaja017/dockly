@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Input,
   Avatar,
@@ -32,6 +32,7 @@ import {
 } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import { useCurrentUser } from "../../app/userContext";
+import { capitalizeEachWord } from "../../app/comman";
 
 const Header = (props: any) => {
   const { isHovered } = props;
@@ -40,8 +41,15 @@ const Header = (props: any) => {
   const [visible, setVisible] = useState(false);
   const [visibleG, setVisibleG] = useState(false);
   const [visibleB, setVisibleB] = useState(false);
+  const [image, setImage] = useState("");
   const currentUser = useCurrentUser();
   const userName = currentUser?.username || "Dockly User";
+
+  useEffect(() => {
+    const user = localStorage.getItem("user");
+    const userObj = user ? JSON.parse(user) : null;
+    setImage(userObj?.picture);
+  }, []);
 
   const actions = [
     {
@@ -216,11 +224,13 @@ const Header = (props: any) => {
                     Welcome Back!
                   </div>
                   <div style={{ color: "#007B8F", fontSize: "14px" }}>
-                    {userName}
+                    {capitalizeEachWord(userName ?? "")}
                   </div>
                 </div>
                 <Avatar
-                  src="https://randomuser.me/api/portraits/men/32.jpg"
+                  src={
+                    image || "https://randomuser.me/api/portraits/men/32.jpg"
+                  }
                   size={40}
                   style={{ cursor: "pointer", border: "2px solid #007B8F" }}
                 />

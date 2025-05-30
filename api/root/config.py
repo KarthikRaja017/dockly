@@ -22,6 +22,8 @@ G_SECRET_KEY = os.getenv("G_SECRET_KEY")
 AUTH_ENDPOINT = os.getenv('QUILTT_API_SECRET_KEY')
 
 API_SECRET_KEY='https://auth.quiltt.io/v1/users/sessions'
+# API_URL = " http://127.0.0.1:5000/server/api"
+API_URL = "https://dockly.onrender.com/server/api"
 
 
 # firebase_cred_path = os.getenv("FIREBASE_CRED_PATH")

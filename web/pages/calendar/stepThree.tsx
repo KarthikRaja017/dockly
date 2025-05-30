@@ -1,43 +1,24 @@
 "use client";
 import { Button, Typography } from "antd";
-import addGoogle from "../../services/google";
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import addGoogleCalendar from "../../services/google";
+import { API_URL } from "../../services/apiConfig";
 const { Text } = Typography;
 const CalendarStepThree = (props: any) => {
   const { setStep, selectedCalendars, setConnectedCalendars } = props;
   const [username, setUsername] = useState<string | null>(null);
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
-  useEffect(() => {
-    if (searchParams) {
-      const access_token = searchParams.get("access_token");
-      const refresh_token = searchParams.get("refresh_token");
-      const uname = searchParams.get("username");
-      console.log("🚀 ~ useEffect ~ uname:", uname)
-
-      if (access_token && refresh_token && uname) {
-        localStorage.setItem("google_access_token", access_token);
-        localStorage.setItem("google_refresh_token", refresh_token);
-        localStorage.setItem("username", uname);
-
-        console.log("✅ Tokens saved to localStorage");
-        router.push(`/${uname}/calendar`);
-      } else {
-        console.error("❌ Missing tokens in URL");
-      }
-    }
-  }, [searchParams]);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     const username = localStorage.getItem("username") || null;
+    const userId = localStorage.getItem("userId") || null;
     setUsername(username);
+    setUserId(userId);
   }, []);
 
   const handleConnect = async () => {
     if (selectedCalendars.includes("Google Calendar")) {
-      window.location.href = `https://dockly.onrender.com/auth/google/initiate?username=${username}`;
+      window.location.href = `${API_URL}/add-googleCalendar?username=${username}&userId=${userId}`;
     } else {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       setConnectedCalendars(selectedCalendars);

@@ -38,3 +38,26 @@ export const LowercaseInput = (props: any) => {
 
   return <Input {...restProps} value={value} onChange={handleChange} />;
 };
+
+export const getGreeting = () => {
+  const hour = new Date().getHours();
+
+  if (hour >= 4 && hour < 12) {
+    return "Good morning";
+  } else if (hour >= 12 && hour < 17) {
+    return "Good afternoon";
+  } else if (hour >= 17 && hour < 21) {
+    return "Good evening";
+  } else {
+    return "Good night";
+  }
+};
+
+export const capitalizeEachWord = (text: string): string => {
+  if (!text) return "";
+  return text
+    .toLowerCase()
+    .split(" ")
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
