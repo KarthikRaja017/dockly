@@ -107,6 +107,6 @@ class GoogleCallback(Resource):
         )
         username = session.get("username", user["name"])
         redirect_url = (
-            f"{WEB_URL}{username}/oauth/callback?token={jwt_token}"
+            f"{WEB_URL}/{username}/oauth/callback?token={jwt_token}"
         )
         return redirect(redirect_url)
