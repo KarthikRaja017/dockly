@@ -15,17 +15,7 @@
 
 
 # REDIRECT_URI = f"{API_URL}/auth/callback/google"
-# SCOPE = (
-#     "email profile "
-#     "https://www.googleapis.com/auth/calendar "
-#     "https://www.googleapis.com/auth/drive "
-#     "https://www.googleapis.com/auth/fitness.activity.read "
-#     "https://www.googleapis.com/auth/fitness.body.read "
-#     "https://www.googleapis.com/auth/fitness.location.read "
-#     "https://www.googleapis.com/auth/fitness.sleep.read "
-#     "https://www.googleapis.com/auth/userinfo.email "
-#     "https://www.googleapis.com/auth/userinfo.profile"
-# )
+
 # uri = "https://oauth2.googleapis.com/token"
 
 
