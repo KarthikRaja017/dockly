@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # from datetime import datetime, timedelta
 # import json
 # from flask import make_response, redirect, request, session
@@ -201,3 +202,5 @@
 
 #         redirect_url = f"{WEB_URL}/{username}/oauth/callback?token={jwtToken}"
 #         return redirect(redirect_url)
+=======
+>>>>>>> 42adda9 (modified dockly and added new db)
