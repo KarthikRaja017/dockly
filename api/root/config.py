@@ -10,6 +10,8 @@ load_dotenv()  # Load variables from .env file
 # Configs
 POSTGRES_URI = os.getenv("POSTGRES_URI")
 
+CLIENT_SECRET = os.getenv("CLIENT_SECRET")
+CLIENT_ID = os.getenv("CLIENT_ID")
 SMTP_SERVER = os.getenv("SMTP_SERVER")
 SMTP_PORT = int(os.getenv("SMTP_PORT"))
 EMAIL_SENDER = os.getenv("EMAIL_SENDER")
@@ -19,9 +21,9 @@ G_ACCESS_EXPIRES = timedelta(minutes=50000000)
 G_REFRESH_EXPIRES = timedelta(days=30)
 G_SECRET_KEY = os.getenv("G_SECRET_KEY")
 
-AUTH_ENDPOINT = os.getenv('QUILTT_API_SECRET_KEY')
+AUTH_ENDPOINT = os.getenv("QUILTT_API_SECRET_KEY")
 
-API_SECRET_KEY='https://auth.quiltt.io/v1/users/sessions'
+API_SECRET_KEY = "https://auth.quiltt.io/v1/users/sessions"
 API_URL = "http://localhost:5000/server/api"
 # API_URL = "https://dockly.onrender.com/server/api"
 WEB_URL = "http://localhost:3000"
