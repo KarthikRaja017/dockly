@@ -1,12 +1,10 @@
-<<<<<<< HEAD
-=======
 from datetime import datetime, timedelta
 import json
 from flask import make_response, redirect, request, session
 from flask_jwt_extended import create_access_token
 from flask_restful import Resource
 from root.db.dbHelper import DBHelper
-from root.config import API_URL, WEB_URL
+from root.config import API_URL, CLIENT_ID, CLIENT_SECRET, WEB_URL
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from urllib.parse import quote
@@ -15,10 +13,7 @@ import requests
 
 from root.auth.auth import auth_required
 
-# CLIENT_ID = "884758455202-mfdifmnc9pjvgim28q6esstajucur1hj.apps.googleusercontent.com" # for production
-CLIENT_ID = "9246231250-hfjuadbtoev4cbd8e912tdk8u1b6e28o.apps.googleusercontent.com"
-# CLIENT_SECRET = "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" # for production
-CLIENT_SECRET = "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"
+
 REDIRECT_URI = f"{API_URL}/auth/callback/google"
 SCOPE = (
     "email profile "
@@ -206,4 +201,3 @@ class GoogleCallback(Resource):
 
         redirect_url = f"{WEB_URL}/{username}/oauth/callback?token={jwtToken}"
         return redirect(redirect_url)
->>>>>>> deb0ba0 (modified dockly and added new db)
