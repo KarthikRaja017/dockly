@@ -3,24 +3,44 @@ import json
 from flask import make_response, redirect, request, session
 from flask_jwt_extended import create_access_token
 from flask_restful import Resource
+from root.db.dbHelper import DBHelper
 from root.config import API_URL, WEB_URL
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+from urllib.parse import quote
 
 import requests
 
 from root.auth.auth import auth_required
 
-CLIENT_ID = "52380704783-9r3c0t19grths574i6pstsanmtt0dc39.apps.googleusercontent.com"
-CLIENT_SECRET = "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"
+# CLIENT_ID = "884758455202-mfdifmnc9pjvgim28q6esstajucur1hj.apps.googleusercontent.com" # for production
+CLIENT_ID = "9246231250-hfjuadbtoev4cbd8e912tdk8u1b6e28o.apps.googleusercontent.com"
+# CLIENT_SECRET = "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" # for production
+CLIENT_SECRET = "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"
 REDIRECT_URI = f"{API_URL}/auth/callback/google"
-SCOPE = "email profile https://www.googleapis.com/auth/calendar"
+SCOPE = (
+    "email profile "
+    "https://www.googleapis.com/auth/calendar "
+    "https://www.googleapis.com/auth/drive "
+    "https://www.googleapis.com/auth/fitness.activity.read "
+    "https://www.googleapis.com/auth/fitness.body.read "
+    "https://www.googleapis.com/auth/fitness.location.read "
+    "https://www.googleapis.com/auth/fitness.sleep.read "
+    "https://www.googleapis.com/auth/userinfo.email "
+    "https://www.googleapis.com/auth/userinfo.profile"
+)
+uri = "https://oauth2.googleapis.com/token"
 
 
 class AddGoogleCalendar(Resource):
     def get(self):
         username = request.args.get("username")
-        uid = request.args.get("uid")
+        uid = request.args.get("userId")
         session["username"] = username
         session["uid"] = uid
+        stateData = json.dumps({"uid": uid, "username": username})
+        encoded_state = quote(stateData)
+
         auth_url = (
             "https://accounts.google.com/o/oauth2/v2/auth"
             f"?response_type=code"
@@ -29,9 +49,74 @@ class AddGoogleCalendar(Resource):
             f"&scope={SCOPE.replace(' ', '%20')}"
             f"&access_type=offline"
             f"&prompt=consent"
+            f"&state={encoded_state}"
         )
-       
+
         return make_response(redirect(auth_url))
+
+
+class GetGoogleCalendarEvents(Resource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        selectFields = ["access_token", "refresh_token", "email"]
+        allCreds = DBHelper.find(
+            "google_tokens", filters={"uid": uid}, select_fields=selectFields
+        )
+
+        if not allCreds or len(allCreds) == 0:
+            return {"error": "No connected Google accounts found."}, 404
+
+        merged_events = []
+
+        for credData in allCreds:
+            try:
+                creds = Credentials(
+                    token=credData["access_token"],
+                    refresh_token=credData["refresh_token"],
+                    token_uri=uri,
+                    client_id=CLIENT_ID,
+                    client_secret=CLIENT_SECRET,
+                    scopes=SCOPE.split(),
+                )
+
+                service = build("calendar", "v3", credentials=creds)
+
+                events_result = (
+                    service.events()
+                    .list(
+                        calendarId="primary",
+                        timeMin=datetime.utcnow().isoformat() + "Z",
+                        maxResults=10,
+                        singleEvents=True,
+                        orderBy="startTime",
+                    )
+                    .execute()
+                )
+
+                email = credData["email"]
+                events = events_result.get("items", [])
+
+                # Tag events with the email source
+                for event in events:
+                    event["source_email"] = email
+
+                merged_events.extend(events)
+
+            except Exception as e:
+                print(f"Error fetching events for {credData['email']}: {e}")
+                continue  # Skip this account and try others
+
+        # Sort all events by start time
+        merged_events.sort(key=lambda e: e.get("start", {}).get("dateTime", ""))
+
+        return {
+            "status": 1,
+            "message": "Calendar events merged from all connected Google accounts.",
+            "payload": {
+                "events": merged_events,
+                "connected_accounts": [c["email"] for c in allCreds],
+            },
+        }
 
 
 users = {}
@@ -41,12 +126,19 @@ tokens = {}
 class GoogleCallback(Resource):
     def get(self):
         code = request.args.get("code")
-        if not code:
-            return
+        state = request.args.get("state")
 
-        # Exchange code for tokens
-        token_url = "https://oauth2.googleapis.com/token"
-        token_data = {
+        if not code or not state:
+            return {"error": "Missing code"}, 400
+
+        if state:
+            stateData = json.loads(state)
+            uid = stateData.get("uid")
+            username = stateData.get("username")
+
+        # Step 1: Exchange code for tokens
+        tokenUrl = "https://oauth2.googleapis.com/token"
+        tokenData = {
             "code": code,
             "client_id": CLIENT_ID,
             "client_secret": CLIENT_SECRET,
@@ -54,50 +146,54 @@ class GoogleCallback(Resource):
             "grant_type": "authorization_code",
         }
 
-        token_response = requests.post(token_url, data=token_data)
+        tokenResponse = requests.post(tokenUrl, data=tokenData)
+        if tokenResponse.status_code != 200:
+            return {"error": "Token exchange failed"}, 400
 
-        if token_response.status_code != 200:
-            return
+        tokenJson = tokenResponse.json()
+        access_token = tokenJson.get("access_token")
+        refresh_token = tokenJson.get("refresh_token")
+        expires_in = tokenJson.get("expires_in", 3600)
 
-        token_json = token_response.json()
-        access_token = token_json.get("access_token")
-        refresh_token = token_json.get("refresh_token")
+        if not access_token or not refresh_token:
+            return {"error": "Invalid token data"}, 400
 
-        # Get user info from Google
-        user_info_response = requests.get(
+        # Step 2: Get user info from Google
+        userInfoResponse = requests.get(
             "https://www.googleapis.com/oauth2/v3/userinfo",
             headers={"Authorization": f"Bearer {access_token}"},
         )
+        if userInfoResponse.status_code != 200:
+            return {"error": "Failed to fetch user info"}, 400
 
-        if user_info_response.status_code != 200:
-            return
+        userInfo = userInfoResponse.json()
+        email = userInfo.get("email")
+        if not email:
+            return {"error": "Email not found"}, 400
 
-        user_info = user_info_response.json()
-
-        # Get or create user
-        email = user_info.get("email")
-        user = next((u for u in users.values() if u["email"] == email), None)
-
+        # Step 3: Get or create user
+        userId = session.get("uid") or email  # fallback if uid not in session
+        user = users.get(userId)
         if not user:
-            user_id = session.get("uid")
-            users[user_id] = {
-                "id": user_id,
+            users[userId] = {
+                "id": userId,
                 "email": email,
-                "name": user_info.get("name"),
-                "picture": user_info.get("picture"),
+                "name": userInfo.get("name"),
+                "picture": userInfo.get("picture"),
             }
-            user = users[user_id]
+            user = users[userId]
 
-        # Store Google tokens
-        tokens[user["id"]] = {
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            "expires_at": datetime.now()
-            + timedelta(seconds=token_json.get("expires_in", 3600)),
-        }
+        inserted_id = DBHelper.insert(
+            "google_tokens",
+            uid=uid,
+            email=email,
+            access_token=access_token,
+            refresh_token=refresh_token,
+            expires_at=(datetime.utcnow() + timedelta(seconds=expires_in)).isoformat(),
+        )
 
-        # Create JWT token
-        jwt_token = create_access_token(
+        # Step 5: Issue JWT for client
+        jwtToken = create_access_token(
             identity=user["id"],
             additional_claims={
                 "email": user["email"],
@@ -105,8 +201,6 @@ class GoogleCallback(Resource):
                 "picture": user["picture"],
             },
         )
-        username = session.get("username", user["name"])
-        redirect_url = (
-            f"{WEB_URL}/{username}/oauth/callback?token={jwt_token}"
-        )
+
+        redirect_url = f"{WEB_URL}/{username}/oauth/callback?token={jwtToken}"
         return redirect(redirect_url)

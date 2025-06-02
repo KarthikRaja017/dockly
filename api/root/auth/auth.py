@@ -23,25 +23,21 @@ def auth_required(amac=None, isOptional=False):
             verify_jwt_in_request(optional=isOptional)
 
             uid = get_jwt_identity()
+            print(f"uid: {uid}")
 
             if isOptional and not uid:
+                print(f"isOptional: {isOptional}")
                 return fn(*args, **kwargs, uid=None, user=None)
 
             user = getAuthUser(uid)
+            print(f"user: {user}")
 
-            # if not user or "id" not in user:
-            #     return {
-            #         "status": 0,
-            #         "message": "Invalid Access. Please login again.",
-            #         "payload": {"redirectUrl": "/user/login", "logout": True},
-            #     }, 403
-
-            # if amac and not validateAccess(uid, user, amac):
-            #     return {
-            #         "status": 0,
-            #         "message": "Unauthorized Access",
-            #         "payload": {"redirectUrl": "/"},
-            #     }, 401
+            if not user or "email" not in user:
+                return {
+                    "status": 0,
+                    "message": "Invalid Access. Please login again.",
+                    "payload": {"redirectUrl": "/user/login", "logout": True},
+                }, 403
 
             return fn(*args, **kwargs, uid=uid, user=user)
 
@@ -84,11 +80,11 @@ def getAuthUser(uid, fields=None):
         "users", filters={"uid": uid}, select_fields=selectFields
     )
 
-    session_data = DBHelper.find_one(
-        "user_sessions",
-        filters={"uid": uid},
-        select_fields=["ip_address", "session_id"],
-    )
+    # session_data = DBHelper.find_one(
+    #     "user_sessions",
+    #     filters={"uid": uid},
+    #     select_fields=["ip_address", "session_id"],
+    # )
     # print(f"session_data: {session_data}")
 
     if not user_data:
@@ -96,15 +92,16 @@ def getAuthUser(uid, fields=None):
 
     user_data = dict(user_data) if isinstance(user_data, RealDictRow) else user_data
 
-    if session_data is None:
-        session_data = {}
-    merged_data = {**user_data, **session_data}
+    # if session_data is None:
+    #     session_data = {}
+    # merged_data = {**user_data, **session_data}
 
-    return merged_data
+    return user_data
 
 
 def getAccessTokens(data):
     uid = data.get("uid")
+    print(f"uidcgfvkmld: {uid}")
     if not uid:
         raise ValueError("UID is required for token generation")
 

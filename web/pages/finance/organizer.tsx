@@ -30,19 +30,46 @@ const FinanceTabs = (props: any) => {
       label: "Overview",
       key: "1",
       children: (
-        <div style={{ display: "flex" }}>
-          {bankDetails && (
-            <>
-              <Overview bankDetails={bankDetails} />
-              <div
-                style={{ display: "flex", flexDirection: "column", gap: 10 }}
-              >
-                <UpcomingBills />
-                <SavingsGoals />
-              </div>
-            </>
-          )}
-        </div>
+        <>
+          <div style={{ display: "flex", gap: 10 }}>
+            {bankDetails && (
+              <>
+                <div>
+                  <Overview bankDetails={bankDetails} />
+                  <AccountsList
+                    accountDetails={bankDetails.connections[0].accounts}
+                  />
+                  <div style={{ marginTop: 10 }}>
+                    <MonthlyBudget />
+                  </div>
+                </div>
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 10 }}
+                >
+                  <UpcomingBills />
+                  <SavingsGoals />
+                  <RecentTransactions
+                    transactions={bankDetails.transactions.nodes}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+          {/* <div style={{ marginTop: 20 }}>
+            {bankDetails && (
+              <AccountsList
+                accountDetails={bankDetails.connections[0].accounts}
+              />
+            )}
+          </div>
+          <div style={{ marginTop: 20, display: "flex" }}>
+            {bankDetails && (
+              <RecentTransactions
+                transactions={bankDetails.transactions.nodes}
+              />
+            )}
+          </div> */}
+        </>
       ),
     },
     {

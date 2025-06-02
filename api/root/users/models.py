@@ -205,6 +205,11 @@ class SaveUserEmail(Resource):
             otp = generate_otp()
             otpResponse = send_otp_email(email, otp)
             # otpResponse = {"otp": otp, "email": email}
+            username = (
+                existingUser.get("username", "")
+                if existingUser
+                else inputData["username"]
+            )
             return {
                 "status": 1,
                 "message": "OTP sent successfully",
@@ -212,7 +217,7 @@ class SaveUserEmail(Resource):
                     "email": email,
                     "otpStatus": otpResponse,
                     "uid": uid,
-                    "username": existingUser.get("username", ""),
+                    "username": username,
                 },
             }
         else:
@@ -287,6 +292,7 @@ class OtpVerification(Resource):
     def post(self):
         inputData = request.get_json(silent=True)
         userId = inputData["userId"]
+        print(f"userId: {userId}")
         otp = inputData.get("otp")
         response = is_otp_valid(inputData["storedOtp"], otp)
         uid = DBHelper.update_one(
@@ -298,6 +304,7 @@ class OtpVerification(Resource):
         userInfo = {
             "uid": uid.get("uid"),
         }
+        print(f"userInfo: {userInfo}")
         token = getAccessTokens(userInfo)
         # handle_user_session(uid)
         response["payload"]["token"] = token["accessToken"]

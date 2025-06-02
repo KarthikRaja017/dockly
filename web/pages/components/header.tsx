@@ -43,12 +43,14 @@ const Header = (props: any) => {
   const [visibleB, setVisibleB] = useState(false);
   const [image, setImage] = useState("");
   const currentUser = useCurrentUser();
-  const userName = currentUser?.username || "Dockly User";
+  const [name, setName] = useState(null);
+  const userName = currentUser?.username;
 
   useEffect(() => {
     const user = localStorage.getItem("user");
     const userObj = user ? JSON.parse(user) : null;
     setImage(userObj?.picture);
+    setName(userObj?.name);
   }, []);
 
   const actions = [
@@ -205,7 +207,7 @@ const Header = (props: any) => {
               trigger={["click"]}
               placement="bottomRight"
               arrow
-              dropdownRender={(menu) => (
+              popupRender={(menu) => (
                 <div
                   style={{
                     minWidth: 200,
@@ -224,7 +226,11 @@ const Header = (props: any) => {
                     Welcome Back!
                   </div>
                   <div style={{ color: "#007B8F", fontSize: "14px" }}>
-                    {capitalizeEachWord(userName ?? "")}
+                    {name
+                      ? capitalizeEachWord(name)
+                      : userName
+                      ? capitalizeEachWord(userName)
+                      : "Dockly User"}
                   </div>
                 </div>
                 <Avatar

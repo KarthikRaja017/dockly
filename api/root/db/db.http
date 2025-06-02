@@ -6,3 +6,4 @@ POST {{devPath}}/create-tables
 Content-Type: application/json
 
 {}
+

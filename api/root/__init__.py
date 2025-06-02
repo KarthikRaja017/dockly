@@ -1,13 +1,10 @@
 from datetime import timedelta
 
-from flask import Flask, redirect, request, send_from_directory, session
+from flask import Flask
 from flask_jwt_extended import JWTManager
 from flask_restful import Api
 from flask_cors import CORS
-import urllib.parse
-from urllib.parse import urlencode
-import requests
-from root.config import G_SECRET_KEY
+from root.config import G_SECRET_KEY, WEB_URL
 from root.db.db import postgres
 
 api = Api()
@@ -16,10 +13,10 @@ jwt = JWTManager()
 
 def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
-    CORS(app)
+    app.secret_key = G_SECRET_KEY
+    CORS(app, supports_credentials=True, origins=[WEB_URL])
     postgres.init_app()
     jwt.init_app(app)
-    app.secret_key = G_SECRET_KEY
     #     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../web"))
 
     # # Launch the frontend
@@ -40,7 +37,7 @@ def create_app(test_config=None):
 
     app.register_blueprint(google_bp)
     app.permanent_session_lifetime = timedelta(minutes=60)
-    # initialize_firebase()
+    # initialize_firebase()     
     
 
     return app

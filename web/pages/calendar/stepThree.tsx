@@ -1,7 +1,6 @@
 "use client";
 import { Button, Typography } from "antd";
 import { useState, useEffect } from "react";
-import addGoogleCalendar from "../../services/google";
 import { API_URL } from "../../services/apiConfig";
 const { Text } = Typography;
 const CalendarStepThree = (props: any) => {

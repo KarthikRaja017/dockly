@@ -1,178 +1,344 @@
 "use client";
-
-import { Badge, Button, Calendar, Card, Progress } from "antd";
+import {
+  Avatar,
+  Badge,
+  Button,
+  Card,
+  Checkbox,
+  Modal,
+  Progress,
+  Spin,
+  Tag,
+  Typography,
+} from "antd";
 import { useEffect, useState } from "react";
-import { capitalizeEachWord, getGreeting } from "../../app/comman";
+import {
+  capitalizeEachWord,
+  cleanProfilePictureUrl,
+  getGreeting,
+} from "../../app/comman";
+import "react-big-calendar/lib/css/react-big-calendar.css";
+import { getGoogleCalendarEvents } from "../../services/google";
+import { useCurrentUser } from "../../app/userContext";
+import FullCalendar from "@fullcalendar/react";
+import dayGridPlugin from "@fullcalendar/daygrid";
+import timeGridPlugin from "@fullcalendar/timegrid";
+import interactionPlugin from "@fullcalendar/interaction";
+import listPlugin from "@fullcalendar/list";
+import { GoogleOutlined, UserOutlined } from "@ant-design/icons";
+import "animate.css";
+import dayjs from "dayjs";
 
-const CalendarDashboard = () => {
+const getEventColor = (eventDate: Date) => {
+  const now = new Date();
+  const eventTime = new Date(eventDate).getTime();
+
+  if (eventTime < now.getTime()) return "#ef4444";
+  if (eventDate.toDateString() === now.toDateString()) return "#22c55e";
+  return "#2563eb";
+};
+
+const { Title, Text } = Typography;
+const CalendarDashboard = (props: any) => {
+  const { handleConnectMore } = props;
   const [username, setUsername] = useState<string | null>(null);
+  const [user, setUser] = useState<{
+    name?: string;
+    picture?: string;
+    email?: string;
+  } | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [events, setEvents] = useState<any[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<string[]>([]);
+  const currentUser = useCurrentUser();
+  const currentDate = new Date();
+  const day = currentDate.getDate();
+  const weekday = currentDate.toLocaleString("default", { weekday: "long" });
+  const monthYear = currentDate.toLocaleString("default", {
+    month: "long",
+    year: "numeric",
+  });
 
   useEffect(() => {
     const user = localStorage.getItem("user");
     const userObj = user ? JSON.parse(user) : null;
     setUsername(userObj?.name);
+    setUser(userObj);
+    if (user) {
+      fetchEvents();
+    }
   }, []);
+
+  const fetchEvents = async () => {
+    try {
+      const response = await getGoogleCalendarEvents({
+        userId: currentUser?.userId,
+      });
+      const rawEvents = response.data.payload.events;
+
+      const parsedEvents = rawEvents
+        .filter((event: any) => event?.start && event?.end)
+        .map((event: any) => ({
+          id: event.id,
+          title: event.summary || "(No Title)",
+          start: new Date(event.start.dateTime || event.start.date),
+          end: new Date(event.end.dateTime || event.end.date),
+          allDay: !event.start.dateTime,
+          extendedProps: {
+            status: "confirmed",
+          },
+        }));
+
+      setEvents(parsedEvents);
+    } catch (err) {
+      console.error("Failed to fetch events", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const eventsToday = 5;
   const completedToday = 3;
   const percent = (completedToday / eventsToday) * 100;
+  const overviewData = [
+    {
+      label: "3 Personal Tasks",
+      percent: 30,
+      color: "#3b82f6", // blue
+    },
+    {
+      label: "2 Work Items",
+      percent: 50,
+      color: "#22c55e", // green
+    },
+    {
+      label: "4 Family Activities",
+      percent: 25,
+      color: "#60a5fa", // lighter blue
+    },
+  ];
 
   return (
     <div>
-      <Card
+      <div
         style={{
-          backgroundColor: "#fff",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-          padding: "24px",
+          display: "flex",
+          gap: "16px",
           marginBottom: "16px",
         }}
       >
-        <div
+        <Card
           style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
+            backgroundColor: "#fff",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+            padding: "24px",
             marginBottom: "16px",
+            width: "980px",
           }}
         >
-          <div>
-            <h2
-              style={{ fontSize: "18px", fontWeight: "bold", color: "#111827" }}
+          <div style={{ display: "flex" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginBottom: "16px",
+                flexDirection: "column",
+              }}
             >
-              {getGreeting()},{capitalizeEachWord(username ?? "")}
-            </h2>
-            <p style={{ fontSize: "14px", color: "#6b7280", marginTop: "4px" }}>
-              You have {upcomingEvents.length} upcoming{" "}
-              {upcomingEvents.length === 1 ? "event" : "events"} today. Don’t
-              miss them!
-            </p>
+              <div>
+                <h2
+                  style={{
+                    fontSize: "22px",
+                    fontWeight: "bold",
+                    color: "#111827",
+                  }}
+                >
+                  {getGreeting()},{capitalizeEachWord(username ?? "")}
+                </h2>
+                <p
+                  style={{
+                    fontSize: "16px",
+                    color: "#6b7280",
+                    marginTop: "4px",
+                  }}
+                >
+                  You have {upcomingEvents.length} upcoming{" "}
+                  {upcomingEvents.length === 1 ? "event" : "events"} today.
+                  Don’t miss them!
+                </p>
 
-            <Progress percent={percent} style={{ width: "200px" }} />
-            <p style={{ fontSize: "12px", color: "#6b7280" }}>
-              {completedToday} of {eventsToday} events done today — stay on
-              track!
-            </p>
+                <Progress percent={percent} style={{ width: "300px" }} />
+              </div>
+              <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
+                <Button
+                  onClick={handleConnectMore}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: "6px",
+                    fontSize: "14px",
+                    border: "none",
+                    cursor: "pointer",
+                    backgroundColor: "#2563eb",
+                    color: "#fff",
+                  }}
+                >
+                  + Connect
+                </Button>
+                <Button
+                  //   onClick={handlePin}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: "6px",
+                    fontSize: "14px",
+                    cursor: "pointer",
+                    background: "none",
+                    border: "1px solid #d1d5db",
+                  }}
+                >
+                  Pin Doc
+                </Button>
+                <Button
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: "6px",
+                    fontSize: "14px",
+                    cursor: "pointer",
+                    background: "none",
+                    border: "1px solid #d1d5db",
+                  }}
+                >
+                  Family
+                </Button>
+              </div>
+            </div>
+            <div
+              style={{
+                marginLeft: "auto",
+              }}
+            >
+              <div style={{ marginLeft: "40px" }}>
+                <Avatar
+                  size={122}
+                  icon={<UserOutlined />}
+                  src={cleanProfilePictureUrl(user?.picture || "")}
+                />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                <Text strong style={{ fontSize: "16px" }}>
+                  Connected Account
+                </Text>
+
+                <Tag
+                  icon={<GoogleOutlined />}
+                  color="blue"
+                  style={{
+                    width: "fit-content",
+                    marginTop: "4px",
+                    fontWeight: 500,
+                    fontSize: "14px",
+                  }}
+                >
+                  {user?.email}
+                </Tag>
+              </div>
+            </div>
           </div>
-          <div style={{ display: "flex", gap: "8px" }}>
-            <Button
-              //   onClick={handleConnectMore}
-              style={{
-                padding: "8px 16px",
-                borderRadius: "6px",
-                fontSize: "14px",
-                border: "none",
-                cursor: "pointer",
-                backgroundColor: "#2563eb",
-                color: "#fff",
-              }}
-            >
-              + Connect
-            </Button>
-            <Button
-              //   onClick={handlePin}
-              style={{
-                padding: "8px 16px",
-                borderRadius: "6px",
-                fontSize: "14px",
-                cursor: "pointer",
-                background: "none",
-                border: "1px solid #d1d5db",
-              }}
-            >
-              Pin Doc
-            </Button>
-            <Button
-              style={{
-                padding: "8px 16px",
-                borderRadius: "6px",
-                fontSize: "14px",
-                cursor: "pointer",
-                background: "none",
-                border: "1px solid #d1d5db",
-              }}
-            >
-              Family
-            </Button>
+        </Card>
+        <Card
+          style={{
+            borderRadius: 16,
+            padding: 15,
+            background: "#fff",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.05)",
+            width: "350px",
+          }}
+          bodyStyle={{ padding: 0 }}
+        >
+          <div style={{ padding: 20 }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <Title level={5} style={{ margin: 0 }}>
+                Today’s Overview
+              </Title>
+              <a style={{ color: "#2563eb", fontWeight: 500 }}>View All</a>
+            </div>
+
+            <div style={{ textAlign: "center", margin: "20px 0" }}>
+              <Title level={1} style={{ margin: 0 }}>
+                {day}
+              </Title>
+              <Text strong>{weekday}</Text>
+              <br />
+              <Text type="secondary">{monthYear}</Text>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {overviewData.map((item, index) => (
+                <div
+                  key={index}
+                  style={{
+                    background: "#f0f9ff",
+                    borderRadius: 12,
+                    padding: "8px 12px",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 8 }}
+                  >
+                    <span
+                      style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: "50%",
+                        backgroundColor: item.color,
+                      }}
+                    ></span>
+                    <Text>{item.label}</Text>
+                  </div>
+                  <Text strong style={{ color: "#333" }}>
+                    {item.percent}%
+                  </Text>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      </div>
 
       <div style={{ display: "flex", gap: "16px" }}>
-        {/* <div style={{ flex: 2 }}>{renderCalendarCard()}</div> */}
-        {/* <div style={{ flex: 1 }}>{renderOverviewCard()}</div> */}
+        <div style={{ flex: 2 }}>
+          <RenderCalendarCard loading={loading} events={events} />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <ToDoListCard />
+          <UpcomingActivities googleEvents={events} />
+        </div>
       </div>
     </div>
   );
-
-  //   const renderOverviewCard = () => (
-  //     <>
-  //       <Card style={cardStyle}>
-  //         <div
-  //           style={{
-  //             display: "flex",
-  //             justifyContent: "space-between",
-  //             alignItems: "center",
-  //             marginBottom: "16px",
-  //           }}
-  //         >
-  //           <h3 style={{ fontSize: "16px", fontWeight: "600" }}>
-  //             Today's Overview
-  //           </h3>
-  //           <Button type="link">View All</Button>
-  //         </div>
-  //         <h2
-  //           style={{
-  //             fontSize: "24px",
-  //             fontWeight: "bold",
-  //             textAlign: "center",
-  //           }}
-  //         >
-  //           {selectedDate.format("D")}
-  //         </h2>
-  //         <p
-  //           style={{
-  //             fontSize: "14px",
-  //             color: "#6b7280",
-  //             textAlign: "center",
-  //           }}
-  //         >
-  //           {selectedDate.format("ddd YYYY")}
-  //         </p>
-  //         <div style={{ marginTop: "16px" }}>
-  //           <OverviewProgress
-  //             color="#2563eb"
-  //             label="Personal Tasks"
-  //             percent={50}
-  //           />
-  //           <OverviewProgress color="#22c55e" label="Work Tasks" percent={80} />
-  //           <OverviewProgress
-  //             color="#f59e0b"
-  //             label="Family Activities"
-  //             percent={25}
-  //           />
-  //         </div>
-  //       </Card>
-  //     </>
-  //   );
-
-  //   const OverviewProgress = ({ color, label, percent }) => (
-  //     <p
-  //       style={{
-  //         fontSize: "14px",
-  //         display: "flex",
-  //         alignItems: "center",
-  //         gap: "8px",
-  //       }}
-  //     >
-  //       <Badge color={color} /> {`${percent / 10} ${label}`}{" "}
-  //       <Progress percent={percent} size="small" />
-  //     </p>
-  //   );
 };
 
 export default CalendarDashboard;
 
-const renderCalendarCard = () => {
+const RenderCalendarCard = (props: any) => {
+  const { view, setView, loading, events } = props;
+  const [currentView, setCurrentView] = useState("dayGridMonth");
+  const processedEvents = events.map((event: any) => ({
+    ...event,
+    backgroundColor: getEventColor(event.start),
+    borderColor: getEventColor(event.start),
+    textColor: "#fff",
+  }));
+
+  // const viewHeights: { [key: string]: number | "auto" } = {
+  //   dayGridMonth: 620,
+  //   timeGridWeek: 620,
+  //   timeGridDay: 600,
+  //   listWeek: 500,
+  // };
+
   return (
     <Card
       style={{
@@ -191,131 +357,277 @@ const renderCalendarCard = () => {
         }}
       >
         <h3 style={{ fontSize: "16px", fontWeight: "600" }}>Calendar</h3>
-        <div style={{ display: "flex", gap: "8px" }}>
-          {["Day", "Week", "Month"].map((mode) => (
-            <Button
-              key={mode}
-              // onClick={() => handleViewChange(mode)}
-              style={{
-                padding: "8px 16px",
-                borderRadius: "6px",
-                fontSize: "14px",
-                border: "none",
-                cursor: "pointer",
-                //   backgroundColor: viewMode === mode ? "#2563eb" : "#fff",
-                //   color: viewMode === mode ? "#fff" : "#000",
-              }}
-            >
-              {mode}
-            </Button>
-          ))}
+        <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
+          <Badge color="#2563eb" text="Personal" />
+          <Badge color="#22c55e" text="Work" />
+          <Badge color="#f59e0b" text="Family" />
+          <Badge color="#8b5cf6" text="Health" />
+          <Badge color="#ef4444" text="Bills & Finance" />
         </div>
       </div>
 
-      {/* {viewMode === "Day" && renderDayView()}
-            {viewMode === "Week" && renderWeekView()}
-            {viewMode === "Month" && renderMonthView()} */}
+      {loading ? (
+        <Spin />
+      ) : (
+        <FullCalendar
+          plugins={[
+            dayGridPlugin,
+            timeGridPlugin,
+            interactionPlugin,
+            listPlugin,
+          ]}
+          initialView="dayGridMonth"
+          headerToolbar={{
+            left: "prev,next today",
+            center: "title",
+            right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
+          }}
+          buttonText={{
+            dayGridMonth: "Month",
+            timeGridWeek: "Week",
+            timeGridDay: "Day",
+            listWeek: "List",
+            today: "Today",
+          }}
+          height={620}
+          events={processedEvents}
+          eventClick={(info: any) => {
+            alert(`Event: ${info.event.title}`);
+          }}
+          nowIndicator
+          eventDisplay="block"
+          dayMaxEventRows
+          selectable
+          selectMirror
+          datesSet={(arg) => setCurrentView(arg.view.type)}
+        />
+      )}
+    </Card>
+  );
+};
 
-      <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
-        <Badge color="#2563eb" text="Personal" />
-        <Badge color="#22c55e" text="Work" />
-        <Badge color="#f59e0b" text="Family" />
-        <Badge color="#8b5cf6" text="Health" />
-        <Badge color="#ef4444" text="Bills & Finance" />
+const getPriorityTag = (priority: string | null) => {
+  if (!priority) return null;
+  const colorMap: any = {
+    High: "#fca5a5",
+    Medium: "#fcd34d",
+    Low: "#86efac",
+  };
+  return (
+    <Tag
+      style={{
+        backgroundColor: colorMap[priority],
+        color: "#111",
+        fontWeight: 500,
+        borderRadius: "8px",
+        marginTop: "4px",
+      }}
+    >
+      {priority} Priority
+    </Tag>
+  );
+};
+const tasksData = [
+  {
+    id: 1,
+    title: "Renew car insurance",
+    due: "Due tomorrow",
+    priority: "High",
+    completed: false,
+  },
+  {
+    id: 2,
+    title: "Order birthday gift",
+    due: "Due in 3 days",
+    priority: "Medium",
+    completed: false,
+  },
+  {
+    id: 3,
+    title: "Schedule dentist appointment",
+    due: "Completed today",
+    priority: null,
+    completed: true,
+  },
+];
+
+const ToDoListCard = () => {
+  const [tasks, setTasks] = useState(tasksData);
+
+  const toggleComplete = (id: number) => {
+    const updated = tasks.map((task) =>
+      task.id === id ? { ...task, completed: !task.completed } : task
+    );
+    setTasks(updated);
+  };
+
+  return (
+    <Card
+      style={{
+        borderRadius: 16,
+        width: 380,
+        boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <Title level={4} style={{ margin: 0 }}>
+          To-Do List
+        </Title>
+        <Text style={{ color: "#2563eb", cursor: "pointer" }}>+ Add Task</Text>
+      </div>
+
+      <div style={{ marginTop: 16 }}>
+        {tasks.map((task) => (
+          <div
+            key={task.id}
+            style={{
+              border: "1px solid #eee",
+              padding: 12,
+              borderRadius: 12,
+              marginBottom: 12,
+              backgroundColor: task.completed ? "#f0fdf4" : "#fff",
+            }}
+          >
+            <Checkbox
+              checked={task.completed}
+              onChange={() => toggleComplete(task.id)}
+              style={{ fontWeight: 500 }}
+            >
+              <Text
+                delete={task.completed}
+                style={{
+                  fontSize: 14,
+                  fontWeight: 500,
+                  color: task.completed ? "#9ca3af" : "#111827",
+                }}
+              >
+                {task.title}
+              </Text>
+            </Checkbox>
+            <div style={{ marginLeft: 24 }}>
+              <Text
+                type="secondary"
+                style={{ fontSize: 13, display: "block", marginTop: 4 }}
+              >
+                {task.due}
+              </Text>
+              {getPriorityTag(task.priority)}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ textAlign: "center", marginTop: 8 }}>
+        <Text style={{ color: "#2563eb", cursor: "pointer" }}>
+          View All Tasks →
+        </Text>
       </div>
     </Card>
   );
 };
 
-//   const renderDayView = () => (
-//     <div>
-//       <h4 style={{ fontSize: "14px", fontWeight: "600", marginBottom: "8px" }}>
-//         {selectedDate.format("MMMM D, YYYY")}
-//       </h4>
-//       <div style={{ height: "400px", overflowY: "auto" }}>
-//         {calendarEvents.length > 0 ? (
-//           calendarEvents
-//             .filter((event) =>
-//               moment(event.start.dateTime || event.start.date).isSame(
-//                 selectedDate,
-//                 "day"
-//               )
-//             )
-//             .map((event, index) => renderCalendarEvent(event, index))
-//         ) : (
-//           <p>No events for this day.</p>
-//         )}
-//       </div>
-//     </div>
-//   );
+const transformActivities = (events: any) => {
+  return events.map((event: any) => {
+    const startDate = dayjs(event.start);
+    const endDate = dayjs(event.end);
+    const detail = event.allDay
+      ? "All Day"
+      : `${startDate.format("h:mm A")} - ${endDate.format("h:mm A")}`;
 
-//   const renderWeekView = () => (
-//     <div>
-//       <h4 style={{ fontSize: "14px", fontWeight: "600", marginBottom: "8px" }}>
-//         Week of {selectedDate.startOf("week").format("MMMM D, YYYY")}
-//       </h4>
-//       <div style={{ height: "400px", overflowY: "auto" }}>
-//         {calendarEvents.length > 0 ? (
-//           calendarEvents
-//             .filter((event) =>
-//               moment(event.start.dateTime || event.start.date).isBetween(
-//                 moment(selectedDate).startOf("week"),
-//                 moment(selectedDate).endOf("week"),
-//                 undefined,
-//                 "[]"
-//               )
-//             )
-//             .map((event, index) => renderCalendarEvent(event, index, true))
-//         ) : (
-//           <p>No events for this week.</p>
-//         )}
-//       </div>
-//     </div>
-//   );
+    return {
+      id: event.id,
+      title: event.title,
+      date: startDate.format("DD"),
+      month: startDate.format("MMM"),
+      detail,
+    };
+  });
+};
 
-//   const renderMonthView = () => (
-//     <Calendar
-//       fullscreen={false}
-//       dateCellRender={dateCellRender}
-//       onSelect={onSelectDate}
-//       value={require("dayjs")(selectedDate.toDate())}
-//       onPanelChange={(date) => setSelectedDate(moment(date.toDate()))}
-//     />
-//   );
+const ActivityList = ({ activities }: { activities: any[] }) => (
+  <div style={{ marginTop: 16 }}>
+    {activities.map((activity: any) => (
+      <div
+        key={activity.id}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          padding: "12px 0",
+          borderBottom: "1px solid #f0f0f0",
+        }}
+      >
+        <div
+          style={{
+            backgroundColor: "#e0f2fe",
+            borderRadius: 8,
+            textAlign: "center",
+            padding: "6px 10px",
+            width: 48,
+          }}
+        >
+          <Text strong style={{ fontSize: 16, display: "block" }}>
+            {activity.date}
+          </Text>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {activity.month}
+          </Text>
+        </div>
 
-//   const renderCalendarEvent = (event, index, showDate = false) => (
-//     <div
-//       key={index}
-//       style={{ display: "flex", alignItems: "center", marginBottom: "8px" }}
-//     >
-//       <div
-//         style={{
-//           width: showDate ? "100px" : "50px",
-//           fontSize: "12px",
-//           color: "#6b7280",
-//         }}
-//       >
-//         {moment(event.start.dateTime).format(
-//           showDate ? "MMM D, h:mm A" : "h:mm A"
-//         )}
-//       </div>
-//       <div
-//         style={{
-//           flex: 1,
-//           backgroundColor: "#fee2e2",
-//           padding: "8px",
-//           borderRadius: "4px",
-//           borderLeft: "4px solid #ef4444",
-//         }}
-//       >
-//         <p style={{ fontSize: "14px", fontWeight: "500", margin: 0 }}>
-//           {event.summary}
-//         </p>
-//         <p style={{ fontSize: "12px", color: "#6b7280", margin: 0 }}>
-//           {`${moment(event.start.dateTime).format("h:mm A")} - ${moment(
-//             event.end.dateTime
-//           ).format("h:mm A")}`}
-//         </p>
-//       </div>
-//     </div>
-//   );
+        <div>
+          <Text style={{ fontSize: 15, fontWeight: 500, display: "block" }}>
+            {activity.title}
+          </Text>
+          <Text type="secondary" style={{ fontSize: 13 }}>
+            {activity.detail}
+          </Text>
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+const UpcomingActivities = (props: any) => {
+  const { googleEvents } = props;
+  const activities = transformActivities(googleEvents);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const firstThree = activities.slice(0, 3);
+
+  return (
+    <>
+      <Card
+        style={{
+          borderRadius: 16,
+          width: 380,
+          boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between" }}>
+          <Title level={4} style={{ margin: 0 }}>
+            Upcoming Activities
+          </Title>
+          <Text
+            style={{ color: "#2563eb", cursor: "pointer" }}
+            onClick={() => setIsModalOpen(true)}
+          >
+            View All
+          </Text>
+        </div>
+
+        <ActivityList activities={firstThree} />
+      </Card>
+
+      <Modal
+        open={isModalOpen}
+        onCancel={() => setIsModalOpen(false)}
+        footer={null}
+        title="All Upcoming Activities"
+        width={700}
+        bodyStyle={{ maxHeight: "70vh", overflowY: "auto" }}
+      >
+        <ActivityList activities={activities} />
+      </Modal>
+    </>
+  );
+};

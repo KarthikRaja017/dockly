@@ -62,14 +62,14 @@ const SavingsGoals = () => {
       note: "$450 saved per month",
       progressColor: "#1890ff",
     },
-    // {
-    //   title: "New Car Down Payment",
-    //   saved: 4800,
-    //   target: 12000,
-    //   tag: "Dec 2025",
-    //   note: "$800 saved per month",
-    //   progressColor: "#1890ff",
-    // },
+    {
+      title: "New Car Down Payment",
+      saved: 4800,
+      target: 12000,
+      tag: "Dec 2025",
+      note: "$800 saved per month",
+      progressColor: "#1890ff",
+    },
   ];
 
   return (
@@ -80,7 +80,7 @@ const SavingsGoals = () => {
         borderRadius: 16,
         boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
         background: "#ffffff",
-        maxWidth: 400,
+        maxWidth: 600,
         margin: "0",
       }}
     >

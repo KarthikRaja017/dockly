@@ -29,6 +29,7 @@ const SignUpDockly = () => {
     const response: AxiosResponse<ApiResponse> = await userAddEmail({
       userId: userId,
       email: values.email,
+      username: username,
     });
     const { status, message: msg, payload } = response.data;
     if (!status) {

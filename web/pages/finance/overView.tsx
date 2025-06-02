@@ -165,10 +165,10 @@ const OverView = (props: any) => {
   return (
     <Card
       style={{
-        maxWidth: 900,
+        maxWidth: 950,
         margin: "10px auto",
         borderRadius: 20,
-        padding: 16,
+        // padding: 16,
         background: "#f9fcff",
       }}
     >
@@ -235,7 +235,7 @@ const OverView = (props: any) => {
             <Text style={{ textAlign: "center", display: "block" }}>
               Chart showing trends from {startMonth} to {endMonth}
             </Text>
-            <ResponsiveContainer width="100%" height={250}>
+            <ResponsiveContainer width="100%" height={400}>
               <LineChart
                 data={graphData}
                 margin={{ top: 10, right: 30, left: 0, bottom: 0 }}

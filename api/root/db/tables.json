@@ -15,6 +15,20 @@
       ]
     },
     {
+      "table_name": "google_tokens",
+      "columns": [
+        "id SERIAL PRIMARY KEY",
+        "uid VARCHAR(255) NOT NULL",
+        "email VARCHAR(255) NOT NULL",
+        "provider VARCHAR(50) DEFAULT 'google'",
+        "access_token TEXT NOT NULL",
+        "refresh_token TEXT NOT NULL",
+        "expires_at TIMESTAMP NOT NULL",
+        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+      ]
+    },
+    {
       "table_name": "user_sessions",
       "columns": [
         "id SERIAL PRIMARY KEY",

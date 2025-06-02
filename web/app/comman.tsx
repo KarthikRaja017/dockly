@@ -61,3 +61,9 @@ export const capitalizeEachWord = (text: string): string => {
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 };
+
+export function cleanProfilePictureUrl(url: string): string {
+  if (typeof url !== "string") return "";
+  const index = url.indexOf("=");
+  return index !== -1 ? url.substring(0, index) : url;
+}

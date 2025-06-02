@@ -37,6 +37,48 @@ class DBHelper:
                 cur.close()
             if conn:
                 postgres.release_connection(conn)
+    @staticmethod
+    def find(table_name, filters=None, select_fields=None):
+        conn = None
+        cur = None
+        try:
+            conn = postgres.get_connection()
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+
+            # SELECT fields or *
+            if select_fields:
+                columns_sql = sql.SQL(', ').join(map(sql.Identifier, select_fields))
+            else:
+                columns_sql = sql.SQL('*')
+
+            # WHERE clause if filters provided
+            if filters:
+                where_clause = sql.SQL(' AND ').join(
+                    sql.Composed([sql.Identifier(k), sql.SQL(' = '), sql.Placeholder()]) for k in filters.keys()
+                )
+                query = sql.SQL("SELECT {fields} FROM {table} WHERE {where}").format(
+                    fields=columns_sql,
+                    table=sql.Identifier(table_name),
+                    where=where_clause
+                )
+                values = list(filters.values())
+            else:
+                query = sql.SQL("SELECT {fields} FROM {table}").format(
+                    fields=columns_sql,
+                    table=sql.Identifier(table_name)
+                )
+                values = []
+
+            cur.execute(query, values)
+            return cur.fetchall()
+
+        except Exception as e:
+            raise e
+        finally:
+            if cur:
+                cur.close()
+            if conn:
+                postgres.release_connection(conn)
 
     @staticmethod
     def find_one(table_name, filters=None, select_fields=None):

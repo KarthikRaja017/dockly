@@ -48,7 +48,7 @@ const FamilyIntroBoard: React.FC = () => {
 
   const handleCancel = () => {
     setIsModalVisible(false);
-    localStorage.setItem("family-hubs", "1");
+    localStorage.setItem("family-hub", "1");
     router.push(`/${username}/family-hub`);
   };
 
