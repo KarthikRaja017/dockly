@@ -25,9 +25,10 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import listPlugin from "@fullcalendar/list";
-import { GoogleOutlined, UserOutlined } from "@ant-design/icons";
+import { GoogleOutlined, PushpinFilled, PushpinOutlined, UserOutlined } from "@ant-design/icons";
 import "animate.css";
 import dayjs from "dayjs";
+import DocklyLoader from "../../utils/docklyLoader";
 
 const getEventColor = (eventDate: Date) => {
   const now = new Date();
@@ -50,6 +51,8 @@ const CalendarDashboard = (props: any) => {
   const [loading, setLoading] = useState<boolean>(false);
   const [events, setEvents] = useState<any[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<string[]>([]);
+  const [accounts, setAccounts] = useState<string[]>([]);
+  const [accountColor, setAccountColor] = useState<Record<string, string>>({});
   const currentUser = useCurrentUser();
   const currentDate = new Date();
   const day = currentDate.getDate();
@@ -70,12 +73,20 @@ const CalendarDashboard = (props: any) => {
   }, []);
 
   const fetchEvents = async () => {
+    setLoading(true);
     try {
       const response = await getGoogleCalendarEvents({
         userId: currentUser?.userId,
       });
       const rawEvents = response.data.payload.events;
-
+      const gmailConnected = response.data.payload.connected_accounts;
+      const colors = response.data.payload.account_colors || {};
+      if (gmailConnected && gmailConnected.length > 0) {
+        setAccounts(gmailConnected);
+      }
+      if (colors && Object.keys(colors).length > 0) {
+        setAccountColor(colors);
+      }
       const parsedEvents = rawEvents
         .filter((event: any) => event?.start && event?.end)
         .map((event: any) => ({
@@ -87,6 +98,7 @@ const CalendarDashboard = (props: any) => {
           extendedProps: {
             status: "confirmed",
           },
+          source_email: event.source_email || "",
         }));
 
       setEvents(parsedEvents);
@@ -117,6 +129,10 @@ const CalendarDashboard = (props: any) => {
       color: "#60a5fa", // lighter blue
     },
   ];
+
+  if (loading) {
+    return <DocklyLoader />
+  }
 
   return (
     <div>
@@ -228,18 +244,21 @@ const CalendarDashboard = (props: any) => {
                   Connected Account
                 </Text>
 
-                <Tag
-                  icon={<GoogleOutlined />}
-                  color="blue"
-                  style={{
-                    width: "fit-content",
-                    marginTop: "4px",
-                    fontWeight: 500,
-                    fontSize: "14px",
-                  }}
-                >
-                  {user?.email}
-                </Tag>
+                {accounts?.map((email) => (
+                  <Tag
+                    key={email}
+                    icon={<GoogleOutlined />}
+                    color={accountColor?.[email] || "blue"} // fallback to "blue" if not found
+                    style={{
+                      width: "fit-content",
+                      fontWeight: 500,
+                      fontSize: "14px",
+                      marginTop: "8px",
+                    }}
+                  >
+                    {email}
+                  </Tag>
+                ))}
               </div>
             </div>
           </div>
@@ -309,11 +328,11 @@ const CalendarDashboard = (props: any) => {
 
       <div style={{ display: "flex", gap: "16px" }}>
         <div style={{ flex: 2 }}>
-          <RenderCalendarCard loading={loading} events={events} />
+          <RenderCalendarCard loading={loading} events={events} accountColor={accountColor} />
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           <ToDoListCard />
-          <UpcomingActivities googleEvents={events} />
+          <UpcomingActivities googleEvents={events} accountColor={accountColor} />
         </div>
       </div>
     </div>
@@ -323,14 +342,21 @@ const CalendarDashboard = (props: any) => {
 export default CalendarDashboard;
 
 const RenderCalendarCard = (props: any) => {
-  const { view, setView, loading, events } = props;
+  const { view, setView, loading, events, accountColor } = props;
   const [currentView, setCurrentView] = useState("dayGridMonth");
-  const processedEvents = events.map((event: any) => ({
-    ...event,
-    backgroundColor: getEventColor(event.start),
-    borderColor: getEventColor(event.start),
-    textColor: "#fff",
-  }));
+  const processedEvents = events.map((event: any) => {
+    console.log("🚀 ~ processedEvents ~ events:", events)
+    const email = event.source_email;
+    console.log("🚀 ~ processedEvents ~ email:", email)
+    const color = accountColor[email] || "#888"; // fallback if email not found
+    console.log("🚀 ~ processedEvents ~ color:", color)
+    return {
+      ...event,
+      backgroundColor: color,
+      borderColor: color,
+      textColor: "#fff",
+    };
+  });
 
   // const viewHeights: { [key: string]: number | "auto" } = {
   //   dayGridMonth: 620,
@@ -365,6 +391,32 @@ const RenderCalendarCard = (props: any) => {
           <Badge color="#ef4444" text="Bills & Finance" />
         </div>
       </div>
+      {/* {accountColor && (
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "12px",
+            marginTop: "16px",
+          }}
+        >
+          {Object.entries(accountColor).map(([email, color]) => (
+            <Badge
+              key={email}
+              color={color as string}
+              text={email}
+              style={{
+                padding: "8px 12px",
+                borderRadius: "8px",
+                fontWeight: 250,
+                fontSize: "14px",
+                backgroundColor: color as string,
+                color: "#fff",
+              }}
+            />
+          ))}
+        </div>
+      )} */}
 
       {loading ? (
         <Spin />
@@ -537,6 +589,7 @@ const transformActivities = (events: any) => {
     return {
       id: event.id,
       title: event.title,
+      source_email: event.source_email || "",
       date: startDate.format("DD"),
       month: startDate.format("MMM"),
       detail,
@@ -544,55 +597,105 @@ const transformActivities = (events: any) => {
   });
 };
 
-const ActivityList = ({ activities }: { activities: any[] }) => (
+const ActivityList = ({
+  activities,
+  accountColor,
+  pinned,
+  onTogglePin,
+  showPin = false,
+}: {
+  activities: any[];
+  accountColor?: { [email: string]: string };
+  pinned?: string[];
+  onTogglePin?: (id: string) => void;
+  showPin?: boolean;
+}) => (
   <div style={{ marginTop: 16 }}>
-    {activities.map((activity: any) => (
-      <div
-        key={activity.id}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          padding: "12px 0",
-          borderBottom: "1px solid #f0f0f0",
-        }}
-      >
+    {activities.map((activity) => {
+      const color = accountColor?.[activity.source_email] || "#d9d9d9";
+      const isPinned = pinned?.includes(activity.id);
+
+      return (
         <div
+          key={activity.id}
           style={{
-            backgroundColor: "#e0f2fe",
-            borderRadius: 8,
-            textAlign: "center",
-            padding: "6px 10px",
-            width: 48,
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            padding: "12px 0",
+            borderBottom: "1px solid #f0f0f0",
+            justifyContent: "space-between",
           }}
         >
-          <Text strong style={{ fontSize: 16, display: "block" }}>
-            {activity.date}
-          </Text>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            {activity.month}
-          </Text>
-        </div>
+          <div style={{ display: "flex", gap: 12, flex: 1 }}>
+            <div
+              style={{
+                backgroundColor: "#e0f2fe",
+                borderRadius: 8,
+                textAlign: "center",
+                padding: "6px 10px",
+                width: 48,
+              }}
+            >
+              <Text strong style={{ fontSize: 16, display: "block" }}>
+                {activity.date}
+              </Text>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                {activity.month}
+              </Text>
+            </div>
 
-        <div>
-          <Text style={{ fontSize: 15, fontWeight: 500, display: "block" }}>
-            {activity.title}
-          </Text>
-          <Text type="secondary" style={{ fontSize: 13 }}>
-            {activity.detail}
-          </Text>
+            <div>
+              <Text style={{ fontSize: 15, fontWeight: 500, display: "block" }}>
+                {activity.title}
+              </Text>
+              <Text type="secondary" style={{ fontSize: 13, display: "block" }}>
+                {activity.detail}
+              </Text>
+              {activity.source_email && (
+
+                // <Tag
+                //   // color={color}
+                //   style={{ marginTop: 4, fontWeight: 500, fontSize: 12 }}
+                // >
+                //   {activity.source_email}
+                // </Tag>
+                <Badge color={color} text={activity.source_email} />
+              )}
+            </div>
+          </div>
+
+          {showPin && (
+            <div style={{ cursor: "pointer" }} onClick={() => onTogglePin?.(activity.id)}>
+              {isPinned ? (
+                <PushpinFilled style={{ color: "#f59e0b", fontSize: 18 }} />
+              ) : (
+                <PushpinOutlined style={{ color: "#999", fontSize: 18 }} />
+              )}
+            </div>
+          )}
         </div>
-      </div>
-    ))}
+      );
+    })}
   </div>
 );
 
-const UpcomingActivities = (props: any) => {
-  const { googleEvents } = props;
+const UpcomingActivities = ({ googleEvents, accountColor }: any) => {
   const activities = transformActivities(googleEvents);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [pinned, setPinned] = useState<string[]>([]); // store pinned activity IDs
 
-  const firstThree = activities.slice(0, 3);
+  const togglePin = (id: string) => {
+    setPinned((prev) => {
+      if (prev.includes(id)) return prev.filter((item) => item !== id);
+      if (prev.length >= 3) return prev; // only allow 3 pins
+      return [...prev, id];
+    });
+  };
+
+  const pinnedActivities = activities.filter((a: any) => pinned.includes(a.id));
+  const unpinnedActivities = activities.filter((a: any) => !pinned.includes(a.id));
+  const firstThree = [...pinnedActivities, ...unpinnedActivities].slice(0, 3);
 
   return (
     <>
@@ -615,7 +718,13 @@ const UpcomingActivities = (props: any) => {
           </Text>
         </div>
 
-        <ActivityList activities={firstThree} />
+        <ActivityList
+          activities={firstThree}
+          accountColor={accountColor}
+          pinned={pinned}
+          onTogglePin={togglePin}
+          showPin
+        />
       </Card>
 
       <Modal
@@ -626,7 +735,13 @@ const UpcomingActivities = (props: any) => {
         width={700}
         bodyStyle={{ maxHeight: "70vh", overflowY: "auto" }}
       >
-        <ActivityList activities={activities} />
+        <ActivityList
+          activities={activities}
+          accountColor={accountColor}
+          pinned={pinned}
+          onTogglePin={togglePin}
+          showPin
+        />
       </Modal>
     </>
   );

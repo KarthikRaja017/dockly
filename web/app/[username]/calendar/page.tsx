@@ -1,27 +1,11 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Button, Card, Checkbox, Progress, List, Badge, Calendar } from "antd";
-import axios from "axios";
-import moment, { Moment } from "moment";
 import CalendarStepOne from "../../../pages/calendar/stepOne";
 import CalendarStepTwo from "../../../pages/calendar/stepTwo";
 import CalendarStepThree from "../../../pages/calendar/stepThree";
 import CalendarStepFour from "../../../pages/calendar/stepFour";
 import CalendarDashboard from "../../../pages/calendar/calendarDashboard";
-
-interface ToDoItem {
-  task: string;
-  priority: "High" | "Medium" | "Low";
-  done: boolean;
-}
-
-interface CalendarEvent {
-  id: string;
-  summary: string;
-  start: { dateTime?: string; date?: string };
-  end: { dateTime?: string; date?: string };
-}
 
 const Dashboard: React.FC = () => {
   const [step, setStep] = useState<number>(1);
@@ -36,7 +20,6 @@ const Dashboard: React.FC = () => {
     recurringEvents: true,
   });
   const [connectedCalendars, setConnectedCalendars] = useState<string[]>([]);
-  console.log("🚀 ~ connectedCalendars:", connectedCalendars);
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
@@ -56,10 +39,6 @@ const Dashboard: React.FC = () => {
       router.push(`/${username}/calendar/setup`);
     }
   }, []);
-
-  const handlePin = () => {
-    alert("Pinned to dashboard!");
-  };
 
   const handleConnectMore = () => {
     setStep(1);

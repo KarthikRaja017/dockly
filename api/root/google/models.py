@@ -15,6 +15,7 @@ from root.auth.auth import auth_required
 
 
 REDIRECT_URI = f"{API_URL}/auth/callback/google"
+print(f"REDIRECT_URI: {REDIRECT_URI}")
 SCOPE = (
     "email profile "
     "https://www.googleapis.com/auth/calendar "
@@ -27,6 +28,20 @@ SCOPE = (
     "https://www.googleapis.com/auth/userinfo.profile"
 )
 uri = "https://oauth2.googleapis.com/token"
+
+# Define a list of distinct light pastel colors
+light_colors = [
+    "#FF6F61",  # Vibrant coral red
+    "#42A5F5",  # Bright blue
+    "#66BB6A",  # Lively green
+    "#FFA726",  # Strong orange
+    "#AB47BC",  # Rich purple
+    "#EC407A",  # Pink rose
+    "#9CCC65",  # Bright lime green
+    "#26C6DA",  # Electric teal
+    "#FFD54F",  # Bright yellow
+    "#5C6BC0",  # Deep indigo
+]
 
 
 class AddGoogleCalendar(Resource):
@@ -63,9 +78,13 @@ class GetGoogleCalendarEvents(Resource):
         if not allCreds or len(allCreds) == 0:
             return {"error": "No connected Google accounts found."}, 404
 
-        merged_events = []
+        if len(allCreds) > len(light_colors):
+            return {"error": "Too many accounts. Not enough unique colors."}, 400
 
-        for credData in allCreds:
+        merged_events = []
+        color_mapping = {}
+
+        for i, credData in enumerate(allCreds):
             try:
                 creds = Credentials(
                     token=credData["access_token"],
@@ -91,19 +110,23 @@ class GetGoogleCalendarEvents(Resource):
                 )
 
                 email = credData["email"]
+                color = light_colors[i]
+                color_mapping[email] = color
+
                 events = events_result.get("items", [])
 
-                # Tag events with the email source
+                # Tag events with the email and color
                 for event in events:
                     event["source_email"] = email
+                    event["account_color"] = color
 
                 merged_events.extend(events)
 
             except Exception as e:
                 print(f"Error fetching events for {credData['email']}: {e}")
-                continue  # Skip this account and try others
+                continue
 
-        # Sort all events by start time
+        # Sort events by start datetime
         merged_events.sort(key=lambda e: e.get("start", {}).get("dateTime", ""))
 
         return {
@@ -111,7 +134,8 @@ class GetGoogleCalendarEvents(Resource):
             "message": "Calendar events merged from all connected Google accounts.",
             "payload": {
                 "events": merged_events,
-                "connected_accounts": [c["email"] for c in allCreds],
+                "connected_accounts": list(color_mapping.keys()),
+                "account_colors": color_mapping,
             },
         }
 
