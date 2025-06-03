@@ -23,7 +23,11 @@ G_SECRET_KEY = os.getenv("G_SECRET_KEY")
 
 AUTH_ENDPOINT = os.getenv("QUILTT_API_SECRET_KEY")
 
+<<<<<<< HEAD
 API_SECRET_KEY = "https://auth.quiltt.io/v1/users/sessions"
+=======
+API_SECRET_KEY='https://auth.quiltt.io/v1/users/sessions'
+>>>>>>> deb0ba0 (modified dockly and added new db)
 API_URL = "http://localhost:5000/server/api"
 # API_URL = "https://dockly.onrender.com/server/api"
 WEB_URL = "http://localhost:3000"
