@@ -30,15 +30,15 @@ interface CalendarStepOneProps {
 
 const CalendarStepOne: React.FC<CalendarStepOneProps> = ({
   setStep,
-  selectedCalendars=[],
+  selectedCalendars = [],
   setSelectedCalendars,
 }) => {
   const handleCalendarSelect = (provider: string) => {
-  setSelectedCalendars((prev) => {
-    if (prev && prev.includes(provider)) return [];
-    return [provider];
-  });
-};
+    setSelectedCalendars((prev) => {
+      if (prev && prev.includes(provider)) return [];
+      return [provider];
+    });
+  };
 
   return (
     <div

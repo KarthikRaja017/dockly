@@ -25,7 +25,7 @@ interface CalendarEvent {
 
 const Dashboard: React.FC = () => {
   const [step, setStep] = useState<number>(1);
-  const [selectedCalendars, setSelectedCalendars] = useState<string[]>();
+  const [selectedCalendars, setSelectedCalendars] = useState<string[]>([]);
   const [selectedOptions, setSelectedOptions] = useState<{
     calendarEvents: boolean;
     reminders: boolean;
