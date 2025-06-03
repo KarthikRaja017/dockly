@@ -14,7 +14,7 @@ jwt = JWTManager()
 def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
     app.secret_key = G_SECRET_KEY
-    CORS(app, supports_credentials=True, origins=[WEB_URL])
+    CORS(app)
     postgres.init_app()
     jwt.init_app(app)
     #     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../web"))
@@ -37,7 +37,6 @@ def create_app(test_config=None):
 
     app.register_blueprint(google_bp)
     app.permanent_session_lifetime = timedelta(minutes=60)
-    # initialize_firebase()     
-    
+    # initialize_firebase()
 
     return app
