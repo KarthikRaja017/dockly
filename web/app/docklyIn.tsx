@@ -4,7 +4,6 @@ import { Input, Button, Typography } from "antd";
 import { LowercaseInput, SIDEBAR_BG } from "./comman";
 import { useRouter } from "next/navigation";
 import { AxiosResponse } from "axios";
-import { ApiResponse } from "../pages/forms/signInForm";
 import { showNotification } from "../utils/notification";
 import DocklyLoader from "../utils/docklyLoader";
 import addUsername from "../services/user";
@@ -29,6 +28,19 @@ const DocklyLogin = () => {
     setLoading(true);
     try {
       setLoading(true);
+      // Define ApiResponse type inline if not imported elsewhere
+      type ApiResponse = {
+        status: boolean;
+        message: string;
+        payload: {
+          userId?: string;
+          otpStatus?: { otp?: string };
+          email?: string;
+          token?: string;
+          redirectUrl?: string;
+        };
+      };
+
       const response: AxiosResponse<ApiResponse> = await addUsername({
         userName: username,
         email: email,
@@ -41,7 +53,7 @@ const DocklyLogin = () => {
 
       if (status) {
         showNotification("Success", msg, "success");
-        localStorage.setItem("userId", payload.userId);
+        localStorage.setItem("userId", payload.userId || "");
         localStorage.setItem("username", username);
         if (payload?.otpStatus?.otp) {
           localStorage.setItem("storedOtp", payload?.otpStatus.otp || "");

@@ -5,10 +5,21 @@ import { MailOutlined } from "@ant-design/icons";
 import { useParams, useRouter } from "next/navigation";
 import { useCurrentUser } from "../../app/userContext";
 import { AxiosResponse } from "axios";
-import { ApiResponse } from "../forms/signInForm";
 import { userAddEmail } from "../../services/user";
 import { showNotification } from "../../utils/notification";
 import { LowercaseInput } from "../../app/comman";
+
+type ApiResponse = {
+  status: boolean;
+  message: string;
+  payload: {
+    otpStatus: { otp: string };
+    email: string;
+    uid: string;
+    username: string;
+    [key: string]: any;
+  };
+};
 
 const { Title, Text } = Typography;
 

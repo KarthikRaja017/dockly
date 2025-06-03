@@ -3,11 +3,19 @@ import React, { useEffect, useRef, useState } from "react";
 import { Row, Col, Typography, Input, Button } from "antd";
 import { useParams, useRouter } from "next/navigation";
 import { AxiosResponse } from "axios";
-import { ApiResponse } from "../forms/signInForm";
 import { emailVerification, signInVerification } from "../../services/apiConfig";
 import { showNotification } from "../../utils/notification";
 
 const { Title, Text, Link } = Typography;
+
+type ApiResponse = {
+  status: boolean;
+  message: string;
+  payload?: {
+    token?: string;
+    [key: string]: any;
+  };
+};
 
 const VerifyEmailPage: React.FC = () => {
   const [otp, setOtp] = useState(["", "", "", ""]);
