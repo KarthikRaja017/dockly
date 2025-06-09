@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-// export const API_URL = " http://127.0.0.1:5000/server/api";
+// export const API_URL = ' http://127.0.0.1:5000/server/api';
 export const API_URL = 'https://dockly.onrender.com/server/api'; //DEPLOYMENT
 
 export const api = axios.create({
@@ -26,6 +26,7 @@ if (typeof window !== 'undefined') {
 export async function emailVerification(params: any) {
   return api.post('/user/email/otpVerification', params);
 }
+
 export async function mobileVerification(params: any) {
   return api.post('/user/mobile/otpVerification', params);
 }

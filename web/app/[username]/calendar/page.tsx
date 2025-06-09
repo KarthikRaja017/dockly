@@ -6,9 +6,12 @@ import CalendarStepTwo from "../../../pages/calendar/stepTwo";
 import CalendarStepThree from "../../../pages/calendar/stepThree";
 import CalendarStepFour from "../../../pages/calendar/stepFour";
 import CalendarDashboard from "../../../pages/calendar/calendarDashboard";
+import { getGoogleCalendarEvents } from "../../../services/google";
+import DocklyLoader from "../../../utils/docklyLoader";
 
 const Dashboard: React.FC = () => {
   const [step, setStep] = useState<number>(1);
+  const [loading, setLoading] = useState<boolean>(false);
   const [selectedCalendars, setSelectedCalendars] = useState<string[]>([]);
   const [selectedOptions, setSelectedOptions] = useState<{
     calendarEvents: boolean;
@@ -34,6 +37,7 @@ const Dashboard: React.FC = () => {
   const router = useRouter();
 
   useEffect(() => {
+    fetchEvents();
     const username = localStorage.getItem("username") || "";
     if (localStorage.getItem("calendar") === null) {
       router.push(`/${username}/calendar/setup`);
@@ -51,6 +55,22 @@ const Dashboard: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [step]);
+
+  const fetchEvents = async () => {
+    setLoading(true);
+    const response = await getGoogleCalendarEvents({
+    });
+    const rawEvents = response.data.payload.events;
+    if (rawEvents) {
+      localStorage.setItem("calendar", "1");
+      setStep(5);
+    }
+    setLoading(false);
+  }
+
+  if (loading) {
+    return <DocklyLoader />
+  }
 
   return (
     <div

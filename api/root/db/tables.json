@@ -24,6 +24,32 @@
         "access_token TEXT NOT NULL",
         "refresh_token TEXT NOT NULL",
         "expires_at TIMESTAMP NOT NULL",
+        "user_object JSONB",
+        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+      ]
+    },
+    {
+      "table_name": "notes",
+      "columns": [
+        "nid INT",
+        "uid VARCHAR(255) NOT NULL",
+        "note TEXT NOT NULL",
+        "note_time TIMESTAMP",
+        "status INT DEFAULT 0",
+        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+      ]
+    },
+    {
+      "table_name": "user_settings",
+      "columns": [
+        "user_id VARCHAR(50) PRIMARY KEY",
+        "theme VARCHAR(50) DEFAULT 'light'",
+        "language VARCHAR(10) DEFAULT 'en'",
+        "email_notifications BOOLEAN DEFAULT TRUE",
+        "push_notifications BOOLEAN DEFAULT TRUE",
+        "reminder_days_before INT DEFAULT 1",
         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
         "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
       ]
@@ -53,7 +79,6 @@
       "table_name": "bankDetails",
       "columns": [
         "uid VARCHAR(255) PRIMARY KEY REFERENCES users(uid) ON DELETE CASCADE",
-        "email VARCHAR(150) NOT NULL",
         "profile_id VARCHAR(255) NOT NULL",
         "isFinanceUser BOOLEAN DEFAULT FALSE",
         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
@@ -88,6 +113,22 @@
         "balance_available NUMERIC",
         "balance_source TEXT",
         "balance_at TIMESTAMP"
+      ]
+    },
+    {
+      "table_name": "user_profiles",
+      "columns": [
+        "uid TEXT PRIMARY KEY",
+        "first_name TEXT",
+        "last_name TEXT",
+        "dob DATE",
+        "phone TEXT",
+        "backup_email TEXT",
+        "country TEXT",
+        "city TEXT",
+        "postal_code TEXT",
+        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
       ]
     },
     {

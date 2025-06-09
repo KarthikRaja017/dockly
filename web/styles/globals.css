@@ -1,11 +1,21 @@
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   font-family: sans-serif;
   overflow-x: hidden;
   width: 100%;
+  caret-color: transparent !important;
 }
 
 * {
   box-sizing: border-box;
+  caret-color: transparent !important;
+}
+
+input,
+textarea,
+.ant-input,
+.ant-input-affix-wrapper input {
+  caret-color: auto !important;
 }

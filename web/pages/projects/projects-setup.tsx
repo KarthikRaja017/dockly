@@ -35,30 +35,30 @@ const ProjectsIntroBoard: React.FC = () => {
   };
 
   const [username, setUsername] = useState<string | null>(null);
-    useEffect(() => {
-      const storedUsername = localStorage.getItem('username');
-      if (storedUsername) {
-        setUsername(storedUsername);
-      }
-    }, [])
+  useEffect(() => {
+    const storedUsername = localStorage.getItem('username');
+    if (storedUsername) {
+      setUsername(storedUsername);
+    }
+  }, [])
 
   const showModal = () => {
     setIsModalVisible(true);
     // localStorage.setItem("health", "1");
     // router.push(`/${username}/health`);
   };
-  
-  
+
+
 
   const handleCancel = () => {
     setIsModalVisible(false);
     localStorage.setItem("projects", "1");
     router.push(`/${username}/projects`);
   };
-  
+
 
   return (
-    <Card style={{ padding: '0px 24px' }} loading={loading}>
+    <Card style={{ padding: '0px 24px', margin: "40px" }} loading={loading}>
       {!isProjectUser ? (
         <div
           style={{

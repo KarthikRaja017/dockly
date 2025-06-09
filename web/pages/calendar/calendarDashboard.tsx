@@ -1,13 +1,10 @@
 "use client";
 import {
   Avatar,
-  Badge,
   Button,
   Card,
   Checkbox,
-  Modal,
   Progress,
-  Spin,
   Tag,
   Typography,
 } from "antd";
@@ -20,15 +17,11 @@ import {
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import { getGoogleCalendarEvents } from "../../services/google";
 import { useCurrentUser } from "../../app/userContext";
-import FullCalendar from "@fullcalendar/react";
-import dayGridPlugin from "@fullcalendar/daygrid";
-import timeGridPlugin from "@fullcalendar/timegrid";
-import interactionPlugin from "@fullcalendar/interaction";
-import listPlugin from "@fullcalendar/list";
-import { GoogleOutlined, PushpinFilled, PushpinOutlined, UserOutlined } from "@ant-design/icons";
+import { GoogleOutlined, UserOutlined } from "@ant-design/icons";
 import "animate.css";
-import dayjs from "dayjs";
 import DocklyLoader from "../../utils/docklyLoader";
+import RenderCalendarCard from "../components/customCalendar";
+import UpcomingActivities from "../components/upcomingActivities";
 
 const getEventColor = (eventDate: Date) => {
   const now = new Date();
@@ -67,9 +60,7 @@ const CalendarDashboard = (props: any) => {
     const userObj = user ? JSON.parse(user) : null;
     setUsername(userObj?.name);
     setUser(userObj);
-    if (user) {
-      fetchEvents();
-    }
+    fetchEvents();
   }, []);
 
   const fetchEvents = async () => {
@@ -341,123 +332,6 @@ const CalendarDashboard = (props: any) => {
 
 export default CalendarDashboard;
 
-const RenderCalendarCard = (props: any) => {
-  const { view, setView, loading, events, accountColor } = props;
-  const [currentView, setCurrentView] = useState("dayGridMonth");
-  const processedEvents = events.map((event: any) => {
-    console.log("🚀 ~ processedEvents ~ events:", events)
-    const email = event.source_email;
-    console.log("🚀 ~ processedEvents ~ email:", email)
-    const color = accountColor[email] || "#888"; // fallback if email not found
-    console.log("🚀 ~ processedEvents ~ color:", color)
-    return {
-      ...event,
-      backgroundColor: color,
-      borderColor: color,
-      textColor: "#fff",
-    };
-  });
-
-  // const viewHeights: { [key: string]: number | "auto" } = {
-  //   dayGridMonth: 620,
-  //   timeGridWeek: 620,
-  //   timeGridDay: 600,
-  //   listWeek: 500,
-  // };
-
-  return (
-    <Card
-      style={{
-        backgroundColor: "#fff",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-        padding: "24px",
-        marginBottom: "16px",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "16px",
-        }}
-      >
-        <h3 style={{ fontSize: "16px", fontWeight: "600" }}>Calendar</h3>
-        <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
-          <Badge color="#2563eb" text="Personal" />
-          <Badge color="#22c55e" text="Work" />
-          <Badge color="#f59e0b" text="Family" />
-          <Badge color="#8b5cf6" text="Health" />
-          <Badge color="#ef4444" text="Bills & Finance" />
-        </div>
-      </div>
-      {/* {accountColor && (
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "12px",
-            marginTop: "16px",
-          }}
-        >
-          {Object.entries(accountColor).map(([email, color]) => (
-            <Badge
-              key={email}
-              color={color as string}
-              text={email}
-              style={{
-                padding: "8px 12px",
-                borderRadius: "8px",
-                fontWeight: 250,
-                fontSize: "14px",
-                backgroundColor: color as string,
-                color: "#fff",
-              }}
-            />
-          ))}
-        </div>
-      )} */}
-
-      {loading ? (
-        <Spin />
-      ) : (
-        <FullCalendar
-          plugins={[
-            dayGridPlugin,
-            timeGridPlugin,
-            interactionPlugin,
-            listPlugin,
-          ]}
-          initialView="dayGridMonth"
-          headerToolbar={{
-            left: "prev,next today",
-            center: "title",
-            right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
-          }}
-          buttonText={{
-            dayGridMonth: "Month",
-            timeGridWeek: "Week",
-            timeGridDay: "Day",
-            listWeek: "List",
-            today: "Today",
-          }}
-          height={620}
-          events={processedEvents}
-          eventClick={(info: any) => {
-            alert(`Event: ${info.event.title}`);
-          }}
-          nowIndicator
-          eventDisplay="block"
-          dayMaxEventRows
-          selectable
-          selectMirror
-          datesSet={(arg) => setCurrentView(arg.view.type)}
-        />
-      )}
-    </Card>
-  );
-};
-
 const getPriorityTag = (priority: string | null) => {
   if (!priority) return null;
   const colorMap: any = {
@@ -575,174 +449,5 @@ const ToDoListCard = () => {
         </Text>
       </div>
     </Card>
-  );
-};
-
-const transformActivities = (events: any) => {
-  return events.map((event: any) => {
-    const startDate = dayjs(event.start);
-    const endDate = dayjs(event.end);
-    const detail = event.allDay
-      ? "All Day"
-      : `${startDate.format("h:mm A")} - ${endDate.format("h:mm A")}`;
-
-    return {
-      id: event.id,
-      title: event.title,
-      source_email: event.source_email || "",
-      date: startDate.format("DD"),
-      month: startDate.format("MMM"),
-      detail,
-    };
-  });
-};
-
-const ActivityList = ({
-  activities,
-  accountColor,
-  pinned,
-  onTogglePin,
-  showPin = false,
-}: {
-  activities: any[];
-  accountColor?: { [email: string]: string };
-  pinned?: string[];
-  onTogglePin?: (id: string) => void;
-  showPin?: boolean;
-}) => (
-  <div style={{ marginTop: 16 }}>
-    {activities.map((activity) => {
-      const color = accountColor?.[activity.source_email] || "#d9d9d9";
-      const isPinned = pinned?.includes(activity.id);
-
-      return (
-        <div
-          key={activity.id}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            padding: "12px 0",
-            borderBottom: "1px solid #f0f0f0",
-            justifyContent: "space-between",
-          }}
-        >
-          <div style={{ display: "flex", gap: 12, flex: 1 }}>
-            <div
-              style={{
-                backgroundColor: "#e0f2fe",
-                borderRadius: 8,
-                textAlign: "center",
-                padding: "6px 10px",
-                width: 48,
-              }}
-            >
-              <Text strong style={{ fontSize: 16, display: "block" }}>
-                {activity.date}
-              </Text>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                {activity.month}
-              </Text>
-            </div>
-
-            <div>
-              <Text style={{ fontSize: 15, fontWeight: 500, display: "block" }}>
-                {activity.title}
-              </Text>
-              <Text type="secondary" style={{ fontSize: 13, display: "block" }}>
-                {activity.detail}
-              </Text>
-              {activity.source_email && (
-
-                // <Tag
-                //   // color={color}
-                //   style={{ marginTop: 4, fontWeight: 500, fontSize: 12 }}
-                // >
-                //   {activity.source_email}
-                // </Tag>
-                <Badge color={color} text={activity.source_email} />
-              )}
-            </div>
-          </div>
-
-          {showPin && (
-            <div style={{ cursor: "pointer" }} onClick={() => onTogglePin?.(activity.id)}>
-              {isPinned ? (
-                <PushpinFilled style={{ color: "#f59e0b", fontSize: 18 }} />
-              ) : (
-                <PushpinOutlined style={{ color: "#999", fontSize: 18 }} />
-              )}
-            </div>
-          )}
-        </div>
-      );
-    })}
-  </div>
-);
-
-const UpcomingActivities = ({ googleEvents, accountColor }: any) => {
-  const activities = transformActivities(googleEvents);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [pinned, setPinned] = useState<string[]>([]); // store pinned activity IDs
-
-  const togglePin = (id: string) => {
-    setPinned((prev) => {
-      if (prev.includes(id)) return prev.filter((item) => item !== id);
-      if (prev.length >= 3) return prev; // only allow 3 pins
-      return [...prev, id];
-    });
-  };
-
-  const pinnedActivities = activities.filter((a: any) => pinned.includes(a.id));
-  const unpinnedActivities = activities.filter((a: any) => !pinned.includes(a.id));
-  const firstThree = [...pinnedActivities, ...unpinnedActivities].slice(0, 3);
-
-  return (
-    <>
-      <Card
-        style={{
-          borderRadius: 16,
-          width: 380,
-          boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <Title level={4} style={{ margin: 0 }}>
-            Upcoming Activities
-          </Title>
-          <Text
-            style={{ color: "#2563eb", cursor: "pointer" }}
-            onClick={() => setIsModalOpen(true)}
-          >
-            View All
-          </Text>
-        </div>
-
-        <ActivityList
-          activities={firstThree}
-          accountColor={accountColor}
-          pinned={pinned}
-          onTogglePin={togglePin}
-          showPin
-        />
-      </Card>
-
-      <Modal
-        open={isModalOpen}
-        onCancel={() => setIsModalOpen(false)}
-        footer={null}
-        title="All Upcoming Activities"
-        width={700}
-        bodyStyle={{ maxHeight: "70vh", overflowY: "auto" }}
-      >
-        <ActivityList
-          activities={activities}
-          accountColor={accountColor}
-          pinned={pinned}
-          onTogglePin={togglePin}
-          showPin
-        />
-      </Modal>
-    </>
   );
 };

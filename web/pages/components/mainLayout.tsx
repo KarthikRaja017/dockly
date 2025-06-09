@@ -31,6 +31,7 @@ export default function MainLayout({ children, colors }: MainLayoutProps) {
           style={{
             background: "#f0f2f5",
             minHeight: "calc(100vh - 64px)",
+            caretColor: "transparent"
           }}
         >
           {children}

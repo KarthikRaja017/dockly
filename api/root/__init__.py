@@ -36,6 +36,9 @@ def create_app(test_config=None):
     from root.google import google_bp
 
     app.register_blueprint(google_bp)
+    from root.settings import settings_bp
+
+    app.register_blueprint(settings_bp)
     app.permanent_session_lifetime = timedelta(minutes=60)
     # initialize_firebase()
 

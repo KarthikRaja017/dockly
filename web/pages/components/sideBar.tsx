@@ -134,6 +134,7 @@ const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
           transition: "all 0.2s ease-in-out",
           display: "flex",
           flexDirection: "column",
+          caretColor: "transparent",
           zIndex: 1000,
         }}
       >

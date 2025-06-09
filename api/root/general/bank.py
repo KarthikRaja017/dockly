@@ -14,6 +14,7 @@ API_SECRET_KEY = (
 
 GRAPHQL_ENDPOINT = "https://api.quiltt.io/v1/graphql"
 
+
 class BankConnect(Resource):
     @auth_required(isOptional=True)
     def post(self, uid, user):
@@ -144,6 +145,7 @@ query SpendingAccountsWithTransactionsQuery {
 }
 """
 
+
 class GetBankAccount(Resource):
     def post(self):
         # Get token from query params or headers
@@ -169,8 +171,7 @@ class GetBankAccount(Resource):
 
         return data
 
+
 class SaveBankAccount(Resource):
     def post(self):
         data = request.get_json()
-        
-        

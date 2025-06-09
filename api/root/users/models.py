@@ -7,7 +7,7 @@ from flask_restful import Resource
 from datetime import datetime
 import pytz
 import requests
-from root.auth.auth import getAccessTokens
+from root.auth.auth import auth_required, getAccessTokens
 from root.utilis import handle_user_session, uniqueId
 from root.config import (
     EMAIL_PASSWORD,
@@ -49,8 +49,6 @@ def format_phone_number(mobile):
 
 
 def send_otp_sms(mobile, otp):
-    print(f"Sending OTP to: {mobile}")
-    print(f"OTP: {otp}")
 
     url = "http://localhost:9090/intl"  # TextBelt running locally
     project_name = "Dockly"
@@ -61,11 +59,7 @@ def send_otp_sms(mobile, otp):
         "key": "textbelt",  # Default key when running locally
     }
 
-    print(f"Request data: {data}")  # Debugging
-
     response = requests.post(url, data=data)
-    print(f"Response status code: {response.status_code}")
-    print(f"Response text: {response.text}")
 
     try:
         return response.json()
@@ -96,7 +90,6 @@ def getUtcCurrentTime():
 class RegisterUser(Resource):
     def post(self):
         data = request.get_json()
-        print(f"data: {data}")
         userName = data.get("userName")
         inputEmail = data.get("email", "")
         userId = ""
@@ -246,7 +239,6 @@ class SaveUserEmail(Resource):
                 usernamePrefix = email.split("@")[0]
                 uid = uniqueId(digit=5, isNum=True, prefix="USER")
                 username = f"{usernamePrefix}{uid}"
-                print(f"username: {username}")
                 userId = DBHelper.insert(
                     "users",
                     return_column="uid",
@@ -292,7 +284,6 @@ class OtpVerification(Resource):
     def post(self):
         inputData = request.get_json(silent=True)
         userId = inputData["userId"]
-        print(f"userId: {userId}")
         otp = inputData.get("otp")
         response = is_otp_valid(inputData["storedOtp"], otp)
         uid = DBHelper.update_one(
@@ -304,7 +295,6 @@ class OtpVerification(Resource):
         userInfo = {
             "uid": uid.get("uid"),
         }
-        print(f"userInfo: {userInfo}")
         token = getAccessTokens(userInfo)
         # handle_user_session(uid)
         response["payload"]["token"] = token["accessToken"]
@@ -394,55 +384,203 @@ class LoginUser(Resource):
         }
 
 
-class AddMobile(Resource):
-    def post(self):
-        inputData = request.get_json(silent=True)
-        email = inputData["email"]
-        mobileNumber = inputData["mobile"]
+class GetStarted(Resource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        if not uid:
+            return {
+                "status": 0,
+                "message": "User ID is required",
+                "payload": {},
+            }
 
-        existingUser = DBHelper.find_one("users", filters={"email": email})
-        if existingUser:
-            uid = DBHelper.update_one(
-                table_name="users",
-                filters={"email": email},
-                updates={"mobile": mobileNumber},
-                return_fields=["uid"],
-            )
-        otp = generate_otp()
-        # otpStatus = send_sms_otp(otp, "91" + mobileNumber)
-        # if otpStatus:
-        #     otpResponse = {"otp": otp, "mobileNumber": mobileNumber}
-        # else:
-        #     return {
-        #         "status": 0,
-        #         "message": "Failed to send OTP",
-        #     }
-        otpResponse = {"otp": otp, "mobileNumber": mobileNumber}
+        completedSteps = 0
+        steps = [
+            "profileCompleted",
+            "accountsCompleted",
+            "boardCreated",
+            "documentUploaded",
+            "notificationsSetup",
+        ]
+
+        # Check profile completion
+        profile = DBHelper.find_one(
+            "user_profiles", filters={"uid": uid}, select_fields=["uid"]
+        )
+        if profile and profile.get("uid"):
+            completedSteps += 1
+            if "profileCompleted" in steps:
+                steps.remove("profileCompleted")
+
+        # Check notifications setup
+        notifications = DBHelper.find_one(
+            "user_settings",
+            filters={"user_id": uid},
+            select_fields=["email_notifications", "push_notifications"],
+        )
+
+        if notifications is not None:
+            completedSteps += 1
+            if "notificationsSetup" in steps:
+                steps.remove("notificationsSetup")
+        googleUser = DBHelper.find_one(
+            "google_tokens",
+            filters={"uid": uid},
+            select_fields=["email"],
+        )
+        if googleUser is not None:
+            completedSteps += 1
+            if "accountsCompleted" in steps:
+                steps.remove("accountsCompleted")
+        print(f"steps: {steps}")
+        print(f"completedSteps: {completedSteps}")
+
         return {
             "status": 1,
-            "message": "OTP sent successfully",
-            "payload": {"email": email, "otpStatus": otpResponse, "uid": uid},
+            "message": "Fetched Get Started steps",
+            "payload": {
+                "completedSteps": completedSteps,
+                "steps": steps,
+                "username": user.get("username", ""),
+                "uid": uid,
+            },
         }
 
 
 class AddDetails(Resource):
-    def post(self):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
         inputData = request.get_json(silent=True)
-        userId = inputData["userId"]
-        mobileNumber = inputData["mobileNumber"]
+        existingUser = DBHelper.find_one(
+            "user_profiles", filters={"uid": uid}, select_fields=["uid"]
+        )
 
-        existingUser = DBHelper.find_one("users", columns="id", id=userId)
         if existingUser:
-            DBHelper.update_one("users", inputData, id=userId)
-        otp = generate_otp()
-        # otpStatus = send_otp_sms(mobileNumber, otp)
-        # print(f"otpStatus: {otpStatus}")
-        otpResponse = {"otp": otp, "mobileNumber": mobileNumber}
+            if "personalValues" in inputData:
+                userDetails = inputData["personalValues"]
+                uid = DBHelper.update_one(
+                    table_name="user_profiles",
+                    filters={"uid": uid},
+                    updates={
+                        "first_name": userDetails["first_name"],
+                        "last_name": userDetails["last_name"],
+                        "dob": datetime.fromisoformat(
+                            userDetails["dob"].replace("Z", "+00:00")
+                        ).date(),
+                        "phone": userDetails["phone"],
+                    },
+                    return_fields=["uid"],
+                )
+            if "addressValues" in inputData:
+                addressDetails = inputData["addressValues"]
+                DBHelper.update_one(
+                    table_name="user_profiles",
+                    filters={"uid": uid},
+                    updates={
+                        "country": addressDetails["country"],
+                        "city": addressDetails["city"],
+                        "postal_code": addressDetails["postal_code"],
+                    },
+                    return_fields=["uid"],
+                )
+
+            return {
+                "status": 1,
+                "message": "User details updated successfully",
+                "payload": {"uid": uid, "username": user.get("username", "")},
+            }
+        else:
+            personalDetails = inputData.get("personal", {})
+            securityDetails = inputData.get("security", {})
+            addressDetails = inputData.get("address", {})
+            userDetails = {}
+            userEmailDetails = DBHelper.find_one(
+                "users", filters={"uid": uid}, select_fields=["email"]
+            )
+            userEmail = userEmailDetails.get("email", "")
+            if personalDetails:
+                if userEmail != securityDetails.get("email", ""):
+                    DBHelper.update_one(
+                        table_name="users",
+                        filters={"uid": uid},
+                        updates={"email": personalDetails.get("email", "")},
+                        return_fields=["uid"],
+                    )
+                userDetails.update(personalDetails)
+
+            if securityDetails:
+                if userEmail == securityDetails.get("backupEmail", ""):
+                    return {
+                        "status": 0,
+                        "message": "Backup email cannot be same as primary email",
+                        "payload": {"setStep": 1},
+                    }
+                userDetails.update(securityDetails)
+            if addressDetails:
+                userDetails.update(addressDetails)
+            if not userDetails:
+                return {
+                    "status": 0,
+                    "message": "No details provided to update",
+                    "payload": {"setStep": 1},
+                }
+
+            if userDetails:
+                name = DBHelper.insert(
+                    "user_profiles",
+                    return_column="first_name",
+                    uid=uid,
+                    first_name=userDetails["first_name"],
+                    last_name=userDetails["last_name"],
+                    dob=datetime.fromisoformat(
+                        userDetails["dob"].replace("Z", "+00:00")
+                    ).date(),
+                    phone=userDetails["phone"],
+                    backup_email=userDetails["backupEmail"],
+                    country=userDetails["country"],
+                    city=userDetails["city"],
+                    postal_code=userDetails["postal_code"],
+                )
+
+            return {
+                "status": 1,
+                "message": f"{name}'s Details added successfully",
+                "payload": {"name": name, "username": user.get("username", "")},
+            }
+
+
+class GetUserDetails(Resource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        userDetails = DBHelper.find_one(
+            "user_profiles",
+            filters={"uid": uid},
+            select_fields=[
+                "first_name",
+                "last_name",
+                "dob",
+                "phone",
+                "backup_email",
+                "country",
+                "city",
+                "postal_code",
+            ],
+        )
+
+        if not userDetails:
+            return {
+                "status": 0,
+                "message": "User details not found",
+                "payload": {},
+            }
+
+        userDetails["dob"] = userDetails["dob"].isoformat()
+        userDetails["email"] = user.get("email", "")
 
         return {
             "status": 1,
-            "message": "OTP sent successfully",
-            "payload": {"userId": userId, "otpStatus": otpResponse},
+            "message": "User details fetched successfully",
+            "payload": userDetails,
         }
 
 

@@ -1,9 +1,8 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { Input, Button, Typography, Form } from "antd";
+import { Button, Typography, Form } from "antd";
 import { MailOutlined } from "@ant-design/icons";
 import { useParams, useRouter } from "next/navigation";
-import { useCurrentUser } from "../../app/userContext";
 import { AxiosResponse } from "axios";
 import { userAddEmail } from "../../services/user";
 import { showNotification } from "../../utils/notification";
@@ -50,7 +49,6 @@ const SignUpDockly = () => {
       showNotification("Success", msg, "success");
       localStorage.setItem("storedOtp", payload?.otpStatus.otp || "");
       localStorage.setItem("email", payload?.email || "");
-      localStorage.setItem("userId", payload?.uid || "");
       router.push(`/${payload?.username}/verify-email?email=${payload.email}`);
     }
     setLoading(false);

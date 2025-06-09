@@ -1,68 +1,106 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { Card, Avatar, Button, Input, Form, Upload, Space } from "antd";
+import { Avatar, Button, Input, Form, Upload, Space, Card, DatePicker } from "antd";
 import { EditOutlined, UploadOutlined, SaveOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import Header from "../../../pages/components/header";
+import { AxiosResponse } from "axios";
+import { getUserProfile, userAddProfile } from "../../../services/user";
+import DocklyLoader from "../../../utils/docklyLoader";
+import dayjs from 'dayjs';
+
+type PersonalValues = {
+  first_name?: string;
+  last_name?: string;
+  dob?: string;
+  email?: string;
+  phone?: string;
+  role?: string;
+  country?: string;
+  city?: string;
+  postal_code?: string;
+};
+
 const ProfilePage: React.FC = () => {
   const [isPersonalEditing, setIsPersonalEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [isAddressEditing, setIsAddressEditing] = useState(false);
-  const [profileImage, setProfileImage] = useState<string>("/profile.webp");
+  const [personalValues, setPersonalValues] = useState<PersonalValues | null>(null);
+  const [profileImage, setProfileImage] = useState<string>("https://randomuser.me/api/portraits/men/32.jpg");
   const [formPersonal] = Form.useForm();
   const [formAddress] = Form.useForm();
   const [username, setUsername] = useState<string>("");
   const router = useRouter();
 
-//   useEffect(() => {
-//     const storedUsername = localStorage.getItem("username") || "";
-//     setUsername(storedUsername);
-//     if (localStorage.getItem("profile") === null) {
-//       router.push(`/${storedUsername}/profile/setup`);
-//     }
-//   }, [router]);
+  const fetchProfileAndCheck = async () => {
+    setLoading(true);
+    try {
+      const response: AxiosResponse<any> = await getUserProfile({ username });
+      const { status, payload } = response.data;
 
-  const handleUpload = (info: any) => {
-    const file = info.file.originFileObj;
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (e.target?.result) {
-          setProfileImage(e.target.result as string);
-        }
-      };
-      reader.readAsDataURL(file);
+      if (status && payload) {
+        setPersonalValues(payload);
+      } else {
+        router.push(`/${username}/profile/setup`);
+      }
+    } catch (error) {
+      console.error("Failed to fetch profile", error);
+    } finally {
+      setLoading(false);
     }
-    return false;
   };
 
-  const handlePersonalSave = () => {
-    formPersonal.validateFields().then((values) => {
-      console.log("Saved Personal Info:", values);
-      setIsPersonalEditing(false);
+  useEffect(() => {
+    const storedUsername = localStorage.getItem("username") || "";
+    setUsername(storedUsername);
+    fetchProfileAndCheck();
+  }, [username, router]);
+
+  // const handleUpload = (info: any) => {
+  //   const file = info.file.originFileObj;
+  //   if (file) {
+  //     const reader = new FileReader();
+  //     reader.onload = (e) => {
+  //       if (e.target?.result) {
+  //         setProfileImage(e.target.result as string);
+  //       }
+  //     };
+  //     reader.readAsDataURL(file);
+  //   }
+  //   return false;
+  // };
+
+  const handlePersonalSave = async () => {
+    formPersonal.validateFields().then(async (values) => {
+      const editPersonalValues: AxiosResponse<any> = await userAddProfile({ username, personalValues: values });
+      const { status, payload } = editPersonalValues.data;
+      if (status && payload) {
+        setIsPersonalEditing(false);
+        fetchProfileAndCheck();
+      } else {
+        console.error("Failed to save personal info");
+      }
     });
   };
 
-  const handleAddressSave = () => {
-    formAddress.validateFields().then((values) => {
-      console.log("Saved Address Info:", values);
-      setIsAddressEditing(false);
+  const handleAddressSave = async () => {
+    formAddress.validateFields().then(async (values) => {
+      console.log("🚀 ~ formAddress.validateFields ~ values:", values)
+      const editAddressValues: AxiosResponse<any> = await userAddProfile({ username, addressValues: values });
+      const { status, payload } = editAddressValues.data;
+      if (status && payload) {
+        setIsAddressEditing(false);
+        // fetchProfileAndCheck();
+      } else {
+        console.error("Failed to save address info");
+      }
     });
   };
 
-  const personalValues = {
-    firstName: "Asfar",
-    lastName: "Huda",
-    dob: "12-10-1990",
-    email: "asfarhuda@gmail.com",
-    phone: "(+62) 821 2554-5846",
-    // role: "Admin",
-  };
 
-  const addressValues = {
-    country: "United States",
-    city: "New York",
-    postal: "10001",
-  };
+  if (loading || !personalValues) {
+    return <DocklyLoader />
+  }
 
   const headingColor = "#1E88E5";
 
@@ -82,16 +120,16 @@ const ProfilePage: React.FC = () => {
             <Avatar size={80} src={profileImage} />
             <div style={{ marginLeft: "16px" }}>
               <h2 style={{ marginBottom: 0, color: headingColor }}>
-                {personalValues.firstName} {personalValues.lastName}
+                {personalValues.first_name} {personalValues.last_name}
               </h2>
-              <p>{addressValues.country}</p>
-              <Upload
+              <p>{personalValues.country}</p>
+              {/* <Upload
                 showUploadList={false}
                 beforeUpload={() => false}
                 onChange={handleUpload}
               >
                 <Button icon={<UploadOutlined />}>Upload Image</Button>
-              </Upload>
+              </Upload> */}
             </div>
           </div>
         </Card>
@@ -122,18 +160,21 @@ const ProfilePage: React.FC = () => {
             <Form
               form={formPersonal}
               layout="vertical"
-              initialValues={personalValues}
+              initialValues={{
+                ...personalValues,
+                dob: personalValues?.dob ? dayjs(personalValues.dob) : null,
+              }}
             >
               <div style={{ display: "flex", gap: "24px", flexWrap: "wrap" }}>
                 <Form.Item
-                  name="firstName"
+                  name="first_name"
                   label="First Name"
                   style={{ flex: "1" }}
                 >
                   <Input />
                 </Form.Item>
                 <Form.Item
-                  name="lastName"
+                  name="last_name"
                   label="Last Name"
                   style={{ flex: "1" }}
                 >
@@ -144,7 +185,7 @@ const ProfilePage: React.FC = () => {
                   label="Date of Birth"
                   style={{ flex: "1" }}
                 >
-                  <Input />
+                  <DatePicker style={{ width: '100%' }} />
                 </Form.Item>
               </div>
               <div
@@ -169,19 +210,16 @@ const ProfilePage: React.FC = () => {
                 >
                   <Input />
                 </Form.Item>
-                <Form.Item name="role" label="User Role" style={{ flex: "1" }}>
-                  <Input />
-                </Form.Item>
               </div>
             </Form>
           ) : (
             <div>
               <div style={{ display: "flex", gap: "24px", flexWrap: "wrap" }}>
                 <div style={{ flex: "1" }}>
-                  <strong>First Name:</strong> {personalValues.firstName}
+                  <strong>First Name:</strong> {personalValues.first_name}
                 </div>
                 <div style={{ flex: "1" }}>
-                  <strong>Last Name:</strong> {personalValues.lastName}
+                  <strong>Last Name:</strong> {personalValues.last_name}
                 </div>
                 <div style={{ flex: "1" }}>
                   <strong>Date of Birth:</strong> {personalValues.dob}
@@ -230,7 +268,7 @@ const ProfilePage: React.FC = () => {
             <Form
               form={formAddress}
               layout="vertical"
-              initialValues={addressValues}
+              initialValues={personalValues}
             >
               <div style={{ display: "flex", gap: "24px", flexWrap: "wrap" }}>
                 <Form.Item name="country" label="Country" style={{ flex: "1" }}>
@@ -240,7 +278,7 @@ const ProfilePage: React.FC = () => {
                   <Input />
                 </Form.Item>
                 <Form.Item
-                  name="postal"
+                  name="postal_code"
                   label="Postal Code"
                   style={{ flex: "1" }}
                 >
@@ -251,13 +289,13 @@ const ProfilePage: React.FC = () => {
           ) : (
             <div style={{ display: "flex", gap: "24px", flexWrap: "wrap" }}>
               <div style={{ flex: "1" }}>
-                <strong>Country:</strong> {addressValues.country}
+                <strong>Country:</strong> {personalValues.country}
               </div>
               <div style={{ flex: "1" }}>
-                <strong>City:</strong> {addressValues.city}
+                <strong>City:</strong> {personalValues.city}
               </div>
               <div style={{ flex: "1" }}>
-                <strong>Postal Code:</strong> {addressValues.postal}
+                <strong>Postal Code:</strong> {personalValues.postal_code}
               </div>
             </div>
           )}

@@ -23,14 +23,11 @@ def auth_required(amac=None, isOptional=False):
             verify_jwt_in_request(optional=isOptional)
 
             uid = get_jwt_identity()
-            print(f"uid: {uid}")
 
             if isOptional and not uid:
-                print(f"isOptional: {isOptional}")
                 return fn(*args, **kwargs, uid=None, user=None)
 
             user = getAuthUser(uid)
-            print(f"user: {user}")
 
             if not user or "email" not in user:
                 return {
@@ -80,6 +77,18 @@ def getAuthUser(uid, fields=None):
         "users", filters={"uid": uid}, select_fields=selectFields
     )
 
+    user_settings = DBHelper.find_one(
+        "user_settings",
+        filters={"user_id": uid},
+        select_fields=[
+            "theme",
+            "language",
+            "email_notifications",
+            "push_notifications",
+            "reminder_days_before",
+        ],
+    )
+
     # session_data = DBHelper.find_one(
     #     "user_sessions",
     #     filters={"uid": uid},
@@ -94,14 +103,13 @@ def getAuthUser(uid, fields=None):
 
     # if session_data is None:
     #     session_data = {}
-    # merged_data = {**user_data, **session_data}
+    merged_data = {**user_data, **(user_settings or {})}
 
-    return user_data
+    return merged_data
 
 
 def getAccessTokens(data):
     uid = data.get("uid")
-    print(f"uidcgfvkmld: {uid}")
     if not uid:
         raise ValueError("UID is required for token generation")
 

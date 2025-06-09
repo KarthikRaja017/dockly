@@ -14,6 +14,8 @@ import {
 import "antd/dist/reset.css"; // Import Ant Design CSS
 import { useRouter } from "next/navigation";
 import MainLayout from "../../../pages/components/mainLayout";
+import addNotificationsSettings from "../../../services/settings";
+import { useCurrentUser } from "../../userContext";
 
 const { TabPane } = Tabs;
 const { Title } = Typography;
@@ -22,7 +24,11 @@ const { Option } = Select;
 const SettingsPage: React.FC = () => {
   const [theme, setTheme] = useState<string>("light"); // Default to light theme
   const [username, setUsername] = useState<string>(""); // Username state
+  const [notification, setNotification] = useState({}); // Username state
   const router = useRouter();
+  const [form] = Form.useForm();
+  const currentUser = useCurrentUser();
+  console.log("🚀 ~ currentUser:", currentUser)
 
   // Detect system theme preference and update on change
   useEffect(() => {
@@ -45,13 +51,13 @@ const SettingsPage: React.FC = () => {
   }, [theme]);
 
   // Handle username and redirection
-  useEffect(() => {
-    const storedUsername = localStorage.getItem("username") || "";
-    setUsername(storedUsername);
-    if (!storedUsername) {
-      router.push("/settings/setup");
-    }
-  }, [router]);
+  // useEffect(() => {
+  //   const storedUsername = localStorage.getItem("username") || "";
+  //   setUsername(storedUsername);
+  //   if (!storedUsername) {
+  //     router.push("/settings/setup");
+  //   }
+  // }, [router]);
 
   // Handle theme change
   const handleThemeChange = (value: string) => {
@@ -65,6 +71,14 @@ const SettingsPage: React.FC = () => {
       setTheme(value);
     }
   };
+
+  const addNotifications = async (values: any) => {
+    const response = await addNotificationsSettings({ notifications: values });
+    const { status, message, payload } = response.data
+    if (status) {
+      setNotification(payload.userNotifications);
+    }
+  }
 
   // Define theme-based styles
   const pageStyle = {
@@ -128,6 +142,13 @@ const SettingsPage: React.FC = () => {
     color: theme === "dark" ? "#ff4d4f" : "#ff4d4f",
   };
 
+  useEffect(() => {
+    form.setFieldsValue({
+      ...currentUser
+    });
+
+  }, [form])
+
   return (
     <>
       <div style={pageStyle}>
@@ -146,7 +167,8 @@ const SettingsPage: React.FC = () => {
           <Tabs defaultActiveKey="1" style={tabsStyle}>
             {/* Account Settings */}
             <TabPane tab="Account" key="1" style={{ padding: "16px" }}>
-              <Form layout="vertical" style={{ maxWidth: "1200px" }}>
+              <Form layout="vertical" style={{ maxWidth: "1200px" }}
+                form={form}>
                 {/* <Form.Item label="Full Name" style={{ marginBottom: "16px" }}>
                   <Input
                     placeholder="Enter your full name"
@@ -160,7 +182,7 @@ const SettingsPage: React.FC = () => {
                     style={inputStyle}
                   />
                 </Form.Item> */}
-                <Form.Item label="Username" style={{ marginBottom: "16px" }}>
+                <Form.Item name="username" label="Username" style={{ marginBottom: "16px" }}>
                   <Input
                     placeholder="Enter new username"
                     style={inputStyle}
@@ -183,8 +205,9 @@ const SettingsPage: React.FC = () => {
 
             {/* Preferences */}
             <TabPane tab="Preferences" key="2" style={{ padding: "16px" }}>
-              <Form layout="vertical" style={{ maxWidth: "600px" }}>
-                <Form.Item label="Theme" style={{ marginBottom: "16px" }}>
+              <Form layout="vertical" style={{ maxWidth: "600px" }}
+                form={form}>
+                <Form.Item name="theme" label="Theme" style={{ marginBottom: "16px" }}>
                   <Select
                     defaultValue="light"
                     onChange={handleThemeChange}
@@ -198,7 +221,7 @@ const SettingsPage: React.FC = () => {
                     <Option value="system">System Default</Option>
                   </Select>
                 </Form.Item>
-                <Form.Item label="Language" style={{ marginBottom: "16px" }}>
+                <Form.Item name="language" label="Language" style={{ marginBottom: "16px" }}>
                   <Select
                     defaultValue="en"
                     style={{
@@ -219,20 +242,34 @@ const SettingsPage: React.FC = () => {
 
             {/* Notifications */}
             <TabPane tab="Notifications" key="3" style={{ padding: "16px" }}>
-              <Form layout="vertical" style={{ maxWidth: "600px" }}>
+              <Form
+                layout="vertical"
+                style={{ maxWidth: "600px" }}
+                onFinish={addNotifications}
+                initialValues={{
+                  emailNotifications: true,
+                  pushNotifications: true,
+                  customReminder: 2,
+                }}
+                form={form}
+              >
                 <Form.Item
+                  name="emailNotifications"
                   label="Email Notifications"
+                  valuePropName="checked"
                   style={{ marginBottom: "16px" }}
                 >
                   <Switch
-                    defaultChecked
                     style={{
                       backgroundColor: theme === "dark" ? "#40a9ff" : "#1890ff",
                     }}
                   />
                 </Form.Item>
+
                 <Form.Item
+                  name="pushNotifications"
                   label="Push Notifications"
+                  valuePropName="checked"
                   style={{ marginBottom: "16px" }}
                 >
                   <Switch
@@ -241,17 +278,16 @@ const SettingsPage: React.FC = () => {
                     }}
                   />
                 </Form.Item>
+
                 <Form.Item
+                  name="customReminder"
                   label="Custom Reminder (Days Before)"
                   style={{ marginBottom: "16px" }}
                 >
-                  <Input
-                    type="number"
-                    placeholder="e.g. 3"
-                    style={inputStyle}
-                  />
+                  <Input type="number" placeholder="e.g. 3" style={inputStyle} />
                 </Form.Item>
-                <Button type="primary" style={buttonStyle}>
+
+                <Button type="primary" style={buttonStyle} htmlType="submit">
                   Update Notifications
                 </Button>
               </Form>

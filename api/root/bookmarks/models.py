@@ -27,7 +27,6 @@ class SaveBookmarks(Resource):
 class SaveAllBookmarks(Resource):
     def post(self):
         data = request.get_json()
-        print(f"data: {data}")
 
         uid = data.get("uid")
         bookmarks = data.get("bookmarks")
@@ -53,17 +52,14 @@ class GetBookmarks(Resource):
         # print(f"uid: {uid}")
 
         if not uid:
-            return {
-                "status": 0,
-                "message": "UID is required"
-            }, 400
+            return {"status": 0, "message": "UID is required"}, 400
 
         # Get bookmarks for the provided UID
-        bookmarks = DBHelper.find_many("bookmarks", {"uid": uid})  
+        bookmarks = DBHelper.find_many("bookmarks", {"uid": uid})
         # print(f"bookmarks: {bookmarks}")
 
         return {
             "status": 1,
             "message": "Bookmarks fetched successfully",
-            "bookmarks": bookmarks
+            "bookmarks": bookmarks,
         }
