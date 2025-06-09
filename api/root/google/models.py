@@ -251,18 +251,206 @@ class GoogleCallback(Resource):
         return redirect(redirect_url)
 
 
+# class AddGoogleCalendarEvent(Resource):
+#     @auth_required(isOptional=True)
+#     def post(self, uid, user):
+#         inputData = request.get_json(silent=True)
+#         matched_users = inputData.get("matchedUsers", [])
+#         attendees = [
+#             {"email": user["email"]} for user in matched_users if "email" in user
+#         ]
+#         eventText = inputData.get("event", "")
+#         if not eventText:
+#             return {"status": 0, "message": "Event text is required.", "payload": {}}
+
+#         cleaned_text = re.sub(r"@\w+", "", eventText).strip()
+#         cleaned_text = re.sub(
+#             r"^(event\s+on|remind\s+me\s+to|schedule\s+for|set\s+reminder\s+for)\s+",
+#             "",
+#             cleaned_text,
+#             flags=re.IGNORECASE,
+#         )
+
+#         # parsed_time = dateparser.parse(
+#         #     cleaned_text,
+#         #     settings={
+#         #         "PREFER_DATES_FROM": "future",
+#         #         "TIMEZONE": "UTC",
+#         #         "RETURN_AS_TIMEZONE_AWARE": True,
+#         #     },
+#         # )
+#         # parsed_time = extract_datetime(cleaned_text)
+#         parsed_time = extract_datetime_us(cleaned_text)
+#         if not parsed_time:
+#             return {
+#                 "status": 0,
+#                 "message": "Could not detect time in the event text.",
+#                 "payload": {},
+#             }
+
+#         user_cred = DBHelper.find_one(
+#             "google_tokens",
+#             filters={"uid": uid},
+#             select_fields=["access_token", "refresh_token", "email"],
+#         )
+
+#         if not user_cred:
+#             return {
+#                 "status": 0,
+#                 "message": "No connected Google account found.",
+#                 "payload": {},
+#             }
+
+#         creds = Credentials(
+#             token=user_cred["access_token"],
+#             refresh_token=user_cred["refresh_token"],
+#             token_uri=uri,
+#             client_id=CLIENT_ID,
+#             client_secret=CLIENT_SECRET,
+#             scopes=SCOPE.split(),
+#         )
+
+#         service = build("calendar", "v3", credentials=creds)
+
+#         event = {
+#             "summary": f"Event: {eventText}",
+#             "start": {"dateTime": parsed_time, "timeZone": "UTC"},
+#             "end": {
+#                 "dateTime": (parsed_time),
+#                 "timeZone": "UTC",
+#             },
+#             "attendees": attendees,
+#             "guestsCanModify": True,
+#             "guestsCanInviteOthers": True,
+#             "guestsCanSeeOtherGuests": True,
+#         }
+
+#         created_event = (
+#             service.events().insert(calendarId="primary", body=event).execute()
+#         )
+
+#         return {
+#             "status": 1,
+#             "message": "Google Calendar event successfully added.",
+#             "payload": {"event_link": created_event.get("htmlLink")},
+#         }
+
+
+# class AddNotes(Resource):
+#     @auth_required(isOptional=True)
+#     def post(self, uid, user):
+#         inputData = request.get_json(silent=True)
+
+#         note_text = inputData.get("note", "").strip()
+#         mode = inputData.get("mode", "today")  # default to 'today'
+
+#         if not note_text:
+#             return {"status": 0, "message": "Note text is required.", "payload": {}}
+
+#         # parsed_time_str = extract_datetime(note_text)
+#         parsed_time_str = extract_datetime_us(note_text)
+
+#         if not parsed_time_str:
+#             return {
+#                 "status": 0,
+#                 "message": "No time detected in the note text.",
+#                 "payload": {},
+#             }
+
+#         parsed_time = datetime.fromisoformat(parsed_time_str)
+#         ist = pytz.timezone("Asia/Kolkata")
+#         parsed_time = parsed_time.astimezone(ist)
+
+#         note_dates = get_future_dates_from_mode(parsed_time, mode)
+#         nid = uniqueId(digit=5, isNum=True)
+#         inserted_notes = []
+#         for note_date in note_dates:
+#             full_dt = ist.localize(datetime.combine(note_date, parsed_time.time()))
+#             insert_data = {
+#                 "uid": uid,
+#                 "note": note_text,
+#                 "note_time": full_dt.isoformat(),
+#                 "status": 1,
+#                 "nid": nid,
+#             }
+#             DBHelper.insert("notes", **insert_data)
+#             inserted_notes.append(insert_data)
+
+#         return {
+#             "status": 1,
+#             "message": f"{len(inserted_notes)} note(s) added successfully.",
+#             "payload": inserted_notes,
+#         }
+
+
+### FOR US
+class AddNotes(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        inputData = request.get_json(silent=True)
+
+        note_text = inputData.get("note", "").strip()
+        mode = inputData.get("mode", "today")  # default to 'today'
+
+        if not note_text:
+            return {"status": 0, "message": "Note text is required.", "payload": {}}
+
+        # Parse with US timezone
+        parsed_time_str = extract_datetime_us(note_text)
+
+        if not parsed_time_str:
+            return {
+                "status": 0,
+                "message": "No time detected in the note text.",
+                "payload": {},
+            }
+
+        parsed_time = datetime.fromisoformat(parsed_time_str)
+
+        # Use Detroit timezone
+        detroit_tz = pytz.timezone("America/Detroit")
+        parsed_time = parsed_time.astimezone(detroit_tz)
+
+        note_dates = get_future_dates_from_mode(parsed_time, mode)
+        nid = uniqueId(digit=5, isNum=True)
+        inserted_notes = []
+
+        for note_date in note_dates:
+            full_dt = detroit_tz.localize(
+                datetime.combine(note_date, parsed_time.time())
+            )
+            insert_data = {
+                "uid": uid,
+                "note": note_text,
+                "note_time": full_dt.isoformat(),
+                "status": 1,
+                "nid": nid,
+            }
+            DBHelper.insert("notes", **insert_data)
+            inserted_notes.append(insert_data)
+
+        return {
+            "status": 1,
+            "message": f"{len(inserted_notes)} note(s) added successfully.",
+            "payload": inserted_notes,
+        }
+
+
 class AddGoogleCalendarEvent(Resource):
     @auth_required(isOptional=True)
     def post(self, uid, user):
         inputData = request.get_json(silent=True)
+
         matched_users = inputData.get("matchedUsers", [])
         attendees = [
             {"email": user["email"]} for user in matched_users if "email" in user
         ]
+
         eventText = inputData.get("event", "")
         if not eventText:
             return {"status": 0, "message": "Event text is required.", "payload": {}}
 
+        # Clean the text (remove @mentions and prompt words)
         cleaned_text = re.sub(r"@\w+", "", eventText).strip()
         cleaned_text = re.sub(
             r"^(event\s+on|remind\s+me\s+to|schedule\s+for|set\s+reminder\s+for)\s+",
@@ -271,23 +459,20 @@ class AddGoogleCalendarEvent(Resource):
             flags=re.IGNORECASE,
         )
 
-        # parsed_time = dateparser.parse(
-        #     cleaned_text,
-        #     settings={
-        #         "PREFER_DATES_FROM": "future",
-        #         "TIMEZONE": "UTC",
-        #         "RETURN_AS_TIMEZONE_AWARE": True,
-        #     },
-        # )
-        # parsed_time = extract_datetime(cleaned_text)
-        parsed_time = extract_datetime_us(cleaned_text)
-        if not parsed_time:
+        # Extract datetime in US timezone (America/Detroit)
+        parsed_time_str = extract_datetime_us(cleaned_text)
+        if not parsed_time_str:
             return {
                 "status": 0,
                 "message": "Could not detect time in the event text.",
                 "payload": {},
             }
 
+        # Convert to datetime object (includes Detroit timezone)
+        parsed_dt = datetime.fromisoformat(parsed_time_str)
+        end_dt = parsed_dt + timedelta(hours=1)  # Default 1-hour duration
+
+        # Fetch user Google credentials from DB
         user_cred = DBHelper.find_one(
             "google_tokens",
             filters={"uid": uid},
@@ -312,12 +497,16 @@ class AddGoogleCalendarEvent(Resource):
 
         service = build("calendar", "v3", credentials=creds)
 
+        # Create the event with Detroit time zone
         event = {
             "summary": f"Event: {eventText}",
-            "start": {"dateTime": parsed_time, "timeZone": "UTC"},
+            "start": {
+                "dateTime": parsed_dt.isoformat(),
+                "timeZone": "America/Detroit",
+            },
             "end": {
-                "dateTime": (parsed_time),
-                "timeZone": "UTC",
+                "dateTime": end_dt.isoformat(),
+                "timeZone": "America/Detroit",
             },
             "attendees": attendees,
             "guestsCanModify": True,
@@ -333,53 +522,6 @@ class AddGoogleCalendarEvent(Resource):
             "status": 1,
             "message": "Google Calendar event successfully added.",
             "payload": {"event_link": created_event.get("htmlLink")},
-        }
-
-
-class AddNotes(Resource):
-    @auth_required(isOptional=True)
-    def post(self, uid, user):
-        inputData = request.get_json(silent=True)
-
-        note_text = inputData.get("note", "").strip()
-        mode = inputData.get("mode", "today")  # default to 'today'
-
-        if not note_text:
-            return {"status": 0, "message": "Note text is required.", "payload": {}}
-
-        # parsed_time_str = extract_datetime(note_text)
-        parsed_time_str = extract_datetime_us(note_text)
-
-        if not parsed_time_str:
-            return {
-                "status": 0,
-                "message": "No time detected in the note text.",
-                "payload": {},
-            }
-
-        parsed_time = datetime.fromisoformat(parsed_time_str)
-        ist = pytz.timezone("Asia/Kolkata")
-        parsed_time = parsed_time.astimezone(ist)
-
-        note_dates = get_future_dates_from_mode(parsed_time, mode)
-        nid = uniqueId(digit=5, isNum=True)
-        inserted_notes = []
-        for note_date in note_dates:
-            full_dt = ist.localize(datetime.combine(note_date, parsed_time.time()))
-            insert_data = {
-                "uid": uid,
-                "note": note_text,
-                "note_time": full_dt.isoformat(),
-                "status": 1,
-                "nid": nid,
-            }
-            DBHelper.insert("notes", **insert_data)
-            inserted_notes.append(insert_data)
-
-        return {
-            "status": 1,
-            "message": f"{len(inserted_notes)} note(s) added successfully.",
-            "payload": inserted_notes,
         }
 
 
