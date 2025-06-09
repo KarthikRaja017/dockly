@@ -279,7 +279,8 @@ class AddGoogleCalendarEvent(Resource):
         #         "RETURN_AS_TIMEZONE_AWARE": True,
         #     },
         # )
-        parsed_time = extract_datetime(cleaned_text)
+        # parsed_time = extract_datetime(cleaned_text)
+        parsed_time = extract_datetime_us(cleaned_text)
         if not parsed_time:
             return {
                 "status": 0,
@@ -346,7 +347,8 @@ class AddNotes(Resource):
         if not note_text:
             return {"status": 0, "message": "Note text is required.", "payload": {}}
 
-        parsed_time_str = extract_datetime(note_text)
+        # parsed_time_str = extract_datetime(note_text)
+        parsed_time_str = extract_datetime_us(note_text)
 
         if not parsed_time_str:
             return {
@@ -501,11 +503,11 @@ def extract_datetime(text: str, now=None) -> str:
 
 
 def extract_datetime_us(text: str, now=None) -> str:
-    detroit = pytz.timezone("America/Detroit")
-    now = now or datetime.now(detroit)
+    detroit_tz = pytz.timezone("America/Detroit")
+    now = now or datetime.now(detroit_tz)
 
-    def to_detroit_iso(dt: datetime) -> str:
-        return dt.astimezone(detroit).replace(microsecond=0).isoformat()
+    def to_us_iso(dt: datetime) -> str:
+        return dt.astimezone(detroit_tz).replace(microsecond=0).isoformat()
 
     def extract_time_manually(text: str) -> time | None:
         match = re.search(r"\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b", text, re.IGNORECASE)
@@ -520,7 +522,7 @@ def extract_datetime_us(text: str, now=None) -> str:
             return time(hour, minute)
         return None
 
-    # Try search_dates
+    # Step 1: Try search_dates (for full datetime matches)
     results = search_dates(
         text,
         settings={
@@ -533,18 +535,30 @@ def extract_datetime_us(text: str, now=None) -> str:
     )
 
     if results:
-        # If it returns a full datetime, use it
-        _, parsed_dt = results[0]
-        return to_detroit_iso(parsed_dt)
+        results = sorted(results, key=lambda x: len(x[0]), reverse=True)
+        matched_text, parsed_dt = results[0]
+        parsed_dt = parsed_dt.astimezone(detroit_tz)
 
-    # Fallback: detect time manually
+        # Handle "only time" (like "10pm") by combining with today's date
+        if re.fullmatch(
+            r"(at\s*)?\d{1,2}(:\d{2})?\s*(am|pm)", matched_text.strip(), re.IGNORECASE
+        ):
+            manual_time = extract_time_manually(matched_text)
+            if manual_time:
+                parsed_dt = detroit_tz.localize(
+                    datetime.combine(now.date(), manual_time)
+                )
+
+        return to_us_iso(parsed_dt)
+
+    # Step 2: If search_dates fails but there's a time manually
     manual_time = extract_time_manually(text)
     if manual_time:
-        dt = datetime.combine(now.date(), manual_time)
-        return to_detroit_iso(detroit.localize(dt))
+        parsed_dt = detroit_tz.localize(datetime.combine(now.date(), manual_time))
+        return to_us_iso(parsed_dt)
 
-    # Fallback to now
-    return to_detroit_iso(now)
+    # Step 3: fallback to current time
+    return to_us_iso(now)
 
 
 def get_future_dates_from_mode(base_date: datetime, mode: str):
