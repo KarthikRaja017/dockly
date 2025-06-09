@@ -19,7 +19,7 @@ const { Option } = Mentions;
 
 const mentionUsers = [
     { name: "Karthik", avatar: "https://i.pravatar.cc/150?img=1", email: 'karthikrajayuvaraj16@gmail.com' },
-    { name: "Asfar", avatar: "https://i.pravatar.cc/150?img=2", email: 'asfar.3@gmail.com' },
+    { name: "Asfar", avatar: "https://i.pravatar.cc/150?img=2", email: 'asfarhuda.3@gmail.com' },
     { name: "Rahul", avatar: "https://i.pravatar.cc/150?img=3", email: 'karthikraja20016@gmail.com' },
 ];
 
