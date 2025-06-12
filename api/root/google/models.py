@@ -16,8 +16,8 @@ import dateparser
 from dateparser.search import search_dates
 from pytz import timezone, utc
 
-MICROSOFT_CLIENT_ID = "98fa92ef-f5ba-4765-bd81-9ce209dda01b"
-MICROSOFT_CLIENT_SECRET = "Kar8Q~CRDjWSLixLfJyi3gQglRhkKXcd~JIftcds"
+# MICROSOFT_CLIENT_ID = "98fa92ef-f5ba-4765-bd81-9ce209dda01b"
+# MICROSOFT_CLIENT_SECRET = "Kar8Q~CRDjWSLixLfJyi3gQglRhkKXcd~JIftcds"
 
 import requests
 

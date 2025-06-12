@@ -21,8 +21,8 @@ MS_SCOPES = [
     "https://graph.microsoft.com/Calendars.Read",
     "https://graph.microsoft.com/Files.Read",
 ]
-MS_CLIENT_ID = "98fa92ef-f5ba-4765-bd81-9ce209dda01b"
-MS_CLIENT_SECRET = "Kar8Q~CRDjWSLixLfJyi3gQglRhkKXcd~JIftcds"
+# MS_CLIENT_ID = "98fa92ef-f5ba-4765-bd81-9ce209dda01b"
+# MS_CLIENT_SECRET = "Kar8Q~CRDjWSLixLfJyi3gQglRhkKXcd~JIftcds"
 
 
 class AddMicrosoftAccount(Resource):
