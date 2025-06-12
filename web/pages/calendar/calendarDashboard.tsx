@@ -6,6 +6,7 @@ import {
   Checkbox,
   Progress,
   Tag,
+  Tooltip,
   Typography,
 } from "antd";
 import { useEffect, useState } from "react";
@@ -15,13 +16,14 @@ import {
   getGreeting,
 } from "../../app/comman";
 import "react-big-calendar/lib/css/react-big-calendar.css";
-import { getGoogleCalendarEvents } from "../../services/google";
+import { getCalendarEvents } from "../../services/google";
 import { useCurrentUser } from "../../app/userContext";
-import { GoogleOutlined, UserOutlined } from "@ant-design/icons";
+import { GoogleOutlined, MailOutlined, UserOutlined } from "@ant-design/icons";
 import "animate.css";
 import DocklyLoader from "../../utils/docklyLoader";
 import RenderCalendarCard from "../components/customCalendar";
 import UpcomingActivities from "../components/upcomingActivities";
+import { providerColors } from "./stepOne";
 
 const getEventColor = (eventDate: Date) => {
   const now = new Date();
@@ -36,15 +38,11 @@ const { Title, Text } = Typography;
 const CalendarDashboard = (props: any) => {
   const { handleConnectMore } = props;
   const [username, setUsername] = useState<string | null>(null);
-  const [user, setUser] = useState<{
-    name?: string;
-    picture?: string;
-    email?: string;
-  } | null>(null);
+  const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [events, setEvents] = useState<any[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<string[]>([]);
-  const [accounts, setAccounts] = useState<string[]>([]);
+  const [accounts, setAccounts] = useState<{ email: string; provider: string }[]>([]);
   const [accountColor, setAccountColor] = useState<Record<string, string>>({});
   const currentUser = useCurrentUser();
   const currentDate = new Date();
@@ -59,45 +57,47 @@ const CalendarDashboard = (props: any) => {
     const user = localStorage.getItem("user");
     const userObj = user ? JSON.parse(user) : null;
     setUsername(userObj?.name);
-    setUser(userObj);
     fetchEvents();
   }, []);
 
   const fetchEvents = async () => {
     setLoading(true);
-    try {
-      const response = await getGoogleCalendarEvents({
-        userId: currentUser?.userId,
-      });
-      const rawEvents = response.data.payload.events;
-      const gmailConnected = response.data.payload.connected_accounts;
-      const colors = response.data.payload.account_colors || {};
-      if (gmailConnected && gmailConnected.length > 0) {
-        setAccounts(gmailConnected);
-      }
-      if (colors && Object.keys(colors).length > 0) {
-        setAccountColor(colors);
-      }
-      const parsedEvents = rawEvents
-        .filter((event: any) => event?.start && event?.end)
-        .map((event: any) => ({
-          id: event.id,
-          title: event.summary || "(No Title)",
-          start: new Date(event.start.dateTime || event.start.date),
-          end: new Date(event.end.dateTime || event.end.date),
-          allDay: !event.start.dateTime,
-          extendedProps: {
-            status: "confirmed",
-          },
-          source_email: event.source_email || "",
-        }));
-
-      setEvents(parsedEvents);
-    } catch (err) {
-      console.error("Failed to fetch events", err);
-    } finally {
-      setLoading(false);
+    const response = await getCalendarEvents({
+      userId: currentUser?.userId,
+    });
+    const rawEvents = response.data.payload.events;
+    const gmailConnected = response.data.payload.connected_accounts;
+    const usersObjects = response.data.payload.usersObjects;
+    console.log("🚀 ~ fetchEvents ~ usersObjects:", usersObjects)
+    const colors = response.data.payload.account_colors || {};
+    if (gmailConnected && gmailConnected.length > 0) {
+      setAccounts(gmailConnected);
     }
+
+    if (colors && Object.keys(colors).length > 0) {
+      setAccountColor(colors);
+    }
+
+    if (usersObjects && usersObjects.length > 0) {
+      setUsers(usersObjects);
+    }
+
+    const parsedEvents = rawEvents
+      .filter((event: any) => event?.start && event?.end)
+      .map((event: any) => ({
+        id: event.id,
+        title: event.summary || "(No Title)",
+        start: new Date(event.start.dateTime || event.start.date),
+        end: new Date(event.end.dateTime || event.end.date),
+        allDay: !event.start.dateTime,
+        extendedProps: {
+          status: "confirmed",
+        },
+        source_email: event.source_email || "",
+        provider: event.provider
+      }));
+    setEvents(parsedEvents);
+    setLoading(false);
   };
 
   const eventsToday = 5;
@@ -223,23 +223,81 @@ const CalendarDashboard = (props: any) => {
                 marginLeft: "auto",
               }}
             >
-              <div style={{ marginLeft: "40px" }}>
-                <Avatar
-                  size={122}
-                  icon={<UserOutlined />}
-                  src={cleanProfilePictureUrl(user?.picture || "")}
-                />
-              </div>
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                <Text strong style={{ fontSize: "16px" }}>
-                  Connected Account
-                </Text>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0px', marginLeft: '40px' }}>
+                {users?.map((user, index) => {
+                  const isMicrosoft = !!user.provider;
+                  const picture = user.picture || null;
+                  const email = user.email;
+                  const name = user.name;
+                  const avatarSrc = picture || null;
+                  const provider = user.provider || "google"
 
+                  return (
+                    <div
+                      key={`${email}-${index}`}
+                      style={{
+                        position: 'relative',
+                        marginLeft: index !== 0 ? -20 : 0,
+                        zIndex: users.length - index,
+                        transition: 'transform 0.3s',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.1)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+                    >
+                      <Tooltip title={`${name} (${email})`}>
+                        <Avatar
+                          size={100}
+                          src={avatarSrc}
+                          icon={!avatarSrc && <UserOutlined />}
+                          style={{
+                            border: '3px solid white',
+                            boxShadow: '0 0 10px rgba(0,0,0,0.15)',
+                            backgroundColor: '#f0f0f0',
+                            cursor: 'pointer',
+                          }}
+                        />
+                      </Tooltip>
+
+                      <div
+                        style={{
+                          position: 'absolute',
+                          bottom: -6,
+                          right: 6,
+                          background: '#fff',
+                          borderRadius: '50%',
+                          padding: '2px',
+                          width: "30px",
+                          height: "30px",
+                          boxShadow: '0 0 4px rgba(0,0,0,0.2)',
+                        }}
+                      >
+                        <div style={{
+                          display: 'flex',
+                          alignContent: 'center',
+                          justifyContent: "center",
+                          alignItems: "center",
+                          marginTop: 5
+                        }}>
+                          {isMicrosoft ? (
+                            <MailOutlined style={{ fontSize: 14, color: accountColor?.[`${provider}:${email}`] || "blue" }} />
+                          ) : (
+                            <GoogleOutlined style={{ fontSize: 14, color: accountColor?.[`${provider}:${email}`] || '#EA4335' }} />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", marginTop: 20 }}>
+                <Text strong style={{ fontSize: "16px" }}>
+                  Connected Account{accounts?.length > 1 ? 's' : ''}
+                </Text>
                 {accounts?.map((email) => (
                   <Tag
-                    key={email}
-                    icon={<GoogleOutlined />}
-                    color={accountColor?.[email] || "blue"} // fallback to "blue" if not found
+                    key={email.email}
+                    icon={email.provider === 'google' ? <GoogleOutlined /> : <MailOutlined />}
+                    color={accountColor?.[`${email.provider}:${email.email}`] || "blue"}
                     style={{
                       width: "fit-content",
                       fontWeight: 500,
@@ -247,7 +305,7 @@ const CalendarDashboard = (props: any) => {
                       marginTop: "8px",
                     }}
                   >
-                    {email}
+                    {email.email}
                   </Tag>
                 ))}
               </div>

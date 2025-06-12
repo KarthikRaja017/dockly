@@ -4,121 +4,80 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import listPlugin from "@fullcalendar/list";
-import { Badge, Button, Card, Spin, Typography } from "antd";
+import { Badge, Button, Card, Typography } from "antd";
 import { useState } from "react";
-import "animate.css";
 import DocklyLoader from "../../utils/docklyLoader";
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 const RenderCalendarCard = (props: any) => {
     const { loading, events = [], accountColor, height = 620, isCalendarPage = true } = props;
     const [currentView, setCurrentView] = useState("dayGridMonth");
     const [viewMode, setViewMode] = useState<"my" | "family">("my");
+
     const processedEvents = events?.map((event: any) => {
         const email = event.source_email;
-        const color = accountColor[email] || "#888"; // fallback if email not found
+        const provider = event.provider?.toLowerCase() || "google";
+        const key = `${provider}:${email}`;
+        const color = accountColor[key] || "#4f46e5"; // fallback to indigo
         return {
             ...event,
             backgroundColor: color,
             borderColor: color,
-            textColor: "#fff",
+            textColor: "#ffffff",
         };
     });
-
-    // const viewHeights: { [key: string]: number | "auto" } = {
-    //   dayGridMonth: 620,
-    //   timeGridWeek: 620,
-    //   timeGridDay: 600,
-    //   listWeek: 500,
-    // };
 
     return (
         <Card
             style={{
-                backgroundColor: "#fff",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                background: "linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%)",
+                boxShadow: "0 12px 40px rgba(0,0,0,0.08)",
                 padding: isCalendarPage ? "24px" : 0,
+                borderRadius: "16px",
+                border: "1px solid #e0e0e0",
                 marginBottom: isCalendarPage ? "16px" : 0,
             }}
         >
-            {!isCalendarPage && <div style={{
-                display: "flex", justifyContent: "space-between",
-            }}>
-                <Title level={4} style={{ margin: 0 }}>
-                    Calendar
-                </Title>
-                <div style={{ marginBottom: 10, display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                    <Button
-                        onClick={() => setViewMode("my")}
-                        type={viewMode === "my" ? "primary" : "default"}
-                    >
-                        My View
-                    </Button>
-                    <Button
-                        onClick={() => setViewMode("family")}
-                        type={viewMode === "family" ? "primary" : "default"}
-                    >
-                        Family View
-                    </Button>
+            {!isCalendarPage && (
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <Title level={4} style={{ margin: 0 }}>
+                        Calendar
+                    </Title>
+                    <div style={{ marginBottom: 10, display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                        <Button onClick={() => setViewMode("my")} type={viewMode === "my" ? "primary" : "default"}>My View</Button>
+                        <Button onClick={() => setViewMode("family")} type={viewMode === "family" ? "primary" : "default"}>Family View</Button>
+                    </div>
                 </div>
-            </div>}
-            {isCalendarPage && <div
-                style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "16px",
-                }}
-            >
-                <Title level={3} style={{ margin: 0 }}>
-                    Calendar
-                </Title>
-                <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
-                    <Badge color="#2563eb" text="Personal" />
-                    <Badge color="#22c55e" text="Work" />
-                    <Badge color="#f59e0b" text="Family" />
-                    <Badge color="#8b5cf6" text="Health" />
-                    <Badge color="#ef4444" text="Bills & Finance" />
+            )}
+
+            {isCalendarPage && (
+                <div
+                    style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: "16px",
+                    }}
+                >
+                    <Title level={3} style={{ margin: 0 }}>
+                        Calendar
+                    </Title>
+                    <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
+                        <Badge color="#3b82f6" text="Personal" />
+                        <Badge color="#10b981" text="Work" />
+                        <Badge color="#f59e0b" text="Family" />
+                        <Badge color="#8b5cf6" text="Health" />
+                        <Badge color="#ef4444" text="Finance" />
+                    </div>
                 </div>
-            </div>}
-            {/* {accountColor && (
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "12px",
-              marginTop: "16px",
-            }}
-          >
-            {Object.entries(accountColor).map(([email, color]) => (
-              <Badge
-                key={email}
-                color={color as string}
-                text={email}
-                style={{
-                  padding: "8px 12px",
-                  borderRadius: "8px",
-                  fontWeight: 250,
-                  fontSize: "14px",
-                  backgroundColor: color as string,
-                  color: "#fff",
-                }}
-              />
-            ))}
-          </div>
-        )} */}
+            )}
 
             {loading ? (
                 <DocklyLoader />
             ) : (
                 <FullCalendar
-                    plugins={[
-                        dayGridPlugin,
-                        timeGridPlugin,
-                        interactionPlugin,
-                        listPlugin,
-                    ]}
+                    plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
                     initialView="dayGridMonth"
                     headerToolbar={{
                         left: "prev,next today",
@@ -143,6 +102,31 @@ const RenderCalendarCard = (props: any) => {
                     selectable
                     selectMirror
                     datesSet={(arg) => setCurrentView(arg.view.type)}
+                    dayHeaderContent={(args) => (
+                        <div style={{
+                            color: '#4b5563',
+                            fontWeight: 'bold',
+                            fontSize: '14px',
+                            padding: '4px',
+                            borderBottom: '2px solid #d1d5db'
+                        }}>{args.text}</div>
+                    )}
+                    eventContent={(arg) => (
+                        <div
+                            style={{
+                                backgroundColor: arg.event.backgroundColor,
+                                color: arg.event.textColor,
+                                padding: '4px 6px',
+                                borderRadius: '8px',
+                                fontSize: '12px',
+                                overflow: 'hidden',
+                                whiteSpace: 'nowrap',
+                                textOverflow: 'ellipsis'
+                            }}
+                        >
+                            {arg.event.title}
+                        </div>
+                    )}
                 />
             )}
         </Card>

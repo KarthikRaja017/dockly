@@ -6,7 +6,7 @@ export async function addGoogleCalendar(params: any) {
   });
 }
 
-export async function getGoogleCalendarEvents(params: any) {
+export async function getCalendarEvents(params: any) {
   return api.get('/get/calendar/events', {
     params,
   });

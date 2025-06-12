@@ -16,6 +16,9 @@ import dateparser
 from dateparser.search import search_dates
 from pytz import timezone, utc
 
+MICROSOFT_CLIENT_ID = "98fa92ef-f5ba-4765-bd81-9ce209dda01b"
+MICROSOFT_CLIENT_SECRET = "Kar8Q~CRDjWSLixLfJyi3gQglRhkKXcd~JIftcds"
+
 import requests
 
 from root.auth.auth import auth_required
@@ -73,89 +76,178 @@ class AddGoogleCalendar(Resource):
         return make_response(redirect(auth_url))
 
 
-class GetGoogleCalendarEvents(Resource):
+class GetCalendarEvents(Resource):
     @auth_required(isOptional=True)
     def get(self, uid, user):
-        selectFields = ["access_token", "refresh_token", "email"]
+        selectFields = [
+            "access_token",
+            "refresh_token",
+            "email",
+            "provider",
+            "user_object",
+        ]
         allCreds = DBHelper.find(
-            "google_tokens", filters={"uid": uid}, select_fields=selectFields
+            "google_tokens",  # Consider renaming to "oauth_tokens"
+            filters={"uid": uid},
+            select_fields=selectFields,
         )
 
-        if not allCreds or len(allCreds) == 0:
+        if not allCreds:
             return {
                 "status": 0,
-                "message": "No connected Google accounts found.",
-                "payload": {},
-            }
-
-        if len(allCreds) > len(light_colors):
-            return {
-                "status": 0,
-                "message": "Too many connected Google accounts. Please limit to 10.",
+                "message": "No connected accounts found.",
                 "payload": {},
             }
 
         merged_events = []
-        color_mapping = {}
+        connected_accounts = []
+        account_colors = {}
+        usersObjects = []
 
         for i, credData in enumerate(allCreds):
+            provider = credData.get("provider", "google").lower()
+            access_token = credData.get("access_token")
+            refresh_token = credData.get("refresh_token")
+            email = credData.get("email")
+            color = light_colors[i % len(light_colors)]
+            userObject = credData.get("user_object")
+            usersObjects.append(userObject)
+
             try:
-                creds = Credentials(
-                    token=credData["access_token"],
-                    refresh_token=credData["refresh_token"],
-                    token_uri=uri,
-                    client_id=CLIENT_ID,
-                    client_secret=CLIENT_SECRET,
-                    scopes=SCOPE.split(),
-                )
-
-                service = build("calendar", "v3", credentials=creds)
-
-                events_result = (
-                    service.events()
-                    .list(
-                        calendarId="primary",
-                        timeMin=datetime.utcnow().isoformat() + "Z",
-                        maxResults=20,
-                        singleEvents=True,
-                        orderBy="startTime",
+                if provider == "google":
+                    creds = Credentials(
+                        token=access_token,
+                        refresh_token=refresh_token,
+                        token_uri=uri,
+                        client_id=CLIENT_ID,
+                        client_secret=CLIENT_SECRET,
+                        scopes=SCOPE.split(),
                     )
-                    .execute()
-                )
 
-                email = credData["email"]
-                color = light_colors[i]
-                color_mapping[email] = color
+                    service = build("calendar", "v3", credentials=creds)
 
-                events = events_result.get("items", [])
+                    events_result = (
+                        service.events()
+                        .list(
+                            calendarId="primary",
+                            timeMin=datetime.utcnow().isoformat() + "Z",
+                            maxResults=20,
+                            singleEvents=True,
+                            orderBy="startTime",
+                        )
+                        .execute()
+                    )
 
-                # Tag events with the email and color
-                for event in events:
-                    event["source_email"] = email
-                    event["account_color"] = color
+                    events = events_result.get("items", [])
+
+                elif provider == "microsoft":
+                    if "." not in access_token:
+                        access_token = refresh_microsoft_token(refresh_token)
+                        if not access_token:
+                            raise Exception("Unable to refresh Microsoft token.")
+                        DBHelper.update_one(
+                            table_name="google_tokens",  # Rename to `oauth_tokens` ideally
+                            filters={
+                                "uid": uid,
+                                "email": email,
+                                "provider": "microsoft",
+                            },
+                            updates={"access_token": access_token},
+                        )
+
+                    headers = {
+                        "Authorization": f"Bearer {access_token}",
+                        "Accept": "application/json",
+                    }
+
+                    start_time = datetime.utcnow().isoformat() + "Z"
+                    end_time = (datetime.utcnow() + timedelta(days=7)).isoformat() + "Z"
+
+                    response = requests.get(
+                        "https://graph.microsoft.com/v1.0/me/calendar/events",
+                        headers=headers,
+                        params={
+                            "$select": "id,subject,start,end,location,isAllDay",
+                            "$orderby": "start/dateTime",
+                            "$filter": f"start/dateTime ge '{start_time}' and end/dateTime le '{end_time}'",
+                        },
+                    )
+
+                    if response.status_code != 200:
+                        raise Exception(f"Microsoft API error: {response.text}")
+
+                    raw_events = response.json().get("value", [])
+                    events = [
+                        {
+                            "id": ev["id"],
+                            "summary": ev["subject"],
+                            "start": ev["start"],
+                            "end": ev["end"],
+                            "location": ev.get("location", {}).get("displayName", ""),
+                            "source_email": email,
+                            "account_color": color,
+                        }
+                        for ev in raw_events
+                    ]
+
+                else:
+                    continue  # Unknown provider
+
+                # Use a compound key to handle same email across providers
+                account_key = f"{provider}:{email}"
+
+                connected_accounts.append({"provider": provider, "email": email})
+
+                account_colors[account_key] = color
+
+                # Tag each event with source info
+                for ev in events:
+                    ev["source_email"] = email
+                    ev["provider"] = provider
+                    ev["account_color"] = color
 
                 merged_events.extend(events)
 
             except Exception as e:
-                print(f"Error fetching events for {credData['email']}: {e}")
+                print(f"Error fetching events for {email}: {e}")
                 continue
 
-        # Sort events by start datetime
         merged_events.sort(key=lambda e: e.get("start", {}).get("dateTime", ""))
 
         return {
             "status": 1,
-            "message": "Calendar events merged from all connected Google accounts.",
+            "message": "Merged calendar events from all connected accounts.",
             "payload": {
                 "events": merged_events,
-                "connected_accounts": list(color_mapping.keys()),
-                "account_colors": color_mapping,
+                "connected_accounts": connected_accounts,
+                "account_colors": account_colors,
+                "usersObjects": usersObjects,
             },
         }
 
 
 users = {}
 tokens = {}
+
+
+def refresh_microsoft_token(refresh_token):
+    token_url = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
+
+    data = {
+        "client_id": MICROSOFT_CLIENT_ID,
+        "client_secret": MICROSOFT_CLIENT_SECRET,
+        "grant_type": "refresh_token",
+        "refresh_token": refresh_token,
+        "scope": "offline_access Calendars.Read",
+    }
+
+    response = requests.post(token_url, data=data)
+    if response.status_code == 200:
+        token_data = response.json()
+        return token_data["access_token"]
+    else:
+        print("Error refreshing Microsoft token:", response.text)
+        return None
 
 
 class GoogleCallback(Resource):
@@ -220,7 +312,11 @@ class GoogleCallback(Resource):
 
         existingEmail = DBHelper.find_one(
             "google_tokens",
-            filters={"uid": uid, "email": email},
+            filters={
+                "uid": uid,
+                "email": email,
+                "provider": "google",
+            },
             select_fields=["email"],
         )
 

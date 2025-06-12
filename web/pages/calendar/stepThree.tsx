@@ -5,6 +5,7 @@ import { API_URL } from "../../services/apiConfig";
 const { Text } = Typography;
 const CalendarStepThree = (props: any) => {
   const { setStep, selectedCalendars, setConnectedCalendars } = props;
+  console.log("🚀 ~ CalendarStepThree ~ selectedCalendars:", selectedCalendars)
   const [username, setUsername] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
 
@@ -18,7 +19,10 @@ const CalendarStepThree = (props: any) => {
   const handleConnect = async () => {
     if (selectedCalendars.includes("Google Calendar")) {
       window.location.href = `${API_URL}/add-googleCalendar?username=${username}&userId=${userId}`;
-    } else {
+    } else if (selectedCalendars.includes("Outlook Calendar")) {
+      window.location.href = `${API_URL}/add-microsoftAccount?username=${username}&userId=${userId}`;
+    }
+    else {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       setConnectedCalendars(selectedCalendars);
       setStep(4);

@@ -29,7 +29,7 @@ export default function MainLayout({ children, colors }: MainLayoutProps) {
         <Header isHovered={isHovered} />
         <div
           style={{
-            background: "#f0f2f5",
+            background: "#fefefe",
             minHeight: "calc(100vh - 64px)",
             caretColor: "transparent"
           }}

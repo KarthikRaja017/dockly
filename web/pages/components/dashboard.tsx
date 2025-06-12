@@ -32,7 +32,7 @@ import { motion } from "framer-motion";
 import UpcomingAndTodoList from "../dashboard/upcomingAndTodoList";
 import CalendarEventWidget from "../dashboard/calendar";
 import { getUserGetStarted } from "../../services/user";
-import { getGoogleCalendarEvents } from "../../services/google";
+import { getCalendarEvents } from "../../services/google";
 import { useCurrentUser } from "../../app/userContext";
 import DocklyLoader from "../../utils/docklyLoader";
 import { useRouter } from "next/navigation";
@@ -81,7 +81,7 @@ const DashboardPage = () => {
       }
 
       // 2. Fetch Google Calendar events
-      const calendarRes = await getGoogleCalendarEvents({
+      const calendarRes = await getCalendarEvents({
         userId: currentUser?.userId,
       });
 

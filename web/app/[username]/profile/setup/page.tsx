@@ -19,10 +19,10 @@ import {
     EditOutlined,
 } from '@ant-design/icons';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
 import { AxiosResponse } from 'axios';
 import { userAddProfile } from '../../../../services/user';
 import { showNotification } from '../../../../utils/notification';
+import { motion } from 'framer-motion';
 
 const { Step } = Steps;
 const { Title, Text } = Typography;

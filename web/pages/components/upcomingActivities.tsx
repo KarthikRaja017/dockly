@@ -41,7 +41,10 @@ const ActivityList = ({
 }) =>
     <div style={{ marginTop: 16 }}>
         {activities.map((activity) => {
-            const color = accountColor?.[activity.source_email] || "#d9d9d9";
+            const email = activity.source_email;
+            const provider = activity.provider?.toLowerCase() || "google"; // fallback to google if missing
+            const key = `${provider}:${email}`;
+            const color = (accountColor?.[key]) || "#888";
             const isPinned = pinned?.includes(activity.id);
 
             return (
