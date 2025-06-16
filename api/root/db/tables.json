@@ -143,6 +143,117 @@
         "entry_type TEXT",
         "status TEXT"
       ]
+    },
+
+    {
+      "table_name": "family_members",
+      "columns": [
+        "id SERIAL PRIMARY KEY",
+        "user_id VARCHAR(255)",
+        "name VARCHAR(100) NOT NULL",
+        "relationship VARCHAR(50) NOT NULL",
+        "email VARCHAR(100)",
+        "phone VARCHAR(20)",
+        "access_code VARCHAR(20)",
+        "method VARCHAR(20) NOT NULL",
+        "permissions JSONB NOT NULL",
+        "shared_items JSONB NOT NULL"
+      ]
+    },
+
+    {
+      "table_name": "contacts",
+      "columns": [
+        "id SERIAL PRIMARY KEY",
+        "user_id VARCHAR(255)",
+        "name VARCHAR(255)",
+        "role VARCHAR(100)",
+        "phone VARCHAR(20)",
+        "added_by VARCHAR(255)",
+        "added_time TIMESTAMP",
+        "edited_by VARCHAR(255)",
+        "edited_time TIMESTAMP"
+      ]
+    },
+    {
+      "table_name": "school_church",
+      "columns": [
+        "id SERIAL PRIMARY KEY",
+        "user_id VARCHAR(255)",
+        "name VARCHAR(200)",
+        "type VARCHAR(20) CHECK (type IN ('school', 'church'))",
+        "date DATE",
+        "time VARCHAR",
+        "place VARCHAR(255)",
+        "added_by VARCHAR(255)",
+        "added_time TIMESTAMP",
+        "edited_by VARCHAR(255)",
+        "updated_at TIMESTAMP"
+      ]
+    },
+    {
+      "table_name": "familyguidelines",
+      "columns": [
+        "user_id VARCHAR(255)",
+        "title VARCHAR(255)",
+        "description TEXT",
+        "added_by VARCHAR(255)",
+        "added_time TIMESTAMP",
+        "edited_by VARCHAR(255)",
+        "updated_at TIMESTAMP"
+      ]
+    },
+    {
+      "table_name": "mealplanning",
+      "columns": [
+        "id SERIAL PRIMARY KEY",
+        "user_id VARCHAR(255)",
+        "meal_type VARCHAR(50) NOT NULL",
+        "meal_date DATE NOT NULL",
+        "meal_time TIME NOT NULL",
+        "description TEXT",
+        "added_by VARCHAR(100) NOT NULL",
+        "created_at TIMESTAMP NOT NULL DEFAULT NOW()",
+        "edited_by VARCHAR(100)",
+        "updated_at TIMESTAMP"
+      ]
+    },
+    {
+      "table_name": "sharedtasks",
+      "columns": [
+        "id SERIAL PRIMARY KEY",
+        "user_id VARCHAR(255)",
+        "task VARCHAR(255)",
+        "assigned_to VARCHAR(255)",
+        "due_date DATE",
+        "due_time VARCHAR(50)",
+        "completed BOOLEAN",
+        "added_by VARCHAR(255)",
+        "added_time TIMESTAMP",
+        "edited_by VARCHAR(255)",
+        "updated_at TIMESTAMP"
+      ]
+    },
+    {
+      "table_name": "customsection",
+      "columns": [
+        "id VARCHAR(255)",
+        "user_id VARCHAR(255)",
+        "title VARCHAR(255)",
+        "created_at TIMESTAMP"
+      ]
+    },
+
+    {
+      "table_name": "stickynotes",
+      "columns": [
+        "id SERIAL PRIMARY KEY",
+        "user_id VARCHAR(255) REFERENCES users(uid)",
+        "title VARCHAR(255) ",
+        "description TEXT",
+        "reminder_date DATE",
+        "status INT"
+      ]
     }
   ]
 }

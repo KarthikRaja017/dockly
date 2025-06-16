@@ -7,6 +7,7 @@ import listPlugin from "@fullcalendar/list";
 import { Badge, Button, Card, Typography } from "antd";
 import { useState } from "react";
 import DocklyLoader from "../../utils/docklyLoader";
+import './styles.css'
 
 const { Title } = Typography;
 

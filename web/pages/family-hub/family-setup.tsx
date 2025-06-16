@@ -1,6 +1,5 @@
-
 'use client';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, Button, Typography, Row, Col, Modal } from 'antd';
 import {
   ArrowRightOutlined,
@@ -10,8 +9,8 @@ import {
   CheckSquareOutlined,
 } from '@ant-design/icons';
 import 'antd/dist/reset.css';
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+
+import { useRouter, useParams } from 'next/navigation';
 
 const { Title, Paragraph } = Typography;
 
@@ -19,41 +18,52 @@ const FamilyIntroBoard: React.FC = () => {
   const [isFamilyUser, setIsFamilyUser] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [showSharing, setShowSharing] = useState(false);
+  const [username, setUsername] = useState<string>('');
   const router = useRouter();
+  const params = useParams();
+
+  useEffect(() => {
+    const storedUsername = localStorage.getItem('username');
+    if (storedUsername) {
+      setUsername(storedUsername);
+    }
+  }, []);
 
   const handleGetStarted = async () => {
     setLoading(true);
-    try {
-      setTimeout(() => {
-        setIsFamilyUser(true);
-        setLoading(false);
-      }, 1000);
-    } catch (error) {
-      console.error('Error setting up family hub:', error);
-      setLoading(false);
-    }
+    localStorage.setItem('family-hub', '1');
+    router.push(`/${username}/family-hub`);
+    // try {
+    //   setTimeout(() => {
+    //     setIsFamilyUser(true);
+    //     setLoading(false);
+    //     setShowSharing(true);
+    //     localStorage.setItem('family-hub', '1');
+    //     router.push(`/${username}/family-hub`);
+    //   }, 1000);
+    // } catch (error) {
+    //   console.error('Error setting up family hub:', error);
+    //   setLoading(false);
+    // }
   };
-  const [username, setUsername] = useState<string | null>(null);
-    useEffect(() => {
-      const storedUsername = localStorage.getItem('username');
-      if (storedUsername) {
-        setUsername(storedUsername);
-      }
-    }, [])
+
   const showModal = () => {
     setIsModalVisible(true);
-    // localStorage.setItem("family-hub", "1");
-    // router.push(`/${username}/family-hub`);
+    localStorage.setItem('family-hub', '1');
+    router.push(`/${username}/family-hub`);
   };
 
   const handleCancel = () => {
     setIsModalVisible(false);
-    localStorage.setItem("family-hub", "1");
+    localStorage.setItem('family-hub', '1');
     router.push(`/${username}/family-hub`);
   };
 
+
+
   return (
-    <Card style={{ padding: '0px 24px' }} loading={loading}>
+    <Card style={{ padding: '0 16px', width: '100%' }} loading={loading}>
       {!isFamilyUser ? (
         <div
           style={{
@@ -61,6 +71,7 @@ const FamilyIntroBoard: React.FC = () => {
             alignItems: 'center',
             justifyContent: 'center',
             flexDirection: 'column',
+            width: '100%',
           }}
         >
           <div
@@ -69,19 +80,19 @@ const FamilyIntroBoard: React.FC = () => {
               justifyContent: 'space-between',
               alignItems: 'center',
               width: '100%',
-              padding: '20px 0',
+              padding: '16px 0',
             }}
           >
-            {/* <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1890ff' }}>Dockly</div>
-            <div style={{ fontSize: '18px', color: '#555' }}>JS</div> */}
+            {/* Logo commented out */}
           </div>
 
           <Row
-            gutter={24}
+            gutter={[16, 16]}
             style={{
-              marginTop: 75,
+              marginTop: 40,
               alignItems: 'center',
               justifyContent: 'center',
+              width: '100%',
             }}
           >
             <Col xs={24} md={12}>
@@ -91,6 +102,7 @@ const FamilyIntroBoard: React.FC = () => {
                 style={{
                   width: '100%',
                   maxWidth: '100%',
+                  maxHeight: '300px',
                   borderRadius: 12,
                   objectFit: 'cover',
                 }}
@@ -99,14 +111,14 @@ const FamilyIntroBoard: React.FC = () => {
                   e.currentTarget.parentElement!.innerHTML = `
                     <div style="
                       width: 100%;
-                      height: 400px;
+                      height: 200px;
                       background: #e8ecef;
-                      border-radius: 12px;
+                      borderRadius: 12px;
                       display: flex;
-                      align-items: center;
-                      justify-content: center;
+                      alignItems: 'center';
+                      justifyContent: 'center';
                       color: #666;
-                      font-size: 16px;
+                      fontSize: 14px;
                     ">
                       [Family Illustration Placeholder]
                     </div>
@@ -119,13 +131,26 @@ const FamilyIntroBoard: React.FC = () => {
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
-                  alignItems: 'start',
+                  alignItems: 'flex-start',
                   justifyContent: 'center',
-                  padding: '0 20px',
+                  padding: '0 16px',
                 }}
               >
-                <Title level={1}>Welcome to Your Family Hub</Title>
-                <Paragraph style={{ maxWidth: 500, fontSize: 18 }}>
+                <Title
+                  level={1}
+                  style={{
+                    fontSize: 'clamp(24px, 5vw, 28px)',
+                    marginBottom: 16,
+                  }}
+                >
+                  Welcome to Your Family Hub
+                </Title>
+                <Paragraph
+                  style={{
+                    maxWidth: '100%',
+                    fontSize: 'clamp(14px, 4vw, 16px)',
+                  }}
+                >
                   Your central command center for managing family schedules, documents, tasks, and important information in one collaborative space.
                 </Paragraph>
               </div>
@@ -133,7 +158,7 @@ const FamilyIntroBoard: React.FC = () => {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  marginLeft: 20,
+                  marginLeft: 16,
                 }}
               >
                 <Button
@@ -142,8 +167,11 @@ const FamilyIntroBoard: React.FC = () => {
                   style={{
                     borderRadius: 10,
                     background: '#0052cc',
-                    marginTop: 20,
-                    padding: '10px 20px',
+                    marginTop: 16,
+                    padding: '8px 16px',
+                    fontSize: 'clamp(14px, 3.5vw, 16px)',
+                    width: '100%',
+                    maxWidth: '250px',
                   }}
                   onClick={showModal}
                 >
@@ -154,7 +182,13 @@ const FamilyIntroBoard: React.FC = () => {
             </Col>
           </Row>
 
-          <Row gutter={[24, 24]} style={{ marginTop: 30 }}>
+          <Row
+            gutter={[16, 16]}
+            style={{
+              marginTop: 24,
+              width: '100%',
+            }}
+          >
             <Col xs={24} sm={12}>
               <FamilyInfoCard
                 icon={<UserOutlined />}
@@ -162,7 +196,6 @@ const FamilyIntroBoard: React.FC = () => {
                 description="Create profiles for each family member and customize access levels for shared information and documents."
               />
             </Col>
-
             <Col xs={24} sm={12}>
               <FamilyInfoCard
                 icon={<CalendarOutlined />}
@@ -170,7 +203,6 @@ const FamilyIntroBoard: React.FC = () => {
                 description="Coordinate family schedules, events, appointments, and activities with a collaborative calendar."
               />
             </Col>
-
             <Col xs={24} sm={12}>
               <FamilyInfoCard
                 icon={<FileTextOutlined />}
@@ -178,7 +210,6 @@ const FamilyIntroBoard: React.FC = () => {
                 description="Store and organize family records, school documents, health information, and essential paperwork."
               />
             </Col>
-
             <Col xs={24} sm={12}>
               <FamilyInfoCard
                 icon={<CheckSquareOutlined />}
@@ -191,43 +222,69 @@ const FamilyIntroBoard: React.FC = () => {
           <div
             style={{
               backgroundColor: '#e6f7ff',
-              padding: '20px',
+              padding: '16px',
               borderRadius: 8,
-              marginTop: 30,
-              width: 1350,
+              marginTop: 24,
+              width: '100%',
               textAlign: 'left',
             }}
           >
-            <Title level={3} style={{ color: '#1890ff' }}>
+            <Title
+              level={3}
+              style={{
+                color: '#1890ff',
+                fontSize: 'clamp(18px, 4.5vw, 20px)',
+              }}
+            >
               How does it work?
             </Title>
-            <Paragraph style={{ fontSize: 18 }}>
+            <Paragraph
+              style={{
+                fontSize: 'clamp(14px, 4vw, 16px)',
+              }}
+            >
               To set up your Family Hub, we'll guide you through a few simple steps:
             </Paragraph>
-            <ul style={{ fontSize: 16, marginLeft: 20 }}>
+            <ul
+              style={{
+                fontSize: 'clamp(12px, 3.5vw, 14px)',
+                marginLeft: 20,
+              }}
+            >
               <li>Add family members and customize their profiles and access levels</li>
               <li>Connect and sync family calendars from Google, Apple, or Outlook</li>
               <li>Upload important family documents and organize them in categories</li>
               <li>Create shared task lists and set up reminder notifications</li>
             </ul>
-            <Paragraph style={{ fontSize: 16 }}>
+            <Paragraph
+              style={{
+                fontSize: 'clamp(12px, 3.5vw, 14px)',
+              }}
+            >
               Your Family Hub is protected with advanced security to ensure your family's information stays private and secure.
             </Paragraph>
           </div>
 
-          <div style={{ textAlign: 'center', padding: '20px', marginTop: '30px' }}>
+          <div
+            style={{
+              textAlign: 'center',
+              padding: '16px',
+              marginTop: '24px',
+              width: '100%',
+            }}
+          >
             <Button
               type="primary"
               size="large"
-              onClick={showModal}
+              onClick={handleGetStarted}
               style={{
                 background: '#0052cc',
                 borderColor: '#0052cc',
                 borderRadius: '4px',
-                fontSize: '16px',
+                fontSize: 'clamp(14px, 3.5vw, 16px)',
                 height: '40px',
                 width: '100%',
-                maxWidth: '300px',
+                maxWidth: '250px',
               }}
             >
               Set Up Your Family Hub
@@ -240,8 +297,8 @@ const FamilyIntroBoard: React.FC = () => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            height: '400px',
-            fontSize: '24px',
+            height: '300px',
+            fontSize: 'clamp(18px, 5vw, 20px)',
             color: '#666',
           }}
         >
@@ -252,11 +309,11 @@ const FamilyIntroBoard: React.FC = () => {
       <Modal
         title={
           <div style={{ display: 'flex', alignItems: 'center' }}>
-            <span style={{ fontSize: '24px', color: '#0052cc', marginRight: '10px' }}>D</span>
+            <span style={{ fontSize: 'clamp(20px, 5vw, 22px)', color: '#0052cc', marginRight: '10px' }}>D</span>
             <span style={{ fontWeight: 'bold' }}>Dockly</span>
           </div>
         }
-        visible={isModalVisible}
+        open={isModalVisible}
         onCancel={handleCancel}
         footer={[
           <Button key="cancel" onClick={handleCancel}>
@@ -265,15 +322,20 @@ const FamilyIntroBoard: React.FC = () => {
           <Button
             key="start"
             type="primary"
-            onClick={handleCancel}
+            onClick={handleGetStarted}
             style={{ background: '#0052cc', borderColor: '#0052cc' }}
           >
             Start Family Hub Setup
           </Button>,
         ]}
-        style={{ borderRadius: '8px' }}
+        style={{ borderRadius: '8px', width: '100%', maxWidth: '500px' }}
       >
-        <Paragraph style={{ fontSize: '16px', color: '#666' }}>
+        <Paragraph
+          style={{
+            fontSize: 'clamp(12px, 3.5vw, 14px)',
+            color: '#666',
+          }}
+        >
           Ready to set up your Family Hub? Let's get started by adding family members, connecting calendars, and organizing your family's important information.
         </Paragraph>
       </Modal>
@@ -285,23 +347,33 @@ const FamilyInfoCard = (props: any) => {
   const { title, description, icon, style } = props;
   return (
     <Card
-      variant="outlined"
       hoverable
       style={{
         width: '100%',
-        maxWidth: 650,
-        marginBottom: 0,
+        marginBottom: 16,
         ...style,
       }}
     >
-      <Title level={4} style={{ display: 'flex', alignItems: 'center' }}>
+      <Title
+        level={4}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          fontSize: 'clamp(16px, 4vw, 18px)',
+        }}
+      >
         {icon}
         <span style={{ marginLeft: 8 }}>{title}</span>
       </Title>
-      <Paragraph style={{ fontSize: 16 }}>{description}</Paragraph>
+      <Paragraph
+        style={{
+          fontSize: 'clamp(12px, 3.5vw, 14px)',
+        }}
+      >
+        {description}
+      </Paragraph>
     </Card>
   );
 };
 
 export default FamilyIntroBoard;
-

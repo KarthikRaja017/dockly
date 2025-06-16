@@ -1,10 +1,13 @@
 'use client';
 import { Button, Card, Col, Grid, Layout, Row, Space, Tag, Typography } from "antd";
-import { ArrowRightOutlined } from "@ant-design/icons";
+import { ArrowRightOutlined, GoogleOutlined } from "@ant-design/icons";
 import React, { useEffect } from "react";
 import { useState } from "react";
 import CalendarSection from "../../../../pages/components/CalendarSection";
 import { useRouter } from "next/navigation";
+import RenderCalendarCard from "../../../../pages/components/customCalendar";
+import { AnimatePresence, motion } from "framer-motion";
+import { Plus, Settings, Mail, Apple, Github, Linkedin, Zap } from "lucide-react";
 
 const { Header, Content } = Layout;
 const { Title, Paragraph, Text } = Typography;
@@ -96,6 +99,7 @@ const StarIcon = (props: any) => (
 
 function App() {
     const [activeStep, setActiveStep] = useState(0);
+    const [isOpen, setIsOpen] = useState(true);
     const screens = useBreakpoint();
 
     const hubs = [
@@ -146,6 +150,7 @@ function App() {
     const handlesubmit = () => {
         localStorage.setItem("dashboard", "1");
         router.push(`/${username}/dashboard`);
+        // setIsOpen(true)
     }
 
     return (
@@ -260,7 +265,9 @@ function App() {
                             ))}
                         </Row>
                         <Text style={{ color: '#6b7280', fontSize: '14px' }}>
-                            <CalendarSection />
+                            {/* <CalendarSection />
+                             */}
+                            <RenderCalendarCard height={700} isCalendarPage={true} events={[]} accountColor={{}} />
                         </Text>
                     </Card>
                 </div>
@@ -407,6 +414,7 @@ function App() {
                             </Col>
                         ))}
                     </Row>
+                    {/* <SetupModal isOpen={isOpen} setIsOpen={setIsOpen} /> */}
                 </div>
             </Content>
         </Layout>
@@ -414,3 +422,183 @@ function App() {
 }
 
 export default App;
+
+
+const SetupModal: React.FC = ({ isOpen, setIsOpen }: any) => {
+
+    return (
+        <AnimatePresence>
+            {isOpen && (
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        zIndex: 1100,
+                        width: '100%',
+                        height: '100%',
+                        background: 'rgba(0,0,0,0.4)',
+                        // backdropFilter: 'blur(4px)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '20px',
+                    }}
+                >
+                    <motion.div
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.8, opacity: 0 }}
+                        transition={{ duration: 0.4 }}
+                        style={{
+                            background: 'white',
+                            borderRadius: '24px',
+                            padding: '32px',
+                            maxWidth: '900px',
+                            width: '100%',
+                            display: 'flex',
+                            gap: '24px',
+                            boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
+                            position: 'relative',
+                            flexWrap: 'wrap',
+                        }}
+                    >
+                        {/* Close Button */}
+                        <div
+                            onClick={() => setIsOpen(false)}
+                            style={{
+                                position: 'absolute',
+                                top: '16px',
+                                right: '16px',
+                                cursor: 'pointer',
+                                fontSize: '20px',
+                                fontWeight: 'bold',
+                                color: '#64748b',
+                            }}
+                        >
+                            ✕
+                        </div>
+
+                        {/* Connect Accounts Card */}
+                        <motion.div
+                            whileHover={{ y: -6, scale: 1.02 }}
+                            style={{
+                                flex: 1,
+                                background: 'linear-gradient(135deg, #e0f7fa, #fce4ec)',
+                                borderRadius: '20px',
+                                padding: '28px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '16px',
+                                boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
+                            }}
+                        >
+                            <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#1a202c' }}>
+                                <Zap size={20} style={{ marginRight: '8px', color: '#ec4899' }} />
+                                Connect Your Accounts
+                            </h3>
+                            <p style={{ color: '#475569', fontWeight: 500 }}>
+                                Sync your calendar and mail to get the most out of your dashboard.
+                            </p>
+                            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                                {/* <IconButton icon={<Google color="#EA4335" />} label="Google" /> */}
+                                <IconButton icon={<Mail color="#0284C7" />} label="Outlook" />
+                                <IconButton icon={<Apple color="#000" />} label="Apple" />
+                                <GoogleOutlined />
+                                {/* <IconButton icon={<Github color="#6B7280" />} label="GitHub" />
+                                <IconButton icon={<Linkedin color="#0077b5" />} label="LinkedIn" /> */}
+                            </div>
+                            <button
+                                style={{
+                                    marginTop: 'auto',
+                                    background: '#ec4899',
+                                    color: 'white',
+                                    padding: '12px 20px',
+                                    borderRadius: '12px',
+                                    border: 'none',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                }}
+                                onClick={() => "/karthi/accounts/setup"}
+                            >
+                                Connect Now
+                            </button>
+                        </motion.div>
+
+                        {/* Setup First Board Card */}
+                        <motion.div
+                            whileHover={{ y: -6, scale: 1.02 }}
+                            style={{
+                                flex: 1,
+                                background: 'linear-gradient(135deg, #e0f2f1, #ede7f6)',
+                                borderRadius: '20px',
+                                padding: '28px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '16px',
+                                boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
+                            }}
+                        >
+                            <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#1a202c' }}>
+                                <Settings size={20} style={{ marginRight: '8px', color: '#6366f1' }} />
+                                Set Up Your First Board
+                            </h3>
+                            <p style={{ color: '#475569', fontWeight: 500 }}>
+                                Organize your tasks, goals, or project workflows into beautiful boards.
+                            </p>
+                            <ul style={{ paddingLeft: '20px', color: '#334155', fontWeight: '500' }}>
+                                <li>➤ Choose a board template</li>
+                                <li>➤ Add your first task</li>
+                                <li>➤ Invite your team</li>
+                            </ul>
+                            <button
+                                style={{
+                                    marginTop: 'auto',
+                                    background: '#6366f1',
+                                    color: 'white',
+                                    padding: '12px 20px',
+                                    borderRadius: '12px',
+                                    border: 'none',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                }}
+
+                            >
+                                <Plus size={16} />
+                                Create Board
+                            </button>
+                        </motion.div>
+                    </motion.div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+    );
+};
+
+const IconButton: React.FC<{ icon: React.ReactNode; label: string }> = ({ icon, label }) => (
+    <button
+        style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: 'white',
+            border: '1px solid #e2e8f0',
+            borderRadius: '10px',
+            padding: '8px 12px',
+            cursor: 'pointer',
+            fontWeight: '500',
+            fontSize: '14px',
+            color: '#1f2937',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+        }}
+    >
+        {icon}
+        {label}
+    </button>
+);

@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import WeatherWidget from '../components/WeatherWidget';
 import NewsWidget from '../components/NewsWidget';
@@ -10,14 +10,98 @@ import CalendarSection from '../components/CalendarSection';
 import UpcomingActivities from '../components/UpcomingActivities1';
 import CalendarEventWidget from './calendar';
 import { useRouter } from 'next/navigation';
+import { getCalendarEvents } from '../../services/google';
+import { useCurrentUser } from '../../app/userContext';
+import DocklyLoader from '../../utils/docklyLoader';
 
 function App() {
     const router = useRouter();
+    const [loading, setLoading] = useState<boolean>(false);
+    const [events, setEvents] = useState<any[]>([]);
+    const getCategoryFromTitle = (title: string): 'finance' | 'family' | 'health' | 'general' => {
+        const lower = title.toLowerCase();
+        if (lower.includes('bill') || lower.includes('payment') || lower.includes('invoice')) return 'finance';
+        if (lower.includes('mom') || lower.includes('dad') || lower.includes('family') || lower.includes('birthday')) return 'family';
+        if (lower.includes('doctor') || lower.includes('checkup') || lower.includes('hospital')) return 'health';
+        return 'general';
+    };
+    const parsedEvents = events
+        .filter(event => event?.start && event?.end)
+        .map(event => ({
+            id: event.id,
+            title: event.summary || '(No Title)',
+            start: new Date(event.start.dateTime || event.start.date),
+            end: new Date(event.end.dateTime || event.end.date),
+            source_email: event.source_email || '',
+            category: getCategoryFromTitle(event.summary || ''),
+            extendedProps: {
+                status: event.status || 'pending',
+            },
+        }));
+
     useEffect(() => {
         const username = localStorage.getItem("username") || "";
         if (localStorage.getItem('dashboard') === null) {
             router.push(`/${username}/dashboard/setup`);
         }
+    }, []);
+    const currentUser = useCurrentUser();
+
+
+    const fetchDashboardData = async () => {
+        setLoading(true);
+
+        try {
+            // 1. Fetch user get started steps
+            // const getStartedRes = await getUserGetStarted({});
+            // if (getStartedRes.data.status) {
+            //     const backend = getStartedRes.data.payload.steps || [];
+            //     setIncompleteKeys(backend);
+            //     setCompletedSteps(rawSteps.length - backend.length);
+            // }
+
+            // 2. Fetch Google Calendar events
+            const calendarRes = await getCalendarEvents({
+                userId: currentUser?.userId,
+            });
+
+            const rawEvents = calendarRes.data.payload.events;
+            const gmailConnected = calendarRes.data.payload.connected_accounts;
+            const colors = calendarRes.data.payload.account_colors || {};
+
+            // if (gmailConnected && gmailConnected.length > 0) {
+            //     setAccounts(gmailConnected);
+            // }
+
+            // if (colors && Object.keys(colors).length > 0) {
+            //     setAccountColor(colors);
+            // }
+
+            const parsedEvents = rawEvents
+                .filter((event: any) => event?.start && event?.end)
+                .map((event: any) => ({
+                    id: event.id,
+                    title: event.summary || "(No Title)",
+                    start: new Date(event.start.dateTime || event.start.date),
+                    end: new Date(event.end.dateTime || event.end.date),
+                    allDay: !event.start.dateTime,
+                    extendedProps: {
+                        status: "confirmed",
+                    },
+                    source_email: event.source_email || "",
+                }));
+
+            setEvents(parsedEvents);
+
+        } catch (error) {
+            console.error("Failed to fetch dashboard data", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchDashboardData();
     }, []);
 
     const boardsData = [
@@ -83,6 +167,10 @@ function App() {
         },
     ];
 
+    if (loading) {
+        return <DocklyLoader />
+    }
+
     return (
         <div style={{
             minHeight: '100vh',
@@ -138,7 +226,6 @@ function App() {
                         <MarketsWidget />
                     </div>
 
-                    {/* Boards Overview */}
                     <div
                     >
                         <h2 style={{
@@ -179,18 +266,17 @@ function App() {
                         </div>
                     </div>
 
-                    {/* Quick Actions */}
                     <QuickActions />
                 </div>
 
-                {/* Calendar and Activities Section */}
                 <div style={{
                     display: 'flex',
                     marginBottom: '32px',
+                    gap: '20px'
                 }}>
-                    <UpcomingActivities />
-                    {/* <CalendarSection /> */}
-                    <CalendarEventWidget events={[]} accountColor={{}} />
+                    <UpcomingActivities events={events || []} />
+                    {/* <CalendarSection rawEvents={parsedEvents} /> */}
+                    <CalendarEventWidget events={events} accountColor={{}} />
                 </div>
             </div>
         </div>

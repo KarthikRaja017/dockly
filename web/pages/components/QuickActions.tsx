@@ -1,10 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Clock, FileText, Bookmark, Upload, Plus, Camera, Link, Calendar } from 'lucide-react';
+import StickyNotes from '../notes/notescard';
 
 const QuickActions: React.FC = () => {
+  const [isOpen, setIsOpen] = useState(false);
+
   const actions = [
     { icon: <Clock size={28} />, title: 'New Task', desc: 'Create a task or reminder', color: '#667eea' },
     { icon: <FileText size={28} />, title: 'Add Note', desc: 'Quick notes and ideas', color: '#f093fb' },
@@ -60,6 +63,12 @@ const QuickActions: React.FC = () => {
             target.style.borderColor = `${action.color}20`;
             target.style.background = 'white';
           }}
+          onClick={() => {
+            if (action.title === "Add Note") {
+              setIsOpen(true)
+            }
+          }
+          }
         >
           <motion.div
             whileHover={{ scale: 1.2, rotate: 360 }}
@@ -98,6 +107,7 @@ const QuickActions: React.FC = () => {
           </div>
         </motion.div>
       ))}
+      <StickyNotes isOpen={isOpen} setIsOpen={setIsOpen} />
     </motion.div>
   );
 };

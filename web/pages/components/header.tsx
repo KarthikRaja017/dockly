@@ -10,7 +10,6 @@ import {
   Select,
   Typography,
   Modal,
-  Upload,
   List,
   Segmented,
   Dropdown,
@@ -34,7 +33,7 @@ import { useRouter } from "next/navigation";
 import { useCurrentUser } from "../../app/userContext";
 import { capitalizeEachWord } from "../../app/comman";
 
-const Header = (props: any) => {
+const CustomHeader = (props: any) => {
   const { isHovered } = props;
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
@@ -229,8 +228,8 @@ const Header = (props: any) => {
                     {name
                       ? capitalizeEachWord(name)
                       : userName
-                      ? capitalizeEachWord(userName)
-                      : "Dockly User"}
+                        ? capitalizeEachWord(userName)
+                        : "Dockly User"}
                   </div>
                 </div>
                 <Avatar
@@ -245,7 +244,8 @@ const Header = (props: any) => {
           </div>
         </div>
       </div>
-      <NotesDropdown isOpen={isOpen} setIsOpen={setIsOpen} />
+      {/* <NotesDropdown isOpen={isOpen} setIsOpen={setIsOpen} /> */}
+      <StickyNotes isOpen={isOpen} setIsOpen={setIsOpen} />
       <UploadModal visible={visible} setVisible={setVisible} />
       <AddAccountModal visible={visibleG} setVisible={setVisibleG} />
       <BookmarksModal visible={visibleB} setVisible={setVisibleB} />
@@ -253,7 +253,7 @@ const Header = (props: any) => {
   );
 };
 
-export default Header;
+export default CustomHeader;
 
 const { TextArea } = Input;
 const { Title } = Typography;
@@ -371,8 +371,8 @@ const NotesDropdown = (props: any) => {
     </Modal>
   );
 };
-
-const { Dragger } = Upload;
+import { Upload } from 'antd';
+import StickyNotes from "../notes/notescard";
 const { Text } = Typography;
 
 const UploadModal = (props: any) => {
@@ -415,35 +415,6 @@ const UploadModal = (props: any) => {
             <b>.doc</b> or <b>.pdf</b>
           </Text>
 
-          <Dragger
-            name="file"
-            multiple={false}
-            customRequest={({ onSuccess }) =>
-              setTimeout(() => onSuccess && onSuccess("ok"), 1000)
-            }
-            onChange={handleUpload}
-            accept=".pdf,.doc,.docx"
-            style={{
-              padding: 24,
-              borderRadius: 12,
-              border: "1px dashed #ccc",
-              background: "#fafafa",
-              marginBottom: 16,
-            }}
-          >
-            <p className="ant-upload-drag-icon">
-              <InboxOutlined style={{ color: "#722ED1", fontSize: 48 }} />
-            </p>
-            <p className="ant-upload-text" style={{ fontWeight: 500 }}>
-              Drag & Drop
-            </p>
-            <p className="ant-upload-hint" style={{ fontSize: 12 }}>
-              or <span style={{ color: "#1890ff" }}>choose a file</span>
-            </p>
-            <p style={{ fontSize: 12, marginTop: 8 }}>
-              Maximum file size 500 MB · <a href="#">See more requirements</a>
-            </p>
-          </Dragger>
 
           <Space direction="vertical" style={{ width: "100%" }}>
             <Select

@@ -41,7 +41,15 @@ def create_app(test_config=None):
     app.register_blueprint(microsoft_bp)
     from root.settings import settings_bp
 
+    from root.family import family_bp
+
+    app.register_blueprint(family_bp)
+
     app.register_blueprint(settings_bp)
+
+    from root.notes import notes_bp
+
+    app.register_blueprint(notes_bp)
     app.permanent_session_lifetime = timedelta(minutes=60)
     # initialize_firebase()
 
