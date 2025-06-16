@@ -60,6 +60,7 @@ interface StickyNotesProps {
 const StickyNotes: React.FC<StickyNotesProps> = ({ isOpen, setIsOpen }) => {
     const [notes, setNotes] = useState<Note[]>([]);
     const [showModal, setShowModal] = useState(false);
+    const [loading, setLoading] = useState(false);
     const [modalMode, setModalMode] = useState<"create" | "edit">("create");
     const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
     const [form] = Form.useForm();
@@ -82,6 +83,7 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ isOpen, setIsOpen }) => {
             showNotification("Error", "Failed to fetch notes", "error");
         }
     };
+
     type StatusType = "Done" | "In Progress" | "Yet to Start" | "Due";
 
     // Define the config structure
@@ -133,12 +135,20 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ isOpen, setIsOpen }) => {
     const statusMap: Record<"Done" | "In Progress" | "Yet to Start" | "Due", number> = {
         "Done": 2,
         "In Progress": 1,
-        "Due": 3,
-        "Yet to Start": 0,
+        "Due": 0,
+        "Yet to Start": 3,
     };
+
+    const numberToStatusMap: Record<number, string> = Object.entries(statusMap)
+        .reduce((acc, [key, value]) => {
+            acc[value] = key;
+            return acc;
+        }, {} as Record<number, string>);
+
     const statusToNumberMap: Record<string, number> = Object.fromEntries(
         Object.entries(statusMap).map(([key, value]) => [value, Number(key)])
     );
+
     const openEditModal = (note: Note) => {
         setModalMode("edit");
         setEditingNoteId(note.id);
@@ -146,7 +156,7 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ isOpen, setIsOpen }) => {
             title: note.title,
             description: note.description,
             reminderDate: dayjs(note.reminderDate),
-            status: note.status,
+            status: numberToStatusMap[Number(note.status)],
             id: note.id,
         });
         setShowModal(true);
@@ -159,9 +169,10 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ isOpen, setIsOpen }) => {
     };
 
     const handleSave = async () => {
+        setLoading(true);
         try {
             const values = await form.validateFields();
-            const statusNumber = statusToNumberMap[values.status] ?? -1;
+            const statusNumber = statusMap[values.status as keyof typeof statusMap] ?? -1;
             if (modalMode === "create") {
                 values.reminderDate = values.reminderDate.format("YYYY-MM-DD");
                 values.status = statusNumber;
@@ -189,6 +200,7 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ isOpen, setIsOpen }) => {
         } catch (error) {
             console.error("Validation failed:", error);
         }
+        setLoading(false);
     };
 
     const handleDeleteNote = (id: number) => { };
@@ -267,6 +279,7 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ isOpen, setIsOpen }) => {
                         overflow: "hidden",
                     },
                 }}
+                loading={loading}
             >
                 {/* Header */}
                 <div
@@ -440,10 +453,10 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ isOpen, setIsOpen }) => {
                             {notes.map((note) => (
                                 <div key={note.id} style={{ padding: "0 6px" }}>
                                     <Tooltip
-                                        title={`Status: ${statusMap[note.status] || ""}`}
+                                        title={`Status: ${numberToStatusMap[Number(note.status)] || ""}`}
                                         overlayInnerStyle={{
                                             backgroundColor:
-                                                statusConfig[statusMap[note.status]]?.color || "#e5e7eb",
+                                                statusConfig[Number(note.status)]?.color || "#e5e7eb",
                                             color: "#fff", // optional: set text color to white for contrast
                                             fontWeight: 500,
                                             borderRadius: "6px",
@@ -454,12 +467,12 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ isOpen, setIsOpen }) => {
                                             hoverable
                                             style={{
                                                 width: "90%",
-                                                height: "232px",
+                                                height: "242px",
                                                 borderRadius: "12px",
-                                                border: `1px solid ${statusConfig[statusMap[note.status]]?.borderColor || "#e5e7eb"
+                                                border: `1px solid ${statusConfig[Number(note.status)]?.borderColor || "#e5e7eb"
                                                     }`,
                                                 background:
-                                                    statusConfig[statusMap[note.status]]?.bgColor || "#fff",
+                                                    statusConfig[Number(note.status)]?.bgColor || "#fff",
                                                 boxShadow: "0 3px 10px rgba(0, 0, 0, 0.08)",
                                                 transition: "transform 0.2s ease, box-shadow 0.2s ease",
                                             }}
@@ -481,7 +494,7 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ isOpen, setIsOpen }) => {
                                                     onClick={() => openEditModal(note)}
                                                     style={{
                                                         color:
-                                                            statusConfig[statusToNumberMap[note.status]]?.color || "#4a4aff",
+                                                            statusConfig[Number(note.status)]?.color || "#4a4aff",
                                                         fontSize: "12px",
                                                     }}
                                                 >
@@ -508,10 +521,10 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ isOpen, setIsOpen }) => {
                                                 }}
                                             >
                                                 <Badge
-                                                    count={statusConfig[statusMap[note.status]]?.icon}
+                                                    count={statusConfig[Number(note.status)]?.icon}
                                                     style={{
                                                         background:
-                                                            statusConfig[statusMap[note.status]]?.color || "#4a4aff",
+                                                            statusConfig[Number(note.status)]?.borderColor || "#4a4aff",
                                                         borderRadius: "50%",
                                                         width: "32px",
                                                         height: "32px",
@@ -521,14 +534,14 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ isOpen, setIsOpen }) => {
                                                     }}
                                                 />
                                                 {/* <Text
-                          style={{
-                            fontSize: "12px",
-                            color: "#374151",
-                            fontWeight: 500,
-                          }}
-                        >
-                          {statusMap[note.status]}
-                        </Text> */}
+                                                    style={{
+                                                        fontSize: "12px",
+                                                        color: "#374151",
+                                                        fontWeight: 500,
+                                                    }}
+                                                >
+                                                    {statusMap[note.status]}
+                                                </Text> */}
                                             </div>
                                             <Title
                                                 level={5}
@@ -583,7 +596,7 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ isOpen, setIsOpen }) => {
                                                     text={note.status}
                                                     style={{
                                                         background:
-                                                            statusConfig[statusMap[note.status]]?.color || "#4a4aff",
+                                                            statusConfig[Number(note.status)]?.color || "#4a4aff",
                                                         color: "white",
                                                         padding: "2px 8px",
                                                         borderRadius: "8px",
@@ -616,6 +629,7 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ isOpen, setIsOpen }) => {
                         overflow: "hidden",
                     },
                 }}
+            // loading={loading}
             >
                 <div
                     style={{
@@ -835,6 +849,7 @@ const StickyNotes: React.FC<StickyNotesProps> = ({ isOpen, setIsOpen }) => {
                                         fontWeight: 500,
                                         boxShadow: "0 2px 8px rgba(59, 130, 246, 0.3)",
                                     }}
+                                    loading={loading}
                                 >
                                     {modalMode === "create" ? "Create" : "Update"}
                                 </Button>
