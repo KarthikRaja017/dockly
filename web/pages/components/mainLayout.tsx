@@ -1,8 +1,9 @@
 "use client";
 import { Layout } from "antd";
 
-import Sidebar, { useIsHovered } from "./sideBar";
+import Sidebar from "./sideBar";
 import Header from "./header";
+import { useIsHovered } from "../../app/comman";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -18,7 +19,7 @@ export default function MainLayout({ children, colors }: MainLayoutProps) {
 
   return (
     <Layout>
-      <Sidebar ref={ref} isHovered={isHovered} colors={colors} />
+      <Sidebar ref={ref} isHovered={isHovered} />
       <Layout
         style={{
           marginLeft: isHovered ? 140 : 25,

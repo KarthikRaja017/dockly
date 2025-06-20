@@ -1,0 +1,181 @@
+import React, { useState } from 'react';
+import { Calendar, Plus, FileText, Star, Upload, Zap } from 'lucide-react';
+
+const QuickActions: React.FC = () => {
+    const [isDragActive, setIsDragActive] = useState(false);
+
+    const actions = [
+        {
+            icon: <Calendar size={18} />,
+            label: 'Add Event',
+            bgColor: '#eff6ff',
+            textColor: '#2563eb',
+            hoverBg: '#dbeafe'
+        },
+        {
+            icon: <Plus size={18} />,
+            label: 'Add Task',
+            bgColor: '#f0fdf4',
+            textColor: '#16a34a',
+            hoverBg: '#dcfce7'
+        },
+        {
+            icon: <FileText size={18} />,
+            label: 'Add Note',
+            bgColor: '#fffbeb',
+            textColor: '#d97706',
+            hoverBg: '#fef3c7'
+        },
+        {
+            icon: <Star size={18} />,
+            label: 'Add Bookmark',
+            bgColor: '#faf5ff',
+            textColor: '#9333ea',
+            hoverBg: '#f3e8ff'
+        },
+        // {
+        //     icon: <Zap size={18} />,
+        //     label: 'Quick Capture',
+        //     bgColor: '#fef2f2',
+        //     textColor: '#dc2626',
+        //     hoverBg: '#fee2e2'
+        // }
+    ];
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragActive(true);
+    };
+
+    const handleDragLeave = () => {
+        setIsDragActive(false);
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragActive(false);
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            console.log('Files dropped:', files);
+        }
+    };
+
+    return (
+        <div style={{
+            backgroundColor: 'white',
+            borderRadius: '20px',
+            padding: '24px',
+            border: '1px solid #e2e8f0',
+            marginBottom: '32px',
+            opacity: 0,
+            animation: 'fadeInUp 0.6s ease-out 0.5s forwards'
+        }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
+                <Zap size={20} style={{ color: '#f59e0b' }} />
+                <h3 style={{
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: '#1e293b',
+                    margin: 0
+                }}>
+                    Quick Actions
+                </h3>
+            </div>
+
+            <div style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '12px',
+                alignItems: 'stretch'
+            }}>
+                {actions.map((action, index) => (
+                    <button
+                        key={action.label}
+                        className="card-hover"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '12px 16px',
+                            backgroundColor: action.bgColor,
+                            color: action.textColor,
+                            border: 'none',
+                            borderRadius: '12px',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            opacity: 0,
+                            animation: `slideIn 0.4s ease-out ${0.6 + index * 0.1}s forwards`
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = action.hoverBg;
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = action.bgColor;
+                            e.currentTarget.style.transform = 'translateY(0)';
+                        }}
+                    >
+                        {action.icon}
+                        <span>{action.label}</span>
+                    </button>
+                ))}
+
+                {/* Drag & Drop Zone */}
+                <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    style={{
+                        flex: 1,
+                        minWidth: '200px',
+                        border: `2px dashed ${isDragActive ? '#3b82f6' : '#d1d5db'}`,
+                        borderRadius: '16px',
+                        padding: '24px',
+                        textAlign: 'center',
+                        backgroundColor: isDragActive ? '#eff6ff' : '#f9fafb',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s ease',
+                        opacity: 0,
+                        animation: 'fadeInUp 0.4s ease-out 1s forwards'
+                    }}
+                >
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '8px'
+                    }}>
+                        <Upload
+                            size={28}
+                            style={{
+                                color: isDragActive ? '#3b82f6' : '#9ca3af',
+                                transition: 'color 0.3s ease'
+                            }}
+                        />
+                        <div>
+                            <p style={{
+                                fontSize: '14px',
+                                fontWeight: '500',
+                                color: isDragActive ? '#3b82f6' : '#6b7280',
+                                margin: '0 0 4px 0'
+                            }}>
+                                Drag & Drop Files
+                            </p>
+                            <p style={{
+                                fontSize: '12px',
+                                color: '#9ca3af',
+                                margin: 0
+                            }}>
+                                or click to browse
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default QuickActions;

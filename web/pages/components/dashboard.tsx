@@ -31,7 +31,7 @@ import {
 import { motion } from "framer-motion";
 import UpcomingAndTodoList from "../dashboard/upcomingAndTodoList";
 import CalendarEventWidget from "../dashboard/calendar";
-import { getUserGetStarted } from "../../services/user";
+// import { getUserGetStarted } from "../../services/user";
 import { getCalendarEvents } from "../../services/google";
 import { useCurrentUser } from "../../app/userContext";
 import DocklyLoader from "../../utils/docklyLoader";
@@ -73,12 +73,12 @@ const DashboardPage = () => {
 
     try {
       // 1. Fetch user get started steps
-      const getStartedRes = await getUserGetStarted({});
-      if (getStartedRes.data.status) {
-        const backend = getStartedRes.data.payload.steps || [];
-        setIncompleteKeys(backend);
-        setCompletedSteps(rawSteps.length - backend.length);
-      }
+      // const getStartedRes = await getUserGetStarted({});
+      // if (getStartedRes.data.status) {
+      //   const backend = getStartedRes.data.payload.steps || [];
+      //   setIncompleteKeys(backend);
+      //   setCompletedSteps(rawSteps.length - backend.length);
+      // }
 
       // 2. Fetch Google Calendar events
       const calendarRes = await getCalendarEvents({

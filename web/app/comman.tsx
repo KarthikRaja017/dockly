@@ -1,4 +1,6 @@
+'use client'
 import { Input } from "antd";
+import { useEffect, useRef, useState } from "react";
 
 export const DocklyLogo = () => {
   return (
@@ -67,3 +69,27 @@ export function cleanProfilePictureUrl(url: string): string {
   const index = url.indexOf("=");
   return index !== -1 ? url.substring(0, index) : url;
 }
+
+
+export const useIsHovered = () => {
+  const [isHovered, setIsHovered] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+
+    const handleMouseEnter = () => setIsHovered(true);
+    const handleMouseLeave = () => setIsHovered(false);
+
+    element.addEventListener("mouseenter", handleMouseEnter);
+    element.addEventListener("mouseleave", handleMouseLeave);
+
+    return () => {
+      element.removeEventListener("mouseenter", handleMouseEnter);
+      element.removeEventListener("mouseleave", handleMouseLeave);
+    };
+  }, []);
+
+  return [ref, isHovered] as const;
+};

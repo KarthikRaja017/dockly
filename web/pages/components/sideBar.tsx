@@ -7,7 +7,7 @@ import React, {
   useState,
   RefObject,
 } from "react";
-import { Layout, Menu, Space } from "antd";
+import { Avatar, Divider, Layout, Menu, Typography } from "antd";
 import { usePathname, useRouter } from "next/navigation";
 import {
   ACTIVE_BG_COLOR,
@@ -16,22 +16,23 @@ import {
   PRIMARY_COLOR,
   SIDEBAR_BG,
 } from "../../app/comman";
-import FlatColorIconsCalendar, {
+import {
+  // FlatColorIconsCalendar,
   FlatColorIconsHome,
   FluentColorPeopleCommunity48,
   FluentEmojiDollarBanknote,
   FluentEmojiFlatRedHeart,
   FxemojiCloud,
   IconParkFolderLock,
-  MaterialIconThemeFolderConnectionOpen,
-  NotoKey,
-  RiDashboardFill,
   TwemojiPuzzlePiece,
+  RiDashboardFill,
 } from "./icons";
+import { motion } from "framer-motion";
+import { CalendarCheckIcon } from "lucide-react";
 
+const { Text } = Typography;
 const { Sider } = Layout;
 
-// Hover hook
 export const useIsHovered = () => {
   const [isHovered, setIsHovered] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
@@ -75,6 +76,7 @@ const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
       const username = localStorage.getItem("username") || "";
       setUsername(username);
     }, []);
+
     const pathname = usePathname();
     if (!pathname) return null;
 
@@ -84,37 +86,52 @@ const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
       setCurrentPath(currentPath);
     }, [pathname]);
 
-    const mainMenuItems = [
-      {
-        key: "dashboard",
-        icon: <RiDashboardFill />,
-        label: "Dashboard",
-      },
-      { key: "calendar", icon: <FlatColorIconsCalendar />, label: "Calendar" },
-      { key: "home", icon: <FlatColorIconsHome />, label: "Home" },
-      {
-        key: "family-hub",
-        icon: <FluentColorPeopleCommunity48 />,
-        label: "Family Hub",
-      },
-      { key: "finance", icon: <FluentEmojiDollarBanknote />, label: "Finance" },
-      { key: "health", icon: <FluentEmojiFlatRedHeart />, label: "Health" },
-      { key: "projects", icon: <TwemojiPuzzlePiece />, label: "Projects" },
-    ];
-
-    const bottomMenuItems = [
-      { key: "accounts", icon: <NotoKey />, label: "Accounts (34)" },
-      {
-        key: "cloud-storage",
-        icon: <FxemojiCloud />,
-        label: "Cloud Storage (3)",
-      },
-      {
-        key: "password-manager",
-        icon: <IconParkFolderLock />,
-        label: "Password Manager",
-      },
-    ];
+    const menuGroup = (
+      title: string,
+      items?: { key: string; icon: React.ReactNode; label: string }[]
+    ) => (
+      <div style={{ marginBottom: 16 }}>
+        <Text
+          style={{
+            fontSize: 12,
+            fontWeight: 500,
+            marginLeft: 16,
+            color: "#a0a0a0",
+            textTransform: "uppercase",
+            display: collapsed ? "none" : "block",
+          }}
+        >
+          {title}
+        </Text>
+        <Menu
+          mode="vertical"
+          selectedKeys={[currentPath]}
+          onClick={({ key }) => router.push(`/${username}/${key}`)}
+          style={{
+            backgroundColor: "transparent",
+            color: DEFAULT_TEXT_COLOR,
+            fontSize: "15px",
+            border: "none",
+            marginTop: 8,
+          }}
+          items={(items ?? []).map(({ key, icon, label }) => ({
+            key,
+            icon: <motion.div whileHover={{ scale: 1.1 }}>{icon}</motion.div>,
+            label: collapsed ? null : label,
+            style: {
+              padding: 8,
+              backgroundColor:
+                currentPath === key ? ACTIVE_BG_COLOR : "transparent",
+              color:
+                currentPath === key ? ACTIVE_TEXT_COLOR : DEFAULT_TEXT_COLOR,
+              borderRadius: 6,
+              transition: "all 0.2s ease-in-out",
+              marginLeft: 14,
+            },
+          }))}
+        />
+      </div>
+    );
 
     return (
       <Sider
@@ -144,9 +161,6 @@ const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
             display: "flex",
             cursor: "pointer",
             alignItems: "center",
-            // paddingLeft: collapsed ? 0 : 10,
-            // backgroundColor:
-            //   currentPath === "dashboard" ? ACTIVE_BG_COLOR : "transparent",
             padding: "10px 20px",
             borderRadius: "8px",
             transition: "all 0.3s ease-in-out",
@@ -159,8 +173,6 @@ const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
             style={{
               width: "30px",
               marginLeft: collapsed ? "0px" : "2px",
-              // transition: "all 0.3s ease-in-out",
-              // paddingLeft: "8px",
             }}
           />
           {!collapsed && (
@@ -176,81 +188,47 @@ const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
             </h2>
           )}
         </div>
-        <div style={{ flex: 1 }}>
-          <Menu
-            theme="light"
-            mode="vertical"
-            selectedKeys={[currentPath]}
-            onClick={({ key }) => router.push(`/${username}/${key}`)}
-            style={{
-              backgroundColor: SIDEBAR_BG,
-              color: DEFAULT_TEXT_COLOR,
-              fontSize: "16px",
-              border: "none",
-            }}
-            items={mainMenuItems.map(({ key, icon, label }) => ({
-              key,
-              icon,
-              label: !collapsed ? label : null,
-              style: {
-                marginBottom: "10px",
-                backgroundColor:
-                  currentPath === key ? ACTIVE_BG_COLOR : "transparent",
-                color:
-                  currentPath === key ? ACTIVE_TEXT_COLOR : DEFAULT_TEXT_COLOR,
-                borderRadius: "8px",
-                transition: "all 0.3s ease-in-out",
-              },
-            }))}
-          />
-        </div>
 
-        <div style={{ marginTop: "20px" }}>
-          {!collapsed ? (
-            <Space style={{ marginBottom: 10, color: DEFAULT_TEXT_COLOR }}>
-              <MaterialIconThemeFolderConnectionOpen />
-              <h4 style={{ margin: 0 }}>Connected Services</h4>
-            </Space>
-          ) : (
-            <div
-              style={{
-                color: DEFAULT_TEXT_COLOR,
-                marginBottom: 10,
-                display: "flex",
-                justifyContent: "center",
-              }}
-            >
-              <MaterialIconThemeFolderConnectionOpen />
-            </div>
-          )}
+        {menuGroup("Command Center", [
+          { key: "dashboard", icon: <RiDashboardFill />, label: "Dashboard" },
+          { key: "calendar", icon: <CalendarCheckIcon />, label: "Planner" },
+        ])}
 
-          <Menu
-            theme="light"
-            mode="vertical"
-            selectedKeys={[currentPath]}
-            onClick={({ key }) => router.push(`/${username}/${key}`)}
+        {menuGroup("Hubs", [
+          { key: "family-hub", icon: <FluentColorPeopleCommunity48 />, label: "Family" },
+          { key: "finance", icon: <FluentEmojiDollarBanknote />, label: "Finance" },
+          { key: "home", icon: <FlatColorIconsHome />, label: "Home" },
+          { key: "health", icon: <FluentEmojiFlatRedHeart />, label: "Health" },
+        ])}
+
+        {menuGroup("Utilities", [
+          { key: "notes", icon: <TwemojiPuzzlePiece />, label: "Notes & Lists" },
+          { key: "bookmarks", icon: <FxemojiCloud />, label: "Bookmarks" },
+          { key: "files", icon: <FxemojiCloud />, label: "Files" },
+          { key: "password-manager", icon: <IconParkFolderLock />, label: "Vault" },
+        ])}
+
+        {!collapsed && (
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             style={{
-              backgroundColor: SIDEBAR_BG,
-              color: DEFAULT_TEXT_COLOR,
-              fontSize: "16px",
-              border: "none",
+              background: "#fff7e6",
+              padding: "12px 20px",
+              margin: "16px 10px",
+              borderRadius: 8,
+              color: "#ad4e00",
+              fontWeight: 600,
+              fontSize: 14,
+              textAlign: "center",
+              cursor: "pointer",
             }}
-            items={bottomMenuItems.map(({ key, icon, label }) => ({
-              key,
-              icon,
-              label: !collapsed ? label : null,
-              style: {
-                marginBottom: "10px",
-                backgroundColor:
-                  currentPath === key ? ACTIVE_BG_COLOR : "transparent",
-                color:
-                  currentPath === key ? ACTIVE_TEXT_COLOR : DEFAULT_TEXT_COLOR,
-                borderRadius: "8px",
-                transition: "all 0.3s ease-in-out",
-              },
-            }))}
-          />
-        </div>
+          >
+            Refer Dockly
+          </motion.div>
+        )}
+
+        <Divider style={{ margin: "12px 0" }} />
       </Sider>
     );
   }
@@ -259,3 +237,4 @@ const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
 Sidebar.displayName = "Sidebar";
 
 export default Sidebar;
+

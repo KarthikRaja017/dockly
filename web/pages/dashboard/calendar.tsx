@@ -24,7 +24,7 @@ const CalendarEventWidget: React.FC<CalendarEventWidgetProps> = ({ events, accou
         boxSizing: "border-box",
       }}
     >
-      <RenderCalendarCard height={600} isCalendarPage={false} events={events} accountColor={accountColor} />
+      {/* <RenderCalendarCard height={600} isCalendarPage={false} events={events} accountColor={accountColor} /> */}
       {/* <EventCarousel events={events} /> */}
     </div>
   );

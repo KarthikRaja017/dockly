@@ -4,11 +4,11 @@ const { Title, Paragraph, Text } = Typography;
 
 const CalendarStepTwo = (props: any) => {
   const {
-  selectedCalendars = [],
-  setSelectedOptions = () => {},
-  selectedOptions = {},
-  setStep = () => {},
-} = props || {};
+    selectedCalendars = [],
+    setSelectedOptions = () => { },
+    selectedOptions = {},
+    setStep = () => { },
+  } = props || {};
   const toggleOption = (option: keyof typeof selectedOptions) => {
     setSelectedOptions((prev: any) => ({
       ...prev,
@@ -57,20 +57,25 @@ const CalendarStepTwo = (props: any) => {
 
         {[
           {
-            key: "calendarEvents",
-            label: "Calendar Events",
-            desc: "Appointments, meetings, and events",
+            key: "calendar",
+            label: "Calendar",
+            desc: "Appointments, meetings, and events; Tasks with deadlines",
           },
           {
-            key: "reminders",
-            label: "Reminders",
-            desc: "Tasks with deadlines",
+            key: "drive",
+            label: "Drive",
+            desc: "View, upload, and manage text files and PDFs; Access files shared with you",
           },
           {
-            key: "recurringEvents",
-            label: "Recurring Events",
-            desc: "Weekly, monthly, or annual repeats",
+            key: "photos",
+            label: "Photos",
+            desc: "Browse and manage your photo albums; Access your marked favorite photos",
           },
+          {
+            key: "health",
+            label: "Health",
+            desc: "Track workouts, steps, and movement trends; Monitor your sleep patterns and duration",
+          }
         ].map(({ key, label, desc }) => (
           <div
             key={key}
@@ -78,11 +83,10 @@ const CalendarStepTwo = (props: any) => {
             style={{
               padding: "16px",
               borderRadius: "12px",
-              border: `1px solid ${
-                selectedOptions[key as keyof typeof selectedOptions]
-                  ? "#2563eb"
-                  : "#d1d5db"
-              }`,
+              border: `1px solid ${selectedOptions[key as keyof typeof selectedOptions]
+                ? "#2563eb"
+                : "#d1d5db"
+                }`,
               backgroundColor: selectedOptions[
                 key as keyof typeof selectedOptions
               ]

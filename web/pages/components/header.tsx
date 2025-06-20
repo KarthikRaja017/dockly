@@ -31,48 +31,34 @@ import {
 } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import { useCurrentUser } from "../../app/userContext";
-import { capitalizeEachWord } from "../../app/comman";
+import { ACTIVE_BG_COLOR, capitalizeEachWord, DEFAULT_TEXT_COLOR, PRIMARY_COLOR } from "../../app/comman";
 
-const CustomHeader = (props: any) => {
-  const { isHovered } = props;
+const CustomHeader = ({ isHovered }: { isHovered: boolean }) => {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [visible, setVisible] = useState(false);
   const [visibleG, setVisibleG] = useState(false);
   const [visibleB, setVisibleB] = useState(false);
-  const [image, setImage] = useState("");
+  const [image, setImage] = useState<string>("");
+  const [name, setName] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
   const currentUser = useCurrentUser();
-  const [name, setName] = useState(null);
-  const userName = currentUser?.username;
+
+  const initials = userName ? userName.slice(0, 2).toUpperCase() : "DU";
 
   useEffect(() => {
     const user = localStorage.getItem("user");
     const userObj = user ? JSON.parse(user) : null;
-    setImage(userObj?.picture);
-    setName(userObj?.name);
-  }, []);
+    setImage(userObj?.picture || "");
+    setName(userObj?.name || null);
+    setUserName(currentUser?.username || userObj?.username || null);
+  }, [currentUser]);
 
   const actions = [
-    {
-      Icon: PlusOutlined,
-      title: "Connect",
-      onClick: () => setVisibleG(true),
-    },
-    {
-      Icon: FileTextOutlined,
-      title: "Notes",
-      onClick: () => setIsOpen(true),
-    },
-    {
-      Icon: LinkOutlined,
-      title: "Drag & Drop",
-      onClick: () => setVisible(true),
-    },
-    {
-      Icon: BookOutlined,
-      title: "Bookmarks",
-      onClick: () => setVisibleB(true),
-    },
+    { Icon: PlusOutlined, title: "Connect", onClick: () => setVisibleG(true) },
+    { Icon: FileTextOutlined, title: "Notes", onClick: () => setIsOpen(true) },
+    { Icon: LinkOutlined, title: "Drag & Drop", onClick: () => setVisible(true) },
+    { Icon: BookOutlined, title: "Bookmarks", onClick: () => setVisibleB(true) },
   ];
 
   const userMenu = {
@@ -80,60 +66,19 @@ const CustomHeader = (props: any) => {
       {
         key: "profile",
         icon: <UserOutlined style={{ fontSize: 18, color: "#007B8F" }} />,
-        label: (
-          <div style={{ fontSize: "16px", padding: "10px", fontWeight: 500 }}>
-            Profile
-          </div>
-        ),
-        onClick: () => {
-          router.push(`/${userName}/profile`);
-        },
+        label: <div style={{ fontSize: "16px", padding: "10px", fontWeight: 500 }}>Profile</div>,
+        onClick: () => router.push(`/${userName}/profile`),
       },
       {
         key: "settings",
         icon: <SettingOutlined style={{ fontSize: 18, color: "#007B8F" }} />,
-        label: (
-          <div style={{ fontSize: "16px", padding: "10px", fontWeight: 500 }}>
-            Settings
-          </div>
-        ),
-        onClick: () => {
-          router.push(`/${userName}/settings`);
-        },
+        label: <div style={{ fontSize: "16px", padding: "10px", fontWeight: 500 }}>Settings</div>,
+        onClick: () => router.push(`/${userName}/settings`),
       },
-      // {
-      //   key: "adminSettings",
-      //   icon: <ToolOutlined style={{ fontSize: 18, color: "#007B8F" }} />,
-      //   label: (
-      //     <div style={{ fontSize: "16px", padding: "10px", fontWeight: 500 }}>
-      //       Admin Settings
-      //     </div>
-      //   ),
-      // },
-      // {
-      //   key: "logout",
-      //   icon: <LogoutOutlined style={{ fontSize: 18, color: "#e74c3c" }} />,
-      //   label: (
-      //     <div
-      //       style={{
-      //         fontSize: "16px",
-      //         padding: "10px",
-      //         fontWeight: 500,
-      //         color: "#e74c3c",
-      //       }}
-      //     >
-      //       Logout
-      //     </div>
-      //   ),
-      // },
     ],
     onClick: ({ key }: { key: string }) => {
       if (key === "logout") {
-        router.push("/admin-settings");
-      } else if (key === "adminSettings") {
-        router.push("/admin-settings");
-      } else {
-        console.log("Navigating to", key);
+        router.push("/logout");
       }
     },
   };
@@ -170,81 +115,75 @@ const CustomHeader = (props: any) => {
         />
 
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-            {actions.map(({ Icon, title, onClick }, index) => (
-              <Tooltip title={title} key={index}>
-                <div
-                  onClick={onClick}
-                  style={{
-                    backgroundColor: "#e6f7ff",
-                    borderRadius: "50%",
-                    width: "40px",
-                    height: "40px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                    cursor: "pointer",
-                    transition: "all 0.3s",
-                  }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.backgroundColor = "#bae7ff")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.backgroundColor = "#e6f7ff")
-                  }
-                >
-                  <Icon style={{ color: "#007B8F", fontSize: "18px" }} />
-                </div>
-              </Tooltip>
-            ))}
-          </div>
+          {actions.map(({ Icon, title, onClick }, i) => (
+            <Tooltip title={title} key={i}>
+              <div
+                onClick={onClick}
+                style={{
+                  backgroundColor: "#e6f7ff",
+                  borderRadius: "50%",
+                  width: "40px",
+                  height: "40px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                  cursor: "pointer",
+                  transition: "all 0.3s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#bae7ff")}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#e6f7ff")}
+              >
+                <Icon style={{ color: "#007B8F", fontSize: "18px" }} />
+              </div>
+            </Tooltip>
+          ))}
 
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <Dropdown
-              menu={userMenu}
-              trigger={["click"]}
-              placement="bottomRight"
-              arrow
-              popupRender={(menu) => (
-                <div
-                  style={{
-                    minWidth: 200,
-                    padding: "10px 0",
-                    backgroundColor: "white",
-                    borderRadius: 10,
-                  }}
-                >
-                  {menu}
+          <Dropdown
+            menu={userMenu}
+            trigger={["click"]}
+            placement="bottomRight"
+            arrow
+            popupRender={(menu) => (
+              <div style={{ minWidth: 200, padding: "10px 0", backgroundColor: "white", borderRadius: 10 }}>
+                {menu}
+              </div>
+            )}
+          >
+            <div style={{ cursor: "pointer", display: "flex", gap: 10 }}>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: "14px", fontWeight: "500" }}>Welcome Back!</div>
+                <div style={{ color: "#007B8F", fontSize: "14px" }}>
+                  {name
+                    ? capitalizeEachWord(name)
+                    : userName
+                      ? capitalizeEachWord(userName)
+                      : "Dockly User"}
                 </div>
-              )}
-            >
-              <div style={{ cursor: "pointer", display: "flex", gap: 10 }}>
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: "14px", fontWeight: "500" }}>
-                    Welcome Back!
-                  </div>
-                  <div style={{ color: "#007B8F", fontSize: "14px" }}>
-                    {name
-                      ? capitalizeEachWord(name)
-                      : userName
-                        ? capitalizeEachWord(userName)
-                        : "Dockly User"}
-                  </div>
-                </div>
+              </div>
+              {image ? (
                 <Avatar
-                  src={
-                    image || "https://randomuser.me/api/portraits/men/32.jpg"
-                  }
+                  src={image}
                   size={40}
                   style={{ cursor: "pointer", border: "2px solid #007B8F" }}
                 />
-              </div>
-            </Dropdown>
-          </div>
+              ) : (
+                <Avatar
+                  style={{
+                    backgroundColor: ACTIVE_BG_COLOR,
+                    color: DEFAULT_TEXT_COLOR,
+                    border: "2px solid #007B8F",
+                  }}
+                >
+                  {initials}
+                </Avatar>
+              )}
+            </div>
+          </Dropdown>
         </div>
       </div>
-      {/* <NotesDropdown isOpen={isOpen} setIsOpen={setIsOpen} /> */}
+
+      {/* Functional modals */}
       <StickyNotes isOpen={isOpen} setIsOpen={setIsOpen} />
       <UploadModal visible={visible} setVisible={setVisible} />
       <AddAccountModal visible={visibleG} setVisible={setVisibleG} />

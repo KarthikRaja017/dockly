@@ -21,9 +21,8 @@ import { useCurrentUser } from "../../app/userContext";
 import { GoogleOutlined, MailOutlined, UserOutlined } from "@ant-design/icons";
 import "animate.css";
 import DocklyLoader from "../../utils/docklyLoader";
-import RenderCalendarCard from "../components/customCalendar";
 import UpcomingActivities from "../components/upcomingActivities";
-import { providerColors } from "./stepOne";
+import CalendarPage from "../components/customCalendar";
 
 const getEventColor = (eventDate: Date) => {
   const now = new Date();
@@ -377,11 +376,12 @@ const CalendarDashboard = (props: any) => {
 
       <div style={{ display: "flex", gap: "16px" }}>
         <div style={{ flex: 2 }}>
-          <RenderCalendarCard loading={loading} events={events} accountColor={accountColor} />
+          {/* <RenderCalendarCard loading={loading} events={events} accountColor={accountColor} /> */}
+          <CalendarPage />
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           <ToDoListCard />
-          <UpcomingActivities googleEvents={events} accountColor={accountColor} />
+          <UpcomingActivities googleEvents={events} />
         </div>
       </div>
     </div>

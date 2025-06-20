@@ -2,6 +2,7 @@
 import { useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { useRouter, useSearchParams } from 'next/navigation';
+import DocklyLoader from '../../../../utils/docklyLoader';
 
 const OAuthCallback = () => {
   const router = useRouter();
@@ -25,7 +26,7 @@ const OAuthCallback = () => {
     }
   }, [router, searchParams]);
 
-  return <p>Redirecting...</p>;
+  return <DocklyLoader />;
 };
 
 export default OAuthCallback;

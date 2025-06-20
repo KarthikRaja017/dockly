@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect } from "react";
-import { Tabs } from "antd";
+import { Tabs, Typography } from "antd";
 import Overview from "./overView";
 import UpcomingBills from "./upcomingBills";
 import SavingsGoals from "./savingsGoals";
@@ -9,6 +9,12 @@ import RecentTransactions from "./transactions";
 import MonthlyBudget from "./monthlyBudget";
 import { useQuilttSession } from "@quiltt/react";
 import { getBankAccount } from "../../services/apiConfig";
+import CashFlow from "./cashFlow";
+import FinancialSummary from "./financialSummary";
+import AccountsOverview from "./accountsList";
+import GoalsCard from "./goalcard";
+import RecurringTransactions from "./recurringTransactions";
+const { Text, Title } = Typography;
 
 const FinanceTabs = (props: any) => {
   // const { bankDetails } = props;
@@ -31,10 +37,11 @@ const FinanceTabs = (props: any) => {
       key: "1",
       children: (
         <>
-          <div style={{ display: "flex", gap: 10 }}>
+          {/* <div style={{ display: "flex", gap: 10 }}>
             {bankDetails && (
               <>
                 <div>
+                  <CashFlow bankDetails={bankDetails} />
                   <Overview bankDetails={bankDetails} />
                   <AccountsList
                     accountDetails={bankDetails.connections[0].accounts}
@@ -46,7 +53,7 @@ const FinanceTabs = (props: any) => {
                 <div
                   style={{ display: "flex", flexDirection: "column", gap: 10 }}
                 >
-                  <UpcomingBills />
+                  <FinancialSummary />
                   <SavingsGoals />
                   <RecentTransactions
                     transactions={bankDetails.transactions.nodes}
@@ -55,7 +62,7 @@ const FinanceTabs = (props: any) => {
               </>
             )}
           </div>
-          {/* <div style={{ marginTop: 20 }}>
+          <div style={{ marginTop: 20 }}>
             {bankDetails && (
               <AccountsList
                 accountDetails={bankDetails.connections[0].accounts}
@@ -69,6 +76,24 @@ const FinanceTabs = (props: any) => {
               />
             )}
           </div> */}
+          <>
+            <div style={{ display: 'flex' }}>
+              {bankDetails && (<CashFlow bankDetails={bankDetails} />)}
+            </div>
+            <div style={{ display: 'flex' }}>
+              <div style={{ width: 950 }}>
+                <MonthlyBudget />
+              </div>
+              <GoalsCard />
+            </div>
+            <div style={{ display: 'flex' }}>
+              <div style={{ width: 950 }}>
+                <RecentTransactions />
+              </div>
+              <RecurringTransactions />
+            </div>
+            <AccountsList />
+          </>
         </>
       ),
     },
@@ -79,9 +104,10 @@ const FinanceTabs = (props: any) => {
         <div>
           {/* Uncomment and use when data is available */}
           {bankDetails && (
-            <AccountsList
-              accountDetails={bankDetails.connections[0].accounts}
-            />
+            // <AccountsList
+            //   accountDetails={bankDetails.connections[0].accounts}
+            // />
+            <AccountsOverview />
           )}
         </div>
       ),
@@ -90,11 +116,12 @@ const FinanceTabs = (props: any) => {
       label: "Transactions",
       key: "3",
       children: (
-        <div>
+        <>
           {bankDetails && (
-            <RecentTransactions transactions={bankDetails.transactions.nodes} />
+            // <RecentTransactions transactions={bankDetails.transactions.nodes} />
+            <RecentTransactions isFullscreen={true} />
           )}
-        </div>
+        </>
       ),
     },
     {
@@ -118,8 +145,8 @@ const FinanceTabs = (props: any) => {
   ];
 
   return (
-    <div style={{ margin: "80px 10px 10px 60px" }}>
-      <h2>Finance</h2>
+    <div style={{ margin: "65px 10px 10px 60px" }}>
+      <Title level={2} style={{ marginBottom: '20px', marginLeft: 40 }}>Finance</Title>
       <div
         style={{
           margin: 20,

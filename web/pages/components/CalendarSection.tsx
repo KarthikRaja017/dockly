@@ -575,11 +575,247 @@
 //   );
 // }
 
+'use client'
 
+import React, { useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-const App = () => {
-  return <div>
-  </div>
-}
-export default App;
+const CalendarView: React.FC = () => {
+  const [activeView, setActiveView] = useState('Month');
+  const views = ['List', 'Day', 'Week', 'Month'];
+
+  const calendarEvents = {
+    12: 'Mortgage Payment',
+    15: 'Internet Bill',
+    17: "Emma's Soccer",
+    20: 'Netflix',
+    25: 'Annual Checkup',
+  };
+
+  const generateDays = () => {
+    const days = [];
+    const daysInMonth = 30;
+    const startDay = 0; // June starts on Sunday (0-indexed)
+
+    // Previous month days
+    for (let i = 25; i <= 31; i++) {
+      days.push({ day: i, isCurrentMonth: false });
+    }
+
+    // Current month days
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push({
+        day: i,
+        isCurrentMonth: true,
+        isToday: i === 10,
+        event: calendarEvents[i as keyof typeof calendarEvents]
+      });
+    }
+
+    // Next month days
+    for (let i = 1; i <= 5; i++) {
+      days.push({ day: i, isCurrentMonth: false });
+    }
+
+    return days;
+  };
+
+  return (
+    <div
+      style={{
+        background: 'white',
+        borderRadius: '12px',
+        padding: '24px',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '20px',
+        }}
+      >
+        <h2
+          style={{
+            fontSize: '20px',
+            fontWeight: 700,
+            color: '#1a202c',
+          }}
+        >
+          June 2025
+        </h2>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <div
+            style={{
+              display: 'flex',
+              gap: '4px',
+              background: '#f3f4f6',
+              padding: '4px',
+              borderRadius: '6px',
+            }}
+          >
+            {views.map((view) => (
+              <button
+                key={view}
+                onClick={() => setActiveView(view)}
+                style={{
+                  padding: '6px 12px',
+                  background: activeView === view ? 'white' : 'transparent',
+                  border: 'none',
+                  borderRadius: '4px',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  fontWeight: activeView === view ? 600 : 400,
+                  boxShadow: activeView === view ? '0 1px 3px rgba(0, 0, 0, 0.1)' : 'none',
+                }}
+              >
+                {view}
+              </button>
+            ))}
+          </div>
+          <select
+            style={{
+              padding: '6px 12px',
+              border: '1px solid #e2e8f0',
+              borderRadius: '6px',
+              fontSize: '14px',
+              background: 'white',
+            }}
+          >
+            <option>My View</option>
+            <option>Family View</option>
+          </select>
+          <button
+            style={{
+              padding: '6px 12px',
+              background: 'white',
+              border: '1px solid #e2e8f0',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#f8fafc';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'white';
+            }}
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <button
+            style={{
+              padding: '6px 12px',
+              background: 'white',
+              border: '1px solid #e2e8f0',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#f8fafc';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'white';
+            }}
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(7, 1fr)',
+          gap: '1px',
+          background: '#e5e7eb',
+          border: '1px solid #e5e7eb',
+          borderRadius: '8px',
+          overflow: 'hidden',
+        }}
+      >
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+          <div
+            key={day}
+            style={{
+              background: '#f9fafb',
+              padding: '12px 8px',
+              textAlign: 'center',
+              fontSize: '12px',
+              fontWeight: 600,
+              color: '#6b7280',
+            }}
+          >
+            {day}
+          </div>
+        ))}
+
+        {generateDays().map((dayObj, index) => (
+          <div
+            key={index}
+            style={{
+              background: dayObj.isCurrentMonth ? 'white' : '#f9fafb',
+              minHeight: '80px',
+              padding: '8px',
+              position: 'relative',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              ...(dayObj.isToday && {
+                background: '#eff6ff',
+              }),
+            }}
+            onMouseEnter={(e) => {
+              if (dayObj.isCurrentMonth) {
+                e.currentTarget.style.background = dayObj.isToday ? '#dbeafe' : '#f8fafc';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (dayObj.isCurrentMonth) {
+                e.currentTarget.style.background = dayObj.isToday ? '#eff6ff' : 'white';
+              }
+            }}
+          >
+            <div
+              style={{
+                fontSize: '14px',
+                fontWeight: 500,
+                marginBottom: '4px',
+                color: dayObj.isCurrentMonth ? '#1a202c' : '#9ca3af',
+                ...(dayObj.isToday && {
+                  color: '#2563eb',
+                  fontWeight: 700,
+                }),
+              }}
+            >
+              {dayObj.day}
+            </div>
+            {dayObj.event && (
+              <div
+                style={{
+                  fontSize: '11px',
+                  padding: '2px 4px',
+                  background: '#dbeafe',
+                  color: '#1e40af',
+                  borderRadius: '3px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                {dayObj.event}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export default CalendarView;
 

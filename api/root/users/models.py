@@ -388,61 +388,25 @@ class GetStarted(Resource):
     @auth_required(isOptional=True)
     def get(self, uid, user):
         if not uid:
-            return {
-                "status": 0,
-                "message": "User ID is required",
-                "payload": {},
-            }
+            return {"status": 0, "message": "User ID is required", "payload": {}}
 
-        completedSteps = 0
-        steps = [
-            "profileCompleted",
-            "accountsCompleted",
-            "boardCreated",
-            "documentUploaded",
-            "notificationsSetup",
-        ]
-
-        # Check profile completion
-        profile = DBHelper.find_one(
-            "user_profiles", filters={"uid": uid}, select_fields=["uid"]
+        # Check if user has Google token and bank board set up
+        google_account = DBHelper.find_one(
+            "google_tokens", filters={"uid": uid}, select_fields=["uid"]
         )
-        if profile and profile.get("uid"):
-            completedSteps += 1
-            if "profileCompleted" in steps:
-                steps.remove("profileCompleted")
-
-        # Check notifications setup
-        notifications = DBHelper.find_one(
-            "user_settings",
-            filters={"user_id": uid},
-            select_fields=["email_notifications", "push_notifications"],
+        bank_details = DBHelper.find_one(
+            "bankDetails", filters={"uid": uid}, select_fields=["uid"]
         )
 
-        if notifications is not None:
-            completedSteps += 1
-            if "notificationsSetup" in steps:
-                steps.remove("notificationsSetup")
-        googleUser = DBHelper.find_one(
-            "google_tokens",
-            filters={"uid": uid},
-            select_fields=["email"],
-        )
-        if googleUser is not None:
-            completedSteps += 1
-            if "accountsCompleted" in steps:
-                steps.remove("accountsCompleted")
-        print(f"steps: {steps}")
-        print(f"completedSteps: {completedSteps}")
+        is_redirect = not (google_account or bank_details)
 
         return {
             "status": 1,
             "message": "Fetched Get Started steps",
             "payload": {
-                "completedSteps": completedSteps,
-                "steps": steps,
                 "username": user.get("username", ""),
                 "uid": uid,
+                "isRedirect": is_redirect,
             },
         }
 

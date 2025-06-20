@@ -3,24 +3,24 @@ import { Button, Card, Typography, Row, Col } from "antd";
 const { Title, Paragraph, Text } = Typography;
 
 const calendarProviders = [
-  "Google Calendar",
-  "Apple Calendar",
-  "Outlook Calendar",
-  "Yahoo Calendar",
+  "Google",
+  "Apple",
+  "Outlook",
+  "Yahoo",
 ];
 
 export const providerColors: { [key: string]: string } = {
-  "Google Calendar": "#F3F4F6",
-  "Apple Calendar": "#111827",
-  "Outlook Calendar": "#2563EB",
-  "Yahoo Calendar": "#8B5CF6",
+  "Google": "#F3F4F6",
+  "Apple": "#111827",
+  "Outlook": "#2563EB",
+  "Yahoo": "#8B5CF6",
 };
 
 export const textColors: { [key: string]: string } = {
-  "Google Calendar": "#DC2626",
-  "Apple Calendar": "#FFFFFF",
-  "Outlook Calendar": "#FFFFFF",
-  "Yahoo Calendar": "#FFFFFF",
+  "Google": "#DC2626",
+  "Apple": "#FFFFFF",
+  "Outlook": "#FFFFFF",
+  "Yahoo": "#FFFFFF",
 };
 interface CalendarStepOneProps {
   setStep: (step: number) => void;
@@ -63,12 +63,12 @@ const CalendarStepOne: React.FC<CalendarStepOneProps> = ({
         }}
       >
         <Title level={3} style={{ color: "#2563eb", marginBottom: "8px" }}>
-          Connect Calendars
+          Connect Accounts
         </Title>
         <Paragraph
           style={{ marginBottom: "0px", fontSize: "16px", color: "#374151" }}
         >
-          Select the calendars you want to connect to Dockly.
+          Select the accounts you want to connect to Dockly.
         </Paragraph>
         <Text
           style={{
