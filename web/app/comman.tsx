@@ -2,6 +2,48 @@
 import { Input } from "antd";
 import { useEffect, useRef, useState } from "react";
 
+type ContentCategory = {
+  label: { name: string; title: string };
+  children: { name: string; title: string }[];
+};
+
+export const Hubs: ContentCategory[] = [
+  {
+    label: { name: 'home', title: 'Home' },
+    children: [
+      { name: 'property-info', title: 'Property Information' },
+      { name: 'mortgage-loans', title: 'Mortgage & Loans' },
+      { name: 'home-maintenance', title: 'Home Maintenance' },
+      { name: 'utilities', title: 'Utilities' },
+      { name: 'insurance', title: 'Insurance' },
+    ],
+  },
+  {
+    label: { name: 'finance', title: 'Finance' },
+    children: [],
+  },
+  {
+    label: { name: 'family', title: 'Family' },
+    children: [
+      { name: 'familyMembers', title: 'Family Members & Pets' },
+      { name: 'familyCalendar', title: 'Family Calendar' },
+      { name: 'upcomingActivities', title: 'Upcoming Activities' },
+      { name: 'familyNotesLists', title: 'Family Notes & Lists' },
+      { name: 'familyTasksProjects', title: 'Family Tasks & Projects' },
+      { name: 'guardiansEmergencyInfo', title: 'Guardians & Emergency Info' },
+      { name: 'importantContacts', title: 'Important Contacts' }
+    ]
+  },
+  {
+    label: { name: 'health', title: 'Health' },
+    children: [
+      { name: 'health-info', title: 'Health Information' },
+      { name: 'medical-records', title: 'Medical Records' },
+      { name: 'emergency-contacts', title: 'Emergency Contacts' },
+    ],
+  },
+];
+
 export const DocklyLogo = () => {
   return (
     <div

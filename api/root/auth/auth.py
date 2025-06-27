@@ -64,12 +64,12 @@ def validateAccess(uid, user, amac):
 
 
 def getAuthUser(uid, fields=None):
-    selectFields = ["uid", "email", "mobile", "username"]
+    selectFields = ["uid", "email", "user_name", "duser"]
 
     if fields:
         if isinstance(fields, dict):
             if "retriveAll" in fields:
-                selectFields = ["uid", "email", "mobile", "username"]
+                selectFields = ["uid", "email", "user_name", "duser"]
             else:
                 selectFields = [field for field, value in fields.items() if value == 1]
 
@@ -78,7 +78,7 @@ def getAuthUser(uid, fields=None):
     )
 
     user_settings = DBHelper.find_one(
-        "user_settings",
+        "user_preferences",
         filters={"user_id": uid},
         select_fields=[
             "theme",

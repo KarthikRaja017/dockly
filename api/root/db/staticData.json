@@ -1,0 +1,212 @@
+{
+  "users": [
+    {
+      "uid": "01",
+      "user_name": "dockly",
+      "email": "karthikrajay.cc@gmail.com",
+      "is_email_verified": true,
+      "is_active": 1,
+      "duser": 1,
+      "splan": 3
+    }
+  ],
+  "users_access_components": [
+    {
+      "user_id": "USERX05490",
+      "id": "1",
+      "component": 1,
+      "is_active": 1
+    },
+    {
+      "user_id": "USERX05490",
+      "id": "1",
+      "component": 2,
+      "is_active": 1
+    },
+    {
+      "user_id": "USERX05490",
+      "id": "1",
+      "component": 3,
+      "is_active": 1
+    },
+    {
+      "user_id": "USERX05490",
+      "id": "1",
+      "component": 4,
+      "is_active": 1
+    },
+    {
+      "user_id": "USERX05490",
+      "id": "1",
+      "component": 5,
+      "is_active": 1
+    },
+    {
+      "user_id": "USERX05490",
+      "id": "1",
+      "component": 6,
+      "is_active": 1
+    },
+    {
+      "user_id": "USERX05490",
+      "id": "1",
+      "component": 7,
+      "is_active": 1
+    }
+  ],
+  "users_access_utilities": [
+    {
+      "user_id": "USERX05490",
+      "id": "1",
+      "utilities": 1,
+      "is_active": 1
+    },
+    {
+      "user_id": "USERX05490",
+      "id": "2",
+      "utilities": 2,
+      "is_active": 1
+    },
+    {
+      "user_id": "USERX05490",
+      "id": "3",
+      "utilities": 3,
+      "is_active": 1
+    },
+    {
+      "user_id": "USERX05490",
+      "id": "4",
+      "utilities": 4,
+      "is_active": 1
+    }
+  ],
+  "users_access_hubs": [
+    {
+      "user_id": "USERX05490",
+      "id": "1",
+      "hubs": 1,
+      "is_active": 1
+    },
+    {
+      "user_id": "USERX05490",
+      "id": "2",
+      "hubs": 2,
+      "is_active": 1
+    },
+    {
+      "user_id": "USERX05490",
+      "id": "3",
+      "hubs": 3,
+      "is_active": 1
+    },
+    {
+      "user_id": "USERX05490",
+      "id": "4",
+      "hubs": 4,
+      "is_active": 1
+    }
+  ],
+  "hubs": [
+    {
+      "hid": 1,
+      "name": "family",
+      "title": "Family",
+      "is_active": 1
+    },
+    {
+      "hid": 2,
+      "name": "finance",
+      "title": "Finance",
+      "is_active": 1
+    },
+    {
+      "hid": 3,
+      "name": "home",
+      "title": "Home",
+      "is_active": 1
+    },
+    {
+      "hid": 4,
+      "name": "health",
+      "title": "Health",
+      "is_active": 1
+    }
+  ],
+  "utilities": [
+    {
+      "utid": 1,
+      "name": "notesLists",
+      "title": "Notes & Lists",
+      "is_active": 1
+    },
+    {
+      "utid": 2,
+      "name": "bookmarks",
+      "title": "Bookmarks",
+      "is_active": 1
+    },
+    {
+      "utid": 3,
+      "name": "vault",
+      "title": "Vault",
+      "is_active": 1
+    },
+    {
+      "utid": 4,
+      "name": "files",
+      "title": "Files",
+      "is_active": 1
+    }
+  ],
+  "components": [
+    {
+      "cid": "F1",
+      "hid": 1,
+      "name": "familyMembers",
+      "title": "Family Members & Pets",
+      "is_active": 1
+    },
+    {
+      "cid": "F2",
+      "hid": 1,
+      "name": "familyCalendar",
+      "title": "Family Calendar",
+      "is_active": 1
+    },
+    {
+      "cid": "F3",
+      "hid": 1,
+      "name": "upcomingActivities",
+      "title": "Upcoming Activities",
+      "is_active": 1
+    },
+    {
+      "cid": "F4",
+      "hid": 1,
+      "name": "familyNotesLists",
+      "title": "Family Notes & Lists",
+      "is_active": 1
+    },
+    {
+      "cid": "F5",
+      "hid": 1,
+      "name": "familyTasksProjects",
+      "title": "Family Tasks & Projects",
+      "is_active": 1
+    },
+    {
+      "cid": "F6",
+      "hid": 1,
+      "name": "guardiansEmergencyInfo",
+      "title": "Guardians & Emergency Info",
+      "is_active": 1
+    },
+    {
+      "cid": "F7",
+      "hid": 1,
+      "name": "importantContacts",
+      "title": "Important Contacts",
+      "is_active": 1
+    }
+  ]
+}

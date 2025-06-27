@@ -7,6 +7,7 @@ from flask_restful import Resource
 from datetime import datetime
 import pytz
 import requests
+from root.common import DocklyUsers, Hubs, HubsEnum, Status
 from root.auth.auth import auth_required, getAccessTokens
 from root.utilis import handle_user_session, uniqueId
 from root.config import (
@@ -97,14 +98,14 @@ class RegisterUser(Resource):
         # 1. Check if user exists by username
         existingUser = DBHelper.find_one(
             "users",
-            filters={"username": userName},
-            select_fields=["email", "uid", "is_dockly_user"],
+            filters={"user_name": userName},
+            select_fields=["email", "uid", "duser"],
         )
         #  CASE 1: User exists
         if existingUser:
             userId = existingUser.get("uid")
             dbEmail = existingUser.get("email")
-            isDockly = existingUser.get("is_dockly_user")
+            isDockly = existingUser.get("duser")
 
             # Case: Dockly user with matching email — login
             if isDockly and inputEmail == dbEmail:
@@ -151,11 +152,11 @@ class RegisterUser(Resource):
             return_column="uid",
             uid=uid,
             email="",
-            mobile="",
-            username=userName,
+            user_name=userName,
             is_email_verified=False,
-            is_phone_verified=False,
-            is_dockly_user=True,
+            is_active=Status.ACTIVE.value,
+            duser=DocklyUsers.PaidMember.value,
+            splan=0,
         )
 
         # sessionInfo = handle_user_session(userId)
@@ -180,7 +181,7 @@ class SaveUserEmail(Resource):
             existingUser = DBHelper.find_one(
                 "users",
                 filters={"email": email},
-                select_fields=["uid", "username"],
+                select_fields=["uid", "user_name"],
             )
             if existingUser:
                 return {
@@ -199,7 +200,7 @@ class SaveUserEmail(Resource):
             otpResponse = send_otp_email(email, otp)
             # otpResponse = {"otp": otp, "email": email}
             username = (
-                existingUser.get("username", "")
+                existingUser.get("user_name", "")
                 if existingUser
                 else inputData["username"]
             )
@@ -211,13 +212,14 @@ class SaveUserEmail(Resource):
                     "otpStatus": otpResponse,
                     "uid": uid,
                     "username": username,
+                    "duser": DocklyUsers.PaidMember.value,
                 },
             }
         else:
             existingUser = DBHelper.find_one(
                 "users",
                 filters={"email": email},
-                select_fields=["uid", "username"],
+                select_fields=["uid", "user_name"],
             )
             otp = generate_otp()
             otpResponse = send_otp_email(email, otp)
@@ -232,7 +234,8 @@ class SaveUserEmail(Resource):
                         "email": email,
                         "otpStatus": otpResponse,
                         "uid": uid,
-                        "username": existingUser.get("username"),
+                        "username": existingUser.get("user_name"),
+                        "duser": DocklyUsers.PaidMember.value,
                     },
                 }
             else:
@@ -245,10 +248,10 @@ class SaveUserEmail(Resource):
                     uid=uid,
                     email="",
                     mobile="",
-                    username=username,
+                    user_name=username,
                     is_email_verified=False,
                     is_phone_verified=False,
-                    is_dockly_user=True,
+                    duser=DocklyUsers.PaidMember.value,
                 )
                 return {
                     "status": 1,
@@ -258,6 +261,7 @@ class SaveUserEmail(Resource):
                         "otpStatus": otpResponse,
                         "uid": uid,
                         "username": username,
+                        "duser": DocklyUsers.PaidMember.value,
                     },
                 }
 
@@ -285,6 +289,7 @@ class OtpVerification(Resource):
         inputData = request.get_json(silent=True)
         userId = inputData["userId"]
         otp = inputData.get("otp")
+        duser = inputData.get("duser")
         response = is_otp_valid(inputData["storedOtp"], otp)
         uid = DBHelper.update_one(
             table_name="users",
@@ -300,6 +305,28 @@ class OtpVerification(Resource):
         response["payload"]["token"] = token["accessToken"]
         response["payload"]["userId"] = uid.get("uid")
         response["payload"]["email"] = uid.get("email")
+        sharedIds = [
+            HubsEnum.Family.value,
+            HubsEnum.Finance.value,
+            HubsEnum.Health.value,
+            HubsEnum.Home.value,
+        ]
+        # hubs = DBHelper.find_all(
+        #     table_name="hubs",
+        #     select_fields=["name", "relationship"],
+        #     filters={"user_id": uid},
+        # )
+        if duser:
+            if int(duser) == DocklyUsers.PaidMember.value:
+                for id in sharedIds:
+                    shared = DBHelper.insert(
+                        table_name="users_access_hubs",
+                        user_id=uid.get("uid"),
+                        id=f"{uid.get("uid")}-{id}",
+                        hubs=id,
+                        is_active=Status.ACTIVE.value,
+                        return_column="hubs",
+                    )
         return response
 
 

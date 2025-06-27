@@ -49,6 +49,7 @@ const SignUpDockly = () => {
       showNotification("Success", msg, "success");
       localStorage.setItem("storedOtp", payload?.otpStatus.otp || "");
       localStorage.setItem("email", payload?.email || "");
+      localStorage.setItem("duser", payload?.duser)
       router.push(`/${payload?.username}/verify-email?email=${payload.email}`);
     }
     setLoading(false);

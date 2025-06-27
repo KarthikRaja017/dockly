@@ -1,236 +1,6 @@
-// 'use client';
-// import React, { useEffect, useState } from 'react';
-// import { Row, Col, Card, Button, Typography, Table, message, Spin, Popconfirm } from 'antd';
-// import LeftSection from '../../../pages/family-hub/left-section';
-// import RightSection from '../../../pages/family-hub/right-section';
-// import FamilyInviteForm from '../../../pages/family-hub/FamilyInviteForm';
-// import { getUsersFamilyMembers } from '../../../services/family';
-// import { useRouter } from 'next/navigation';
-// import { FamilyMember as ImportedFamilyMember } from '../../../pages/family-hub/rightsection/sharedtasks';
-
-// interface FamilyMember extends ImportedFamilyMember {
-//   uid: string;
-// }
-
-// const { Title } = Typography;
-
-// interface CalendarEvent {
-//   date: string;
-//   event: string;
-// }
-
-// interface ActivityLog {
-//   time: string;
-//   activity: string;
-//   details: string;
-// }
-
-// const calendarEvents: CalendarEvent[] = [
-//   { date: '2025-06-05', event: 'Family Dinner' },
-//   { date: '2025-06-07', event: 'Movie Night' },
-// ];
-
-// const activities: ActivityLog[] = [
-//   { time: '2025-06-05 18:00', activity: 'Meal', details: 'Dinner - Pizza Night' },
-//   { time: '2025-06-04 12:00', activity: 'Shared', details: 'Grocery List Updated' },
-// ];
-
-// const TableContent = ({ familyMembers, onDelete }: any) => {
-//   const columns = [
-//     { title: 'Name', dataIndex: 'name', key: 'name' },
-//     {
-//       title: 'Relationship',
-//       dataIndex: 'relationship',
-//       key: 'relationship',
-//       render: (text: string) => text.replace('❤️', '').replace('👶', '').replace('👴', ''),
-//     },
-//     { title: 'Email', dataIndex: 'email', key: 'email' },
-//     {
-//       title: 'Actions',
-//       key: 'actions',
-//       render: (_: any, record: FamilyMember) => (
-//         <Popconfirm title="Delete?" onConfirm={() => onDelete(record.uid)}>
-//           <Button type="link" danger>Delete</Button>
-//         </Popconfirm>
-//       ),
-//     },
-//   ];
-//   return <Table columns={columns} dataSource={familyMembers.map((m: any) => ({ ...m, key: m.uid }))} pagination={false} />;
-// };
-
-// const CalendarContent = () => (
-//   <ul>{calendarEvents.map((e, i) => (<li key={i}><strong>{e.date}</strong>: {e.event}</li>))}</ul>
-// );
-
-// const ActivityContent = () => (
-//   <ul>{activities.map((a, i) => (<li key={i}><strong>{a.time}</strong> - {a.activity}: {a.details}</li>))}</ul>
-// );
-
-// const BoardContent = ({ setIsModalVisible, setEditMember, familyMembers, onDelete }: any) => (
-//   <Row gutter={[16, 16]}>
-//     <Col xs={24} md={12}>
-//       <LeftSection
-//         setIsModalVisible={setIsModalVisible}
-//         setEditMember={setEditMember}
-//         familyMembers={familyMembers}
-//         onDelete={onDelete}
-//         userId={typeof window !== 'undefined' ? (localStorage.getItem('userId') || '') : ''}
-//       />
-//     </Col>
-//     <Col xs={24} md={12}>
-//       <RightSection familyMembers={familyMembers} />
-//     </Col>
-//   </Row>
-// );
-
-// const FamilySharing: React.FC = () => {
-//   const [isModalVisible, setIsModalVisible] = useState(false);
-//   const [editMember, setEditMember] = useState<FamilyMember | null>(null);
-//   const [activeTab, setActiveTab] = useState('Board');
-//   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
-//   const [loading, setLoading] = useState(true);
-//   const router = useRouter();
-
-//   const getFamilyMembers = async () => {
-//     try {
-//       const response = await getUsersFamilyMembers();
-//       const { status, payload } = response;
-//       if (status === 1) {
-//         setFamilyMembers(payload.members || []);
-//       } else {
-//         message.error('Failed to fetch family members');
-//       }
-//     } catch (error) {
-//       console.error('Error fetching family members:', error);
-//       message.error('Failed to fetch family members');
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   useEffect(() => {
-//     getFamilyMembers();
-//   }, []);
-
-//   useEffect(() => {
-//     const username = localStorage.getItem("username") || "";
-//     if (localStorage.getItem('family-hub') === null) {
-//       try {
-//         router.push(`/${username}/family-hub/setup`);
-//       } catch (error) {
-//         message.error('Navigation failed. Please try again.');
-//       }
-//     }
-//   }, [router]);
-
-//   const handleSubmit = (formData: any) => {
-//     if (!formData.name || !formData.relationship) {
-//       message.error('Name and relationship required.');
-//       return;
-//     }
-
-//     const newMember = {
-//       uid: editMember?.uid || `USER_${Date.now()}`,
-//       ...formData,
-//       sharedItems: formData.shared_items || {},
-//     };
-
-//     if (editMember) {
-//       setFamilyMembers(familyMembers.map((m) => (m.uid === editMember.uid ? newMember : m)));
-//       message.success('Family member updated.');
-//     } else {
-//       setFamilyMembers([...familyMembers, newMember]);
-//       message.success('Family member added.');
-//     }
-
-//     setIsModalVisible(false);
-//     setEditMember(null);
-//   };
-
-//   const handleDelete = (uid: string) => {
-//     setFamilyMembers(familyMembers.filter((m) => m.uid !== uid));
-//     message.success('Deleted successfully.');
-//   };
-
-//   const renderTabContent = () => {
-//     if (loading) return <Spin style={{ margin: '30px auto', display: 'block' }} />;
-//     switch (activeTab) {
-//       case 'Board':
-//         return (
-//           <BoardContent
-//             setIsModalVisible={setIsModalVisible}
-//             setEditMember={setEditMember}
-//             familyMembers={familyMembers}
-//             onDelete={handleDelete}
-//           />
-//         );
-//       case 'Table':
-//         return <TableContent familyMembers={familyMembers} onDelete={handleDelete} />;
-//       case 'Calendar':
-//         return <CalendarContent />;
-//       case 'Activity':
-//         return <ActivityContent />;
-//       default:
-//         return null;
-//     }
-//   };
-
-//   return (
-//     <div style={{ padding: '20px', maxWidth: '1440px', margin: '50px 45px' }}>
-//       <Card>
-//         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
-//           <h2>👨‍👩‍👧‍👦 Family Hub</h2>
-//           <Button type="primary" onClick={() => { setEditMember(null); setIsModalVisible(true); }}>
-//             Add Family Member
-//           </Button>
-//         </div>
-
-//         <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
-//           {['Board', 'Table', 'Calendar', 'Activity'].map((tab) => (
-//             <Button
-//               key={tab}
-//               type={activeTab === tab ? 'primary' : 'default'}
-//               onClick={() => setActiveTab(tab)}
-//               style={{ borderRadius: 20 }}
-//             >
-//               {tab}
-//             </Button>
-//           ))}
-//         </div>
-
-//         {renderTabContent()}
-//       </Card>
-
-//       <FamilyInviteForm
-//         visible={isModalVisible}
-//         onCancel={() => { setIsModalVisible(false); setEditMember(null); }}
-//         isEditMode={!!editMember}
-//         initialData={editMember ? {
-//           ...editMember,
-//           email: editMember.email || '',
-//           phone: editMember.phone || '',
-//           accessCode: editMember.accessCode || '',
-//           // Only allow valid method values
-//           method: (editMember.method === "Email" || editMember.method === "Mobile" || editMember.method === "Access Code")
-//             ? editMember.method
-//             : "Email",
-//           // Ensure permissions is of the correct type
-//           permissions: (typeof editMember.permissions === 'string')
-//             ? {} as any // Replace with a sensible default or conversion if possible
-//             : editMember.permissions,
-//         } : undefined}
-//         onSubmit={handleSubmit}
-//       />
-//     </div>
-//   );
-// };
-
-// export default FamilySharing;
-
 'use client'
-
-import { ArrowLeft, Heart, Plus, Search, Share, Users } from 'lucide-react';
-import React, { useState } from 'react';
+import { ArrowLeft, ArrowRightCircle, BoxSelect, Heart, LayoutPanelLeft, Plus, Search, Share, Users } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 
 const FamilyHubPage: React.FC = () => {
   return (
@@ -242,7 +12,8 @@ const FamilyHubPage: React.FC = () => {
         lineHeight: 1.5,
         color: '#374151',
         backgroundColor: '#f9fafb',
-        marginLeft: 40
+        marginLeft: 40,
+        marginTop: 50
       }}
     >
       <div
@@ -252,13 +23,8 @@ const FamilyHubPage: React.FC = () => {
           padding: '20px 30px',
         }}
       >
-        <FamilyHeader />
         <BoardTitle />
-
-        {/* Family Members Section - Full Width */}
         <FamilyMembers />
-
-        {/* Calendar and Activities Section */}
         <div
           style={{
             display: 'grid',
@@ -267,19 +33,27 @@ const FamilyHubPage: React.FC = () => {
             marginBottom: '24px',
           }}
         >
-          {/* <FamilyCalendar /> */}
-          <CalendarWithMeals />
+          <CustomCalendar data={sampleCalendarData} />
           <UpcomingActivities />
         </div>
 
-        {/* Notes & Lists Section */}
         <FamilyNotes />
 
-        {/* Tasks & Projects Section */}
         <FamilyTasks />
 
-        {/* Bottom Section: Guardians & Contacts */}
-        <GuardiansContacts />
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '24px',
+            marginBottom: '24px',
+          }}
+        >
+          <GuardiansEmergencyInfo />
+          <ImportantContacts />
+        </div>
+
       </div>
     </div>
   );
@@ -287,354 +61,1156 @@ const FamilyHubPage: React.FC = () => {
 
 export default FamilyHubPage;
 
-import { Shield, Phone, User, Stethoscope, Scale, DollarSign, Activity } from 'lucide-react';
+import { Modal, Form, Input, Button, message, Select, Row, Col, Popconfirm, Space } from 'antd';
+import {
+  EditOutlined,
+  PlusOutlined,
+  EyeOutlined,
+  DeleteOutlined,
+  SafetyOutlined,
+  PhoneOutlined,
+  ExpandOutlined,
+  ExportOutlined,
+} from '@ant-design/icons';
+import { addGuardians, getGuardians, getUserContacts, addContacts, addNote, getAllNotes } from '../../../services/family'; // Import addGuardians from family.ts
 
-const GuardiansContacts: React.FC = () => {
-  const guardianInfo = [
-    {
-      title: 'Emergency Guardians',
-      items: [
-        {
-          label: 'Primary: Martha Smith',
-          value: 'Grandmother • (555) 765-4321 • Lives 10 minutes away',
-        },
-        {
-          label: 'Secondary: Robert & Linda Johnson',
-          value: "Sarah's Parents • (555) 234-5678 • Lives in same city",
-        },
-      ],
-    },
-    {
-      title: 'Life Insurance',
-      items: [
-        {
-          label: 'John Smith - Term Life',
-          value: 'Policy #: TL-789456 • $500,000 • Prudential',
-        },
-        {
-          label: 'Sarah Smith - Term Life',
-          value: 'Policy #: TL-789457 • $500,000 • Prudential',
-        },
-      ],
-    },
-    {
-      title: 'Medical Information',
-      items: [
-        {
-          label: 'Family Doctor',
-          value: 'Dr. Robert Williams • Family Health Center • (555) 123-4567',
-        },
-        {
-          label: 'Insurance',
-          value: 'Blue Cross Blue Shield • Group #: 12345 • ID: JS789456',
-        },
-        {
-          label: 'Allergies',
-          value: 'Liam: Peanuts (severe), Dust mites • Emma: None known',
-        },
-      ],
-    },
-    {
-      title: 'Important Documents',
-      items: [
-        {
-          label: 'Will & Testament',
-          value: 'Updated: Jan 2025 • Location: Safe deposit box',
-        },
-        {
-          label: 'Power of Attorney',
-          value: 'Martha Smith (Medical) • Robert Johnson (Financial)',
-        },
-      ],
-    },
+
+
+interface GuardianSection {
+  title: string;
+  type: 'guardian' | 'insurance' | 'medical' | 'documents' | 'other';
+  items: GuardianItem[];
+}
+interface GuardianItem {
+  relationship?: React.ReactNode;
+  name: string;
+  relation: string;  // Change from 'relationship' to 'relation'
+  phone: string;
+  details?: string;
+}
+
+// page.tsx (Update GuardiansEmergencyInfo)
+const GuardiansEmergencyInfo: React.FC = () => {
+  const [guardianInfo, setGuardianInfo] = useState<GuardianSection[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalType, setModalType] = useState<'guardian' | 'section-edit' | 'new-section'>('guardian');
+  const [currentSectionIndex, setCurrentSectionIndex] = useState<number | null>(null);
+  const [currentItemIndex, setCurrentItemIndex] = useState<number | null>(null);
+  const [form] = Form.useForm();
+  const [sectionItems, setSectionItems] = useState<GuardianItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const guardianRelations = [
+    'Grandmother', 'Grandfather', 'Uncle', 'Aunt', 'Family Friend',
+    'Sibling', 'Cousin', 'Neighbor', 'Other Family Member', 'Policy Holder',
+    'Family Doctor', 'Insurance Provider', 'Specialist',
   ];
 
-  const contacts = [
-    {
-      title: 'Emergency',
-      items: [
-        {
-          icon: '🚨',
-          name: 'Emergency Services',
-          role: '911',
-          bgColor: '#fee2e2',
-          textColor: '#dc2626',
-        },
-        {
-          icon: '🏥',
-          name: 'Springfield General Hospital',
-          role: '(555) 987-6543',
-          bgColor: '#fee2e2',
-          textColor: '#dc2626',
-        },
-      ],
-    },
-    {
-      title: 'Schools',
-      items: [
-        {
-          icon: '🏫',
-          name: 'Springfield High School',
-          role: 'Emma • (555) 234-5678',
-          bgColor: '#dcfce7',
-          textColor: '#16a34a',
-        },
-        {
-          icon: '🏫',
-          name: 'Cedar Elementary',
-          role: 'Liam • (555) 345-6789',
-          bgColor: '#dcfce7',
-          textColor: '#16a34a',
-        },
-      ],
-    },
-    {
-      title: 'Professional Services',
-      items: [
-        {
-          icon: '👨‍⚕️',
-          name: 'Dr. Emily Chen',
-          role: 'Pediatrician • (555) 456-7890',
-          bgColor: '#f0f4f8',
-          textColor: '#374151',
-        },
-        {
-          icon: '🦷',
-          name: 'Dr. Michael Wilson',
-          role: 'Family Dentist • (555) 567-8901',
-          bgColor: '#f0f4f8',
-          textColor: '#374151',
-        },
-        {
-          icon: '👨‍⚖️',
-          name: 'James Wilson, Esq.',
-          role: 'Estate Attorney • (555) 678-9012',
-          bgColor: '#f0f4f8',
-          textColor: '#374151',
-        },
-        {
-          icon: '💰',
-          name: 'Maria Chen, CFP',
-          role: 'Financial Advisor • (555) 789-0123',
-          bgColor: '#f0f4f8',
-          textColor: '#374151',
-        },
-      ],
-    },
-    {
-      title: 'Activities & Sports',
-      items: [
-        {
-          icon: '⚽',
-          name: 'Coach Thompson',
-          role: "Emma's Soccer • (555) 890-1234",
-          bgColor: '#f0f4f8',
-          textColor: '#374151',
-        },
-        {
-          icon: '🎹',
-          name: 'Mrs. Anderson',
-          role: "Liam's Piano Teacher • (555) 901-2345",
-          bgColor: '#f0f4f8',
-          textColor: '#374151',
-        },
-      ],
-    },
-  ];
+  const getGuardian = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await getGuardians({});
+      const { status, payload } = response;
+      if (status) {
+        // Group by type for sections
+        const groupedByType: Record<string, GuardianItem[]> = {};
+        payload.emergencyInfo.forEach((info: GuardianItem) => {
+          const relStr = String(info.relationship ?? '');
+          const sectionKey = relStr.toLowerCase().includes('policy') ? 'insurance' :
+            relStr.toLowerCase().includes('doctor') || relStr.toLowerCase().includes('pediatrician') ? 'medical' :
+              'guardian';
+          if (!groupedByType[sectionKey]) groupedByType[sectionKey] = [];
+          groupedByType[sectionKey].push(info);
+        });
 
-  return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '24px',
-      }}
-    >
-      {/* Guardians Section */}
-      <div
-        style={{
-          backgroundColor: 'white',
-          borderRadius: '12px',
-          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
-          padding: '24px',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '20px',
-          }}
-        >
-          <h3
+        const formattedSections: GuardianSection[] = Object.keys(groupedByType).map(key => ({
+          title: key === 'insurance' ? 'Life Insurance' :
+            key === 'medical' ? 'Medical Information' :
+              'Emergency Guardians',
+          type: key as GuardianSection['type'],
+          items: groupedByType[key]
+        }));
+
+        setGuardianInfo(formattedSections);
+      } else {
+        setError('Failed to fetch guardian info');
+        message.error('Failed to fetch guardian info');
+      }
+    } catch (err) {
+      setError('Error fetching guardian info');
+      message.error('Error fetching guardian info');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    getGuardian();
+  }, []);
+
+  const showModal = (
+    type: 'guardian' | 'section-edit' | 'new-section',
+    sectionIndex: number | null = null,
+    itemIndex: number | null = null
+  ) => {
+    setModalType(type);
+    setCurrentSectionIndex(sectionIndex);
+    setCurrentItemIndex(itemIndex);
+
+    if (type === 'section-edit' && sectionIndex !== null) {
+      setSectionItems(guardianInfo[sectionIndex].items);
+    } else if (type === 'guardian' && sectionIndex !== null && itemIndex !== null) {
+      form.setFieldsValue(guardianInfo[sectionIndex].items[itemIndex]);
+    } else {
+      form.resetFields();
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleOk = async () => {
+    try {
+      await form.validateFields();
+      const values = form.getFieldsValue();
+
+      if (modalType === 'new-section') {
+        const newSection: GuardianSection = {
+          title: values.sectionName,
+          type: 'other',
+          items: [],
+        };
+        setGuardianInfo([...guardianInfo, newSection]);
+        message.success('New section created!');
+        setIsModalOpen(false);
+        form.resetFields();
+      } else if (modalType === 'guardian' && currentSectionIndex !== null) {
+        setLoading(true);
+        const payload = {
+          name: values.name,
+          relationship: values.relation, // Use 'relationship' to match backend mapping
+          phone: values.phone,
+          details: values.details || '',
+          addedBy: localStorage.getItem('userId') || 'current_user',
+        };
+
+        const response = await addGuardians(payload);
+        if (response.status) {
+          const updatedGuardianInfo = [...guardianInfo];
+          const newItem: GuardianItem = {
+            name: values.name,
+            relationship: values.relation,
+            phone: values.phone,
+            details: values.details,
+            relation: ''
+          };
+
+          if (currentItemIndex !== null) {
+            updatedGuardianInfo[currentSectionIndex].items[currentItemIndex] = newItem;
+            message.success('Guardian info updated!');
+          } else {
+            updatedGuardianInfo[currentSectionIndex].items.push(newItem);
+            message.success('Guardian info added!');
+          }
+
+          setGuardianInfo(updatedGuardianInfo);
+          setIsModalOpen(false);
+          form.resetFields();
+        } else {
+          message.error('Failed to save guardian info');
+        }
+      }
+    } catch (error) {
+      console.error('Error in handleOk:', error);
+      message.error('Failed to save guardian info. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleItemDelete = async (sectionIndex: number, itemIndex: number) => {
+    // Note: Backend deletion endpoint not provided; assuming local state update for now
+    const updatedGuardianInfo = [...guardianInfo];
+    updatedGuardianInfo[sectionIndex].items.splice(itemIndex, 1);
+    setGuardianInfo(updatedGuardianInfo);
+    setSectionItems(updatedGuardianInfo[sectionIndex].items);
+    message.success('Item deleted successfully!');
+  };
+
+  const handleCancel = () => {
+    setIsModalOpen(false);
+    form.resetFields();
+  };
+
+  const renderFormFields = () => {
+    switch (modalType) {
+      case 'new-section':
+        return (
+          <Form.Item
+            name="sectionName"
+            label="Section Name"
+            rules={[{ required: true, message: 'Please enter section name!' }]}
+          >
+            <Input
+              placeholder="Enter section name (e.g., 'Family Friends')"
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
+        );
+
+      case 'guardian':
+        return (
+          <>
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  name="name"
+                  label="Full Name"
+                  rules={[{ required: true, message: 'Please input the name!' }]}
+                >
+                  <Input placeholder="Enter full name" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="relation"
+                  label="Relationship/Role"
+                  rules={[{ required: true, message: 'Please select or input the relationship!' }]}
+                >
+                  <Select
+                    placeholder="Select or type relationship"
+                    showSearch
+                    allowClear
+                    options={guardianRelations.map((rel) => ({ label: rel, value: rel }))}
+                    style={{ width: '100%' }}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Form.Item
+              name="phone"
+              label="Phone Number"
+              rules={[{ required: true, message: 'Please input the phone number!' }]}
+            >
+              <Input placeholder="Enter phone number (e.g., (555) 123-4567)" style={{ width: '100%' }} />
+            </Form.Item>
+
+            <Form.Item name="details" label="Additional Details">
+              <Input.TextArea
+                placeholder="Enter additional details (e.g., address, notes)"
+                rows={3}
+                style={{ width: '100%' }}
+              />
+            </Form.Item>
+          </>
+        );
+
+      case 'section-edit':
+        return (
+          <div
             style={{
-              fontSize: '18px',
-              fontWeight: 600,
-              color: '#111827',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              margin: 0,
+              maxHeight: '500px',
+              overflowY: 'auto',
+              padding: '16px',
             }}
           >
-            <Shield size={20} style={{ opacity: 0.8 }} />
-            Guardians & Emergency Info
-          </h3>
-        </div>
-
-        {guardianInfo.map((section, sectionIndex) => (
-          <div key={sectionIndex} style={{ marginBottom: '20px' }}>
-            <h4
-              style={{
-                fontSize: '13px',
-                fontWeight: 600,
-                color: '#6b7280',
-                textTransform: 'uppercase',
-                marginBottom: '8px',
-              }}
-            >
-              {section.title}
-            </h4>
-            {section.items.map((item, itemIndex) => (
+            {sectionItems.map((item, index) => (
               <div
-                key={itemIndex}
+                key={index}
                 style={{
-                  padding: '8px 0',
-                  borderBottom: itemIndex < section.items.length - 1 ? '1px solid #e5e7eb' : 'none',
-                  fontSize: '13px',
+                  marginBottom: '16px',
+                  padding: '16px',
+                  backgroundColor: '#f8fafc',
+                  borderRadius: '8px',
+                  border: '1px solid #e2e8f0',
+                  position: 'relative',
                 }}
               >
                 <div
                   style={{
-                    fontWeight: 500,
-                    marginBottom: '2px',
-                    color: '#374151',
+                    position: 'absolute',
+                    top: '12px',
+                    right: '12px',
+                    display: 'flex',
+                    gap: '8px',
                   }}
                 >
-                  {item.label}
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<EditOutlined />}
+                    onClick={() => {
+                      setIsModalOpen(false);
+                      setTimeout(() => {
+                        showModal('guardian', currentSectionIndex, index);
+                      }, 100);
+                    }}
+                    style={{ color: '#3b82f6' }}
+                  />
+                  <Popconfirm
+                    title="Are you sure to delete this item?"
+                    onConfirm={() => handleItemDelete(currentSectionIndex!, index)}
+                    okText="Yes"
+                    cancelText="No"
+                  >
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<DeleteOutlined />}
+                      style={{ color: '#dc2626' }}
+                    />
+                  </Popconfirm>
+                </div>
+
+                <div
+                  style={{
+                    fontWeight: 600,
+                    fontSize: '14px',
+                    marginBottom: '4px',
+                    paddingRight: '80px',
+                  }}
+                >
+                  {item.name}
                 </div>
                 <div
                   style={{
                     color: '#6b7280',
                     fontSize: '12px',
-                    lineHeight: 1.4,
+                    marginBottom: '4px',
                   }}
                 >
-                  {item.value}
+                  {item.relationship} • {item.phone}
                 </div>
+                {item.details && (
+                  <div style={{ color: '#9ca3af', fontSize: '11px' }}>{item.details}</div>
+                )}
               </div>
             ))}
+            <Button
+              type="dashed"
+              size="small"
+              icon={<PlusOutlined />}
+              onClick={() => showModal('guardian', currentSectionIndex, null)}
+              style={{ width: '100%', marginTop: '16px', borderRadius: '6px' }}
+            >
+              Add
+            </Button>
           </div>
-        ))}
-      </div>
+        );
 
-      {/* Contacts Section */}
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div
+      style={{
+        backgroundColor: 'white',
+        borderRadius: '16px',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+        padding: '24px',
+        border: '1px solid #e5e7eb',
+      }}
+    >
       <div
         style={{
-          backgroundColor: 'white',
-          borderRadius: '12px',
-          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
-          padding: '24px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '24px',
+          paddingBottom: '16px',
+          borderBottom: '2px solid #f3f4f6',
         }}
       >
-        <div
+        <h3
           style={{
+            fontSize: '20px',
+            fontWeight: 700,
+            color: '#111827',
             display: 'flex',
-            justifyContent: 'space-between',
             alignItems: 'center',
-            marginBottom: '20px',
+            gap: '10px',
+            margin: 0,
           }}
         >
-          <h3
-            style={{
-              fontSize: '18px',
-              fontWeight: 600,
-              color: '#111827',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              margin: 0,
-            }}
-          >
-            <Phone size={20} style={{ opacity: 0.8 }} />
-            Important Contacts
-          </h3>
-        </div>
+          <SafetyOutlined style={{ color: '#3b82f6', fontSize: '24px' }} />
+          Guardians & Emergency Info
+        </h3>
+        {/* <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => showModal('new-section', null, null)}
+          style={{ borderRadius: '8px' }}
+        >
+          Add Section
+        </Button> */}
+      </div>
 
-        {contacts.map((section, sectionIndex) => (
-          <div key={sectionIndex} style={{ marginBottom: '20px' }}>
-            <h4
+      {loading ? (
+        <div>Loading...</div>
+      ) : error ? (
+        <div style={{ color: '#dc2626' }}>{error}</div>
+      ) : guardianInfo.length === 0 ? (
+        <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: '14px', padding: '20px 0' }}>
+          No guardian info available. Click "Add Section" to get started.
+        </div>
+      ) : (
+        guardianInfo.map((section, sectionIndex) => (
+          <div key={sectionIndex} style={{ marginBottom: '28px' }}>
+            <div
               style={{
-                fontSize: '13px',
-                fontWeight: 600,
-                color: '#6b7280',
-                textTransform: 'uppercase',
-                marginBottom: '8px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '12px',
+                padding: '8px 0',
               }}
             >
-              {section.title}
-            </h4>
-            {section.items.map((contact, contactIndex) => (
-              <div
-                key={contactIndex}
+              <h4
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '8px 0',
-                  cursor: 'pointer',
-                  fontSize: '13px',
-                  transition: 'all 0.2s ease',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  color: '#374151',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  margin: 0,
                 }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = '#3355ff';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = '#374151';
+              >
+                {section.title}
+              </h4>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<ArrowRightCircle size={16} />}
+                  onClick={() => showModal('section-edit', sectionIndex, null)}
+                  style={{ color: '#3b82f6' }}
+                />
+                {/* <Button
+                  type="dashed"
+                  size="small"
+                  icon={<PlusOutlined />}
+                  onClick={() => showModal('guardian', sectionIndex, null)}
+                  style={{ borderRadius: '6px' }}
+                >
+                  Add
+                </Button> */}
+              </div>
+            </div>
+
+            <div
+              style={{
+                backgroundColor: '#f8fafc',
+                borderRadius: '12px',
+                padding: '16px',
+                border: '1px solid #e2e8f0',
+              }}
+            >
+              {section.items.length === 0 ? (
+                <div
+                  style={{
+                    textAlign: 'center',
+                    color: '#9ca3af',
+                    fontSize: '14px',
+                    padding: '20px 0',
+                  }}
+                >
+                  No items added yet. Click "Add" to get started.
+                </div>
+              ) : (
+                <>
+                  {section.items.slice(0, 2).map((item, itemIndex) => (
+                    <div
+                      key={itemIndex}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        padding: '12px 0',
+                        borderBottom:
+                          itemIndex < Math.min(section.items.length, 2) - 1 ? '1px solid #e5e7eb' : 'none',
+                      }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div
+                          style={{
+                            fontWeight: 600,
+                            color: '#111827',
+                            fontSize: '14px',
+                            marginBottom: '4px',
+                          }}
+                        >
+                          {item.name}
+                        </div>
+                        <div
+                          style={{
+                            color: '#6b7280',
+                            fontSize: '13px',
+                            marginBottom: '2px',
+                          }}
+                        >
+                          {item.relationship} • {item.phone}
+                        </div>
+                        {item.details && (
+                          <div style={{ color: '#9ca3af', fontSize: '12px' }}>{item.details}</div>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        {/* <Button */}
+                      </div>
+                    </div>
+                  ))}
+                  {section.items.length > 2 && (
+                    <div style={{ textAlign: 'center', marginTop: '12px' }}>
+                      <Button
+                        type="link"
+                        icon={<EyeOutlined />}
+                        onClick={() => showModal('section-edit', sectionIndex, null)}
+                        style={{ color: '#6b7280' }}
+                      >
+                        View All ({section.items.length} items)
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        ))
+      )}
+
+      <Modal
+        title={
+          modalType === 'new-section'
+            ? 'Add New Guardian Section'
+            : modalType === 'guardian'
+              ? currentItemIndex !== null
+                ? 'Edit Guardian Info'
+                : 'Add New Guardian'
+              : 'Manage Guardian Section'
+        }
+        open={isModalOpen}
+        onOk={modalType !== 'section-edit' ? handleOk : () => setIsModalOpen(false)}
+        onCancel={handleCancel}
+        okText={
+          modalType === 'section-edit'
+            ? 'Close'
+            : currentItemIndex !== null
+              ? 'Update'
+              : modalType === 'new-section'
+                ? 'Create Section'
+                : 'Add'
+        }
+        cancelText={modalType === 'section-edit' ? null : 'Cancel'}
+        width={modalType === 'section-edit' ? 700 : 700}
+        style={{ top: 20 }}
+        confirmLoading={loading}
+      >
+        <Form form={form} layout="vertical" style={{ marginTop: '16px' }}>
+          {renderFormFields()}
+        </Form>
+      </Modal>
+    </div>
+  );
+};
+
+
+// import React, { useState } from 'react';
+// import { Form, Input, Select, Button, Modal, Row, Col, message } from 'antd';
+// import { PhoneOutlined, PlusOutlined, EyeOutlined } from '@ant-design/icons';
+// import { ArrowRightCircle } from 'lucide-react';
+// import { addContacts } from '../../../services/family'; // Import addContacts from family.ts
+
+interface ContactItem {
+  icon: string;
+  name: string;
+  role: string;
+  phone: string;
+  bgColor: string;
+  textColor: string;
+}
+
+interface ContactSection {
+  title: string;
+  type: 'emergency' | 'school' | 'professional' | 'activity' | 'other';
+  items: ContactItem[];
+}
+// page.tsx (Update ImportantContacts)
+const ImportantContacts: React.FC = () => {
+  const [contacts, setContacts] = useState<ContactSection[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalType, setModalType] = useState<'contact' | 'section-edit' | 'new-section'>('contact');
+  const [currentSectionIndex, setCurrentSectionIndex] = useState<number | null>(null);
+  const [currentItemIndex, setCurrentItemIndex] = useState<number | null>(null);
+  const [form] = Form.useForm();
+  const [sectionItems, setSectionItems] = useState<ContactItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const contactRoles = {
+    emergency: ['Emergency Response', 'Hospital', 'Fire Department', 'Police', 'Emergency Care'],
+    school: ['Elementary School', 'Middle School', 'High School', 'Principal', 'Teacher'],
+    professional: ['Doctor', 'Dentist', 'Lawyer', 'Financial Advisor', 'Therapist', 'Pediatrician'],
+    activity: ['Coach', 'Instructor', 'Tutor', 'Activity Leader'],
+    other: ['Custom Role'],
+  };
+
+  const getContacts = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await getUserContacts({});
+      const { status, payload } = response;
+      if (status) {
+        // Ensure contacts are correctly formatted
+        const formattedContacts: ContactSection[] = payload.contacts.map((section: any) => ({
+          title: section.title,
+          type: section.type,
+          items: section.items.map((item: any) => ({
+            icon: item.role.toLowerCase().includes('emergency') ? '🚨' :
+              item.role.toLowerCase().includes('school') ? '🏫' :
+                item.role.toLowerCase().includes('doctor') || item.role.toLowerCase().includes('dentist') ? '👨‍⚕' :
+                  '👤',
+            name: item.name,
+            role: item.role,
+            phone: item.phone,
+            bgColor: item.role.toLowerCase().includes('emergency') ? '#fee2e2' :
+              item.role.toLowerCase().includes('school') ? '#dcfce7' :
+                '#f0f4f8',
+            textColor: item.role.toLowerCase().includes('emergency') ? '#dc2626' :
+              item.role.toLowerCase().includes('school') ? '#16a34a' :
+                '#374151',
+          })),
+        }));
+        setContacts(formattedContacts);
+      } else {
+        setError('Failed to fetch contacts');
+        message.error('Failed to fetch contacts');
+      }
+    } catch (error) {
+      console.error('Failed to fetch contacts:', error);
+      setError('Error fetching contacts');
+      message.error('Error fetching contacts');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    getContacts();
+  }, []);
+
+  const showModal = (
+    type: 'contact' | 'section-edit' | 'new-section',
+    sectionIndex: number | null = null,
+    itemIndex: number | null = null
+  ) => {
+    setModalType(type);
+    setCurrentSectionIndex(sectionIndex);
+    setCurrentItemIndex(itemIndex);
+
+    if (type === 'section-edit' && sectionIndex !== null) {
+      setSectionItems(contacts[sectionIndex].items);
+    } else if (type === 'contact' && sectionIndex !== null && itemIndex !== null) {
+      form.setFieldsValue(contacts[sectionIndex].items[itemIndex]);
+    } else {
+      form.resetFields();
+      if (type === 'contact') {
+        form.setFieldsValue({
+          bgColor: '#f0f4f8',
+          textColor: '#374151',
+          icon: '👤',
+        });
+      }
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleOk = async () => {
+    try {
+      await form.validateFields();
+      const formValues = form.getFieldsValue();
+
+      if (modalType === 'contact' && currentSectionIndex !== null) {
+        setLoading(true);
+        const addedBy = localStorage.getItem('userId') || 'current_user';
+        const payload = {
+          contacts: {
+            name: formValues.name,
+            role: formValues.role,
+            phone: formValues.phone,
+            addedBy,
+          },
+        };
+
+        const response = await addContacts(payload);
+        if (response.status) {
+          const updatedContacts = [...contacts];
+          const newContact: ContactItem = {
+            icon: formValues.icon,
+            name: formValues.name,
+            role: formValues.role,
+            phone: formValues.phone,
+            bgColor: formValues.bgColor,
+            textColor: formValues.textColor,
+          };
+
+          if (currentItemIndex !== null) {
+            updatedContacts[currentSectionIndex].items[currentItemIndex] = newContact;
+          } else {
+            updatedContacts[currentSectionIndex].items.push(newContact);
+          }
+
+          setContacts(updatedContacts);
+          message.success('Contact added successfully!');
+          setIsModalOpen(false);
+          form.resetFields();
+        } else {
+          message.error('Failed to save contact');
+        }
+      } else if (modalType === 'new-section') {
+        const newSection: ContactSection = {
+          title: formValues.sectionName,
+          type: 'other',
+          items: [],
+        };
+        setContacts([...contacts, newSection]);
+        message.success('Section created successfully!');
+        setIsModalOpen(false);
+        form.resetFields();
+      }
+    } catch (error) {
+      console.error('Error in handleOk:', error);
+      message.error('Failed to save contact. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleItemDelete = async (sectionIndex: number, itemIndex: number) => {
+    // Note: Backend deletion endpoint not provided; assuming local state update for now
+    const updatedContacts = [...contacts];
+    updatedContacts[sectionIndex].items.splice(itemIndex, 1);
+    setContacts(updatedContacts);
+    setSectionItems(updatedContacts[sectionIndex].items);
+    message.success('Item deleted successfully!');
+  };
+
+  const handleCancel = () => {
+    setIsModalOpen(false);
+    form.resetFields();
+  };
+
+  const renderFormFields = () => {
+    switch (modalType) {
+      case 'new-section':
+        return (
+          <Form.Item
+            name="sectionName"
+            label="Section Name"
+            rules={[{ required: true, message: 'Please enter section name!' }]}
+          >
+            <Input
+              placeholder="Enter section name (e.g., 'Tutors')"
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
+        );
+
+      case 'contact':
+        const currentSection = contacts[currentSectionIndex || 0];
+        const availableRoles = contactRoles[currentSection?.type] || contactRoles.other;
+
+        return (
+          <>
+            <Row gutter={16}>
+              <Col span={8}>
+                <Form.Item
+                  name="icon"
+                  label="Icon"
+                  rules={[{ required: true, message: 'Please input an icon!' }]}
+                >
+                  <Input placeholder="Enter emoji (e.g., 🚨)" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+              <Col span={16}>
+                <Form.Item
+                  name="name"
+                  label="Name/Organization"
+                  rules={[{ required: true, message: 'Please input the name!' }]}
+                >
+                  <Input placeholder="Enter name or organization" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  name="role"
+                  label="Role/Position"
+                  rules={[{ required: true, message: 'Please input the role!' }]}
+                >
+                  <Select
+                    placeholder="Select or type role"
+                    showSearch
+                    allowClear
+                    options={availableRoles.map((role) => ({ label: role, value: role }))}
+                    style={{ width: '100%' }}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="phone"
+                  label="Phone Number"
+                  rules={[{ required: true, message: 'Please input the phone number!' }]}
+                >
+                  <Input placeholder="Enter phone number" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+            </Row>
+          </>
+        );
+
+      case 'section-edit':
+        return (
+          <div
+            style={{
+              maxHeight: '500px',
+              overflowY: 'auto',
+              padding: '16px',
+            }}
+          >
+            {sectionItems.map((item, index) => (
+              <div
+                key={index}
+                style={{
+                  marginBottom: '16px',
+                  padding: '16px',
+                  backgroundColor: '#f8fafc',
+                  borderRadius: '8px',
+                  border: '1px solid #e2e8f0',
+                  position: 'relative',
                 }}
               >
                 <div
                   style={{
-                    width: '32px',
-                    height: '32px',
-                    backgroundColor: contact.bgColor,
-                    borderRadius: '6px',
+                    position: 'absolute',
+                    top: '12px',
+                    right: '12px',
                     display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginRight: '12px',
-                    fontSize: '14px',
-                    color: contact.textColor,
+                    gap: '8px',
                   }}
                 >
-                  {contact.icon}
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<EditOutlined />}
+                    onClick={() => {
+                      setIsModalOpen(false);
+                      setTimeout(() => {
+                        showModal('contact', currentSectionIndex, index);
+                      }, 100);
+                    }}
+                    style={{ color: '#3b82f6' }}
+                  />
+                  <Popconfirm
+                    title="Are you sure to delete this contact?"
+                    onConfirm={() => handleItemDelete(currentSectionIndex!, index)}
+                    okText="Yes"
+                    cancelText="No"
+                  >
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<DeleteOutlined />}
+                      style={{ color: '#dc2626' }}
+                    />
+                  </Popconfirm>
                 </div>
-                <div style={{ flex: 1 }}>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    paddingRight: '80px',
+                  }}
+                >
                   <div
                     style={{
-                      fontWeight: 500,
-                      color: '#374151',
+                      width: '32px',
+                      height: '32px',
+                      backgroundColor: item.bgColor,
+                      borderRadius: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: item.textColor,
+                      fontSize: '16px',
                     }}
                   >
-                    {contact.name}
+                    {item.icon}
                   </div>
-                  <div
-                    style={{
-                      fontSize: '11px',
-                      color: '#6b7280',
-                    }}
-                  >
-                    {contact.role}
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '14px' }}>{item.name}</div>
+                    <div style={{ color: '#6b7280', fontSize: '12px' }}>
+                      {item.role} • {item.phone}
+                    </div>
                   </div>
                 </div>
               </div>
             ))}
+            <Button
+              type="dashed"
+              size="small"
+              icon={<PlusOutlined />}
+              onClick={() => showModal('contact', currentSectionIndex, null)}
+              style={{ width: '100%', marginTop: '16px', borderRadius: '6px' }}
+            >
+              Add
+            </Button>
           </div>
-        ))}
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div
+      style={{
+        backgroundColor: 'white',
+        borderRadius: '16px',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+        padding: '24px',
+        border: '1px solid #e5e7eb',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '24px',
+          paddingBottom: '16px',
+          borderBottom: '2px solid #f3f4f6',
+        }}
+      >
+        <h3
+          style={{
+            fontSize: '20px',
+            fontWeight: 700,
+            color: '#111827',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            margin: 0,
+          }}
+        >
+          <PhoneOutlined style={{ color: '#10b981', fontSize: '24px' }} />
+          Important Contacts
+        </h3>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => showModal('new-section', null, null)}
+          style={{ borderRadius: '8px' }}
+        >
+          Add Section
+        </Button>
       </div>
+
+      {loading ? (
+        <div>Loading...</div>
+      ) : error ? (
+        <div style={{ color: '#dc2626' }}>{error}</div>
+      ) : contacts.length === 0 ? (
+        <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: '14px', padding: '20px 0' }}>
+          No contacts available. Click "Add Section" to get started.
+        </div>
+      ) : (
+        contacts.map((section, sectionIndex) => (
+          <div key={sectionIndex} style={{ marginBottom: '28px' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '12px',
+                padding: '8px 0',
+              }}
+            >
+              <h4
+                style={{
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  color: '#374151',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  margin: 0,
+                }}
+              >
+                {section.title}
+              </h4>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<ArrowRightCircle size={16} />}
+                  onClick={() => showModal('section-edit', sectionIndex, null)}
+                  style={{ color: '#3b82f6' }}
+                />
+
+              </div>
+            </div>
+
+            <div
+              style={{
+                backgroundColor: '#f8fafc',
+                borderRadius: '12px',
+                padding: '16px',
+                border: '1px solid #e2e8f0',
+              }}
+            >
+              {section.items.length === 0 ? (
+                <div
+                  style={{
+                    textAlign: 'center',
+                    color: '#9ca3af',
+                    fontSize: '14px',
+                    padding: '20px 0',
+                  }}
+                >
+                  No contacts added yet. Click "Add" to get started.
+                </div>
+              ) : (
+                <>
+                  {section.items.slice(0, 2).map((contact, contactIndex) => (
+                    <div
+                      key={contactIndex}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '12px 0',
+                        borderBottom:
+                          contactIndex < Math.min(section.items.length, 2) - 1 ? '1px solid #e5e7eb' : 'none',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '40px',
+                          height: '40px',
+                          backgroundColor: contact.bgColor,
+                          borderRadius: '10px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginRight: '12px',
+                          color: contact.textColor,
+                          fontSize: '18px',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                        }}
+                      >
+                        {contact.icon}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div
+                          style={{
+                            fontWeight: 600,
+                            color: '#111827',
+                            fontSize: '14px',
+                            marginBottom: '2px',
+                          }}
+                        >
+                          {contact.name}
+                        </div>
+                        <div style={{ color: '#6b7280', fontSize: '13px' }}>
+                          {contact.role} • {contact.phone}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        {/* <Button
+                          type="text"
+                          size="small"
+                          icon={<EditOutlined />}
+                          onClick={() => showModal('contact', sectionIndex, contactIndex)}
+                          style={{ color: '#3b82f6' }}
+                        />
+                        <Popconfirm
+                          title="Are you sure to delete this contact?"
+                          onConfirm={() => handleItemDelete(sectionIndex, contactIndex)}
+                          okText="Yes"
+                          cancelText="No"
+                        >
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<DeleteOutlined />}
+                            style={{ color: '#dc2626' }}
+                          />
+                        </Popconfirm> */}
+                      </div>
+                    </div>
+                  ))}
+                  {section.items.length > 2 && (
+                    <div style={{ textAlign: 'center', marginTop: '12px' }}>
+                      <Button
+                        type="link"
+                        icon={<EyeOutlined />}
+                        onClick={() => showModal('section-edit', sectionIndex, null)}
+                        style={{ color: '#6b7280' }}
+                      >
+                        View All ({section.items.length} items)
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        ))
+      )}
+
+      <Modal
+        title={
+          modalType === 'new-section'
+            ? 'Add New Contact Section'
+            : modalType === 'contact'
+              ? currentItemIndex !== null
+                ? 'Edit Contact Info'
+                : 'Add New Contact'
+              : 'Manage Contact Section'
+        }
+        open={isModalOpen}
+        onOk={modalType !== 'section-edit' ? handleOk : () => setIsModalOpen(false)}
+        onCancel={handleCancel}
+        okText={
+          modalType === 'section-edit'
+            ? 'Close'
+            : currentItemIndex !== null
+              ? 'Update'
+              : modalType === 'new-section'
+                ? 'Create Section'
+                : 'Add'
+        }
+        cancelText={modalType === 'section-edit' ? null : 'Cancel'}
+        width={modalType === 'section-edit' ? 700 : 700}
+        style={{ top: 20 }}
+        confirmLoading={loading}
+      >
+        <Form form={form} layout="vertical" style={{ marginTop: '16px' }}>
+          {renderFormFields()}
+        </Form>
+      </Modal>
     </div>
   );
 };
+
+
 
 import { CheckSquare } from 'lucide-react';
 
@@ -1018,127 +1594,164 @@ const FamilyTasks: React.FC = () => {
   );
 };
 
+
+type Category = {
+  title: string;
+  icon: string;
+  items: { title: string; description: string }[];
+};
+
+const defaultCategories: Category[] = [
+  { title: 'Important Notes', icon: '📝', items: [] },
+  { title: 'Emergency Contacts', icon: '🚨', items: [] },
+  { title: 'House Rules & Routines', icon: '🏠', items: [] },
+  { title: 'Shopping Lists', icon: '🛒', items: [] },
+  { title: 'Birthday & Gift Ideas', icon: '🎁', items: [] },
+  { title: 'Meal Ideas & Recipes', icon: '🍽', items: [] },
+];
+
+const categoryIdMap: { [key: string]: number } = {
+  'Important Notes': 1,
+  'Emergency Contacts': 2,
+  'House Rules & Routines': 3,
+  'Shopping Lists': 4,
+  'Birthday & Gift Ideas': 5,
+  'Meal Ideas & Recipes': 6,
+};
+const categoryIdMapReverse: { [key: number]: string } = Object.entries(categoryIdMap).reduce((acc, [title, id]) => {
+  acc[id] = title;
+  return acc;
+}, {} as { [key: number]: string });
+
 const FamilyNotes: React.FC = () => {
-  const categories = [
-    {
-      title: 'Important Notes',
-      icon: '📝',
-      count: 5,
-      items: [
-        "Emma's soccer coach contact: Coach Thompson (555) 890-1234",
-        "Liam's allergy medication: Zyrtec - 1 tablet daily",
-        "WiFi password: SmithFamily2025!",
-        "Security alarm code: See password manager",
-        { text: "🔗 Summer camp registration link", isLink: true },
-      ],
-    },
-    {
-      title: 'Emergency Contacts',
-      icon: '🚨',
-      count: 8,
-      items: [
-        "Emergency: 911",
-        "Poison Control: 1-800-222-1222",
-        "Grandma Martha: (555) 765-4321",
-        "Uncle Robert: (555) 234-5678",
-        "Dr. Williams (Family): (555) 123-4567",
-        "Happy Paws Vet: (555) 987-6543",
-        { text: "🔗 Hospital ER wait times", isLink: true },
-        { text: "🔗 After-hours clinic info", isLink: true },
-      ],
-    },
-    {
-      title: 'House Rules & Routines',
-      icon: '🏠',
-      count: 7,
-      items: [
-        "Screen time: 2hrs weekdays, 3hrs weekends",
-        "Bedtimes: Emma 10pm, Liam 9pm",
-        "Chores before screen time/games",
-        "No phones at dinner table",
-        "Dog walking: Morning (John), Evening (Kids rotate)",
-        "Cat litter: Emma (Mon/Thu), Liam (Tue/Fri)",
-        "Sunday = Family day (no individual plans)",
-      ],
-    },
-    {
-      title: 'Shopping Lists',
-      icon: '🛒',
-      count: 10,
-      items: [
-        "🥛 Milk, eggs, bread",
-        "🧻 Paper towels, toilet paper",
-        "🧼 Laundry detergent",
-        "🍎 Apples, bananas, berries",
-        "🥩 Chicken breast, ground beef",
-        "🐕 Dog food (Blue Buffalo)",
-        "🐈 Cat litter, cat treats",
-        "💊 Liam's allergy meds (refill)",
-        { text: "🔗 Costco shopping list", isLink: true },
-        { text: "🔗 Amazon Subscribe & Save", isLink: true },
-      ],
-    },
-    {
-      title: 'Birthday & Gift Ideas',
-      icon: '🎁',
-      count: 6,
-      items: [
-        "🎂 Grandma Martha (May 3) - Gardening supplies",
-        "🎂 Emma (Aug 12) - New soccer cleats, art supplies",
-        "🎂 Liam (Oct 5) - LEGO set, science kit",
-        "🎂 Sarah (Dec 20) - Spa day, jewelry",
-        { text: "🔗 Emma's Amazon wishlist", isLink: true },
-        { text: "🔗 Liam's toy store wishlist", isLink: true },
-      ],
-    },
-    {
-      title: 'Meal Ideas & Recipes',
-      icon: '🍽️',
-      count: 8,
-      items: [
-        "Monday: Spaghetti Bolognese",
-        "Tuesday: Taco Bar",
-        "Wednesday: Grilled Chicken & Veggies",
-        "Thursday: Slow Cooker Stew",
-        "Friday: Pizza Night",
-        { text: "🔗 30-minute family dinners", isLink: true },
-        { text: "🔗 Kids' favorite recipes", isLink: true },
-        { text: "🔗 Meal prep Sunday ideas", isLink: true },
-      ],
-    },
-  ];
+  const [categories, setCategories] = useState(defaultCategories);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [activeCategoryIndex, setActiveCategoryIndex] = useState<number | null>(null);
+  const [newNote, setNewNote] = useState({ title: '', description: '' });
+  const [editingNoteIndex, setEditingNoteIndex] = useState<number | null>(null);
+  const [newCategoryModal, setNewCategoryModal] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+
+  useEffect(() => {
+    getNotes();
+  }, []);
+
+  const getNotes = async () => {
+    try {
+      const response = await getAllNotes();
+      const rawNotes = response.data.payload;
+
+      // Group notes by valid category_id only
+      // Define Note type if not already defined
+      type Note = {
+        title: string;
+        description: string;
+      };
+      const grouped: Record<number, Note[]> = {};
+
+      rawNotes.forEach((note: any) => {
+        const catId = note.category_id;
+        if (!catId || !categoryIdMapReverse[catId]) return; // Skip if not a valid category
+        if (!grouped[catId]) grouped[catId] = [];
+        grouped[catId].push({
+          title: note.title,
+          description: note.description,
+        });
+      });
+
+      // Merge default categories with fetched notes
+      const updatedCategories: Category[] = defaultCategories.map((cat) => {
+        const catId = categoryIdMap[cat.title];
+        return {
+          ...cat,
+          items: grouped[catId] || [], // fallback to empty list
+        };
+      });
+
+      setCategories(updatedCategories);
+    } catch (error) {
+      console.error("Error fetching notes:", error);
+      message.error("Failed to load notes");
+    }
+  };
+
+  const openModal = (index: number) => {
+    setActiveCategoryIndex(index);
+    setEditingNoteIndex(null);
+    setNewNote({ title: "", description: "" });
+    setModalOpen(true);
+  };
+
+  const handleAddNote = async () => {
+    if (!newNote.title.trim() || !newNote.description.trim() || activeCategoryIndex === null) {
+      message.error("Please fill in all fields");
+      return;
+    }
+
+    const categoryTitle = categories[activeCategoryIndex].title;
+    const category_id = categoryIdMap[categoryTitle];
+    if (!category_id) {
+      message.error("Category ID not found");
+      return;
+    }
+
+    try {
+      const user_id = typeof window !== "undefined" ? localStorage.getItem("userId") || "" : "";
+      const response = await addNote({
+        title: newNote.title,
+        description: newNote.description,
+        category_id,
+        user_id,
+      });
+
+      const data = response.data;
+      if (data.status === 1) {
+        await getNotes();
+        setNewNote({ title: "", description: "" });
+        setModalOpen(false);
+        message.success("Note added successfully");
+      } else {
+        message.error(data.message || "Failed to add note");
+      }
+    } catch (error) {
+      console.error("Error adding note:", error);
+      message.error("Something went wrong");
+    }
+  };
+
+
+
+  const handleDeleteNote = (idx: number) => {
+    const updated = [...categories];
+    updated[activeCategoryIndex!].items.splice(idx, 1);
+    setCategories(updated);
+  };
+
+  const handleEditNote = (note: any, idx: number) => {
+    setEditingNoteIndex(idx);
+    setNewNote({ ...note });
+    setModalOpen(true);
+  };
+
+  const handleAddCategory = () => {
+    const name = newCategoryName.trim();
+    if (!name) return;
+    if (categories.some((c) => c.title === name)) {
+      message.error('Category already exists');
+      return;
+    }
+    setCategories([...categories, { title: name, icon: '📁', items: [] }]);
+    setNewCategoryModal(false);
+    setNewCategoryName('');
+  };
 
   return (
-    <div
-      style={{
-        backgroundColor: 'white',
-        borderRadius: '12px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-        padding: '24px',
-        marginBottom: '24px',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '20px',
-        }}
-      >
-        <h2
-          style={{
-            fontSize: '20px',
-            fontWeight: 600,
-            margin: 0,
-            color: '#111827',
-          }}
-        >
-          Family Notes & Lists
-        </h2>
+    <div style={{ background: '#fff', borderRadius: 12, padding: 24, marginBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
+        <h2 style={{ fontSize: 20, fontWeight: 600 }}>Family Notes & Lists</h2>
         <button
           style={{
-            padding: '8px 16px',
+            padding: '8px 11px',
             backgroundColor: '#eef1ff',
             color: '#3355ff',
             border: 'none',
@@ -1148,7 +1761,7 @@ const FamilyNotes: React.FC = () => {
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
+            gap: '6px',
             transition: 'all 0.2s ease',
           }}
           onMouseEnter={(e) => {
@@ -1159,19 +1772,13 @@ const FamilyNotes: React.FC = () => {
             e.currentTarget.style.backgroundColor = '#eef1ff';
             e.currentTarget.style.color = '#3355ff';
           }}
+          onClick={() => setNewCategoryModal(true)}
         >
-          <Plus size={16} />
-          New Category
+          <PlusOutlined /> New Category
         </button>
       </div>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-          gap: '20px',
-        }}
-      >
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
         {categories.map((category, index) => (
           <div
             key={index}
@@ -1180,92 +1787,116 @@ const FamilyNotes: React.FC = () => {
               borderRadius: '8px',
               padding: '16px',
               border: '1px solid #e5e7eb',
-              transition: 'all 0.2s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = '#3355ff';
-              e.currentTarget.style.boxShadow = '0 2px 8px rgba(51, 85, 255, 0.1)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = '#e5e7eb';
-              e.currentTarget.style.boxShadow = 'none';
             }}
           >
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '12px',
-              }}
-            >
-              <h3
-                style={{
-                  fontSize: '16px',
-                  fontWeight: 600,
-                  color: '#374151',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  margin: 0,
-                }}
-              >
-                <span>{category.icon}</span>
-                <span>{category.title}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+                <span>{category.icon}</span> {category.title}
               </h3>
-              <span
-                style={{
-                  fontSize: '12px',
-                  color: '#6b7280',
-                  backgroundColor: '#e5e7eb',
-                  padding: '2px 8px',
-                  borderRadius: '12px',
-                }}
-              >
-                {category.count}
-              </span>
+              <Space>
+                <span style={{ fontSize: '12px', background: '#e5e7eb', padding: '2px 8px', borderRadius: '12px' }}>
+                  {category.items.length}
+                </span>
+                <ExportOutlined
+                  style={{ cursor: 'pointer', fontSize: 16, color: '#555' }}
+                  onClick={() => openModal(index)}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = '#3355ff')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = '#555')}
+                />
+                {/* <BoxSelect /> */}
+              </Space>
             </div>
-
-            <div
-              style={{
-                maxHeight: '200px',
-                overflowY: 'auto',
-              }}
-            >
-              {category.items.map((item, itemIndex) => (
-                <div
-                  key={itemIndex}
-                  style={{
-                    padding: '8px 0',
-                    borderBottom: itemIndex < category.items.length - 1 ? '1px solid #e5e7eb' : 'none',
-                    fontSize: '14px',
-                    color: typeof item === 'object' && item.isLink ? '#2563eb' : '#374151',
-                    lineHeight: 1.4,
-                    cursor: typeof item === 'object' && item.isLink ? 'pointer' : 'default',
-                    transition: 'all 0.2s ease',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (typeof item === 'object' && item.isLink) {
-                      e.currentTarget.style.textDecoration = 'underline';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (typeof item === 'object' && item.isLink) {
-                      e.currentTarget.style.textDecoration = 'none';
-                    }
-                  }}
-                >
-                  {typeof item === 'string' ? item : item.text}
+            <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+              {category.items.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '20px 0', color: '#999', fontStyle: 'italic' }}>
+                  No notes yet.
                 </div>
-              ))}
+              ) : (
+                category.items.map((note: any, i: any) => (
+                  <div
+                    key={i}
+                    style={{
+                      fontSize: 14,
+                      padding: '6px 0',
+                      borderBottom: i < category.items.length - 1 ? '1px solid #e5e7eb' : 'none',
+                    }}
+                  >
+                    {note.title} - {note.description}
+                  </div>
+                ))
+              )}
             </div>
           </div>
         ))}
       </div>
+
+      {/* Notes Modal */}
+      <Modal
+        open={modalOpen}
+        title={activeCategoryIndex !== null ? categories[activeCategoryIndex].title : ''}
+        onCancel={() => setModalOpen(false)}
+        footer={null}
+      >
+        {activeCategoryIndex !== null &&
+          (categories[activeCategoryIndex].items.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '20px 0', color: '#999', fontStyle: 'italic' }}>
+              No notes yet. Click "Add Note" to get started.
+            </div>
+          ) : (
+            categories[activeCategoryIndex].items.map((note: any, idx: any) => (
+              <div
+                key={idx}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '8px 0',
+                  borderBottom: '1px solid #eee',
+                }}
+              >
+                <div>{note.title} - {note.description}</div>
+                <Space>
+                  <Button icon={<EditOutlined />} onClick={() => handleEditNote(note, idx)} size="small" />
+                  <Button icon={<DeleteOutlined />} danger onClick={() => handleDeleteNote(idx)} size="small" />
+                </Space>
+              </div>
+            ))
+          ))}
+
+        <Input
+          placeholder="Note Title"
+          value={newNote.title}
+          onChange={(e) => setNewNote({ ...newNote, title: e.target.value })}
+          style={{ marginTop: 12 }}
+        />
+        <Input
+          placeholder="Note Description"
+          value={newNote.description}
+          onChange={(e) => setNewNote({ ...newNote, description: e.target.value })}
+          style={{ marginTop: 8, marginBottom: 12 }}
+        />
+        <Button type="primary" icon={<PlusOutlined />} onClick={handleAddNote}>
+          {editingNoteIndex !== null ? 'Update Note' : 'Add Note'}
+        </Button>
+      </Modal>
+
+      {/* New Category Modal */}
+      <Modal
+        open={newCategoryModal}
+        title="Add New Category"
+        onCancel={() => setNewCategoryModal(false)}
+        onOk={handleAddCategory}
+        okText="Add"
+      >
+        <Input
+          placeholder="Category Name"
+          value={newCategoryName}
+          onChange={(e) => setNewCategoryName(e.target.value)}
+        />
+      </Modal>
     </div>
   );
 };
-
 
 import { Calendar } from 'lucide-react';
 
@@ -1491,7 +2122,9 @@ const UpcomingActivities: React.FC = () => {
 };
 
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import CalendarWithMeals from '../../../pages/components/customCalendar';
+import CalendarWithMeals, { sampleCalendarData } from '../../../pages/components/customCalendar';
+import CustomCalendar from '../../../pages/components/customCalendar';
+import FamilyMembers from '../../../pages/family-hub/components/familyMember';
 
 const FamilyCalendar: React.FC = () => {
   const [activeView, setActiveView] = useState('week');
@@ -1899,375 +2532,6 @@ const FamilyCalendar: React.FC = () => {
             <span>{legend.name}</span>
           </div>
         ))}
-      </div>
-    </div>
-  );
-};
-
-
-const FamilyHeader: React.FC = () => {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: '24px',
-        paddingBottom: '16px',
-        borderBottom: '1px solid #e5e7eb',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          color: '#374151',
-          fontSize: '14px',
-          cursor: 'pointer',
-          transition: 'color 0.2s ease',
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.color = '#3355ff';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.color = '#374151';
-        }}
-      >
-        <ArrowLeft size={16} style={{ marginRight: '6px' }} />
-        Back to Dashboard
-      </div>
-
-      <div
-        style={{
-          flex: 1,
-          maxWidth: '500px',
-          margin: '0 20px',
-          position: 'relative',
-        }}
-      >
-        <Search
-          size={16}
-          style={{
-            position: 'absolute',
-            left: '12px',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            color: '#6b7280',
-          }}
-        />
-        <input
-          type="text"
-          placeholder="Search within this board..."
-          style={{
-            width: '100%',
-            padding: '10px 16px 10px 40px',
-            borderRadius: '8px',
-            border: '1px solid #e5e7eb',
-            fontSize: '14px',
-            backgroundColor: 'white',
-            outline: 'none',
-            transition: 'all 0.2s ease',
-          }}
-          onFocus={(e) => {
-            e.target.style.borderColor = '#3355ff';
-            e.target.style.boxShadow = '0 0 0 3px rgba(51, 85, 255, 0.1)';
-          }}
-          onBlur={(e) => {
-            e.target.style.borderColor = '#e5e7eb';
-            e.target.style.boxShadow = 'none';
-          }}
-        />
-      </div>
-
-      <div style={{ display: 'flex', gap: '12px', marginRight: '16px' }}>
-        <button
-          style={{
-            padding: '8px 16px',
-            backgroundColor: 'white',
-            border: '1px solid #e5e7eb',
-            borderRadius: '6px',
-            fontSize: '14px',
-            fontWeight: 500,
-            color: '#374151',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            transition: 'all 0.2s ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#f0f4f8';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'white';
-          }}
-        >
-          <Share size={16} style={{ opacity: 0.7 }} />
-          Share
-        </button>
-        <button
-          style={{
-            padding: '8px 16px',
-            backgroundColor: '#3355ff',
-            color: 'white',
-            border: '1px solid #3355ff',
-            borderRadius: '6px',
-            fontSize: '14px',
-            fontWeight: 500,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            transition: 'all 0.2s ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#2a46e0';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#3355ff';
-          }}
-        >
-          <Plus size={16} style={{ opacity: 0.7 }} />
-          Add
-        </button>
-      </div>
-
-      <div
-        style={{
-          width: '36px',
-          height: '36px',
-          backgroundColor: '#3355ff',
-          color: 'white',
-          borderRadius: '50%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontWeight: 600,
-          cursor: 'pointer',
-          transition: 'all 0.2s ease',
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'scale(1.05)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'scale(1)';
-        }}
-      >
-        JS
-      </div>
-    </div>
-  );
-};
-
-
-const FamilyMembers: React.FC = () => {
-  const [activeFilter, setActiveFilter] = useState('all');
-
-  const familyMembers = [
-    { id: 1, name: 'John Smith', role: 'You', type: 'family', color: '#3355ff', initials: 'JS' },
-    { id: 2, name: 'Sarah Smith', role: 'Spouse', type: 'family', color: '#6366f1', initials: 'S' },
-    { id: 3, name: 'Emma Smith', role: 'Daughter (14)', type: 'family', color: '#8b5cf6', initials: 'E' },
-    { id: 4, name: 'Liam Smith', role: 'Son (10)', type: 'family', color: '#ec4899', initials: 'L' },
-    { id: 5, name: 'Max', role: 'Dog - Golden Retriever', type: 'pets', color: '#fbbf24', initials: '🐕' },
-    { id: 6, name: 'Luna', role: 'Cat - Tabby', type: 'pets', color: '#fbbf24', initials: '🐈' },
-  ];
-
-  const filteredMembers = familyMembers.filter(member => {
-    if (activeFilter === 'all') return true;
-    return member.type === activeFilter;
-  });
-
-  const handleAddMember = (type: string) => {
-    alert(`Adding new ${type === 'family' ? 'family member' : 'pet'}`);
-  };
-
-  return (
-    <div
-      style={{
-        backgroundColor: 'white',
-        borderRadius: '12px',
-        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
-        padding: '24px',
-        marginBottom: '24px',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '20px',
-        }}
-      >
-        <h3
-          style={{
-            fontSize: '18px',
-            fontWeight: 600,
-            color: '#111827',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            margin: 0,
-          }}
-        >
-          <Users size={20} style={{ opacity: 0.8 }} />
-          Family Members & Pets
-        </h3>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {['all', 'family', 'pets'].map((filter) => (
-            <button
-              key={filter}
-              onClick={() => setActiveFilter(filter)}
-              style={{
-                padding: '6px 16px',
-                border: '1px solid #e5e7eb',
-                backgroundColor: activeFilter === filter ? '#3355ff' : 'white',
-                color: activeFilter === filter ? 'white' : '#374151',
-                borderColor: activeFilter === filter ? '#3355ff' : '#e5e7eb',
-                borderRadius: '6px',
-                fontSize: '13px',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                textTransform: 'capitalize',
-              }}
-            >
-              {filter}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-          gap: '16px',
-          marginBottom: '20px',
-        }}
-      >
-        {filteredMembers.map((member) => (
-          <div
-            key={member.id}
-            style={{
-              backgroundColor: '#f0f4f8',
-              borderRadius: '8px',
-              padding: '16px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              border: '1px solid #e5e7eb',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
-              e.currentTarget.style.borderColor = '#3355ff';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = 'none';
-              e.currentTarget.style.borderColor = '#e5e7eb';
-            }}
-          >
-            <div
-              style={{
-                width: '64px',
-                height: '64px',
-                borderRadius: '32px',
-                backgroundColor: member.color,
-                color: 'white',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: member.type === 'pets' ? '24px' : '24px',
-                fontWeight: 600,
-                marginBottom: '12px',
-              }}
-            >
-              {member.initials}
-            </div>
-            <div
-              style={{
-                fontSize: '16px',
-                fontWeight: 500,
-                marginBottom: '4px',
-                textAlign: 'center',
-                color: '#374151',
-              }}
-            >
-              {member.name}
-            </div>
-            <div
-              style={{
-                fontSize: '13px',
-                color: '#6b7280',
-                textAlign: 'center',
-              }}
-            >
-              {member.role}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ display: 'flex', gap: '12px' }}>
-        <button
-          onClick={() => handleAddMember('family')}
-          style={{
-            padding: '8px 16px',
-            backgroundColor: 'white',
-            border: '1px solid #e5e7eb',
-            borderRadius: '6px',
-            fontSize: '14px',
-            fontWeight: 500,
-            color: '#374151',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            transition: 'all 0.2s ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#f0f4f8';
-            e.currentTarget.style.borderColor = '#3355ff';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'white';
-            e.currentTarget.style.borderColor = '#e5e7eb';
-          }}
-        >
-          <Plus size={16} style={{ opacity: 0.7 }} />
-          Add Family Member
-        </button>
-        <button
-          onClick={() => handleAddMember('pets')}
-          style={{
-            padding: '8px 16px',
-            backgroundColor: 'white',
-            border: '1px solid #e5e7eb',
-            borderRadius: '6px',
-            fontSize: '14px',
-            fontWeight: 500,
-            color: '#374151',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            transition: 'all 0.2s ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#f0f4f8';
-            e.currentTarget.style.borderColor = '#3355ff';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'white';
-            e.currentTarget.style.borderColor = '#e5e7eb';
-          }}
-        >
-          <Heart size={16} style={{ opacity: 0.7 }} />
-          Add Pet
-        </button>
       </div>
     </div>
   );

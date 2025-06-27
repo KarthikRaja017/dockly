@@ -82,11 +82,12 @@ const QuickActions: React.FC = () => {
                 </h3>
             </div>
 
+            {/* Actions Row */}
             <div style={{
                 display: 'flex',
-                flexWrap: 'wrap',
-                gap: '12px',
-                alignItems: 'stretch'
+                gap: '25px',
+                marginBottom: '24px',
+                overflowX: 'auto'
             }}>
                 {actions.map((action, index) => (
                     <button
@@ -96,7 +97,7 @@ const QuickActions: React.FC = () => {
                             display: 'flex',
                             alignItems: 'center',
                             gap: '8px',
-                            padding: '12px 16px',
+                            padding: '32px 105px',
                             backgroundColor: action.bgColor,
                             color: action.textColor,
                             border: 'none',
@@ -106,7 +107,8 @@ const QuickActions: React.FC = () => {
                             cursor: 'pointer',
                             transition: 'all 0.2s ease',
                             opacity: 0,
-                            animation: `slideIn 0.4s ease-out ${0.6 + index * 0.1}s forwards`
+                            animation: `slideIn 0.4s ease-out ${0.6 + index * 0.1}s forwards`,
+                            whiteSpace: 'nowrap'
                         }}
                         onMouseEnter={(e) => {
                             e.currentTarget.style.backgroundColor = action.hoverBg;
@@ -121,60 +123,59 @@ const QuickActions: React.FC = () => {
                         <span>{action.label}</span>
                     </button>
                 ))}
+            </div>
 
-                {/* Drag & Drop Zone */}
-                <div
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    style={{
-                        flex: 1,
-                        minWidth: '200px',
-                        border: `2px dashed ${isDragActive ? '#3b82f6' : '#d1d5db'}`,
-                        borderRadius: '16px',
-                        padding: '24px',
-                        textAlign: 'center',
-                        backgroundColor: isDragActive ? '#eff6ff' : '#f9fafb',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s ease',
-                        opacity: 0,
-                        animation: 'fadeInUp 0.4s ease-out 1s forwards'
-                    }}
-                >
-                    <div style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: '8px'
-                    }}>
-                        <Upload
-                            size={28}
-                            style={{
-                                color: isDragActive ? '#3b82f6' : '#9ca3af',
-                                transition: 'color 0.3s ease'
-                            }}
-                        />
-                        <div>
-                            <p style={{
-                                fontSize: '14px',
-                                fontWeight: '500',
-                                color: isDragActive ? '#3b82f6' : '#6b7280',
-                                margin: '0 0 4px 0'
-                            }}>
-                                Drag & Drop Files
-                            </p>
-                            <p style={{
-                                fontSize: '12px',
-                                color: '#9ca3af',
-                                margin: 0
-                            }}>
-                                or click to browse
-                            </p>
-                        </div>
+            {/* Drag & Drop Zone */}
+            <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                style={{
+                    border: `2px dashed ${isDragActive ? '#3b82f6' : '#d1d5db'}`,
+                    borderRadius: '16px',
+                    padding: '24px',
+                    textAlign: 'center',
+                    backgroundColor: isDragActive ? '#eff6ff' : '#f9fafb',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    opacity: 0,
+                    animation: 'fadeInUp 0.4s ease-out 1s forwards'
+                }}
+            >
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '8px'
+                }}>
+                    <Upload
+                        size={28}
+                        style={{
+                            color: isDragActive ? '#3b82f6' : '#9ca3af',
+                            transition: 'color 0.3s ease'
+                        }}
+                    />
+                    <div>
+                        <p style={{
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            color: isDragActive ? '#3b82f6' : '#6b7280',
+                            margin: '0 0 4px 0'
+                        }}>
+                            Drag & Drop Files
+                        </p>
+                        <p style={{
+                            fontSize: '12px',
+                            color: '#9ca3af',
+                            margin: 0
+                        }}>
+                            or click to browse
+                        </p>
                     </div>
                 </div>
             </div>
         </div>
+
     );
 };
 

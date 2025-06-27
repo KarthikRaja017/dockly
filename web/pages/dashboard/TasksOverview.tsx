@@ -38,6 +38,24 @@ const TasksOverview: React.FC = () => {
             dueDate: 'This week',
             category: 'Personal',
             progress: 10
+        },
+        {
+            id: 5,
+            title: 'Organize Your Day - Example ',
+            priority: 'low',
+            completed: false,
+            dueDate: 'This week',
+            category: 'Personal',
+            progress: 50
+        },
+        {
+            id: 6,
+            title: 'Organize Your Day - Example 2',
+            priority: 'low',
+            completed: false,
+            dueDate: 'This week',
+            category: 'Personal',
+            progress: 70
         }
     ]);
 

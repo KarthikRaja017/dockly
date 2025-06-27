@@ -5,5 +5,18 @@
 POST {{devPath}}/create-tables
 Content-Type: application/json
 
-{}
 
+# POST {{devPath}}/send/invitation
+# Content-Type: application/json
+
+# {
+#   "formData": {
+#     "name": "Satheesh K",
+#     "email": "ksatheeshreddy.cc@gmail.com",
+#     "relationship": "Other",
+#     "permissions": {
+#       "type": "Editor"
+#     }
+#   },
+#   "sharedItemsList": "Calendar, Notes, Photos"
+# }

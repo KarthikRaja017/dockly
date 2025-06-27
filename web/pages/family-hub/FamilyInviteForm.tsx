@@ -1,9 +1,10 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Modal, Card, Button, Input, Checkbox, Typography, notification } from 'antd';
+import { Modal, Card, Button, Input, Checkbox, Typography, notification, Tag, Divider } from 'antd';
 import { useParams, useRouter } from 'next/navigation';
 import { addFamilyMember } from '../../services/family';
-const { Text } = Typography;
+import { Hubs } from '../../app/comman';
+const { Text, Title } = Typography;
 
 // Utility functions for validation
 function validateEmail(email: string): boolean {
@@ -34,35 +35,6 @@ type FormDataState = {
     permissions: PermissionState;
     sharedItems: { [category: string]: string[] };
 };
-
-type ContentCategory = {
-    label: string;
-    children: string[];
-};
-
-// Content categories
-const contentCategories: ContentCategory[] = [
-    {
-        label: 'Home Management',
-        children: ['Property Information', 'Mortgage & Loans', 'Home Maintenance', 'Utilities', 'Insurance'],
-    },
-    {
-        label: 'Financial Dashboard',
-        children: [],
-    },
-    {
-        label: 'Family Hub',
-        children: ['Family Calendar', 'Shared Tasks', 'Contact Information'],
-    },
-    {
-        label: 'Health Records',
-        children: ['Insurance Information', 'Medical Records', 'Emergency Contacts'],
-    },
-    {
-        label: 'Travel Planning',
-        children: [],
-    },
-];
 
 interface FamilyInviteFormProps {
     visible: boolean;
@@ -153,9 +125,11 @@ const FamilyInviteForm: React.FC<FamilyInviteFormProps> = ({ visible, onCancel, 
     };
 
     // Handle sharing options
-    const isParentChecked = (category: string) => {
-        const categoryData = contentCategories.find((c) => c.label === category);
-        return categoryData?.children.length ? formData.sharedItems[category]?.length === categoryData.children.length : false;
+    const isParentChecked = (categoryName: string) => {
+        const category = Hubs.find((c) => c.label.name === categoryName);
+        return category?.children.length
+            ? formData.sharedItems[categoryName]?.length === category.children.length
+            : false;
     };
 
     const toggleParent = (category: string, checked: boolean) => {
@@ -164,7 +138,7 @@ const FamilyInviteForm: React.FC<FamilyInviteFormProps> = ({ visible, onCancel, 
             sharedItems: {
                 ...prev.sharedItems,
                 [category]: checked
-                    ? contentCategories.find((c) => c.label === category)?.children || []
+                    ? Hubs.find((c) => c.label.name === category)?.children.map((c) => c.name) || []
                     : [],
             },
         }));
@@ -188,7 +162,7 @@ const FamilyInviteForm: React.FC<FamilyInviteFormProps> = ({ visible, onCancel, 
         setLoading(true);
         try {
             const response = await addFamilyMember({ ...formData, sharedItems: formData.sharedItems, username });
-            console.log('addFamilyMember response:', response); // Debug log
+            // console.log('addFamilyMember response:', response); // Debug log
 
             // Safely access response properties
             const responseData = response?.data || response; // Fallback to response if .data is undefined
@@ -199,32 +173,29 @@ const FamilyInviteForm: React.FC<FamilyInviteFormProps> = ({ visible, onCancel, 
                 // Save the form data via onSubmit
                 onSubmit(formData);
                 setPendingMember(formData);
-
                 // Prepare and send email if method is Email
                 if (formData.method === 'Email') {
-                    const subject = `Family Hub Invitation for ${formData.name}`;
-                    const sharedItemsList = Object.entries(formData.sharedItems)
-                        .flatMap(([category, items]) => items.map(item => `${category}: ${item}`))
-                        .join(', ');
-                    const body = `Dear ${formData.name},\n\nYou have been invited to join our Family Hub with the following access:\n- Relationship: ${formData.relationship.replace('❤️', '').replace('👶', '').replace('👴', '')}\n- Access Level: ${formData.permissions.type}\n- Shared Items: ${sharedItemsList || 'None'}\n\nPlease contact us to accept this invitation.\n\nBest regards,\n${username || 'Family Hub Team'}`;
-                    const encodedSubject = encodeURIComponent(subject);
-                    const encodedBody = encodeURIComponent(body);
-                    const mailtoLink = `mailto:${formData.email}?subject=${encodedSubject}&body=${encodedBody}`;
+                    // const subject = `Family Hub Invitation for ${formData.name}`;
+                    // const sharedItemsList = Object.entries(formData.sharedItems)
+                    //     .flatMap(([category, items]) => items.map(item => `${category}: ${item}`))
+                    //     .join(', ');
+                    // const body = `Dear ${formData.name},\n\nYou have been invited to join our Family Hub with the following access:\n- Relationship: ${formData.relationship.replace('❤️', '').replace('👶', '').replace('👴', '')}\n- Access Level: ${formData.permissions.type}\n- Shared Items: ${sharedItemsList || 'None'}\n\nPlease contact us to accept this invitation.\n\nBest regards,\n${username || 'Family Hub Team'}`;
+                    // const encodedSubject = encodeURIComponent(subject);
+                    // const encodedBody = encodeURIComponent(body);
+                    // const mailtoLink = `mailto:${formData.email}?subject=${encodedSubject}&body=${encodedBody}`;
 
-                    try {
-                        window.location.href = mailtoLink;
-                    } catch (mailError) {
-                        console.error('Error opening mailto:', mailError);
-                        notification.warning({
-                            message: 'Email Client Issue',
-                            description: 'Unable to open the email client, but the family member was added successfully.',
-                            placement: 'topRight',
-                            duration: 3,
-                        });
-                    }
+                    // try {
+                    //     window.location.href = mailtoLink;
+                    // } catch (mailError) {
+                    //     console.error('Error opening mailto:', mailError);
+                    //     notification.warning({
+                    //         message: 'Email Client Issue',
+                    //         description: 'Unable to open the email client, but the family member was added successfully.',
+                    //         placement: 'topRight',
+                    //         duration: 3,
+                    //     });
+                    // }
                 }
-
-                // Transition to sent step
                 setStep('sent');
             } else {
                 notification.error({
@@ -357,7 +328,7 @@ const FamilyInviteForm: React.FC<FamilyInviteFormProps> = ({ visible, onCancel, 
                 <Button
                     type="primary"
                     disabled={!isFormValid()}
-                    onClick={() => setStep('permissions')}
+                    onClick={() => setStep('share')}
                     style={{ borderRadius: '20px', padding: '5px 15px' }}
                 >
                     Continue
@@ -422,24 +393,26 @@ const FamilyInviteForm: React.FC<FamilyInviteFormProps> = ({ visible, onCancel, 
                 <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '15px' }}>
                     Select What to Share with {formData.name}
                 </h3>
-                {contentCategories.map(({ label, children }) => (
-                    <div key={label} style={{ marginBottom: '20px' }}>
+                {Hubs.map(({ label, children }) => (
+                    <div key={label.name} style={{ marginBottom: '20px' }}>
                         <Checkbox
-                            checked={isParentChecked(label)}
-                            onChange={(e) => toggleParent(label, e.target.checked)}
+                            checked={isParentChecked(label.name)}
+                            onChange={(e) => toggleParent(label.name, e.target.checked)}
                             disabled={!children.length}
                         >
-                            <span style={{ fontWeight: 'bold' }}>{label}</span>
+                            <span style={{ fontWeight: 'bold' }}>{label.title}</span>
                         </Checkbox>
                         {children.length > 0 && (
                             <div style={{ marginLeft: '20px' }}>
                                 {children.map((child) => (
-                                    <div key={child} style={{ margin: '5px 0' }}>
+                                    <div key={child.name} style={{ margin: '5px 0' }}>
                                         <Checkbox
-                                            checked={formData.sharedItems[label]?.includes(child) || false}
-                                            onChange={() => toggleChild(label, child)}
+                                            checked={
+                                                formData.sharedItems[label.name]?.includes(child.name) || false
+                                            }
+                                            onChange={() => toggleChild(label.name, child.name)}
                                         >
-                                            {child}
+                                            {child.title}
                                         </Checkbox>
                                     </div>
                                 ))}
@@ -476,69 +449,122 @@ const FamilyInviteForm: React.FC<FamilyInviteFormProps> = ({ visible, onCancel, 
     };
 
     const renderReview = () => (
-        <div style={{ padding: '10px' }}>
-            <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '15px' }}>Review Invitation</h3>
-            <p style={{ margin: '5px 0' }}>
-                <span style={{ fontWeight: 'bold' }}>To:</span>{' '}
-                {formData.method === 'Email'
-                    ? formData.email
-                    : formData.method === 'Mobile'
-                        ? formData.phone
-                        : formData.accessCode}
-            </p>
-            <p style={{ margin: '5px 0' }}>
-                <span style={{ fontWeight: 'bold' }}>Name:</span> {formData.name}
-            </p>
-            <p style={{ margin: '5px 0' }}>
-                <span style={{ fontWeight: 'bold' }}>Relationship:</span>{' '}
-                {formData.relationship.replace('❤️', '').replace('👶', '').replace('👴', '')}
-            </p>
-            <p style={{ margin: '5px 0' }}>
-                <span style={{ fontWeight: 'bold' }}>Access:</span> {formData.permissions.type}
-            </p>
+        <Card
+            bordered={false}
+            style={{
+                padding: '20px',
+                borderRadius: '12px',
+                boxShadow: '0 4px 14px rgba(0,0,0,0.08)',
+                background: '#fff',
+            }}
+        >
+            <Title level={4} style={{ marginBottom: 20 }}>
+                🎯 Review Invitation
+            </Title>
+
+            <div style={{ marginBottom: 12 }}>
+                <Text strong>To:</Text>{' '}
+                <Text>
+                    {formData.method === 'Email'
+                        ? formData.email
+                        : formData.method === 'Mobile'
+                            ? formData.phone
+                            : formData.accessCode}
+                </Text>
+            </div>
+
+            <div style={{ marginBottom: 12 }}>
+                <Text strong>Name:</Text> <Text>{formData.name}</Text>
+            </div>
+
+            <div style={{ marginBottom: 12 }}>
+                <Text strong>Relationship:</Text>{' '}
+                <Text>{formData.relationship.replace('❤️', '').replace('👶', '').replace('👴', '')}</Text>
+            </div>
+
+            <div style={{ marginBottom: 12 }}>
+                <Text strong>Access:</Text> <Tag color="blue">{formData.permissions.type}</Tag>
+            </div>
+
             {formData.permissions.type === 'Custom Access' && (
-                <p style={{ margin: '5px 0' }}>
-                    <span style={{ fontWeight: 'bold' }}>Permissions:</span>{' '}
+                <div style={{ marginBottom: 12 }}>
+                    <Text strong>Permissions:</Text>{' '}
                     {[
-                        formData.permissions.allowAdd && 'Add',
-                        formData.permissions.allowEdit && 'Edit',
-                        formData.permissions.allowDelete && 'Delete',
-                        formData.permissions.allowInvite && 'Invite',
-                        formData.permissions.notify && 'Notify',
-                    ]
-                        .filter(Boolean)
-                        .join(', ') || 'None'}
-                </p>
+                        formData.permissions.allowAdd && <Tag key="add">Add</Tag>,
+                        formData.permissions.allowEdit && <Tag key="edit">Edit</Tag>,
+                        formData.permissions.allowDelete && <Tag key="delete">Delete</Tag>,
+                        formData.permissions.allowInvite && <Tag key="invite">Invite</Tag>,
+                        formData.permissions.notify && <Tag key="notify">Notify</Tag>,
+                    ].filter(Boolean).length > 0 ? (
+                        <>{[
+                            formData.permissions.allowAdd && <Tag key="add">Add</Tag>,
+                            formData.permissions.allowEdit && <Tag key="edit">Edit</Tag>,
+                            formData.permissions.allowDelete && <Tag key="delete">Delete</Tag>,
+                            formData.permissions.allowInvite && <Tag key="invite">Invite</Tag>,
+                            formData.permissions.notify && <Tag key="notify">Notify</Tag>,
+                        ].filter(Boolean)}</>
+                    ) : (
+                        <Tag color="default">None</Tag>
+                    )}
+                </div>
             )}
-            <p style={{ margin: '5px 0' }}>
-                <span style={{ fontWeight: 'bold' }}>Shared Items:</span>
-            </p>
-            <ul style={{ paddingLeft: '20px', margin: '0 0 10px 0' }}>
-                {Object.entries(formData.sharedItems).flatMap(([category, items]) =>
-                    items.map((item) => (
-                        <li key={`${category}-${item}`} style={{ margin: '5px 0' }}>
-                            {item}
-                        </li>
-                    ))
-                )}
-            </ul>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px' }}>
+
+            <Divider style={{ margin: '20px 0' }}>Shared Items</Divider>
+
+            {Object.entries(formData.sharedItems).map(([categoryName, items]) => {
+                const categoryData = Hubs.find((c) => c.label.name === categoryName);
+                if (!categoryData || items.length === 0) return null;
+
+                return (
+                    <div key={categoryName} style={{ marginBottom: '16px' }}>
+                        <Text strong style={{ fontSize: '16px', color: '#555' }}>
+                            {categoryData.label.title}
+                        </Text>
+                        <ul style={{ paddingLeft: '20px', margin: '5px 0 0 0' }}>
+                            {items.map((itemName) => {
+                                const child = categoryData.children.find((c) => c.name === itemName);
+                                return (
+                                    <li key={`${categoryName}-${itemName}`} style={{ margin: '4px 0', fontSize: '14px' }}>
+                                        {child?.title || itemName}
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    </div>
+                );
+            })}
+
+            <div
+                style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginTop: '30px',
+                }}
+            >
                 <Button
                     onClick={() => setStep('share')}
-                    style={{ borderRadius: '20px', padding: '5px 15px' }}
+                    style={{
+                        borderRadius: '6px',
+                        padding: '6px 20px',
+                    }}
                 >
-                    Back
+                    ← Back
                 </Button>
                 <Button
                     type="primary"
                     onClick={handleSendInvitation}
                     loading={loading}
-                    style={{ borderRadius: '20px', padding: '5px 15px', backgroundColor: '#1890ff', borderColor: '#1890ff' }}
+                    style={{
+                        borderRadius: '6px',
+                        padding: '6px 20px',
+                        backgroundColor: '#1890ff',
+                        borderColor: '#1890ff',
+                    }}
                 >
-                    Send Invitation
+                    🚀 Send Invitation
                 </Button>
             </div>
-        </div>
+        </Card>
     );
 
     const renderSent = () => (
@@ -570,7 +596,7 @@ const FamilyInviteForm: React.FC<FamilyInviteFormProps> = ({ visible, onCancel, 
             styles={{ body: { padding: '20px', borderRadius: '10px' } }}
         >
             {step === 'add' && renderAddForm()}
-            {step === 'permissions' && renderPermissions()}
+            {/* {step === 'permissions' && renderPermissions()} */}
             {step === 'share' && renderSharingOptions()}
             {step === 'review' && renderReview()}
             {step === 'sent' && renderSent()}

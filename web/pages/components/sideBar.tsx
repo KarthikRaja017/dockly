@@ -29,6 +29,8 @@ import {
 } from "./icons";
 import { motion } from "framer-motion";
 import { CalendarCheckIcon } from "lucide-react";
+import { getUserHubs } from "../../services/dashboard";
+import { useCurrentUser } from "../../app/userContext";
 
 const { Text } = Typography;
 const { Sider } = Layout;
@@ -65,17 +67,51 @@ interface SidebarProps {
   };
 }
 
+const getHubIcon = (name: string) => {
+  switch (name) {
+    case "family":
+      return <FluentColorPeopleCommunity48 />;
+    case "finance":
+      return <FluentEmojiDollarBanknote />;
+    case "home":
+      return <FlatColorIconsHome />;
+    case "health":
+      return <FluentEmojiFlatRedHeart />;
+    default:
+      return null;
+  }
+};
+
+const getUtilityIcon = (key: string) => {
+  switch (key) {
+    case "notesLists":
+      return <TwemojiPuzzlePiece />;
+    case "bookmarks":
+      return <FxemojiCloud />;
+    case "files":
+      return <FxemojiCloud />;
+    case "vault":
+      return <IconParkFolderLock />;
+    default:
+      return null;
+  }
+};
+
 const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
   ({ isHovered, colors }, ref) => {
     const router = useRouter();
     const collapsed = !isHovered;
     const [currentPath, setCurrentPath] = useState<string>("dashboard");
-    const [username, setUsername] = useState<string>("");
+    // const [username, setUsername] = useState<string>("");
+    const currentUser = useCurrentUser();
+    const username = currentUser?.user_name || ""
+    const [hubs, setHubs] = useState([]);
+    const [utilities, setUtilities] = useState([]);
 
-    useEffect(() => {
-      const username = localStorage.getItem("username") || "";
-      setUsername(username);
-    }, []);
+    // useEffect(() => {
+    //   const username = localStorage.getItem("username") || "";
+    //   setUsername(username);
+    // }, []);
 
     const pathname = usePathname();
     if (!pathname) return null;
@@ -132,6 +168,30 @@ const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
         />
       </div>
     );
+    const getUserMenus = async () => {
+      const response = await getUserHubs({})
+      const { status, payload } = response.data;
+      if (status) {
+        setHubs(payload.hubs)
+        setUtilities(payload.utilities)
+      }
+    }
+
+    useEffect(() => {
+      getUserMenus();
+    }, [])
+
+    const hubMenuItems = hubs?.map((hub: any) => ({
+      key: `${hub.name}-hub`,
+      icon: getHubIcon(hub.name),
+      label: hub.title,
+    }));
+
+    const utilitiesMenuItems = utilities?.map((hub: any) => ({
+      key: `${hub.name}-hub`,
+      icon: getUtilityIcon(hub.name),
+      label: hub.title,
+    }));
 
     return (
       <Sider
@@ -191,23 +251,11 @@ const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
 
         {menuGroup("Command Center", [
           { key: "dashboard", icon: <RiDashboardFill />, label: "Dashboard" },
-          { key: "calendar", icon: <CalendarCheckIcon />, label: "Planner" },
+          { key: "planner", icon: <CalendarCheckIcon />, label: "Planner" },
         ])}
 
-        {menuGroup("Hubs", [
-          { key: "family-hub", icon: <FluentColorPeopleCommunity48 />, label: "Family" },
-          { key: "finance", icon: <FluentEmojiDollarBanknote />, label: "Finance" },
-          { key: "home", icon: <FlatColorIconsHome />, label: "Home" },
-          { key: "health", icon: <FluentEmojiFlatRedHeart />, label: "Health" },
-        ])}
-
-        {menuGroup("Utilities", [
-          { key: "notes", icon: <TwemojiPuzzlePiece />, label: "Notes & Lists" },
-          { key: "bookmarks", icon: <FxemojiCloud />, label: "Bookmarks" },
-          { key: "files", icon: <FxemojiCloud />, label: "Files" },
-          { key: "password-manager", icon: <IconParkFolderLock />, label: "Vault" },
-        ])}
-
+        {menuGroup("Hubs", hubMenuItems)}
+        {menuGroup("Utilities", utilitiesMenuItems)}
         {!collapsed && (
           <motion.div
             whileHover={{ scale: 1.02 }}

@@ -663,22 +663,22 @@ class GetNotes(Resource):
     @auth_required(isOptional=True)
     def get(self, uid, user):
         notes = []
-        selectFields = ["note", "note_time", "status", "nid"]
-        userNotes = DBHelper.find(
-            "notes", filters={"uid": uid, "status": 1}, select_fields=selectFields
-        )
+        # selectFields = ["note", "note_time", "status", "nid"]
+        # userNotes = DBHelper.find(
+        #     "notes", filters={"uid": uid, "status": 1}, select_fields=selectFields
+        # )
 
-        for note in userNotes:
-            notes.append(
-                {
-                    "note": note["note"],
-                    "note_time": note[
-                        "note_time"
-                    ].isoformat(),  # or .strftime('%Y-%m-%dT%H:%M:%S%z') if timezone is present
-                    "status": note["status"],
-                    "nid": note["nid"],
-                }
-            )
+        # for note in userNotes:
+        #     notes.append(
+        #         {
+        #             "note": note["note"],
+        #             "note_time": note[
+        #                 "note_time"
+        #             ].isoformat(),  # or .strftime('%Y-%m-%dT%H:%M:%S%z') if timezone is present
+        #             "status": note["status"],
+        #             "nid": note["nid"],
+        #         }
+        #     )
 
         return {"status": 1, "message": "Notes fetched", "payload": {"notes": notes}}
 

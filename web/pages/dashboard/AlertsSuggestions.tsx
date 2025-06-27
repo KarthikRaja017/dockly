@@ -39,18 +39,18 @@ const AlertsSuggestions: React.FC = () => {
       textColor: '#1e40af',
       actionColor: '#2563eb'
     },
-    {
-      id: 4,
-      type: 'optimization',
-      icon: <Zap size={20} />,
-      title: 'Performance Boost',
-      description: 'Clean up 2.3GB of temporary files',
-      action: 'Optimize',
-      bgColor: '#f0fdf4',
-      borderColor: '#bbf7d0',
-      textColor: '#166534',
-      actionColor: '#16a34a'
-    }
+    // {
+    //   id: 4,
+    //   type: 'optimization',
+    //   icon: <Zap size={20} />,
+    //   title: 'Performance Boost',
+    //   description: 'Clean up 2.3GB of temporary files',
+    //   action: 'Optimize',
+    //   bgColor: '#f0fdf4',
+    //   borderColor: '#bbf7d0',
+    //   textColor: '#166534',
+    //   actionColor: '#16a34a'
+    // }
   ];
 
   return (

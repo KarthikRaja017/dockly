@@ -26,7 +26,7 @@ AUTH_ENDPOINT = os.getenv("QUILTT_API_SECRET_KEY")
 API_SECRET_KEY = "https://auth.quiltt.io/v1/users/sessions"
 # API_URL = "http://localhost:5000/server/api"
 API_URL = "https://dockly.onrender.com/server/api"
-# WEB_URL = "http://localhost:3000"
+# WEB_URL = "http://192.168.1.14:3000"
 WEB_URL = "https://docklyme.vercel.app"
 
 

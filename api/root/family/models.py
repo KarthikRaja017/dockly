@@ -1,6 +1,15 @@
 # models.py
+import base64
 from datetime import date, datetime, time
+from email.message import EmailMessage
 import json
+import re
+import smtplib
+from root.common import DocklyUsers, Status
+from root.utilis import uniqueId
+from root.users.models import generate_otp, send_otp_email
+from root.config import EMAIL_PASSWORD, EMAIL_SENDER, SMTP_PORT, SMTP_SERVER, WEB_URL
+from root.email import generate_invitation_email
 from root.auth.auth import auth_required
 from flask_restful import Resource
 from flask import request, jsonify
@@ -67,48 +76,104 @@ class InviteFamily(Resource):
             return {"status": 0, "message": f"Failed to invite member: {str(e)}"}, 500
 
 
+def sendInviteEmail(inputData, user, rusername, encodedToken):
+    inviteLink = f"{WEB_URL}/{rusername}/verify-email?token={encodedToken}"
+    u = user["user_name"]
+    email_html = generate_invitation_email(
+        inputData,
+        username=u,
+        invite_link=inviteLink,
+    )
+
+    msg = send_invitation_email(inputData["email"], inputData["name"], email_html)
+    return msg
+
+
 class AddFamilyMembers(Resource):
     @auth_required(isOptional=True)
     def post(self, uid, user):
         inputData = request.get_json(silent=True)
+        # sharedKeys = list(inputData.get("sharedItems", {}).keys())
+        sharedComponents = []
+        sharedItems = []
+        sharedKeys = []
+
+        for key, value in inputData["sharedItems"].items():
+            sharedKeys.append(key)
+            sharedComponents.extend(value)
+        for key in sharedKeys:
+            id = DBHelper.find_one(
+                "hubs",
+                filters={"name": key},
+                select_fields=["hid"],
+            )
+            sharedItems.append(id)
+
+        sharedItemsIds = []
+        for i in sharedItems:
+            sharedItemsIds.append(i["hid"])
+
+        rname = inputData["name"]
+
+        existingUser = DBHelper.find_one(
+            "users",
+            filters={"email": inputData["email"]},
+            select_fields=["uid", "duser"],
+        )
+
+        if existingUser:
+            return
+        parts = re.split(r"[\s_-]+", rname.strip())
+        relationName = parts[0].lower() + "".join(
+            word.capitalize() for word in parts[1:]
+        )
+        rusername = uniqueId(digit=3, isNum=True, prefix=relationName)
+        otp = generate_otp()
+        uid = uniqueId(digit=5, isNum=True, prefix="USER")
+        payload = json.dumps(
+            {
+                "otp": otp,
+                "email": inputData["email"],
+                "userId": uid,
+                "fuser": user["uid"],
+                "duser": DocklyUsers.Guests.value,
+            }
+        )
+        encodedToken = base64.urlsafe_b64encode(payload.encode()).decode()
+        docklyUser = DBHelper.insert(
+            "users",
+            return_column="uid",
+            uid=uid,
+            email=inputData["email"],
+            user_name=rusername,
+            is_email_verified=False,
+            is_active=Status.ACTIVE.value,
+            duser=DocklyUsers.Guests.value,
+            splan=0,
+        )
+        for id in sharedItemsIds:
+            shared = DBHelper.insert(
+                table_name="users_access_hubs",
+                user_id=uid,
+                id=f"{uid}-{id}",
+                hubs=id,
+                is_active=Status.ACTIVE.value,
+                return_column="hubs",
+            )
+        sendInviteEmail(inputData, user, rusername, encodedToken)
+        otpResponse = send_otp_email(inputData["email"], otp)
         userId = DBHelper.insert(
             "family_members",
             return_column="user_id",
-            user_id=uid,
+            user_id=user["uid"],
             name=inputData.get("name", ""),
             relationship=inputData.get("relationship", ""),
-            email=inputData.get("email", ""),
-            phone=inputData.get("phone", ""),
             access_code=inputData.get("accessCode", ""),
             method=inputData.get("method", "Email"),
-            permissions=json.dumps(
-                inputData.get(
-                    "permissions",
-                    {
-                        "type": "Full Access",
-                        "allowAdd": True,
-                        "allowEdit": True,
-                        "allowDelete": True,
-                        "allowInvite": True,
-                        "notify": True,
-                    },
-                )
-            ),
-            shared_items=json.dumps(
-                inputData.get(
-                    "sharedItems",
-                    {
-                        "Home Management": [
-                            "Property Information",
-                            "Mortgage & Loans",
-                            "Home Maintenance",
-                            "Utilities",
-                            "Insurance",
-                        ]
-                    },
-                )
-            ),
+            permissions="",
+            shared_items="",
         )
+
         return {
             "status": 1,
             "message": "Family members added successfully",
@@ -126,7 +191,6 @@ class AddContacts(Resource):
         contact = inputData.get("contacts", {})
         if not contact:
             return {"status": 0, "message": "No contact data provided"}, 400
-
         # Validate required fields
         required_fields = ["name", "role", "phone", "addedBy"]
         missing_fields = [field for field in required_fields if field not in contact]
@@ -146,8 +210,8 @@ class AddContacts(Resource):
             phone=contact.get("phone", ""),
             added_by=contact.get("addedBy", ""),  # Use addedBy from payload
             added_time=current_time,
-            edited_by=contact.get("editedBy", contact.get("addedBy", "")),
-            edited_time=current_time,
+            # edited_by=contact.get("editedBy", contact.get("addedBy", "")),
+            # edited_time=current_time,
         )
         return {
             "status": 1,
@@ -156,57 +220,29 @@ class AddContacts(Resource):
         }
 
 
-class AddSchoolChurch(Resource):
+class AddGuardianEmergencyInfo(Resource):
     @auth_required(isOptional=True)
     def post(self, uid, user):
-        try:
-            inputData = request.get_json(silent=True)
-            if not inputData:
-                return {"status": 0, "message": "No input data provided"}, 400
-
-            school = inputData.get("school_church", {})
-            if not school:
-                return {"status": 0, "message": "No schedule data provided"}, 400
-
-            # Validate required fields
-            required_fields = ["name", "type", "date", "time", "place", "addedBy"]
-            missing_fields = [field for field in required_fields if field not in school]
-            if missing_fields:
-                return {
-                    "status": 0,
-                    "message": f"Missing required fields: {', '.join(missing_fields)}",
-                }, 400
-
-            # Validate type
-            if school.get("type") not in ["school", "church"]:
-                return {
-                    "status": 0,
-                    "message": "Type must be 'school' or 'church'",
-                }, 400
-
-            current_time = datetime.now().isoformat()
-
-            schedule_id = DBHelper.insert(
-                "school_church",
-                return_column="id",
-                user_id=uid,
-                name=school.get("name", ""),
-                type=school.get("type", ""),
-                date=school.get("date", ""),
-                time=school.get("time", ""),
-                place=school.get("place", ""),
-                added_by=school.get("addedBy", ""),
-                added_time=current_time,
-                edited_by=school.get("editedBy", school.get("addedBy", "")),
-                updated_at=current_time,
-            )
-            return {
-                "status": 1,
-                "message": "School/Church added successfully",
-                "payload": {"id": schedule_id},
-            }, 200
-        except Exception as e:
-            return {"status": 0, "message": f"Failed to add schedule: {str(e)}"}, 500
+        current_time = datetime.now().isoformat()
+        inputData = request.get_json(silent=True)
+        UserId = DBHelper.insert(
+            "guardian_emergency_info",
+            return_column="user_id",
+            user_id=uid,
+            name=inputData.get("name", ""),  # type: ignore
+            relation=inputData.get("relationship", "Grandmother"),  # type: ignore
+            phone=inputData.get("phone", ""),  # type: ignore
+            details=inputData.get("details", ""),  # type: ignore
+            added_by=inputData.get(
+                "addedBy", ""
+            ),  # Use addedBy from payload # type: ignore
+            added_time=current_time,
+        )
+        return {
+            "status": 1,
+            "message": "Guardian emergency info added successfully",
+            "payload": {"userId": UserId},
+        }
 
 
 class AddFamilyGuidelines(Resource):
@@ -368,40 +404,56 @@ class addcustomsection(Resource):
 class GetFamilyMembers(Resource):
     @auth_required(isOptional=True)
     def get(self, uid, user):
-        members = DBHelper.find_all(
-            table_name="family_members",
-            select_fields=[
-                "name",
-                "relationship",
-                "email",
-                "phone",
-                "method",
-                "permissions",
-                "shared_items",
-            ],
-            filters={"user_id": uid},
-        )
+        duser = request.args.get("dUser")
         familyMembers = []
+
+        # Define common method to clean relationship
+        def clean_relationship(rel):
+            return rel.replace("❤", "").replace("👶", "").replace("👴", "")
+
+        if int(duser) == DocklyUsers.PaidMember.value:
+            members = DBHelper.find_all(
+                table_name="family_members",
+                select_fields=["name", "relationship"],
+                filters={"user_id": uid},
+            )
+            currentUser = {
+                "name": user.get("user_name", "User"),
+                "relationship": "me",
+            }
+            familyMembers.append(currentUser)
+        elif int(duser) == DocklyUsers.Guests.value:
+            fuser = request.args.get("fuser")
+            members = DBHelper.find_all(
+                table_name="family_members",
+                select_fields=["name", "relationship", "user_id"],
+                filters={"user_id": fuser},
+            )
+
+            fuserMember = DBHelper.find_one(
+                "users",
+                filters={"uid": fuser},
+                select_fields=["user_name"],
+            )
+
+            relationship = "Owner"
+
+            familyMember = {
+                "name": fuserMember.get("user_name", "User"),
+                "relationship": relationship,
+            }
+            familyMembers.append(familyMember)
+
         for member in members:
             familyMembers.append(
                 {
                     "name": member["name"],
-                    "relationship": member["relationship"]
-                    .replace("❤", "")
-                    .replace("👶", "")
-                    .replace("👴", ""),
-                    "contact": member["email"] or member["phone"] or "N/A",
-                    "method": member["method"],
-                    " permissions": member["permissions"]["type"],
-                    "shared_items": ", ".join(
-                        f"{cat}: {item}"
-                        for cat, items in member["shared_items"].items()
-                        for item in items
-                    )
-                    or "None",
+                    "relationship": clean_relationship(member["relationship"]),
                 }
             )
-        # print(familyMembers)
+
+        # Add current user info at the end
+
         return {
             "status": 1,
             "message": "Family members fetched successfully",
@@ -422,8 +474,6 @@ class GetContacts(Resource):
                     "phone",
                     "added_by",
                     "added_time",
-                    "edited_by",
-                    "edited_time",
                 ],
                 filters={"user_id": uid},
             )
@@ -431,9 +481,28 @@ class GetContacts(Resource):
             def serialize_datetime(dt):
                 return dt.isoformat() if isinstance(dt, datetime) else None
 
-            contact_list = []
+            # Group contacts by role
+            grouped_by_role = {}
             for contact in contacts:
-                contact_list.append(
+                role = contact["role"].lower()
+                section_key = (
+                    "emergency"
+                    if "emergency" in role
+                    else (
+                        "school"
+                        if "school" in role
+                        else (
+                            "professional"
+                            if any(
+                                r in role for r in ["doctor", "dentist", "pediatrician"]
+                            )
+                            else "other"
+                        )
+                    )
+                )
+                if section_key not in grouped_by_role:
+                    grouped_by_role[section_key] = []
+                grouped_by_role[section_key].append(
                     {
                         "id": contact["id"],
                         "name": contact["name"],
@@ -441,63 +510,73 @@ class GetContacts(Resource):
                         "phone": contact["phone"] or "N/A",
                         "added_by": contact["added_by"],
                         "added_time": serialize_datetime(contact["added_time"]),
-                        "edited_by": contact["edited_by"] or "N/A",
-                        "edited_time": serialize_datetime(contact["edited_time"]),
                     }
                 )
 
+            # Format into sections
+            contact_sections = [
+                {
+                    "title": (
+                        "Emergency Services"
+                        if key == "emergency"
+                        else (
+                            "Schools"
+                            if key == "school"
+                            else (
+                                "Professional Services"
+                                if key == "professional"
+                                else "Other Contacts"
+                            )
+                        )
+                    ),
+                    "type": key,
+                    "items": items,
+                }
+                for key, items in grouped_by_role.items()
+            ]
+            # print(contact_sections)
             return {
                 "status": 1,
                 "message": "Emergency contacts fetched successfully",
-                "payload": {"contacts": contact_list},
+                "payload": {"contacts": contact_sections},
             }, 200
         except Exception as e:
             return {"status": 0, "message": f"Failed to fetch contacts: {str(e)}"}, 500
 
 
-class GetSchedules(Resource):
+# models.py (Update GetGuardianEmergencyInfo)
+class GetGuardianEmergencyInfo(Resource):
     @auth_required(isOptional=True)
     def get(self, uid, user):
-        tasks = DBHelper.find_all(
-            table_name="school_church",
-            select_fields=[
-                "name",
-                "type",
-                "date",
-                "time",
-                "place",
-                "added_by",
-                "added_time",
-            ],
-            filters={"user_id": uid},
-        )
-        schedule_list = []
-        for task in tasks:
-            schedule_list.append(
-                {
-                    "name": task["name"],
-                    "type": task["type"],
-                    "date": (
-                        task["date"].isoformat()
-                        if isinstance(task["date"], (datetime, date))
-                        else None
-                    ),
-                    "time": task["time"],
-                    "place": task["place"],
-                    "added_by": task["added_by"],
-                    "added_time": (
-                        task["added_time"].isoformat()
-                        if isinstance(task["added_time"], datetime)
-                        else None
-                    ),
-                }
+        try:
+            emergency_info = DBHelper.find_all(
+                table_name="guardian_emergency_info",
+                select_fields=["name", "relation", "phone", "details"],
+                filters={"user_id": uid},
             )
-            # print(schedule_list)
-        return {
-            "status": 1,
-            "message": "Schedules fetched successfully",
-            "payload": {"schedules": schedule_list},
-        }
+            info_list = []
+            for info in emergency_info:
+                info_list.append(
+                    {
+                        "name": info["name"],
+                        "relationship": info[
+                            "relation"
+                        ],  # Map 'relation' to 'relationship'
+                        "phone": info["phone"] or "N/A",
+                        "details": info["details"] or "N/A",
+                    }
+                )
+            # print(info_list)
+            return {
+                "status": 1,
+                "message": "Guardian emergency info fetched successfully",
+                "payload": {"emergencyInfo": info_list},
+            }, 200
+        except Exception as e:
+            return {
+                "status": 0,
+                "message": f"Failed to fetch emergency info: {str(e)}",
+            }, 500
 
 
 class GetFamilyTasks(Resource):
@@ -620,3 +699,123 @@ class GetFamilyGuidelines(Resource):
             "message": "Family guidelines fetched successfully",
             "payload": {"guidelines": guideline_list},
         }
+
+
+class SendInvitation(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        form_data = request.json.get("formData")
+        shared_items_list = request.json.get("sharedItemsList", "")
+        email = form_data["email"]
+        name = form_data["name"]
+        # username = user["user_name"]
+        username = "Karthik raja"
+        invite_link = f"{WEB_URL}/satheesh/verify-email"
+        otp = generate_otp()
+        # otpResponse = send_otp_email(email, otp)
+        email_html = generate_invitation_email(
+            form_data,
+            shared_items_list,
+            username=username,
+            invite_link=invite_link,
+        )
+
+        msg = send_invitation_email(email, name, email_html)
+
+        return {"message": "Invitation sent!"}
+
+
+def send_invitation_email(
+    email, name, email_html, invite_subject="Invitation to Join Family Hub"
+):
+    msg = EmailMessage()
+    msg["Subject"] = f"{invite_subject} - {name}"
+    msg["From"] = EMAIL_SENDER  # e.g., 'no-reply@familyhub.com'
+    msg["To"] = email
+
+    # Add the HTML version
+    msg.add_alternative(email_html, subtype="html")
+
+    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+        server.starttls()
+        server.login(EMAIL_SENDER, EMAIL_PASSWORD)
+        server.send_message(msg)
+
+
+class AddNotes(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid=None, user=None):
+        try:
+            inputData = request.get_json(force=True)
+        except Exception as e:
+            return {"status": 0, "message": f"Invalid JSON: {str(e)}"}, 422
+
+        title = inputData.get("title", "").strip()
+        description = inputData.get("description", "").strip()
+        category_id = inputData.get("category_id")
+
+        if not title or not description or not category_id:
+            return {
+                "status": 0,
+                "message": "Fields title, description, and category_id are required.",
+            }, 422
+
+        now = datetime.now().isoformat()
+
+        try:
+            new_note_id = DBHelper.insert(
+                "notes_lists",
+                return_column="id",
+                title=title,
+                description=description,
+                category_id=category_id,
+                created_at=now,
+                updated_at=now,
+            )
+            return {
+                "status": 1,
+                "message": "Note added successfully",
+                "payload": {
+                    "id": new_note_id,
+                    "title": title,
+                    "description": description,
+                    "category_id": category_id,
+                },
+            }
+        except Exception as e:
+            # logger.exception("Failed to add note")
+            return {"status": 0, "message": f"Failed to add note: {str(e)}"}, 500
+
+
+class GetNotes(Resource):
+    @auth_required(isOptional=True)
+    def get(self, uid=None, user=None):
+        try:
+            notes = DBHelper.find_all(
+                "notes_lists",
+                # filters={"user_id": uid},
+                # select_fields=[
+                #     "id",
+                #     "title",
+                #     "description",
+                #     "category_id",
+                #     "created_at",
+                #     "updated_at",
+                # ],
+            )
+            # notes1 = []
+            # Convert datetime fields to strings
+            for note in notes:
+                if isinstance(note.get("created_at"), datetime):
+                    note["created_at"] = note["created_at"].isoformat()
+                if isinstance(note.get("updated_at"), datetime):
+                    note["updated_at"] = note["updated_at"].isoformat()
+                # notes1.append(note)
+
+            return {
+                "status": 1,
+                "message": "Notes fetched successfully",
+                "payload": notes,
+            }
+        except Exception as e:
+            return {"status": 0, "message": f"Failed to fetch notes: {str(e)}"}

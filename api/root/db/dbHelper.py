@@ -210,3 +210,39 @@ class DBHelper:
                 cur.close()
             if conn:
                 postgres.release_connection(conn)
+
+    @staticmethod
+    def find_in(table_name, select_fields, field, values):
+        conn = None
+        cur = None
+        try:
+            # Ensure values is a list of integers
+            if not isinstance(values, list):
+                values = list(values)
+
+            # Optional: Cast to int to avoid string issues
+            values = [int(v) for v in values]
+
+            conn = postgres.get_connection()
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+
+            columns_sql = sql.SQL(", ").join(map(sql.Identifier, select_fields))
+            query = sql.SQL(
+                "SELECT {fields} FROM {table} WHERE {field} = ANY(%s)"
+            ).format(
+                fields=columns_sql,
+                table=sql.Identifier(table_name),
+                field=sql.Identifier(field),
+            )
+            cur.execute(query, (values,))  # %s expects a sequence here
+            results = cur.fetchall()
+            return results
+
+        except Exception as e:
+            print("Error in find_in:", e)
+            raise e
+        finally:
+            if cur:
+                cur.close()
+            if conn:
+                postgres.release_connection(conn)

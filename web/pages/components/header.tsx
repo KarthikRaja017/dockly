@@ -51,7 +51,7 @@ const CustomHeader = ({ isHovered }: { isHovered: boolean }) => {
     const userObj = user ? JSON.parse(user) : null;
     setImage(userObj?.picture || "");
     setName(userObj?.name || null);
-    setUserName(currentUser?.username || userObj?.username || null);
+    setUserName(currentUser?.user_name || userObj?.username || null);
   }, [currentUser]);
 
   const actions = [

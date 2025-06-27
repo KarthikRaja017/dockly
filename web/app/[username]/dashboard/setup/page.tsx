@@ -22,7 +22,7 @@ const DashboardSetup = () => {
     const [isOpen, setIsOpen] = useState(false);
     const screens = useBreakpoint();
     const currentUser = useCurrentUser();
-    const currentUserName = currentUser?.username || ""
+    const currentUserName = currentUser?.user_name || ""
 
     const hubs = [
         { icon: CalendarIcon, name: 'Planner', description: 'Unified calendar and to-do lists for everything', color: 'linear-gradient(to right, #2b6cb069, #2c7a7b69)' },

@@ -74,34 +74,21 @@ if (typeof window !== 'undefined') {
 // (Removed duplicate ContactData interface)
 
 // Add a new contact
-export async function addContacts(params: ContactData): Promise<any> {
-  try {
-    const response = await api.post('/add/contacts', params, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error adding contact:', error);
-    throw error;
-  }
-}
+// export async function addContacts(params: ContactData): Promise<any> {
+//   try {
+//     const response = await api.post('/add/contacts', params, {
+//       headers: {
+//         'Content-Type': 'application/json',
+//       },
+//     });
+//     return response.data;
+//   } catch (error) {
+//     console.error('Error adding contact:', error);
+//     throw error;
+//   }
+// }
 
 // Fetch contacts for a user
-export async function getUserContacts(params: {
-  userId?: string;
-}): Promise<any> {
-  try {
-    const response = await api.get('/get/contacts', {
-      params,
-    });
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching contacts:', error);
-    throw error;
-  }
-}
 
 // Add a new schedule
 export async function addSchedules(params: ScheduleData): Promise<any> {
@@ -217,7 +204,82 @@ export async function getFamilyGuidelines() {
   const response = await api.get('/get/familyguidelines');
   return response.data;
 }
-export async function getUsersFamilyMembers() {
-  const response = await api.get('/get/family-members');
+export async function getUsersFamilyMembers(params: any) {
+  const response = await api.get('/get/family-members', { params });
   return response.data;
+}
+
+export async function addContacts(params: ContactData): Promise<any> {
+  try {
+    const response = await api.post('/add/contacts', params, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error adding contact:', error);
+    throw error;
+  }
+}
+
+export async function getUserContacts(
+  params: { userId?: string } = {}
+): Promise<any> {
+  try {
+    const response = await api.get('/get/contacts', {
+      params,
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching contacts:', error);
+    throw error;
+  }
+}
+
+interface GuardianData {
+  name: string;
+  relationship: string;
+  phone: string;
+  details?: string;
+  addedBy: string;
+}
+
+export async function addGuardians(params: GuardianData): Promise<any> {
+  try {
+    const response = await api.post('/add/guardian-emergency-info', params, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error adding guardian:', error);
+    throw error;
+  }
+}
+
+export async function getGuardians(
+  params: { userId?: string } = {}
+): Promise<any> {
+  try {
+    const response = await api.get('/get/guardian-emergency-info', { params });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching guardians:', error);
+    throw error;
+  }
+}
+
+export async function addNote(params: {
+  title: string;
+  description: string;
+  category_id: number;
+  user_id: string;
+}) {
+  return api.post('/family/add/notes', params);
+}
+
+export async function getAllNotes() {
+  return api.get('/family/get/notes');
 }

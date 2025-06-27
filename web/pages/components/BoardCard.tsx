@@ -203,7 +203,7 @@ const YourBoards: React.FC = () => {
   const [boards, setBoards] = useState<BoardItem[]>([])
   console.log("🚀 ~ boards:", boards)
   const currentUser = useCurrentUser();
-  const username = currentUser?.username;
+  const username = currentUser?.user_name;
   const handleAddBoard = () => setIsModalOpen(true);
   const handleCloseModal = () => setIsModalOpen(false);
 

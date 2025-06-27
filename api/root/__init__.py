@@ -53,6 +53,9 @@ def create_app(test_config=None):
     from root.dashboard import dashboard_bp
 
     app.register_blueprint(dashboard_bp)
+    from root.planner import planner_bp
+
+    app.register_blueprint(planner_bp)
     app.permanent_session_lifetime = timedelta(minutes=60)
     # initialize_firebase()
 

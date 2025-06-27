@@ -5,3 +5,7 @@ export async function getDashboardBoards(params: any) {
     params,
   });
 }
+
+export async function getUserHubs(params: any) {
+  return api.get('/get/user/hubs', { params });
+}

@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
 import { Row, Col, Typography, Input, Button } from "antd";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { AxiosResponse } from "axios";
 import { emailVerification, signInVerification } from "../../services/apiConfig";
 import { showNotification } from "../../utils/notification";
@@ -24,15 +24,38 @@ const VerifyEmailPage: React.FC = () => {
   const username = params.username;
   const [userId, setUserId] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
+  const [duser, setDuser] = useState<string | null>(null);
   const [storedOtp, setStoredOtp] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const encodedToken = searchParams?.get("token");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       setUserId(localStorage.getItem("userId"));
       setStoredOtp(localStorage.getItem("storedOtp"));
       setEmail(localStorage.getItem("email"));
+      setDuser(localStorage.getItem("duser"));
     }
   }, []);
+
+  useEffect(() => {
+    if (encodedToken) {
+      try {
+        const decoded = JSON.parse(atob(encodedToken));
+        const { otp, email, userId, fuser, duser } = decoded;
+        localStorage.setItem("userId", userId || "");
+        localStorage.setItem("fuser", fuser || "");
+        localStorage.setItem("duser", duser);
+        setDuser(duser)
+        setEmail(email)
+        setStoredOtp(otp)
+        setUserId(userId)
+      } catch (err) {
+        console.error("Invalid or malformed token");
+      }
+    }
+  }, [encodedToken]);
+
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
   const handleChange = (value: string, index: number) => {
@@ -67,6 +90,7 @@ const VerifyEmailPage: React.FC = () => {
         userId,
         otp: code,
         storedOtp: storedOtp,
+        duser: duser
       });
       const { status, message: msg, payload } = response.data;
       if (!status) {
