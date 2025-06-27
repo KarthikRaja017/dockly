@@ -403,6 +403,7 @@
         "user_id VARCHAR(255)",
         "name VARCHAR(255)",
         "relation VARCHAR(255)",
+        "categeory INT",
         "phone VARCHAR(255)",
         "details TEXT",
         "added_by VARCHAR(255)",
@@ -412,14 +413,42 @@
       ]
     },
     {
+      "table_name": "pets",
+      "columns": [
+        "id SERIAL PRIMARY KEY",
+        "user_id VARCHAR(255) REFERENCES users(uid)",
+        "name VARCHAR(100) NOT NULL",
+        "species VARCHAR(50) NOT NULL",
+        "breed VARCHAR(50)",
+        "guardian_email VARCHAR(100) NOT NULL",
+        "guardian_contact VARCHAR(20) NOT NULL"
+      ]
+    },
+    {
       "table_name": "notes_lists",
       "columns": [
         "id SERIAL PRIMARY KEY",
+        "user_id VARCHAR(255)",
         "title TEXT NOT NULL",
         "description TEXT NOT NULL",
         "created_at TIMESTAMP NOT NULL",
         "updated_at TIMESTAMP NOT NULL",
         "category_id INTEGER NOT NULL"
+      ]
+    },
+    {
+      "table_name": "projects",
+      "columns": [
+        "project_id VARCHAR(255) PRIMARY KEY",
+        "uid VARCHAR(255) NOT NULL",
+        "title VARCHAR(255) NOT NULL",
+        "description TEXT",
+        "due_date DATE",
+        "meta JSONB DEFAULT '[]'::jsonb",
+        "progress INTEGER DEFAULT 0",
+        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        "FOREIGN KEY (uid) REFERENCES users(uid) ON DELETE CASCADE"
       ]
     },
     {

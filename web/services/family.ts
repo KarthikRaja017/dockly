@@ -209,6 +209,35 @@ export async function getUsersFamilyMembers(params: any) {
   return response.data;
 }
 
+interface ContactData {
+  contacts: {
+    name: string;
+    role: string;
+    phone: string;
+    addedBy: string;
+    addedTime?: string;
+    editedBy?: string;
+    editedTime?: string;
+  };
+}
+
+interface GuardianData {
+  name: string;
+  relationship: string;
+  phone: string;
+  details?: string;
+  addedBy: string;
+}
+
+interface PetData {
+  name: string;
+  species: string;
+  breed: string;
+  guardianEmail?: string;
+  guardianContact?: string;
+  userId: string;
+}
+
 export async function addContacts(params: ContactData): Promise<any> {
   try {
     const response = await api.post('/add/contacts', params, {
@@ -237,14 +266,6 @@ export async function getUserContacts(
   }
 }
 
-interface GuardianData {
-  name: string;
-  relationship: string;
-  phone: string;
-  details?: string;
-  addedBy: string;
-}
-
 export async function addGuardians(params: GuardianData): Promise<any> {
   try {
     const response = await api.post('/add/guardian-emergency-info', params, {
@@ -271,6 +292,29 @@ export async function getGuardians(
   }
 }
 
+export async function addPets(params: PetData): Promise<any> {
+  try {
+    const response = await api.post('/add/pet', params, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error adding pet:', error);
+    throw error;
+  }
+}
+
+export const getPets = async () => {
+  try {
+    const response = await api.get('/get/pets');
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export async function addNote(params: {
   title: string;
   description: string;
@@ -282,4 +326,14 @@ export async function addNote(params: {
 
 export async function getAllNotes() {
   return api.get('/family/get/notes');
+}
+
+export async function addProject(params: any) {
+  return api.post('/add/project', params);
+}
+
+export async function getProjects() {
+  return api.get('/get/projects', {
+    params: {},
+  });
 }

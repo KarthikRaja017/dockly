@@ -137,6 +137,7 @@ const FamilyMembers: React.FC = () => {
         setIsPetModalVisible(false);
     };
 
+
     return (
         <div
             style={{
@@ -302,6 +303,7 @@ const FamilyMembers: React.FC = () => {
                     isEditMode={false}
                     onSubmit={handleFamilyFormSubmit}
                 />
+
                 <button
                     onClick={() => handleAddMember('pets')}
                     style={{
@@ -327,9 +329,15 @@ const FamilyMembers: React.FC = () => {
                         e.currentTarget.style.borderColor = '#e5e7eb';
                     }}
                 >
-                    <Heart size={16} style={{ opacity: 0.7 }} />
+                    <Heart style={{ fontSize: '16px', opacity: 0.7 }} />
                     Add Pet
                 </button>
+                {/* <PetInviteForm
+                    visible={isPetModalVisible}
+                    onCancel={handlePetCancel}
+                    onSubmit referencing
+                /> */}
+
                 {/* <PetInviteForm
                     visible={isPetModalVisible}
                     onCancel={handlePetCancel}

@@ -1,8 +1,14 @@
 'use client'
 import { ArrowLeft, ArrowRightCircle, BoxSelect, Heart, LayoutPanelLeft, Plus, Search, Share, Users } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
+import DocklyLoader from '../../../utils/docklyLoader';
+
 
 const FamilyHubPage: React.FC = () => {
+  const [loading, setLoading] = useState(false);
+  if (loading) {
+    return <DocklyLoader />
+  }
   return (
     <div
       style={{
@@ -41,7 +47,6 @@ const FamilyHubPage: React.FC = () => {
 
         <FamilyTasks />
 
-
         <div
           style={{
             display: 'grid',
@@ -61,35 +66,43 @@ const FamilyHubPage: React.FC = () => {
 
 export default FamilyHubPage;
 
-import { Modal, Form, Input, Button, message, Select, Row, Col, Popconfirm, Space } from 'antd';
-import {
-  EditOutlined,
-  PlusOutlined,
-  EyeOutlined,
-  DeleteOutlined,
-  SafetyOutlined,
-  PhoneOutlined,
-  ExpandOutlined,
-  ExportOutlined,
-} from '@ant-design/icons';
-import { addGuardians, getGuardians, getUserContacts, addContacts, addNote, getAllNotes } from '../../../services/family'; // Import addGuardians from family.ts
+import { DeleteOutlined, EditOutlined, ExportOutlined, EyeOutlined, PhoneOutlined, PlusOutlined, SafetyOutlined } from '@ant-design/icons';
+import { Input as AntInput, Button, Col, Form, Input, message, Modal, Popconfirm, Row, Select, Space } from 'antd';
 
+import { addContacts, addGuardians, addNote, addProject, getAllNotes, getGuardians, getPets, getProjects, getUserContacts } from '../../../services/family'; // Adjust import based on your setup
 
+const { TextArea } = AntInput;
 
-interface GuardianSection {
-  title: string;
-  type: 'guardian' | 'insurance' | 'medical' | 'documents' | 'other';
-  items: GuardianItem[];
-}
+// Define GuardianItem and GuardianSection types for Guardians
 interface GuardianItem {
-  relationship?: React.ReactNode;
   name: string;
-  relation: string;  // Change from 'relationship' to 'relation'
+  relationship: string;
   phone: string;
   details?: string;
 }
 
-// page.tsx (Update GuardiansEmergencyInfo)
+interface GuardianSection {
+  title: string;
+  type: string;
+  items: GuardianItem[];
+}
+
+// Define ContactItem and ContactSection types for Guardians
+interface ContactItem {
+  icon: string;
+  name: string;
+  role: string;
+  phone: string;
+  bgColor: string;
+  textColor: string;
+  details?: string;
+}
+
+interface ContactSection {
+  title: string;
+  type: string;
+  items: ContactItem[];
+}// page.tsx (Update GuardiansEmergencyInfo)
 const GuardiansEmergencyInfo: React.FC = () => {
   const [guardianInfo, setGuardianInfo] = useState<GuardianSection[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -103,8 +116,8 @@ const GuardiansEmergencyInfo: React.FC = () => {
 
   const guardianRelations = [
     'Grandmother', 'Grandfather', 'Uncle', 'Aunt', 'Family Friend',
-    'Sibling', 'Cousin', 'Neighbor', 'Other Family Member', 'Policy Holder',
-    'Family Doctor', 'Insurance Provider', 'Specialist',
+    'Sibling', 'Cousin', 'Neighbor', 'Other Family Member', 'Policy ',
+    'Family Doctor', 'Insurance ', 'Specialist', 'health', 'provider',
   ];
 
   const getGuardian = async () => {
@@ -114,24 +127,32 @@ const GuardiansEmergencyInfo: React.FC = () => {
       const response = await getGuardians({});
       const { status, payload } = response;
       if (status) {
-        // Group by type for sections
-        const groupedByType: Record<string, GuardianItem[]> = {};
+        const groupedByType: Record<string, GuardianItem[]> = {
+          guardian: [],
+          insurance: [], // Life Insurance
+          medical: [],  // Medical Information
+          // Emergency Guardians
+        };
+
         payload.emergencyInfo.forEach((info: GuardianItem) => {
-          const relStr = String(info.relationship ?? '');
-          const sectionKey = relStr.toLowerCase().includes('policy') ? 'insurance' :
-            relStr.toLowerCase().includes('doctor') || relStr.toLowerCase().includes('pediatrician') ? 'medical' :
-              'guardian';
-          if (!groupedByType[sectionKey]) groupedByType[sectionKey] = [];
-          groupedByType[sectionKey].push(info);
+          const relLower = info.relationship.toLowerCase();
+          if (relLower.includes('policy') || relLower.includes('insurance') || relLower.includes('provider')) {
+            groupedByType['insurance'].push(info);
+          } else if (relLower.includes('doctor') || relLower.includes('health') || relLower.includes('pediatrician') || relLower.includes('specialist')) {
+            groupedByType['medical'].push(info);
+          } else {
+            groupedByType['guardian'].push(info); // Default to Emergency Guardians
+          }
         });
 
-        const formattedSections: GuardianSection[] = Object.keys(groupedByType).map(key => ({
-          title: key === 'insurance' ? 'Life Insurance' :
-            key === 'medical' ? 'Medical Information' :
-              'Emergency Guardians',
-          type: key as GuardianSection['type'],
-          items: groupedByType[key]
-        }));
+        // Define all sections with potential empty arrays
+        const formattedSections: GuardianSection[] = [
+          { title: 'Emergency Guardians', type: 'guardian', items: groupedByType['guardian'] },
+          { title: 'Life Insurance', type: 'insurance', items: groupedByType['insurance'] },
+          { title: 'Medical Information', type: 'medical', items: groupedByType['medical'] },
+
+
+        ];
 
         setGuardianInfo(formattedSections);
       } else {
@@ -188,7 +209,7 @@ const GuardiansEmergencyInfo: React.FC = () => {
         setLoading(true);
         const payload = {
           name: values.name,
-          relationship: values.relation, // Use 'relationship' to match backend mapping
+          relationship: values.relation,
           phone: values.phone,
           details: values.details || '',
           addedBy: localStorage.getItem('userId') || 'current_user',
@@ -202,7 +223,6 @@ const GuardiansEmergencyInfo: React.FC = () => {
             relationship: values.relation,
             phone: values.phone,
             details: values.details,
-            relation: ''
           };
 
           if (currentItemIndex !== null) {
@@ -229,7 +249,6 @@ const GuardiansEmergencyInfo: React.FC = () => {
   };
 
   const handleItemDelete = async (sectionIndex: number, itemIndex: number) => {
-    // Note: Backend deletion endpoint not provided; assuming local state update for now
     const updatedGuardianInfo = [...guardianInfo];
     updatedGuardianInfo[sectionIndex].items.splice(itemIndex, 1);
     setGuardianInfo(updatedGuardianInfo);
@@ -438,14 +457,7 @@ const GuardiansEmergencyInfo: React.FC = () => {
           <SafetyOutlined style={{ color: '#3b82f6', fontSize: '24px' }} />
           Guardians & Emergency Info
         </h3>
-        {/* <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => showModal('new-section', null, null)}
-          style={{ borderRadius: '8px' }}
-        >
-          Add Section
-        </Button> */}
+
       </div>
 
       {loading ? (
@@ -454,7 +466,7 @@ const GuardiansEmergencyInfo: React.FC = () => {
         <div style={{ color: '#dc2626' }}>{error}</div>
       ) : guardianInfo.length === 0 ? (
         <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: '14px', padding: '20px 0' }}>
-          No guardian info available. Click "Add Section" to get started.
+          No guardian info available. Click 'Add' to get started.
         </div>
       ) : (
         guardianInfo.map((section, sectionIndex) => (
@@ -488,15 +500,7 @@ const GuardiansEmergencyInfo: React.FC = () => {
                   onClick={() => showModal('section-edit', sectionIndex, null)}
                   style={{ color: '#3b82f6' }}
                 />
-                {/* <Button
-                  type="dashed"
-                  size="small"
-                  icon={<PlusOutlined />}
-                  onClick={() => showModal('guardian', sectionIndex, null)}
-                  style={{ borderRadius: '6px' }}
-                >
-                  Add
-                </Button> */}
+
               </div>
             </div>
 
@@ -517,7 +521,7 @@ const GuardiansEmergencyInfo: React.FC = () => {
                     padding: '20px 0',
                   }}
                 >
-                  No items added yet. Click "Add" to get started.
+                  No {section.title.toLowerCase()} available. Click 'Add' to get started.
                 </div>
               ) : (
                 <>
@@ -557,7 +561,7 @@ const GuardiansEmergencyInfo: React.FC = () => {
                         )}
                       </div>
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        {/* <Button */}
+                        {/*  */}
                       </div>
                     </div>
                   ))}
@@ -616,12 +620,11 @@ const GuardiansEmergencyInfo: React.FC = () => {
 };
 
 
-// import React, { useState } from 'react';
-// import { Form, Input, Select, Button, Modal, Row, Col, message } from 'antd';
-// import { PhoneOutlined, PlusOutlined, EyeOutlined } from '@ant-design/icons';
-// import { ArrowRightCircle } from 'lucide-react';
-// import { addContacts } from '../../../services/family'; // Import addContacts from family.ts
 
+
+
+// page.tsx (Update ImportantContacts)
+// Define ContactItem and ContactSection types
 interface ContactItem {
   icon: string;
   name: string;
@@ -633,10 +636,10 @@ interface ContactItem {
 
 interface ContactSection {
   title: string;
-  type: 'emergency' | 'school' | 'professional' | 'activity' | 'other';
+  type: string;
   items: ContactItem[];
 }
-// page.tsx (Update ImportantContacts)
+
 const ImportantContacts: React.FC = () => {
   const [contacts, setContacts] = useState<ContactSection[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -648,8 +651,8 @@ const ImportantContacts: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const contactRoles = {
-    emergency: ['Emergency Response', 'Hospital', 'Fire Department', 'Police', 'Emergency Care'],
+  const contactRoles: { [key: string]: string[] } = {
+    important: ['Emergency Response', 'Hospital', 'Fire Department', 'Police', 'Emergency Care'],
     school: ['Elementary School', 'Middle School', 'High School', 'Principal', 'Teacher'],
     professional: ['Doctor', 'Dentist', 'Lawyer', 'Financial Advisor', 'Therapist', 'Pediatrician'],
     activity: ['Coach', 'Instructor', 'Tutor', 'Activity Leader'],
@@ -663,27 +666,65 @@ const ImportantContacts: React.FC = () => {
       const response = await getUserContacts({});
       const { status, payload } = response;
       if (status) {
-        // Ensure contacts are correctly formatted
-        const formattedContacts: ContactSection[] = payload.contacts.map((section: any) => ({
-          title: section.title,
-          type: section.type,
-          items: section.items.map((item: any) => ({
-            icon: item.role.toLowerCase().includes('emergency') ? '🚨' :
-              item.role.toLowerCase().includes('school') ? '🏫' :
-                item.role.toLowerCase().includes('doctor') || item.role.toLowerCase().includes('dentist') ? '👨‍⚕' :
-                  '👤',
-            name: item.name,
-            role: item.role,
-            phone: item.phone,
-            bgColor: item.role.toLowerCase().includes('emergency') ? '#fee2e2' :
-              item.role.toLowerCase().includes('school') ? '#dcfce7' :
-                '#f0f4f8',
-            textColor: item.role.toLowerCase().includes('emergency') ? '#dc2626' :
-              item.role.toLowerCase().includes('school') ? '#16a34a' :
-                '#374151',
-          })),
-        }));
-        setContacts(formattedContacts);
+        const groupedByType: Record<string, ContactItem[]> = {
+          important: [], // Important Contacts
+          school: [],
+          professional: [],
+          other: [],
+        };
+
+        payload.contacts.forEach((section: any) => {
+          section.items.forEach((item: any) => {
+            const roleLower = item.role.toLowerCase();
+            if (contactRoles.important.some(r => roleLower.includes(r.toLowerCase()))) {
+              groupedByType['important'].push({
+                icon: '🚨',
+                name: item.name,
+                role: item.role,
+                phone: item.phone,
+                bgColor: '#fee2e2',
+                textColor: '#dc2626',
+              });
+            } else if (contactRoles.school.some(r => roleLower.includes(r.toLowerCase()))) {
+              groupedByType['school'].push({
+                icon: '🏫',
+                name: item.name,
+                role: item.role,
+                phone: item.phone,
+                bgColor: '#dcfce7',
+                textColor: '#16a34a',
+              });
+            } else if (contactRoles.professional.some(r => roleLower.includes(r.toLowerCase()))) {
+              groupedByType['professional'].push({
+                icon: '👨‍⚕',
+                name: item.name,
+                role: item.role,
+                phone: item.phone,
+                bgColor: '#f0f4f8',
+                textColor: '#374151',
+              });
+            } else {
+              groupedByType['other'].push({
+                icon: '👤',
+                name: item.name,
+                role: item.role,
+                phone: item.phone,
+                bgColor: '#f0f4f8',
+                textColor: '#374151',
+              });
+            }
+          });
+        });
+
+        // Define all sections with potential empty arrays
+        const formattedSections: ContactSection[] = [
+          { title: 'Important Contacts', type: 'important', items: groupedByType['important'] },
+          { title: 'Schools', type: 'school', items: groupedByType['school'] },
+          { title: 'Professional Services', type: 'professional', items: groupedByType['professional'] },
+          { title: 'Other Contacts', type: 'other', items: groupedByType['other'] },
+        ];
+
+        setContacts(formattedSections);
       } else {
         setError('Failed to fetch contacts');
         message.error('Failed to fetch contacts');
@@ -789,7 +830,6 @@ const ImportantContacts: React.FC = () => {
   };
 
   const handleItemDelete = async (sectionIndex: number, itemIndex: number) => {
-    // Note: Backend deletion endpoint not provided; assuming local state update for now
     const updatedContacts = [...contacts];
     updatedContacts[sectionIndex].items.splice(itemIndex, 1);
     setContacts(updatedContacts);
@@ -856,7 +896,7 @@ const ImportantContacts: React.FC = () => {
                     placeholder="Select or type role"
                     showSearch
                     allowClear
-                    options={availableRoles.map((role) => ({ label: role, value: role }))}
+                    options={availableRoles.map((role: any) => ({ label: role, value: role }))}
                     style={{ width: '100%' }}
                   />
                 </Form.Item>
@@ -961,6 +1001,8 @@ const ImportantContacts: React.FC = () => {
                     </div>
                   </div>
                 </div>
+
+
               </div>
             ))}
             <Button
@@ -972,6 +1014,7 @@ const ImportantContacts: React.FC = () => {
             >
               Add
             </Button>
+
           </div>
         );
 
@@ -1014,14 +1057,7 @@ const ImportantContacts: React.FC = () => {
           <PhoneOutlined style={{ color: '#10b981', fontSize: '24px' }} />
           Important Contacts
         </h3>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => showModal('new-section', null, null)}
-          style={{ borderRadius: '8px' }}
-        >
-          Add Section
-        </Button>
+
       </div>
 
       {loading ? (
@@ -1030,7 +1066,7 @@ const ImportantContacts: React.FC = () => {
         <div style={{ color: '#dc2626' }}>{error}</div>
       ) : contacts.length === 0 ? (
         <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: '14px', padding: '20px 0' }}>
-          No contacts available. Click "Add Section" to get started.
+          No contacts available. Click 'Add' to get started.
         </div>
       ) : (
         contacts.map((section, sectionIndex) => (
@@ -1085,7 +1121,7 @@ const ImportantContacts: React.FC = () => {
                     padding: '20px 0',
                   }}
                 >
-                  No contacts added yet. Click "Add" to get started.
+                  No {section.title.toLowerCase()} available. Click 'Add' to get started.
                 </div>
               ) : (
                 <>
@@ -1133,26 +1169,7 @@ const ImportantContacts: React.FC = () => {
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        {/* <Button
-                          type="text"
-                          size="small"
-                          icon={<EditOutlined />}
-                          onClick={() => showModal('contact', sectionIndex, contactIndex)}
-                          style={{ color: '#3b82f6' }}
-                        />
-                        <Popconfirm
-                          title="Are you sure to delete this contact?"
-                          onConfirm={() => handleItemDelete(sectionIndex, contactIndex)}
-                          okText="Yes"
-                          cancelText="No"
-                        >
-                          <Button
-                            type="text"
-                            size="small"
-                            icon={<DeleteOutlined />}
-                            style={{ color: '#dc2626' }}
-                          />
-                        </Popconfirm> */}
+                        {/*  */}
                       </div>
                     </div>
                   ))}
@@ -1211,352 +1228,246 @@ const ImportantContacts: React.FC = () => {
 };
 
 
+import { DatePicker } from 'antd';
+import { CheckSquare, Edit } from 'lucide-react';
+import dayjs from 'dayjs';
 
-import { CheckSquare } from 'lucide-react';
+type Task = {
+  id: number;
+  title: string;
+  assignee: string;
+  type: string;
+  completed: boolean;
+  due: string;
+  dueDate?: string;
+};
+
+type Project = {
+  id: number;
+  title: string;
+  description: string;
+  due_date: string;
+  meta: [];
+  progress: number;
+  tasks: Task[];
+};
+
+const assignees = [
+  { label: 'John', value: 'john' },
+  { label: 'Sarah', value: 'sarah' },
+  { label: 'Emma', value: 'emma' },
+  { label: 'Liam', value: 'liam' },
+  { label: 'All', value: 'all' },
+];
+
+
 
 const FamilyTasks: React.FC = () => {
-  const [projects, setProjects] = useState([
-    {
-      id: 1,
-      title: 'Weekly Chores',
-      meta: ['Recurring', 'Reset Sunday'],
-      progress: 60,
-      tasks: [
-        { id: 1, title: 'Take out trash', assignee: 'JS', type: 'john', completed: true, due: 'Completed' },
-        { id: 2, title: 'Grocery shopping', assignee: 'SS', type: 'sarah', completed: true, due: 'Completed' },
-        { id: 3, title: 'Clean kitchen', assignee: 'SS', type: 'sarah', completed: false, due: 'Due today' },
-        { id: 4, title: 'Vacuum living room', assignee: 'ES', type: 'emma', completed: false, due: 'Due today' },
-        { id: 5, title: 'Water plants', assignee: 'LS', type: 'liam', completed: false, due: 'Due Sunday' },
-      ],
-    },
-    {
-      id: 2,
-      title: 'School Activities',
-      meta: ['June 2025'],
-      progress: 40,
-      tasks: [
-        { id: 6, title: 'Science fair project materials', assignee: 'ES', type: 'emma', completed: true, due: 'Completed Jun 10' },
-        { id: 7, title: 'Permission slip - field trip', assignee: 'LS', type: 'liam', completed: true, due: 'Completed Jun 12' },
-        { id: 8, title: 'Science fair presentation', assignee: 'ES', type: 'emma', completed: false, due: 'Due Jun 23' },
-        { id: 9, title: 'Book report - English', assignee: 'LS', type: 'liam', completed: false, due: 'Due Jul 1' },
-      ],
-    },
-    {
-      id: 3,
-      title: 'Summer Vacation Planning',
-      meta: ['Due Jul 15'],
-      progress: 25,
-      tasks: [
-        { id: 10, title: 'Choose destination', assignee: 'All', type: 'all', completed: true, due: 'Completed - Beach Resort' },
-        { id: 11, title: 'Set budget', assignee: 'JS', type: 'john', completed: true, due: 'Completed - $3,500' },
-        { id: 12, title: 'Book flights', assignee: 'SS', type: 'sarah', completed: false, due: 'Due Jun 20' },
-        { id: 13, title: 'Reserve hotel', assignee: 'JS', type: 'john', completed: false, due: 'Due Jun 25' },
-        { id: 14, title: 'Plan activities', assignee: 'All', type: 'all', completed: false, due: 'Due Jul 1' },
-      ],
-    },
-  ]);
+  const [uid, setUid] = useState<string | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [newProjectDescription, setNewProjectDescription] = useState('');
+  const [newProjectMeta, setNewProjectMeta] = useState<string>('');
+  const [loading, setLoading] = useState(false);
 
-  const getAssigneeStyle = (type: string) => {
-    const baseStyle = {
-      fontSize: '12px',
-      padding: '2px 8px',
-      borderRadius: '12px',
-      fontWeight: 500,
-    };
+  const [editTaskModal, setEditTaskModal] = useState(false);
+  const [editingTask, setEditingTask] = useState<{ projectId: number; task: Task | null }>({
+    projectId: -1,
+    task: null,
+  });
 
-    switch (type) {
-      case 'john':
-        return { ...baseStyle, backgroundColor: 'rgba(51, 85, 255, 0.1)', color: '#3355ff' };
-      case 'sarah':
-        return { ...baseStyle, backgroundColor: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' };
-      case 'emma':
-        return { ...baseStyle, backgroundColor: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6' };
-      case 'liam':
-        return { ...baseStyle, backgroundColor: 'rgba(236, 72, 153, 0.1)', color: '#ec4899' };
-      case 'all':
-        return { ...baseStyle, backgroundColor: '#eef1ff', color: '#3355ff' };
-      default:
-        return baseStyle;
+  useEffect(() => {
+    const stored = localStorage.getItem('userId');
+    if (stored) setUid(stored);
+  }, []);
+
+  useEffect(() => {
+    fetchProjects();
+  }, []);
+
+  const fetchProjects = async () => {
+    setLoading(true);
+    try {
+      const res = await getProjects();
+      const rawProjects = res.data.payload.projects || [];
+
+      const transformedProjects = rawProjects.map((proj: any, index: number) => ({
+        id: index,
+        title: proj.title,
+        description: proj.description,
+        meta: Object.values(proj.meta || {}),
+        due_date: proj.due_date,
+        progress: proj.progress,
+        tasks: [],
+      }));
+
+      setProjects(transformedProjects);
+    } catch (err) {
+      console.error(err);
+      message.error('Failed to load projects');
     }
+    setLoading(false);
   };
 
-  const toggleTask = (projectId: number, taskId: number) => {
-    setProjects(prevProjects =>
-      prevProjects.map(project => {
-        if (project.id === projectId) {
-          const updatedTasks = project.tasks.map(task => {
-            if (task.id === taskId) {
-              return {
-                ...task,
-                completed: !task.completed,
-                due: !task.completed ? 'Completed' : 'Due today'
-              };
-            }
-            return task;
-          });
-
-          const completedCount = updatedTasks.filter(task => task.completed).length;
-          const progress = Math.round((completedCount / updatedTasks.length) * 100);
-
-          return {
-            ...project,
-            tasks: updatedTasks,
-            progress
-          };
-        }
-        return project;
-      })
-    );
+  const handleAddProject = async () => {
+    setLoading(true);
+    if (!newProjectName.trim()) return;
+    try {
+      await addProject({
+        uid,
+        title: newProjectName,
+        description: newProjectDescription,
+        due_date: newProjectMeta,
+      });
+      message.success('Project added');
+      setModalVisible(false);
+      setNewProjectName('');
+      setNewProjectDescription('');
+      setNewProjectMeta('');
+      fetchProjects();
+    } catch (error) {
+      console.error(error);
+      message.error('Failed to add project');
+    }
+    setLoading(false);
   };
 
   const addTask = (projectId: number) => {
-    const newTaskId = Math.max(...projects.flatMap(p => p.tasks.map(t => t.id))) + 1;
-    setProjects(prevProjects =>
-      prevProjects.map(project => {
-        if (project.id === projectId) {
-          const newTask = {
-            id: newTaskId,
-            title: 'New task',
-            assignee: 'All',
-            type: 'all',
-            completed: false,
-            due: 'Due today'
-          };
-          return {
+    const newTaskId = Math.max(...projects.flatMap(p => p.tasks?.map(t => t.id) || [0])) + 1;
+    setProjects(prev =>
+      prev.map(project =>
+        project.id === projectId
+          ? {
             ...project,
-            tasks: [...project.tasks, newTask]
-          };
+            tasks: [
+              ...(project.tasks || []),
+              {
+                id: newTaskId,
+                title: 'New task',
+                assignee: 'All',
+                type: 'all',
+                completed: false,
+                due: 'Due today',
+                dueDate: dayjs().format('YYYY-MM-DD'),
+              },
+            ],
+          }
+          : project
+      )
+    );
+  };
+
+  const toggleTask = (projectId: number, taskId: number) => {
+    setProjects(prev =>
+      prev.map(project => {
+        if (project.id === projectId) {
+          const updatedTasks = project.tasks.map(task =>
+            task.id === taskId
+              ? { ...task, completed: !task.completed, due: !task.completed ? 'Completed' : 'Due today' }
+              : task
+          );
+          const progress = Math.round(
+            (updatedTasks.filter(t => t.completed).length / updatedTasks.length) * 100
+          );
+          return { ...project, tasks: updatedTasks, progress };
         }
         return project;
       })
     );
   };
 
+  const updateEditedTask = () => {
+    if (!editingTask.task) return;
+
+    setProjects(prev =>
+      prev.map(project => {
+        if (project.id === editingTask.projectId) {
+          const updatedTasks = project.tasks.map(task =>
+            task.id === editingTask.task!.id ? editingTask.task! : task
+          );
+          return { ...project, tasks: updatedTasks };
+        }
+        return project;
+      })
+    );
+    setEditTaskModal(false);
+  };
+
+  const getAssigneeStyle = (type: string) => {
+    const base = { fontSize: '12px', padding: '2px 8px', borderRadius: '12px', fontWeight: 500 };
+    const colors: any = {
+      john: { bg: 'rgba(51, 85, 255, 0.1)', color: '#3355ff' },
+      sarah: { bg: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' },
+      emma: { bg: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6' },
+      liam: { bg: 'rgba(236, 72, 153, 0.1)', color: '#ec4899' },
+      all: { bg: '#eef1ff', color: '#3355ff' },
+    };
+    return { ...base, backgroundColor: colors[type]?.bg || '#eee', color: colors[type]?.color || '#333' };
+  };
+  if (loading) {
+    return <DocklyLoader />
+  }
   return (
-    <div
-      style={{
-        backgroundColor: 'white',
-        borderRadius: '12px',
-        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
-        padding: '24px',
-        marginBottom: '24px',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '20px',
-        }}
-      >
-        <h2
-          style={{
-            fontSize: '20px',
-            fontWeight: 600,
-            margin: 0,
-            color: '#111827',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-          }}
-        >
-          <CheckSquare size={20} style={{ opacity: 0.8 }} />
-          Family Tasks & Projects
+    <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+        <h2 style={{ fontSize: '20px', fontWeight: 600, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <CheckSquare size={20} /> Family Tasks & Projects
         </h2>
         <button
-          style={{
-            padding: '8px 16px',
-            backgroundColor: 'white',
-            border: '1px solid #e5e7eb',
-            borderRadius: '6px',
-            fontSize: '14px',
-            fontWeight: 500,
-            color: '#374151',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            transition: 'all 0.2s ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#f0f4f8';
-            e.currentTarget.style.borderColor = '#3355ff';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'white';
-            e.currentTarget.style.borderColor = '#e5e7eb';
-          }}
+          onClick={() => setModalVisible(true)}
+          style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '6px' }}
         >
-          <Plus size={16} style={{ opacity: 0.7 }} />
-          New Project
+          <Plus size={16} /> New Project
         </button>
       </div>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-          gap: '20px',
-        }}
-      >
-        {projects.map((project) => (
-          <div
-            key={project.id}
-            style={{
-              backgroundColor: '#f9fafb',
-              borderRadius: '8px',
-              padding: '16px',
-              minHeight: '350px',
-              border: '1px solid #e5e7eb',
-              transition: 'all 0.2s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = '#3355ff';
-              e.currentTarget.style.boxShadow = '0 2px 8px rgba(51, 85, 255, 0.1)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = '#e5e7eb';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                marginBottom: '16px',
-              }}
-            >
-              <div>
-                <h3
-                  style={{
-                    fontSize: '16px',
-                    fontWeight: 600,
-                    color: '#374151',
-                    marginBottom: '4px',
-                    margin: 0,
-                  }}
-                >
-                  {project.title}
-                </h3>
-                <div
-                  style={{
-                    fontSize: '12px',
-                    color: '#6b7280',
-                    display: 'flex',
-                    gap: '8px',
-                    flexWrap: 'wrap',
-                  }}
-                >
-                  {project.meta.map((item, index) => (
-                    <span key={index}>
-                      {item}
-                      {index < project.meta.length - 1 && ' • '}
-                    </span>
-                  ))}
-                </div>
-              </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+        {projects.map(project => (
+          <div key={project.id} style={{ border: '1px solid #e5e7eb', padding: '16px', borderRadius: '8px' }}>
+            <h3>{project.title}</h3>
+            {project.description && <p style={{ fontSize: 12 }}>{project.description}</p>}
+            {project.due_date && (
+              <p style={{ fontSize: 12, color: '#9ca3af' }}>
+                Due Date: {dayjs(project.due_date).format('MMM D, YYYY')}
+              </p>
+            )}
+            <div style={{ marginBottom: 10, color: '#6b7280', fontSize: 12 }}>
+              {project.meta?.map((m, i) => (
+                <span key={i}>{m} {i < project.meta.length - 1 && '• '} </span>
+              ))}
             </div>
 
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                marginBottom: '16px',
-              }}
-            >
-              <div
-                style={{
-                  flex: 1,
-                  height: '6px',
-                  backgroundColor: '#e5e7eb',
-                  borderRadius: '3px',
-                  overflow: 'hidden',
-                }}
-              >
-                <div
-                  style={{
-                    height: '100%',
-                    backgroundColor: '#10b981',
-                    width: `${project.progress}%`,
-                    transition: 'width 0.3s ease',
-                  }}
-                />
-              </div>
-              <span
-                style={{
-                  fontSize: '12px',
-                  color: '#6b7280',
-                  fontWeight: 500,
-                }}
-              >
-                {project.tasks.filter(task => task.completed).length}/{project.tasks.length} complete
-              </span>
-            </div>
-
-            <div style={{ marginBottom: '16px' }}>
-              {project.tasks.map((task) => (
+            <div style={{ marginBottom: 16 }}>
+              {project.tasks.map(task => (
                 <div
                   key={task.id}
                   style={{
-                    backgroundColor: 'white',
+                    backgroundColor: '#fff',
+                    border: '1px solid #e5e7eb',
                     borderRadius: '6px',
                     padding: '12px',
                     marginBottom: '8px',
-                    border: '1px solid #e5e7eb',
-                    transition: 'all 0.2s ease',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.boxShadow = 'none';
                   }}
                 >
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      marginBottom: '6px',
-                    }}
-                  >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: 4 }}>
                     <input
                       type="checkbox"
                       checked={task.completed}
                       onChange={() => toggleTask(project.id, task.id)}
-                      style={{
-                        width: '16px',
-                        height: '16px',
-                        cursor: 'pointer',
+                    />
+                    <div style={{ flex: 1 }}>{task.title}</div>
+                    <div style={getAssigneeStyle(task.type)}>{task.assignee}</div>
+                    <Edit
+                      size={14}
+                      style={{ cursor: 'pointer', opacity: 0.6 }}
+                      onClick={() => {
+                        setEditingTask({ projectId: project.id, task });
+                        setEditTaskModal(true);
                       }}
                     />
-                    <div
-                      style={{
-                        fontSize: '14px',
-                        fontWeight: 500,
-                        flex: 1,
-                        textDecoration: task.completed ? 'line-through' : 'none',
-                        opacity: task.completed ? 0.6 : 1,
-                        color: '#374151',
-                      }}
-                    >
-                      {task.title}
-                    </div>
-                    <div style={getAssigneeStyle(task.type)}>
-                      {task.assignee}
-                    </div>
                   </div>
-                  <div
-                    style={{
-                      fontSize: '11px',
-                      color: '#6b7280',
-                    }}
-                  >
-                    {task.due}
-                  </div>
+                  <div style={{ fontSize: 11, color: '#6b7280' }}>{task.due}</div>
                 </div>
               ))}
             </div>
@@ -1570,19 +1481,6 @@ const FamilyTasks: React.FC = () => {
                 backgroundColor: 'transparent',
                 borderRadius: '6px',
                 color: '#6b7280',
-                fontSize: '13px',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#3355ff';
-                e.currentTarget.style.color = '#3355ff';
-                e.currentTarget.style.backgroundColor = '#eff6ff';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#e5e7eb';
-                e.currentTarget.style.color = '#6b7280';
-                e.currentTarget.style.backgroundColor = 'transparent';
               }}
             >
               + Add task
@@ -1590,9 +1488,96 @@ const FamilyTasks: React.FC = () => {
           </div>
         ))}
       </div>
+
+      {/* Add Project Modal */}
+      <Modal
+        open={modalVisible}
+        title="Add New Project"
+        onCancel={() => setModalVisible(false)}
+        onOk={handleAddProject}
+        okText="Add"
+        loading={loading}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Input
+            value={newProjectName}
+            onChange={e => setNewProjectName(e.target.value)}
+            placeholder="Project Name"
+          />
+          <Input.TextArea
+            rows={3}
+            value={newProjectDescription}
+            onChange={e => setNewProjectDescription(e.target.value)}
+            placeholder="Description"
+          />
+          <DatePicker
+            value={newProjectMeta ? dayjs(newProjectMeta) : null}
+            onChange={(_, dateString) => setNewProjectMeta(Array.isArray(dateString) ? dateString[0] || '' : dateString)}
+            placeholder="Due Date"
+            style={{ width: '100%' }}
+          />
+        </div>
+      </Modal>
+
+      {/* Edit Task Modal */}
+      <Modal
+        open={editTaskModal}
+        title="Edit Task"
+        okText="Save"
+        onCancel={() => setEditTaskModal(false)}
+        onOk={updateEditedTask}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Input
+            value={editingTask.task?.title}
+            onChange={e =>
+              setEditingTask(prev => ({
+                ...prev,
+                task: { ...prev.task!, title: e.target.value },
+              }))
+            }
+            placeholder="Task Name"
+          />
+          <DatePicker
+            value={editingTask.task?.due ? dayjs(editingTask.task.dueDate) : null}
+            onChange={(_, dateString) => {
+              if (typeof dateString === 'string') {
+                setEditingTask(prev => ({
+                  ...prev,
+                  task: {
+                    ...prev.task!,
+                    due: `Due ${dayjs(dateString).format('MMM D')}`,
+                    dueDate: dateString,
+                  },
+                }));
+              }
+            }}
+
+            placeholder="Due Date"
+            style={{ width: '100%' }}
+          />
+
+          <Select
+            value={editingTask.task?.type}
+            onChange={value => {
+              setEditingTask(prev => ({
+                ...prev,
+                task: {
+                  ...prev.task!,
+                  type: value,
+                  assignee: assignees.find(a => a.value === value)?.label || 'All',
+                },
+              }));
+            }}
+            options={assignees}
+            placeholder="Select Assignee"
+          />
+        </div>
+      </Modal>
     </div>
   );
 };
+
 
 
 type Category = {
@@ -1623,6 +1608,7 @@ const categoryIdMapReverse: { [key: number]: string } = Object.entries(categoryI
   return acc;
 }, {} as { [key: number]: string });
 
+
 const FamilyNotes: React.FC = () => {
   const [categories, setCategories] = useState(defaultCategories);
   const [modalOpen, setModalOpen] = useState(false);
@@ -1631,12 +1617,15 @@ const FamilyNotes: React.FC = () => {
   const [editingNoteIndex, setEditingNoteIndex] = useState<number | null>(null);
   const [newCategoryModal, setNewCategoryModal] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [loading, setLoading] = useState(false);
+
 
   useEffect(() => {
     getNotes();
   }, []);
 
   const getNotes = async () => {
+    setLoading(true)
     try {
       const response = await getAllNotes();
       const rawNotes = response.data.payload;
@@ -1673,6 +1662,7 @@ const FamilyNotes: React.FC = () => {
       console.error("Error fetching notes:", error);
       message.error("Failed to load notes");
     }
+    setLoading(false)
   };
 
   const openModal = (index: number) => {
@@ -1683,6 +1673,7 @@ const FamilyNotes: React.FC = () => {
   };
 
   const handleAddNote = async () => {
+    setLoading(true);
     if (!newNote.title.trim() || !newNote.description.trim() || activeCategoryIndex === null) {
       message.error("Please fill in all fields");
       return;
@@ -1717,6 +1708,7 @@ const FamilyNotes: React.FC = () => {
       console.error("Error adding note:", error);
       message.error("Something went wrong");
     }
+    setLoading(false);
   };
 
 
@@ -1744,7 +1736,9 @@ const FamilyNotes: React.FC = () => {
     setNewCategoryModal(false);
     setNewCategoryName('');
   };
-
+  if (loading) {
+    return <DocklyLoader />
+  }
   return (
     <div style={{ background: '#fff', borderRadius: 12, padding: 24, marginBottom: 24 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>

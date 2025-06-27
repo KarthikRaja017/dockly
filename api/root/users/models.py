@@ -126,6 +126,7 @@ class RegisterUser(Resource):
             if isDockly and not inputEmail and dbEmail:
                 otp = generate_otp()
                 Thread(target=send_otp_email, args=(dbEmail, otp)).start()
+
                 return {
                     "status": 1,
                     "message": f"OTP sent to {dbEmail} for email verification",

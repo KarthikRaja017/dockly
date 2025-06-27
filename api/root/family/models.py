@@ -181,6 +181,44 @@ class AddFamilyMembers(Resource):
         }
 
 
+class AddPet(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        inputData = request.get_json(silent=True)
+        if not inputData:
+            return {"status": 0, "message": "No input data provided"}, 400
+
+        required_fields = [
+            "name",
+            "species",
+            "breed",
+            "guardian_email",
+            "guardian_contact",
+        ]
+        missing_fields = [field for field in required_fields if field not in inputData]
+        if missing_fields:
+            return {
+                "status": 0,
+                "message": f"Missing required fields: {', '.join(missing_fields)}",
+            }, 400
+
+        userId = DBHelper.insert(
+            "pets",
+            return_column="user_id",
+            user_id=uid,
+            name=inputData.get("name", ""),
+            species=inputData.get("species", ""),
+            breed=inputData.get("breed", ""),
+            guardian_email=inputData.get("guardian_email", ""),
+            guardian_contact=inputData.get("guardian_contact", ""),
+        )
+        return {
+            "status": 1,
+            "message": "Pet added successfully",
+            "payload": {"userId": userId},
+        }
+
+
 class AddContacts(Resource):
     @auth_required(isOptional=True)
     def post(self, uid, user):
@@ -204,14 +242,12 @@ class AddContacts(Resource):
         userId = DBHelper.insert(
             "contacts",
             return_column="user_id",
-            user_id=uid,  # Use authenticated uid for user_id
+            user_id=uid,
             name=contact.get("name", ""),
             role=contact.get("role", ""),
             phone=contact.get("phone", ""),
-            added_by=contact.get("addedBy", ""),  # Use addedBy from payload
+            added_by=contact.get("addedBy", ""),
             added_time=current_time,
-            # edited_by=contact.get("editedBy", contact.get("addedBy", "")),
-            # edited_time=current_time,
         )
         return {
             "status": 1,
@@ -225,23 +261,209 @@ class AddGuardianEmergencyInfo(Resource):
     def post(self, uid, user):
         current_time = datetime.now().isoformat()
         inputData = request.get_json(silent=True)
-        UserId = DBHelper.insert(
+        if not inputData:
+            return {"status": 0, "message": "No input data provided"}, 400
+        userId = DBHelper.insert(
             "guardian_emergency_info",
             return_column="user_id",
             user_id=uid,
-            name=inputData.get("name", ""),  # type: ignore
-            relation=inputData.get("relationship", "Grandmother"),  # type: ignore
-            phone=inputData.get("phone", ""),  # type: ignore
-            details=inputData.get("details", ""),  # type: ignore
-            added_by=inputData.get(
-                "addedBy", ""
-            ),  # Use addedBy from payload # type: ignore
+            name=inputData.get("name", ""),
+            relation=inputData.get("relationship", "Grandmother"),
+            phone=inputData.get("phone", ""),
+            details=inputData.get("details", ""),
+            added_by=inputData.get("addedBy", ""),
             added_time=current_time,
         )
         return {
             "status": 1,
             "message": "Guardian emergency info added successfully",
-            "payload": {"userId": UserId},
+            "payload": {"userId": userId},
+        }
+
+
+class GetPets(Resource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        pets = DBHelper.find_all(
+            table_name="pets",
+            select_fields=[
+                "name",
+                "species",
+                "breed",
+                "guardian_email",
+                "guardian_contact",
+            ],
+            filters={"user_id": uid},
+        )
+        pet_list = []
+        for pet in pets:
+            pet_list.append(
+                {
+                    "name": pet["name"],
+                    "species": pet["species"],
+                    "breed": pet["breed"] or "N/A",
+                    "guardian_email": pet["guardian_email"] or "N/A",
+                    "guardian_contact": pet["guardian_contact"] or "N/A",
+                }
+            )
+        return {
+            "status": 1,
+            "message": "Pets fetched successfully",
+            "payload": {"pets": pet_list},
+        }
+
+
+class GetContacts(Resource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        try:
+            contacts = DBHelper.find_all(
+                table_name="contacts",
+                select_fields=[
+                    "id",
+                    "name",
+                    "role",
+                    "phone",
+                    "added_by",
+                    "added_time",
+                ],
+                filters={"user_id": uid},
+            )
+
+            def serialize_datetime(dt):
+                return dt.isoformat() if isinstance(dt, datetime) else None
+
+            grouped_by_role = {}
+            for contact in contacts:
+                role = contact["role"].lower()
+                section_key = (
+                    "emergency"
+                    if "emergency" in role
+                    else (
+                        "school"
+                        if "school" in role
+                        else (
+                            "professional"
+                            if any(
+                                r in role for r in ["doctor", "dentist", "pediatrician"]
+                            )
+                            else "other"
+                        )
+                    )
+                )
+                if section_key not in grouped_by_role:
+                    grouped_by_role[section_key] = []
+                grouped_by_role[section_key].append(
+                    {
+                        "id": contact["id"],
+                        "name": contact["name"],
+                        "role": contact["role"],
+                        "phone": contact["phone"] or "N/A",
+                        "added_by": contact["added_by"],
+                        "added_time": serialize_datetime(contact["added_time"]),
+                    }
+                )
+
+            contact_sections = [
+                {
+                    "title": (
+                        "Emergency Services"
+                        if key == "emergency"
+                        else (
+                            "Schools"
+                            if key == "school"
+                            else (
+                                "Professional Services"
+                                if key == "professional"
+                                else "Other Contacts"
+                            )
+                        )
+                    ),
+                    "type": key,
+                    "items": items,
+                }
+                for key, items in grouped_by_role.items()
+            ]
+            return {
+                "status": 1,
+                "message": "Emergency contacts fetched successfully",
+                "payload": {"contacts": contact_sections},
+            }, 200
+        except Exception as e:
+            return {"status": 0, "message": f"Failed to fetch contacts: {str(e)}"}, 500
+
+
+class GetGuardianEmergencyInfo(Resource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        try:
+            emergency_info = DBHelper.find_all(
+                table_name="guardian_emergency_info",
+                select_fields=["name", "relation", "phone", "details"],
+                filters={"user_id": uid},
+            )
+            info_list = []
+            for info in emergency_info:
+                info_list.append(
+                    {
+                        "name": info["name"],
+                        "relationship": info["relation"],
+                        "phone": info["phone"] or "N/A",
+                        "details": info["details"] or "N/A",
+                    }
+                )
+            return {
+                "status": 1,
+                "message": "Guardian emergency info fetched successfully",
+                "payload": {"emergencyInfo": info_list},
+            }, 200
+        except Exception as e:
+            return {
+                "status": 0,
+                "message": f"Failed to fetch emergency info: {str(e)}",
+            }, 500
+
+
+class GetFamilyMembers(Resource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        members = DBHelper.find_all(
+            table_name="family_members",
+            select_fields=[
+                "name",
+                "relationship",
+                "email",
+                "phone",
+                "method",
+                "permissions",
+                "shared_items",
+            ],
+            filters={"user_id": uid},
+        )
+        familyMembers = []
+        for member in members:
+            familyMembers.append(
+                {
+                    "name": member["name"],
+                    "relationship": member["relationship"]
+                    .replace("❤", "")
+                    .replace("👶", "")
+                    .replace("👴", ""),
+                    "contact": member["email"] or member["phone"] or "N/A",
+                    "method": member["method"],
+                    "permissions": member["permissions"]["type"],
+                    "shared_items": ", ".join(
+                        f"{cat}: {item}"
+                        for cat, items in member["shared_items"].items()
+                        for item in items
+                    )
+                    or "None",
+                }
+            )
+        return {
+            "status": 1,
+            "message": "Family members fetched successfully",
+            "payload": {"members": familyMembers},
         }
 
 
@@ -461,122 +683,7 @@ class GetFamilyMembers(Resource):
         }
 
 
-class GetContacts(Resource):
-    @auth_required(isOptional=True)
-    def get(self, uid, user):
-        try:
-            contacts = DBHelper.find_all(
-                table_name="contacts",
-                select_fields=[
-                    "id",
-                    "name",
-                    "role",
-                    "phone",
-                    "added_by",
-                    "added_time",
-                ],
-                filters={"user_id": uid},
-            )
-
-            def serialize_datetime(dt):
-                return dt.isoformat() if isinstance(dt, datetime) else None
-
-            # Group contacts by role
-            grouped_by_role = {}
-            for contact in contacts:
-                role = contact["role"].lower()
-                section_key = (
-                    "emergency"
-                    if "emergency" in role
-                    else (
-                        "school"
-                        if "school" in role
-                        else (
-                            "professional"
-                            if any(
-                                r in role for r in ["doctor", "dentist", "pediatrician"]
-                            )
-                            else "other"
-                        )
-                    )
-                )
-                if section_key not in grouped_by_role:
-                    grouped_by_role[section_key] = []
-                grouped_by_role[section_key].append(
-                    {
-                        "id": contact["id"],
-                        "name": contact["name"],
-                        "role": contact["role"],
-                        "phone": contact["phone"] or "N/A",
-                        "added_by": contact["added_by"],
-                        "added_time": serialize_datetime(contact["added_time"]),
-                    }
-                )
-
-            # Format into sections
-            contact_sections = [
-                {
-                    "title": (
-                        "Emergency Services"
-                        if key == "emergency"
-                        else (
-                            "Schools"
-                            if key == "school"
-                            else (
-                                "Professional Services"
-                                if key == "professional"
-                                else "Other Contacts"
-                            )
-                        )
-                    ),
-                    "type": key,
-                    "items": items,
-                }
-                for key, items in grouped_by_role.items()
-            ]
-            # print(contact_sections)
-            return {
-                "status": 1,
-                "message": "Emergency contacts fetched successfully",
-                "payload": {"contacts": contact_sections},
-            }, 200
-        except Exception as e:
-            return {"status": 0, "message": f"Failed to fetch contacts: {str(e)}"}, 500
-
-
 # models.py (Update GetGuardianEmergencyInfo)
-class GetGuardianEmergencyInfo(Resource):
-    @auth_required(isOptional=True)
-    def get(self, uid, user):
-        try:
-            emergency_info = DBHelper.find_all(
-                table_name="guardian_emergency_info",
-                select_fields=["name", "relation", "phone", "details"],
-                filters={"user_id": uid},
-            )
-            info_list = []
-            for info in emergency_info:
-                info_list.append(
-                    {
-                        "name": info["name"],
-                        "relationship": info[
-                            "relation"
-                        ],  # Map 'relation' to 'relationship'
-                        "phone": info["phone"] or "N/A",
-                        "details": info["details"] or "N/A",
-                    }
-                )
-            # print(info_list)
-            return {
-                "status": 1,
-                "message": "Guardian emergency info fetched successfully",
-                "payload": {"emergencyInfo": info_list},
-            }, 200
-        except Exception as e:
-            return {
-                "status": 0,
-                "message": f"Failed to fetch emergency info: {str(e)}",
-            }, 500
 
 
 class GetFamilyTasks(Resource):
@@ -743,8 +850,8 @@ def send_invitation_email(
 
 
 class AddNotes(Resource):
-    @auth_required(isOptional=True)
-    def post(self, uid=None, user=None):
+    @auth_required(isOptional=True)  # This decorator injects uid and user
+    def post(self, uid=None, user=None):  # ✅ Accept injected args here
         try:
             inputData = request.get_json(force=True)
         except Exception as e:
@@ -765,7 +872,8 @@ class AddNotes(Resource):
         try:
             new_note_id = DBHelper.insert(
                 "notes_lists",
-                return_column="id",
+                return_column="user_id",
+                user_id=uid,
                 title=title,
                 description=description,
                 category_id=category_id,
@@ -783,7 +891,6 @@ class AddNotes(Resource):
                 },
             }
         except Exception as e:
-            # logger.exception("Failed to add note")
             return {"status": 0, "message": f"Failed to add note: {str(e)}"}, 500
 
 
@@ -791,31 +898,128 @@ class GetNotes(Resource):
     @auth_required(isOptional=True)
     def get(self, uid=None, user=None):
         try:
-            notes = DBHelper.find_all(
-                "notes_lists",
-                # filters={"user_id": uid},
-                # select_fields=[
-                #     "id",
-                #     "title",
-                #     "description",
-                #     "category_id",
-                #     "created_at",
-                #     "updated_at",
-                # ],
+            # ✅ Fetch only the notes for the current user
+            select_fields = [
+                "id",
+                "title",
+                "description",
+                "category_id",
+                "created_at",
+                "updated_at",
+            ]
+            user_notes = DBHelper.find(
+                "notes_lists", filters={"user_id": uid}, select_fields=select_fields
             )
-            # notes1 = []
-            # Convert datetime fields to strings
-            for note in notes:
-                if isinstance(note.get("created_at"), datetime):
-                    note["created_at"] = note["created_at"].isoformat()
-                if isinstance(note.get("updated_at"), datetime):
-                    note["updated_at"] = note["updated_at"].isoformat()
-                # notes1.append(note)
+
+            notes = []
+            for note in user_notes:
+                notes.append(
+                    {
+                        "id": note["id"],
+                        "title": note["title"],
+                        "description": note["description"],
+                        "category_id": note["category_id"],
+                        "created_at": (
+                            note["created_at"].isoformat()
+                            if isinstance(note["created_at"], datetime)
+                            else note["created_at"]
+                        ),
+                        "updated_at": (
+                            note["updated_at"].isoformat()
+                            if isinstance(note["updated_at"], datetime)
+                            else note["updated_at"]
+                        ),
+                    }
+                )
 
             return {
                 "status": 1,
                 "message": "Notes fetched successfully",
                 "payload": notes,
             }
+
         except Exception as e:
-            return {"status": 0, "message": f"Failed to fetch notes: {str(e)}"}
+            return {"status": 0, "message": f"Failed to fetch notes: {str(e)}"}, 500
+
+
+class AddProject(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        input_data = request.get_json(silent=True)
+        project_id = input_data.get("project_id")
+
+        if project_id:
+
+            DBHelper.update_one(
+                table_name="projects",
+                filters={"project_id": project_id, "uid": uid},
+                updates={
+                    "title": input_data.get("title"),
+                    "description": input_data.get("description"),
+                    "due_date": input_data.get("due_date"),
+                    "meta": input_data.get("meta", []),
+                    "progress": input_data.get("progress", 0),
+                    "updated_at": datetime.utcnow(),
+                },
+            )
+            return {"status": 1, "message": "Project updated successfully"}
+        else:
+            # Create new project
+            # generated_id = str(uuid.uuid4())
+            generated_id = uniqueId(digit=5, isNum=True)
+            DBHelper.insert(
+                table_name="projects",
+                return_column="project_id",
+                project_id=generated_id,
+                uid=uid,
+                title=input_data.get("title"),
+                description=input_data.get("description"),
+                due_date=input_data.get("due_date"),
+                meta=input_data.get("meta", []),
+                progress=input_data.get("progress", 0),
+            )
+            return {
+                "status": 1,
+                "message": "Project added successfully",
+                "payload": {"project_id": generated_id},
+            }
+
+
+class GetProjects(Resource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        projects = DBHelper.find_all(
+            table_name="projects",
+            filters={"uid": uid},
+            select_fields=[
+                "project_id",
+                "title",
+                "description",
+                "due_date",
+                "meta",
+                "progress",
+                "created_at",
+                "updated_at",
+            ],
+        )
+
+        formatted = []
+        for p in projects:
+            formatted.append(
+                {
+                    "project_id": p["project_id"],
+                    "title": p["title"],
+                    "description": p["description"],
+                    "due_date": p["due_date"].isoformat() if p["due_date"] else None,
+                    "meta": p["meta"],
+                    "progress": p["progress"],
+                    "created_at": p["created_at"].isoformat(),
+                    "updated_at": p["updated_at"].isoformat(),
+                }
+            )
+
+        return {
+            "status": 1,
+            "message": "Projects fetched successfully",
+            "payload": {"projects": formatted},
+        }
