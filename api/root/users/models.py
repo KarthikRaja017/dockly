@@ -322,7 +322,7 @@ class OtpVerification(Resource):
                     shared = DBHelper.insert(
                         table_name="users_access_hubs",
                         user_id=uid.get("uid"),
-                        id=f"{uid.get("uid")}-{id}",
+                        id=f"{uid.get('uid')}-{id}",
                         hubs=id,
                         is_active=Status.ACTIVE.value,
                         return_column="hubs",
