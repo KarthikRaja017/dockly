@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { AxiosResponse } from "axios";
 import { emailVerification, signInVerification } from "../../services/apiConfig";
 import { showNotification } from "../../utils/notification";
+import DocklyLoader from "../../utils/docklyLoader";
 
 const { Title, Text, Link } = Typography;
 
@@ -21,6 +22,7 @@ const VerifyEmailPage: React.FC = () => {
   const [otp, setOtp] = useState(["", "", "", ""]);
   const router = useRouter();
   const params = useParams() || {};
+  const [loading, setLoading] = useState(false);
   const username = params.username;
   const [userId, setUserId] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
@@ -80,6 +82,7 @@ const VerifyEmailPage: React.FC = () => {
   };
 
   const handleContinue = async () => {
+    setLoading(true)
     const code = otp.join("");
     if (code.length > 4) {
       alert("Please enter a valid 4-digit code");
@@ -103,7 +106,12 @@ const VerifyEmailPage: React.FC = () => {
         router.push(`/${username}/dashboard`);
       }
     }
+    setLoading(false)
   };
+
+  if (loading) {
+    return <DocklyLoader />
+  }
 
   return (
     <Row

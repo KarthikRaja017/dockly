@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ROUTES } from "../../app/routes";
-import {getCurrentUser}  from "../../services/apiConfig";
+import { getCurrentUser } from "../../services/apiConfig";
 import MainLayout from "./mainLayout";
 import { UserContext } from "../../app/userContext";
 import { Spin } from "antd";
+import DocklyLoader from "../../utils/docklyLoader";
 interface AuthProviderProps {
   children: React.ReactNode;
 }
@@ -21,11 +22,14 @@ export default function AuthProvider({ children }: AuthProviderProps) {
   const router = useRouter();
   const pathname = usePathname() || "";
   const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
 
   const isPublicRoute = (path: string) => {
     return PUBLIC_ROUTE_PATTERNS.some((pattern) => pattern.test(path));
   };
   const fetchUser = async () => {
+    setLoading(true)
     const token = localStorage.getItem("Dtoken");
     const uid = localStorage.getItem("userId");
     // const storedSessionId = localStorage.getItem("session_id");
@@ -55,6 +59,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
         router.replace(ROUTES.home);
       }
     }
+    setLoading(false)
   };
 
   useEffect(() => {
@@ -64,6 +69,11 @@ export default function AuthProvider({ children }: AuthProviderProps) {
   if (user === undefined) {
     return <Spin />;
   }
+
+  if (loading) {
+    return <DocklyLoader />
+  }
+
   return (
     <UserContext.Provider value={user}>
       {user ? <MainLayout>{children}</MainLayout> : children}

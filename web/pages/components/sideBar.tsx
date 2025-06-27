@@ -252,6 +252,7 @@ const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
         {menuGroup("Command Center", [
           { key: "dashboard", icon: <RiDashboardFill />, label: "Dashboard" },
           { key: "planner", icon: <CalendarCheckIcon />, label: "Planner" },
+          { key: "family-hub", icon: <FluentColorPeopleCommunity48 />, label: "Family" },
         ])}
 
         {menuGroup("Hubs", hubMenuItems)}
