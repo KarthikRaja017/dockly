@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-// export const API_URL = 'http://192.168.1.14:5000/server/api';
+// export const API_URL = 'http://192.168.1.8:5000/server/api';
 export const API_URL = 'https://dockly.onrender.com/server/api'; //DEPLOYMENT
 
 export const api = axios.create({

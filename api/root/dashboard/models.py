@@ -119,7 +119,7 @@ class GetUserHubs(Resource):
             field="hid",
             values=hub_ids,
         )
-        print(f"hubs_details: {hubs_details}")
+        # print(f"hubs_details: {hubs_details}")
 
         utilities_details = DBHelper.find_in(
             table_name="utilities",

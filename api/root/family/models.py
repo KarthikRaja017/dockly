@@ -93,6 +93,7 @@ class AddFamilyMembers(Resource):
     @auth_required(isOptional=True)
     def post(self, uid, user):
         inputData = request.get_json(silent=True)
+        print(f"inputData: {inputData}")
         # sharedKeys = list(inputData.get("sharedItems", {}).keys())
         sharedComponents = []
         sharedItems = []

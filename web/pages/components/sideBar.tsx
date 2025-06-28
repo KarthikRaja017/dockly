@@ -31,6 +31,7 @@ import { motion } from "framer-motion";
 import { CalendarCheckIcon } from "lucide-react";
 import { getUserHubs } from "../../services/dashboard";
 import { useCurrentUser } from "../../app/userContext";
+import DocklyLoader from "../../utils/docklyLoader";
 
 const { Text } = Typography;
 const { Sider } = Layout;
@@ -107,6 +108,8 @@ const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
     const username = currentUser?.user_name || ""
     const [hubs, setHubs] = useState([]);
     const [utilities, setUtilities] = useState([]);
+    const [loading, setLoading] = useState(false);
+
 
     // useEffect(() => {
     //   const username = localStorage.getItem("username") || "";
@@ -193,6 +196,10 @@ const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
       label: hub.title,
     }));
 
+    if (loading) {
+      return <DocklyLoader />
+    }
+
     return (
       <Sider
         ref={ref as RefObject<HTMLDivElement>}
@@ -252,7 +259,7 @@ const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
         {menuGroup("Command Center", [
           { key: "dashboard", icon: <RiDashboardFill />, label: "Dashboard" },
           { key: "planner", icon: <CalendarCheckIcon />, label: "Planner" },
-          { key: "family-hub", icon: <FluentColorPeopleCommunity48 />, label: "Family" },
+          // { key: "family-hub", icon: <FluentColorPeopleCommunity48 />, label: "Family" },
         ])}
 
         {menuGroup("Hubs", hubMenuItems)}
