@@ -5,7 +5,7 @@ from email.message import EmailMessage
 import json
 import re
 import smtplib
-from root.common import DocklyUsers, Status
+from root.common import DocklyUsers, Permissions, Status
 from root.utilis import uniqueId
 from root.users.models import generate_otp, send_otp_email
 from root.config import EMAIL_PASSWORD, EMAIL_SENDER, SMTP_PORT, SMTP_SERVER, WEB_URL
@@ -93,11 +93,11 @@ class AddFamilyMembers(Resource):
     @auth_required(isOptional=True)
     def post(self, uid, user):
         inputData = request.get_json(silent=True)
-        print(f"inputData: {inputData}")
         # sharedKeys = list(inputData.get("sharedItems", {}).keys())
         sharedComponents = []
         sharedItems = []
         sharedKeys = []
+        otp = generate_otp()
 
         for key, value in inputData["sharedItems"].items():
             sharedKeys.append(key)
@@ -119,17 +119,55 @@ class AddFamilyMembers(Resource):
         existingUser = DBHelper.find_one(
             "users",
             filters={"email": inputData["email"]},
-            select_fields=["uid", "duser"],
+            select_fields=["uid", "duser", "user_name"],
         )
 
         if existingUser:
-            return
+            if existingUser["duser"] == DocklyUsers.Guests.value:
+                return {
+                    "status": 0,
+                    "message": "This email is already registered as a guest.",
+                }
+            elif existingUser["duser"] == DocklyUsers.PaidMember.value:
+                aid = uniqueId(digit=7, isNum=True)
+                rusername = existingUser["user_name"]
+                fid = DBHelper.insert(
+                    "family_members",
+                    return_column="id",
+                    user_id=user["uid"],
+                    name=inputData.get("name", ""),
+                    relationship=inputData.get("relationship", ""),
+                    access_code=inputData.get("accessCode", ""),
+                    method=inputData.get("method", "Email"),
+                    # access_mapping_code=aid,
+                    # permissions="",
+                    # shared_items="",
+                )
+                for id in sharedItemsIds:
+                    aid = DBHelper.insert(
+                        "family_hubs_access_mapping",
+                        return_column="id",
+                        # id=aid,
+                        user_id=user["uid"],
+                        family_member_id=fid,
+                        hubs=id,
+                        permissions=Permissions.Read.value,
+                    )
+            encodedToken = "<encoded_token>"
+            sendInviteEmail(inputData, user, rusername, encodedToken)
+            otpResponse = send_otp_email(inputData["email"], otp)
+
+            return {
+                "status": 1,
+                "message": "Family members added successfully",
+                "payload": {},
+            }
+
         parts = re.split(r"[\s_-]+", rname.strip())
         relationName = parts[0].lower() + "".join(
             word.capitalize() for word in parts[1:]
         )
         rusername = uniqueId(digit=3, isNum=True, prefix=relationName)
-        otp = generate_otp()
         uid = uniqueId(digit=5, isNum=True, prefix="USER")
         payload = json.dumps(
             {
@@ -171,8 +209,9 @@ class AddFamilyMembers(Resource):
             relationship=inputData.get("relationship", ""),
             access_code=inputData.get("accessCode", ""),
             method=inputData.get("method", "Email"),
-            permissions="",
-            shared_items="",
+            # access_mapping_code =
+            # permissions="",
+            # shared_items="",
         )
 
         return {
@@ -423,49 +462,6 @@ class GetGuardianEmergencyInfo(Resource):
                 "status": 0,
                 "message": f"Failed to fetch emergency info: {str(e)}",
             }, 500
-
-
-class GetFamilyMembers(Resource):
-    @auth_required(isOptional=True)
-    def get(self, uid, user):
-        members = DBHelper.find_all(
-            table_name="family_members",
-            select_fields=[
-                "name",
-                "relationship",
-                "email",
-                "phone",
-                "method",
-                "permissions",
-                "shared_items",
-            ],
-            filters={"user_id": uid},
-        )
-        familyMembers = []
-        for member in members:
-            familyMembers.append(
-                {
-                    "name": member["name"],
-                    "relationship": member["relationship"]
-                    .replace("❤", "")
-                    .replace("👶", "")
-                    .replace("👴", ""),
-                    "contact": member["email"] or member["phone"] or "N/A",
-                    "method": member["method"],
-                    "permissions": member["permissions"]["type"],
-                    "shared_items": ", ".join(
-                        f"{cat}: {item}"
-                        for cat, items in member["shared_items"].items()
-                        for item in items
-                    )
-                    or "None",
-                }
-            )
-        return {
-            "status": 1,
-            "message": "Family members fetched successfully",
-            "payload": {"members": familyMembers},
-        }
 
 
 class AddFamilyGuidelines(Resource):
@@ -1024,3 +1020,93 @@ class GetProjects(Resource):
             "message": "Projects fetched successfully",
             "payload": {"projects": formatted},
         }
+
+
+class AddTask(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        data = request.get_json(silent=True)
+
+        DBHelper.insert(
+            table_name="tasks",
+            return_column="uid",
+            uid=uid,
+            project_id=data.get("project_id"),
+            title=data.get("title"),
+            due_date=data.get("due_date"),
+            assignee=data.get("assignee"),
+            type=data.get("type"),
+            completed=data.get("completed", False),
+        )
+
+        return {"status": 1, "message": "Task added successfully"}
+
+
+class GetTasks(Resource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        project_id = request.args.get("project_id")
+
+        tasks = DBHelper.find_all(
+            table_name="tasks",
+            filters={"uid": uid, "project_id": project_id},
+            select_fields=[
+                "task_id",
+                "title",
+                "due_date",
+                "assignee",
+                "type",
+                "completed",
+            ],
+        )
+
+        # Format the task list to convert 'due_date' to string
+        formatted_tasks = []
+        for t in tasks:
+            formatted_tasks.append(
+                {
+                    "task_id": t["task_id"],
+                    "title": t["title"],
+                    "due_date": t["due_date"].isoformat() if t["due_date"] else None,
+                    "assignee": t["assignee"],
+                    "type": t["type"],
+                    "completed": t["completed"],
+                }
+            )
+
+        return {
+            "status": 1,
+            "message": "Tasks fetched",
+            "payload": {"tasks": formatted_tasks},
+        }
+
+
+class UpdateTask(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        data = request.get_json(silent=True)
+        task_id = data.get("task_id")
+
+        if not task_id:
+            return {"status": 0, "message": "Task ID is required"}, 400
+
+        # Update only the provided fields
+        updates = {
+            "title": data.get("title"),
+            "due_date": data.get("due_date"),
+            "assignee": data.get("assignee"),
+            "type": data.get("type"),
+            "completed": data.get("completed"),
+            "updated_at": datetime.utcnow(),
+        }
+
+        # Remove keys with None values to avoid overwriting
+        updates = {k: v for k, v in updates.items() if v is not None}
+
+        DBHelper.update_one(
+            table_name="tasks",
+            filters={"task_id": task_id, "uid": uid},
+            updates=updates,
+        )
+
+        return {"status": 1, "message": "Task updated successfully"}

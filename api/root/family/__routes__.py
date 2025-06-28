@@ -29,14 +29,17 @@ family_api.add_resource(SendInvitation, "/send/invitation")
 family_api.add_resource(AddNotes, "/family/add/notes")
 family_api.add_resource(GetNotes, "/family/get/notes")
 
-
-family_api.add_resource(AddProject, "/add/project")
-family_api.add_resource(GetProjects, "/get/projects")
-
-
 family_api.add_resource(AddPet, "/add/pet")
 family_api.add_resource(GetPets, "/get/pets")
 family_api.add_resource(AddContacts, "/add/contacts")
 family_api.add_resource(GetContacts, "/get/contacts")
 family_api.add_resource(AddGuardianEmergencyInfo, "/add/guardian-emergency-info")
 family_api.add_resource(GetGuardianEmergencyInfo, "/get/guardian-emergency-info")
+
+
+family_api.add_resource(AddProject, "/add/project")
+family_api.add_resource(GetProjects, "/get/projects")
+
+family_api.add_resource(AddTask, "/add/task")
+family_api.add_resource(GetTasks, "/get/tasks")
+family_api.add_resource(UpdateTask, "/update/task")

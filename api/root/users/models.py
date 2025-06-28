@@ -26,6 +26,8 @@ def generate_otp():
 
 
 def send_otp_email(email, otp):
+    print(f"otp: {otp}")
+    print(f"email: {email}")
     try:
         msg = EmailMessage()
         msg["Subject"] = "Your OTP Code for Dockly"
@@ -199,6 +201,7 @@ class SaveUserEmail(Resource):
                 )
             otp = generate_otp()
             otpResponse = send_otp_email(email, otp)
+            print(f"otpResponse: {otpResponse}")
             # otpResponse = {"otp": otp, "email": email}
             username = (
                 existingUser.get("user_name", "")
@@ -224,6 +227,7 @@ class SaveUserEmail(Resource):
             )
             otp = generate_otp()
             otpResponse = send_otp_email(email, otp)
+            print(f"otpResponse: {otpResponse}")
             # otpResponse = {"otp": otp, "email": email}
             if existingUser:
                 uid = existingUser.get("uid")
@@ -259,7 +263,7 @@ class SaveUserEmail(Resource):
                     "message": "User registered and Otp sent Successfully",
                     "payload": {
                         "email": email,
-                        "otpStatus": otpResponse,
+                        # "otpStatus": otpResponse,
                         "uid": uid,
                         "username": username,
                         "duser": DocklyUsers.PaidMember.value,

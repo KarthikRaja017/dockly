@@ -69,7 +69,7 @@ export default FamilyHubPage;
 import { DeleteOutlined, EditOutlined, ExportOutlined, EyeOutlined, PhoneOutlined, PlusOutlined, SafetyOutlined } from '@ant-design/icons';
 import { Input as AntInput, Button, Col, Form, Input, message, Modal, Popconfirm, Row, Select, Space } from 'antd';
 
-import { addContacts, addGuardians, addNote, addProject, getAllNotes, getGuardians, getPets, getProjects, getUserContacts } from '../../../services/family'; // Adjust import based on your setup
+import { addContacts, addGuardians, addNote, addProject, addTask, getAllNotes, getGuardians, getPets, getProjects, getTasks, getUserContacts, updateTask } from '../../../services/family'; // Adjust import based on your setup
 
 const { TextArea } = AntInput;
 
@@ -1243,7 +1243,7 @@ type Task = {
 };
 
 type Project = {
-  id: number;
+  project_id: string;
   title: string;
   description: string;
   due_date: string;
@@ -1260,7 +1260,10 @@ const assignees = [
   { label: 'All', value: 'all' },
 ];
 
-
+type Note = {
+  title: string;
+  description: string;
+};
 
 const FamilyTasks: React.FC = () => {
   const [uid, setUid] = useState<string | null>(null);
@@ -1269,11 +1272,9 @@ const FamilyTasks: React.FC = () => {
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDescription, setNewProjectDescription] = useState('');
   const [newProjectMeta, setNewProjectMeta] = useState<string>('');
-  const [loading, setLoading] = useState(false);
-
   const [editTaskModal, setEditTaskModal] = useState(false);
-  const [editingTask, setEditingTask] = useState<{ projectId: number; task: Task | null }>({
-    projectId: -1,
+  const [editingTask, setEditingTask] = useState<{ projectId: string; task: Task | null }>({
+    projectId: '',
     task: null,
   });
 
@@ -1287,31 +1288,48 @@ const FamilyTasks: React.FC = () => {
   }, []);
 
   const fetchProjects = async () => {
-    setLoading(true);
     try {
       const res = await getProjects();
       const rawProjects = res.data.payload.projects || [];
 
-      const transformedProjects = rawProjects.map((proj: any, index: number) => ({
-        id: index,
-        title: proj.title,
-        description: proj.description,
-        meta: Object.values(proj.meta || {}),
-        due_date: proj.due_date,
-        progress: proj.progress,
-        tasks: [],
-      }));
+      const projectsWithTasks = await Promise.all(
+        rawProjects.map(async (proj: any) => {
+          // Fetch tasks for this specific project
+          const taskRes = await getTasks({ project_id: proj.project_id });
+          const rawTasks = taskRes.data.payload.tasks || [];
 
-      setProjects(transformedProjects);
+          const tasks = rawTasks.map((task: any, index: number) => ({
+            id: task.task_id || index + 1,
+            title: task.title,
+            assignee: task.assignee,
+            type: task.type,
+            completed: task.completed,
+            due: task.completed ? 'Completed' : 'Due today',
+            dueDate: task.due_date,
+          }));
+
+          return {
+            project_id: proj.project_id,
+            title: proj.title,
+            description: proj.description,
+            meta: Object.values(proj.meta || {}),
+            due_date: proj.due_date,
+            progress: tasks.length
+              ? Math.round((tasks.filter((t: any) => t.completed).length / tasks.length) * 100)
+              : 0,
+            tasks,
+          };
+        })
+      );
+
+      setProjects(projectsWithTasks);
     } catch (err) {
       console.error(err);
       message.error('Failed to load projects');
     }
-    setLoading(false);
   };
 
   const handleAddProject = async () => {
-    setLoading(true);
     if (!newProjectName.trim()) return;
     try {
       await addProject({
@@ -1330,68 +1348,116 @@ const FamilyTasks: React.FC = () => {
       console.error(error);
       message.error('Failed to add project');
     }
-    setLoading(false);
   };
 
-  const addTask = (projectId: number) => {
-    const newTaskId = Math.max(...projects.flatMap(p => p.tasks?.map(t => t.id) || [0])) + 1;
-    setProjects(prev =>
-      prev.map(project =>
-        project.id === projectId
-          ? {
-            ...project,
-            tasks: [
-              ...(project.tasks || []),
-              {
-                id: newTaskId,
-                title: 'New task',
-                assignee: 'All',
-                type: 'all',
-                completed: false,
-                due: 'Due today',
-                dueDate: dayjs().format('YYYY-MM-DD'),
-              },
-            ],
+  const addTaskToBackend = async (projectId: string) => {
+    if (!uid) return;
+    const project = projects.find(p => p.project_id === projectId);
+    if (!project) return;
+
+    const newTask = {
+      uid,
+      project_id: projectId,
+      title: 'New task',
+      assignee: 'All',
+      type: 'all',
+      due_date: dayjs().format('YYYY-MM-DD'),
+      completed: false,
+    };
+
+    try {
+      await addTask(newTask);
+
+      const newTaskObj: Task = {
+        id: Math.max(...project.tasks.map(t => t.id), 0) + 1,
+        title: 'New task',
+        assignee: 'All',
+        type: 'all',
+        completed: false,
+        due: 'Due today',
+        dueDate: newTask.due_date,
+      };
+
+      setProjects(prev =>
+        prev.map(p =>
+          p.project_id === projectId ? { ...p, tasks: [...p.tasks, newTaskObj] } : p
+        )
+      );
+    } catch (err) {
+      console.error(err);
+      message.error('Failed to add task');
+    }
+  };
+
+  const toggleTask = async (projectId: string, taskId: number) => {
+    const project = projects.find(p => p.project_id === projectId);
+    if (!project) return;
+
+    const task = project.tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const updatedStatus = !task.completed;
+
+    try {
+      // Update in backend
+      await updateTask({
+        task_id: task.id,
+        completed: updatedStatus,
+      });
+
+      // Update in frontend state
+      setProjects(prev =>
+        prev.map(project => {
+          if (project.project_id === projectId) {
+            const updatedTasks = project.tasks.map(t =>
+              t.id === taskId
+                ? { ...t, completed: updatedStatus, due: updatedStatus ? 'Completed' : 'Due today' }
+                : t
+            );
+            const progress = Math.round(
+              (updatedTasks.filter(t => t.completed).length / updatedTasks.length) * 100
+            );
+            return { ...project, tasks: updatedTasks, progress };
           }
-          : project
-      )
-    );
+          return project;
+        })
+      );
+    } catch (err) {
+      console.error(err);
+      message.error('Failed to update task status');
+    }
   };
 
-  const toggleTask = (projectId: number, taskId: number) => {
-    setProjects(prev =>
-      prev.map(project => {
-        if (project.id === projectId) {
-          const updatedTasks = project.tasks.map(task =>
-            task.id === taskId
-              ? { ...task, completed: !task.completed, due: !task.completed ? 'Completed' : 'Due today' }
-              : task
-          );
-          const progress = Math.round(
-            (updatedTasks.filter(t => t.completed).length / updatedTasks.length) * 100
-          );
-          return { ...project, tasks: updatedTasks, progress };
-        }
-        return project;
-      })
-    );
-  };
-
-  const updateEditedTask = () => {
+  const updateEditedTask = async () => {
     if (!editingTask.task) return;
 
-    setProjects(prev =>
-      prev.map(project => {
-        if (project.id === editingTask.projectId) {
-          const updatedTasks = project.tasks.map(task =>
-            task.id === editingTask.task!.id ? editingTask.task! : task
-          );
-          return { ...project, tasks: updatedTasks };
-        }
-        return project;
-      })
-    );
-    setEditTaskModal(false);
+    try {
+      await updateTask({
+        task_id: editingTask.task.id,
+        title: editingTask.task.title,
+        due_date: editingTask.task.dueDate,
+        assignee: editingTask.task.assignee,
+        type: editingTask.task.type,
+      });
+
+      setProjects(prev =>
+        prev.map(project => {
+          if (project.project_id === editingTask.projectId) {
+            const updatedTasks = project.tasks.map(task =>
+              task.id === editingTask.task!.id ? editingTask.task! : task
+            );
+            return { ...project, tasks: updatedTasks };
+          }
+          return project;
+        })
+      );
+
+      message.success('Task updated');
+      setEditTaskModal(false);
+    } catch (err) {
+      console.error(err);
+      message.error('Failed to update task');
+    }
   };
 
   const getAssigneeStyle = (type: string) => {
@@ -1405,9 +1471,8 @@ const FamilyTasks: React.FC = () => {
     };
     return { ...base, backgroundColor: colors[type]?.bg || '#eee', color: colors[type]?.color || '#333' };
   };
-  if (loading) {
-    return <DocklyLoader />
-  }
+
+
   return (
     <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
@@ -1424,7 +1489,7 @@ const FamilyTasks: React.FC = () => {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
         {projects.map(project => (
-          <div key={project.id} style={{ border: '1px solid #e5e7eb', padding: '16px', borderRadius: '8px' }}>
+          <div key={project.project_id} style={{ border: '1px solid #e5e7eb', padding: '16px', borderRadius: '8px' }}>
             <h3>{project.title}</h3>
             {project.description && <p style={{ fontSize: 12 }}>{project.description}</p>}
             {project.due_date && (
@@ -1454,7 +1519,7 @@ const FamilyTasks: React.FC = () => {
                     <input
                       type="checkbox"
                       checked={task.completed}
-                      onChange={() => toggleTask(project.id, task.id)}
+                      onChange={() => toggleTask(project.project_id, task.id)}
                     />
                     <div style={{ flex: 1 }}>{task.title}</div>
                     <div style={getAssigneeStyle(task.type)}>{task.assignee}</div>
@@ -1462,7 +1527,7 @@ const FamilyTasks: React.FC = () => {
                       size={14}
                       style={{ cursor: 'pointer', opacity: 0.6 }}
                       onClick={() => {
-                        setEditingTask({ projectId: project.id, task });
+                        setEditingTask({ projectId: project.project_id, task });
                         setEditTaskModal(true);
                       }}
                     />
@@ -1473,7 +1538,7 @@ const FamilyTasks: React.FC = () => {
             </div>
 
             <button
-              onClick={() => addTask(project.id)}
+              onClick={() => addTaskToBackend(project.project_id)}
               style={{
                 width: '100%',
                 padding: '8px',
@@ -1489,14 +1554,12 @@ const FamilyTasks: React.FC = () => {
         ))}
       </div>
 
-      {/* Add Project Modal */}
       <Modal
         open={modalVisible}
         title="Add New Project"
         onCancel={() => setModalVisible(false)}
         onOk={handleAddProject}
         okText="Add"
-        loading={loading}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <Input
@@ -1515,11 +1578,11 @@ const FamilyTasks: React.FC = () => {
             onChange={(_, dateString) => setNewProjectMeta(Array.isArray(dateString) ? dateString[0] || '' : dateString)}
             placeholder="Due Date"
             style={{ width: '100%' }}
+            disabledDate={current => current && current < dayjs().startOf('day')}
           />
         </div>
       </Modal>
 
-      {/* Edit Task Modal */}
       <Modal
         open={editTaskModal}
         title="Edit Task"
@@ -1539,7 +1602,7 @@ const FamilyTasks: React.FC = () => {
             placeholder="Task Name"
           />
           <DatePicker
-            value={editingTask.task?.due ? dayjs(editingTask.task.dueDate) : null}
+            value={editingTask.task?.dueDate ? dayjs(editingTask.task.dueDate) : null}
             onChange={(_, dateString) => {
               if (typeof dateString === 'string') {
                 setEditingTask(prev => ({
@@ -1552,11 +1615,10 @@ const FamilyTasks: React.FC = () => {
                 }));
               }
             }}
-
             placeholder="Due Date"
             style={{ width: '100%' }}
+            disabledDate={current => current && current < dayjs().startOf('day')}
           />
-
           <Select
             value={editingTask.task?.type}
             onChange={value => {

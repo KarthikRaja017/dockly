@@ -383,7 +383,7 @@ const Planner = () => {
                                 flexDirection: "column",
                             }}
                         >
-                            <div style={{ padding: "12px 16px", overflowY: "auto", flex: 1 }}>
+                            <div style={{ padding: "12px 16px", overflowY: "auto", height: "220px" }}>
                                 {goals.map((goal, index) => (
                                     <div
                                         key={goal.id}
@@ -460,7 +460,7 @@ const Planner = () => {
                                 flexDirection: "column",
                             }}
                         >
-                            <div style={{ padding: "12px 16px", overflowY: "auto", flex: 1 }}>
+                            <div style={{ padding: "12px 16px", overflowY: "auto", height: "220px" }}>
                                 {todos.map((todo) => (
                                     <div
                                         key={todo.id}
@@ -540,7 +540,9 @@ const Planner = () => {
                             <Row
                                 gutter={[8, 8]}
                                 wrap={true}
-                                style={{ padding: "12px 16px", overflowY: "auto", flex: 1 }}
+                                style={{
+                                    padding: "12px 16px", overflowY: "auto", height: "220px"
+                                }}
                             >
                                 {projects.map((project) => (
                                     <Col key={project.id} span={12}>

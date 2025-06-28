@@ -337,3 +337,15 @@ export async function getProjects() {
     params: {},
   });
 }
+
+export async function addTask(params: any) {
+  return api.post('/add/task', params);
+}
+
+export async function getTasks(params: any) {
+  return api.get('/get/tasks', { params });
+}
+
+export async function updateTask(params: any) {
+  return api.post('/update/task', params);
+}
