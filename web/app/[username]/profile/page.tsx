@@ -106,7 +106,7 @@ const ProfilePage: React.FC = () => {
 
   return (
     <div>
-      <Header isHovered={false} /> {/* Add Header */}
+      {/* <Header isHovered={false} /> Add Header */}
       <div
         style={{
           padding: "24px",
