@@ -156,11 +156,11 @@ const HomeManagement: React.FC = () => {
   const [customSectionForm] = Form.useForm();
 
   const router = useRouter();
-  
+
   useEffect(() => {
     const username = localStorage.getItem("username") || "";
     if (localStorage.getItem('home') === null) {
-      router.push(`/${username}/home/setup`);
+      router.push(`/${username}/home-hub/setup`);
     }
   }, []);
 

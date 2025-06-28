@@ -59,7 +59,7 @@ export default function BankBoardPage() {
 
   useEffect(() => {
     if (!loading && (!bankDetails || bankDetails.length === 0)) {
-      router.push(`/${username}/finance/setup`);
+      router.push(`/${username}/finance-hub/setup`);
     }
   }, [loading, bankDetails]);
 

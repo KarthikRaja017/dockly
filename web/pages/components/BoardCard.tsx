@@ -201,17 +201,16 @@ const YourBoards: React.FC = () => {
     items: { type: string; text: string }[];
   };
   const [boards, setBoards] = useState<BoardItem[]>([])
-  console.log("🚀 ~ boards:", boards)
   const currentUser = useCurrentUser();
   const username = currentUser?.user_name;
   const handleAddBoard = () => setIsModalOpen(true);
   const handleCloseModal = () => setIsModalOpen(false);
 
   const boardOptions = [
-    { title: 'Home', icon: '🏠', description: 'Manage home-related records', path: '/home/setup' },
-    { title: 'Finance', icon: '💰', description: 'Track financial documents', path: '/finance/setup' },
-    { title: 'Health', icon: '❤️', description: 'Health and medical files', path: '/health/setup' },
-    { title: 'Family', icon: '👨‍👩‍👧‍👦', description: 'Family accounts and details', path: '/family/setup' },
+    { title: 'Home', icon: '🏠', description: 'Manage home-related records', path: '/home-hub/setup' },
+    { title: 'Finance', icon: '💰', description: 'Track financial documents', path: '/finance-hub/setup' },
+    { title: 'Health', icon: '❤️', description: 'Health and medical files', path: '/health-hub/setup' },
+    { title: 'Family', icon: '👨‍👩‍👧‍👦', description: 'Family accounts and details', path: '/family-hub/setup' },
   ];
   // const boards: {
   //   icon: React.ReactNode;

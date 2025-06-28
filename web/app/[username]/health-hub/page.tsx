@@ -29,7 +29,7 @@ const HealthDashboard = () => {
     const username = localStorage.getItem("username") || "";
     setUsername(username);
     if (localStorage.getItem('health') === null) {
-      router.push(`/${username}/health/setup`);
+      router.push(`/${username}/health-hub/setup`);
     }
   }, []);
 

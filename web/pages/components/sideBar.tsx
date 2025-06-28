@@ -172,12 +172,14 @@ const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
       </div>
     );
     const getUserMenus = async () => {
+      setLoading(true);
       const response = await getUserHubs({})
       const { status, payload } = response.data;
       if (status) {
         setHubs(payload.hubs)
         setUtilities(payload.utilities)
       }
+      setLoading(false);
     }
 
     useEffect(() => {
