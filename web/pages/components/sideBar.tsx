@@ -263,7 +263,13 @@ const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
         ])}
 
         {menuGroup("Hubs", hubMenuItems)}
-        {menuGroup("Utilities", utilitiesMenuItems)}
+        {/* {menuGroup("Utilities", utilitiesMenuItems)} */}
+        {menuGroup("Utilities", [
+          { key: "notes-Lists", icon: <TwemojiPuzzlePiece />, label: "Notes" },
+          { key: "bookmarks", icon: <FxemojiCloud />, label: "Bookmarks" },
+          { key: "files", icon: <FxemojiCloud />, label: "Files" },
+          { key: "vault", icon: <IconParkFolderLock />, label: "Vault" },
+        ])}
         {!collapsed && (
           <motion.div
             whileHover={{ scale: 1.02 }}
