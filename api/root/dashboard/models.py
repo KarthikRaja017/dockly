@@ -99,16 +99,16 @@ class GetUserHubs(Resource):
             ],
             filters={"user_id": uid},
         )
-        utilities = DBHelper.find_all(
-            table_name="users_access_utilities",
-            select_fields=[
-                "id",
-                "utilities",
-            ],
-            filters={"user_id": uid},
-        )
+        # utilities = DBHelper.find_all(
+        #     table_name="users_access_utilities",
+        #     select_fields=[
+        #         "id",
+        #         "utilities",
+        #     ],
+        #     filters={"user_id": uid},
+        # )
         hub_ids = [row["hubs"] for row in hubs]
-        utilities_ids = [row["utilities"] for row in utilities]
+        # utilities_ids = [row["utilities"] for row in utilities]
 
         if not hub_ids:
             return {"status": 1, "payload": {"hubs": []}}
@@ -121,18 +121,18 @@ class GetUserHubs(Resource):
         )
         # print(f"hubs_details: {hubs_details}")
 
-        utilities_details = DBHelper.find_in(
-            table_name="utilities",
-            select_fields=["utid", "name", "title"],
-            field="utid",
-            values=utilities_ids,
-        )
+        # utilities_details = DBHelper.find_in(
+        #     table_name="utilities",
+        #     select_fields=["utid", "name", "title"],
+        #     field="utid",
+        #     values=utilities_ids,
+        # )
         userHubs = []
         userUtilities = []
         for hubs in hubs_details:
             userHubs.append(hubs)
 
-        for utilities in utilities_details:
-            userUtilities.append(utilities)
+        # for utilities in utilities_details:
+        #     userUtilities.append(utilities)
 
         return {"status": 1, "payload": {"hubs": userHubs, "utilities": userUtilities}}

@@ -28,12 +28,22 @@ import {
   UserOutlined,
   LogoutOutlined,
   ToolOutlined,
+  MenuUnfoldOutlined,
+  MenuFoldOutlined,
 } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import { useCurrentUser } from "../../app/userContext";
 import { ACTIVE_BG_COLOR, capitalizeEachWord, DEFAULT_TEXT_COLOR, PRIMARY_COLOR } from "../../app/comman";
 
-const CustomHeader = ({ isHovered }: { isHovered: boolean }) => {
+const CustomHeader = ({
+  isHovered,
+  collapsed,
+  setCollapsed,
+}: {
+  isHovered: boolean;
+  collapsed: boolean;
+  setCollapsed: (collapsed: boolean) => void;
+}) => {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -101,6 +111,17 @@ const CustomHeader = ({ isHovered }: { isHovered: boolean }) => {
           transition: "margin-left 0.3s ease, padding 0.3s ease",
         }}
       >
+        <Button
+          type="text"
+          icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+          onClick={() => setCollapsed(!collapsed)}
+          style={{
+            fontSize: "20px",
+            width: 48,
+            height: 48,
+          }}
+        />
+
         <Input
           prefix={<SearchOutlined style={{ color: "#007B8F" }} />}
           placeholder="Search accounts, files, notes - Ask Dockly AI"

@@ -1,9 +1,11 @@
 "use client";
-import { Layout } from "antd";
+import { Button, Layout } from "antd";
+import { MenuUnfoldOutlined, MenuFoldOutlined } from "@ant-design/icons";
 
 import Sidebar from "./sideBar";
 import Header from "./header";
 import { useIsHovered } from "../../app/comman";
+import { useState } from "react";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -15,19 +17,22 @@ interface MainLayoutProps {
 }
 
 export default function MainLayout({ children, colors }: MainLayoutProps) {
-  const [ref, isHovered] = useIsHovered();
+  // const [hoverRef, isHovered] = useIsHovered();
+  const [collapsed, setCollapsed] = useState(false);
 
   return (
     <Layout>
-      <Sidebar ref={ref} isHovered={isHovered} />
+      {/* <Sidebar ref={hoverRef} isHovered={isHovered} /> */}
+      <Sidebar collapsed={collapsed} isHovered={!collapsed} />
       <Layout
         style={{
-          marginLeft: isHovered ? 140 : 25,
+          marginLeft: !collapsed ? 140 : 25,
           transition: "all 0.3s ease",
           minHeight: "100vh",
         }}
       >
-        <Header isHovered={isHovered} />
+
+        <Header isHovered={!collapsed} collapsed={collapsed} setCollapsed={setCollapsed} />
         <div
           style={{
             background: "#fefefe",
