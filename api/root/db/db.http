@@ -5,18 +5,23 @@
 POST {{devPath}}/create-tables
 Content-Type: application/json
 
-
 # POST {{devPath}}/send/invitation
 # Content-Type: application/json
 
 # {
-#   "formData": {
+#   "sender_id": "YOUR_USER_ID",
+#   "receiver_id": "USERX09973",
+#   "message": "Satheesh K has invited you to access shared family utilities.",
+#   "task_type": "family_invitation",
+#   "action_required": true,
+#   "status": "pending",
+#   "metadata": {
 #     "name": "Satheesh K",
 #     "email": "ksatheeshreddy.cc@gmail.com",
 #     "relationship": "Other",
 #     "permissions": {
 #       "type": "Editor"
-#     }
-#   },
-#   "sharedItemsList": "Calendar, Notes, Photos"
+#     },
+#     "sharedItemsList": ["Calendar", "Notes", "Photos"]
+#   }
 # }

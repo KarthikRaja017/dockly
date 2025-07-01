@@ -6,6 +6,8 @@ import DocklyLoader from '../../../utils/docklyLoader';
 
 const FamilyHubPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
+  const [profileVisible, setProfileVisible] = useState(false);
+
   if (loading) {
     return <DocklyLoader />
   }
@@ -22,44 +24,48 @@ const FamilyHubPage: React.FC = () => {
         marginTop: 50
       }}
     >
-      <div
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '20px 30px',
-        }}
-      >
-        <BoardTitle />
-        <FamilyMembers />
+      {profileVisible && (
+        <FamilyHubMemberDetails />
+      )}
+      {!profileVisible && (
         <div
           style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 400px',
-            gap: '24px',
-            marginBottom: '24px',
+            flex: 1,
+            overflowY: 'auto',
+            padding: '20px 30px',
           }}
         >
-          <CustomCalendar data={sampleCalendarData} />
-          <UpcomingActivities />
+          <BoardTitle />
+          <FamilyMembers profileVisible={profileVisible} setProfileVisible={setProfileVisible} />
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 400px',
+              gap: '24px',
+              marginBottom: '24px',
+            }}
+          >
+            <CustomCalendar data={sampleCalendarData} />
+            <UpcomingActivities />
+          </div>
+
+          <FamilyNotes />
+
+          <FamilyTasks />
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '24px',
+              marginBottom: '24px',
+            }}
+          >
+            <GuardiansEmergencyInfo />
+            <ImportantContacts />
+          </div>
         </div>
-
-        <FamilyNotes />
-
-        <FamilyTasks />
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '24px',
-            marginBottom: '24px',
-          }}
-        >
-          <GuardiansEmergencyInfo />
-          <ImportantContacts />
-        </div>
-
-      </div>
+      )}
     </div>
   );
 };
@@ -2181,6 +2187,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import CalendarWithMeals, { sampleCalendarData } from '../../../pages/components/customCalendar';
 import CustomCalendar from '../../../pages/components/customCalendar';
 import FamilyMembers from '../../../pages/family-hub/components/familyMember';
+import FamilyHubMemberDetails from '../../../pages/family-hub/components/profile';
 
 const FamilyCalendar: React.FC = () => {
   const [activeView, setActiveView] = useState('week');

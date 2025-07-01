@@ -6,6 +6,7 @@ import Sidebar from "./sideBar";
 import Header from "./header";
 import { useIsHovered } from "../../app/comman";
 import { useState } from "react";
+import { count } from "console";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -19,23 +20,31 @@ interface MainLayoutProps {
 export default function MainLayout({ children, colors }: MainLayoutProps) {
   // const [hoverRef, isHovered] = useIsHovered();
   const [collapsed, setCollapsed] = useState(false);
+  const [hidden, setHidden] = useState(true);
 
   return (
-    <Layout>
+    <Layout style={{
+      background: "#f9fafb",
+      caretColor: "transparent"
+    }}>
       {/* <Sidebar ref={hoverRef} isHovered={isHovered} /> */}
-      <Sidebar collapsed={collapsed} isHovered={!collapsed} />
+      {!hidden && (
+        <Sidebar collapsed={collapsed} isHovered={!collapsed} />
+      )}
       <Layout
         style={{
-          marginLeft: !collapsed ? 140 : 25,
+          marginLeft: hidden ? 0 : !collapsed ? 140 : 25,
           transition: "all 0.3s ease",
           minHeight: "100vh",
         }}
       >
 
-        <Header isHovered={!collapsed} collapsed={collapsed} setCollapsed={setCollapsed} />
+        <Header isHovered={!collapsed} collapsed={collapsed} setCollapsed={setCollapsed} setHidden={setHidden} hidden={hidden}
+          count={6}
+        />
         <div
           style={{
-            background: "#fefefe",
+            background: "#f9fafb",
             minHeight: "calc(100vh - 64px)",
             caretColor: "transparent"
           }}

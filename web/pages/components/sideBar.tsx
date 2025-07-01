@@ -7,7 +7,7 @@ import React, {
   useState,
   RefObject,
 } from "react";
-import { Avatar, Divider, Layout, Menu, Typography } from "antd";
+import { Avatar, Divider, Layout, Menu, Tooltip, Typography } from "antd";
 import { usePathname, useRouter } from "next/navigation";
 import {
   ACTIVE_BG_COLOR,
@@ -85,7 +85,7 @@ const getHubIcon = (name: string) => {
 
 const getUtilityIcon = (key: string) => {
   switch (key) {
-    case "notesLists":
+    case "notes":
       return <TwemojiPuzzlePiece />;
     case "bookmarks":
       return <FxemojiCloud />;
@@ -148,7 +148,13 @@ const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ collapsed }, ref) =>
         items={(items ?? []).map(({ key, icon, label }) => ({
           key,
           icon: <motion.div whileHover={{ scale: 1.1 }}>{icon}</motion.div>,
-          label: collapsed ? null : label,
+          label: collapsed ? (
+            <Tooltip title={label} placement="right">
+              <span>{label}</span>
+            </Tooltip>
+          ) : (
+            label
+          ),
           style: {
             padding: 8,
             backgroundColor:
@@ -259,7 +265,7 @@ const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ collapsed }, ref) =>
       {menuGroup("Hubs", hubMenuItems)}
 
       {menuGroup("Utilities", [
-        { key: "notes-Lists", icon: <TwemojiPuzzlePiece />, label: "Notes" },
+        { key: "notes", icon: <TwemojiPuzzlePiece />, label: "Notes" },
         { key: "bookmarks", icon: <FxemojiCloud />, label: "Bookmarks" },
         { key: "files", icon: <FxemojiCloud />, label: "Files" },
         { key: "vault", icon: <IconParkFolderLock />, label: "Vault" },

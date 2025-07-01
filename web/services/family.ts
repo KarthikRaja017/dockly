@@ -349,3 +349,77 @@ export async function getTasks(params: any) {
 export async function updateTask(params: any) {
   return api.post('/update/task', params);
 }
+
+export async function addPersonalInfo(params: any): Promise<any> {
+  try {
+    const response = await api.post('/add/personal-info', params, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error adding personal info:', error);
+    throw error;
+  }
+}
+
+export async function getPersonalInfo(params: {
+  userId: string;
+}): Promise<any> {
+  try {
+    const response = await api.get('/get/personal-info', {
+      params,
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching personal info:', error);
+    throw error;
+  }
+}
+
+// School Info
+// Add school info
+export async function addSchoolInfo(params: any): Promise<any> {
+  try {
+    const response = await api.post('/add/school-info', params, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error adding school info:', error);
+    throw error;
+  }
+}
+
+// Add activities
+export async function addActivities(params: any): Promise<any> {
+  try {
+    const response = await api.post('/add/activities', params, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error adding activities:', error);
+    throw error;
+  }
+}
+
+// family.ts
+// ... (existing imports and functions remain the same)
+
+export async function getSchoolInfo(params: { userId: string }): Promise<any> {
+  try {
+    const response = await api.get('/get/school-info', {
+      params,
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching school info:', error);
+    throw error;
+  }
+}

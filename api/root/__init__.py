@@ -56,6 +56,9 @@ def create_app(test_config=None):
     from root.planner import planner_bp
 
     app.register_blueprint(planner_bp)
+    from root.notifications import notifications_bp
+
+    app.register_blueprint(notifications_bp)
     app.permanent_session_lifetime = timedelta(minutes=60)
     # initialize_firebase()
 

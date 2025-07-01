@@ -1150,7 +1150,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                 style={{
                     display: "flex",
                     flexDirection: "column",
-                    height: "100%",
+                    height: "700px",
                     opacity: isNavigating ? 0.7 : 1,
                     transform: isNavigating ? "translateX(10px)" : "translateX(0)",
                     transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
@@ -1161,41 +1161,59 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     style={{
                         display: "grid",
                         gridTemplateColumns: "repeat(7, 1fr)",
-                        gap: "1px",
-                        backgroundColor: "#f3f4f6",
-                        borderRadius: "12px",
+                        gap: "2px",
+                        backgroundColor: "#e5e7eb",
+                        borderRadius: "16px",
                         overflow: "hidden",
-                        marginBottom: "16px",
-                        boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                        marginBottom: "20px",
+                        boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
                     }}
                 >
                     {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map(
-                        (day, index) => (
-                            <div
-                                key={day}
-                                style={{
-                                    padding: "16px 8px",
-                                    backgroundColor: "white",
-                                    textAlign: "center",
-                                    fontWeight: "600",
-                                    color: "#6b7280",
-                                    fontSize: "12px",
-                                    letterSpacing: "0.5px",
-                                }}
-                            >
-                                <div>{day}</div>
+                        (day, index) => {
+                            const isToday = weekDays[index].toDateString() === new Date().toDateString();
+                            return (
                                 <div
+                                    key={day}
                                     style={{
-                                        fontSize: "20px",
-                                        fontWeight: "700",
-                                        color: "#111827",
-                                        marginTop: "4px",
+                                        padding: "20px 12px",
+                                        backgroundColor: isToday ? "#3B82F6" : "white",
+                                        textAlign: "center",
+                                        fontWeight: "600",
+                                        color: isToday ? "white" : "#6b7280",
+                                        fontSize: "13px",
+                                        letterSpacing: "0.8px",
+                                        position: "relative",
+                                        transition: "all 0.2s ease",
                                     }}
                                 >
-                                    {weekDays[index].getDate()}
+                                    <div style={{ marginBottom: "6px" }}>{day}</div>
+                                    <div
+                                        style={{
+                                            fontSize: "24px",
+                                            fontWeight: "800",
+                                            color: isToday ? "white" : "#111827",
+                                        }}
+                                    >
+                                        {weekDays[index].getDate()}
+                                    </div>
+                                    {isToday && (
+                                        <div
+                                            style={{
+                                                position: "absolute",
+                                                bottom: "4px",
+                                                left: "50%",
+                                                transform: "translateX(-50%)",
+                                                width: "6px",
+                                                height: "6px",
+                                                backgroundColor: "white",
+                                                borderRadius: "50%",
+                                            }}
+                                        />
+                                    )}
                                 </div>
-                            </div>
-                        )
+                            );
+                        }
                     )}
                 </div>
 
@@ -1204,24 +1222,185 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     style={{
                         display: "grid",
                         gridTemplateColumns: "repeat(7, 1fr)",
-                        gap: "8px",
+                        gap: "12px",
                         flex: 1,
                         overflow: "hidden",
-                        // height: "100px"
                     }}
                 >
                     {weekDays.map((day, index) => {
                         const dayEvents = getEventsForDate(day);
                         const dayMeals = getMealsForDate(day);
+                        const hasContent = dayEvents.length > 0 || dayMeals.length > 0;
 
                         return (
-                            <DayCard
+                            <div
                                 key={index}
-                                date={day}
-                                events={dayEvents}
-                                meals={dayMeals}
-                                showMeals={true}
-                            />
+                                style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: "6px",
+                                    minHeight: "450px",
+                                    backgroundColor: hasContent ? "transparent" : "#fafafa",
+                                    borderRadius: "12px",
+                                    border: hasContent ? "none" : "2px dashed #d1d5db",
+                                    padding: hasContent ? "0" : "16px",
+                                    position: "relative",
+                                    transition: "all 0.3s ease",
+                                }}
+                                onMouseEnter={(e) => {
+                                    if (!hasContent) {
+                                        e.currentTarget.style.borderColor = "#9ca3af";
+                                        e.currentTarget.style.backgroundColor = "#f3f4f6";
+                                    }
+                                }}
+                                onMouseLeave={(e) => {
+                                    if (!hasContent) {
+                                        e.currentTarget.style.borderColor = "#d1d5db";
+                                        e.currentTarget.style.backgroundColor = "#fafafa";
+                                    }
+                                }}
+                            >
+                                {/* Empty State */}
+                                {!hasContent && (
+                                    <div
+                                        style={{
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            height: "100%",
+                                            color: "#9ca3af",
+                                            textAlign: "center",
+                                        }}
+                                    >
+                                        <div
+                                            style={{
+                                                width: "48px",
+                                                height: "48px",
+                                                backgroundColor: "#f3f4f6",
+                                                borderRadius: "50%",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                marginBottom: "12px",
+                                                transition: "all 0.2s ease",
+                                            }}
+                                        >
+                                            <Plus size={20} color="#9ca3af" />
+                                        </div>
+                                        <div
+                                            style={{
+                                                fontSize: "14px",
+                                                fontWeight: "500",
+                                                marginBottom: "4px",
+                                            }}
+                                        >
+                                            No events
+                                        </div>
+                                        <div
+                                            style={{
+                                                fontSize: "12px",
+                                                color: "#d1d5db",
+                                            }}
+                                        >
+                                            Click to add
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Events */}
+                                {dayEvents.map((event, eventIndex) => (
+                                    <div
+                                        key={event.id}
+                                        style={{
+                                            backgroundColor: event.color,
+                                            color: "white",
+                                            padding: "12px 10px",
+                                            borderRadius: "10px",
+                                            fontSize: "12px",
+                                            fontWeight: "500",
+                                            lineHeight: "1.3",
+                                            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+                                            cursor: "pointer",
+                                            transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                                            position: "relative",
+                                            overflow: "hidden",
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
+                                            e.currentTarget.style.boxShadow = "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)";
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.transform = "translateY(0) scale(1)";
+                                            e.currentTarget.style.boxShadow = "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)";
+                                        }}
+                                    >
+                                        <div
+                                            style={{
+                                                position: "absolute",
+                                                top: 0,
+                                                left: 0,
+                                                right: 0,
+                                                height: "3px",
+                                                backgroundColor: "rgba(255, 255, 255, 0.3)",
+                                            }}
+                                        />
+                                        <div style={{ fontWeight: "700", marginBottom: "4px", fontSize: "11px" }}>
+                                            {event.startTime}
+                                        </div>
+                                        <div style={{ fontWeight: "600" }}>{event.title}</div>
+                                    </div>
+                                ))}
+
+                                {/* Meals Section */}
+                                {dayMeals.length > 0 && (
+                                    <div
+                                        style={{
+                                            marginTop: "auto",
+                                            padding: "12px",
+                                            backgroundColor: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
+                                            borderRadius: "12px",
+                                            border: "1px solid #e2e8f0",
+                                            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
+                                        }}
+                                    >
+                                        <div
+                                            style={{
+                                                fontSize: "11px",
+                                                fontWeight: "700",
+                                                color: "#64748b",
+                                                marginBottom: "8px",
+                                                textTransform: "uppercase",
+                                                letterSpacing: "0.8px",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: "4px",
+                                            }}
+                                        >
+                                            <span>🍽️</span>
+                                            MEALS
+                                        </div>
+                                        {dayMeals.map((meal) => (
+                                            <div
+                                                key={meal.id}
+                                                style={{
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    gap: "8px",
+                                                    fontSize: "12px",
+                                                    color: "#475569",
+                                                    marginBottom: "4px",
+                                                    padding: "4px 0",
+                                                    fontWeight: "500",
+                                                }}
+                                            >
+                                                <span style={{ fontSize: "16px" }}>{meal.emoji}</span>
+                                                <span>{meal.name}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         );
                     })}
                 </div>

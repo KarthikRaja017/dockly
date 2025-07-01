@@ -1,3 +1,4 @@
+import json
 from root.db.db import postgres  # Import your PostgreSQL connection
 from psycopg2.extras import RealDictCursor
 from psycopg2 import sql
@@ -14,7 +15,13 @@ class DBHelper:
             cur = conn.cursor()
 
             columns = list(kwargs.keys())
-            values = list(kwargs.values())
+            values = []
+
+            for val in kwargs.values():
+                if isinstance(val, dict):
+                    values.append(json.dumps(val))  # Convert dict to JSON string
+                else:
+                    values.append(val)
 
             columns_sql = sql.SQL(", ").join(map(sql.Identifier, columns))
             placeholders = sql.SQL(", ").join(sql.Placeholder() * len(values))

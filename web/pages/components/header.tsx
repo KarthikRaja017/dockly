@@ -30,6 +30,7 @@ import {
   ToolOutlined,
   MenuUnfoldOutlined,
   MenuFoldOutlined,
+  CloseOutlined,
 } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import { useCurrentUser } from "../../app/userContext";
@@ -39,10 +40,16 @@ const CustomHeader = ({
   isHovered,
   collapsed,
   setCollapsed,
+  setHidden,
+  hidden,
+  count,
 }: {
   isHovered: boolean;
   collapsed: boolean;
+  hidden: boolean;
+  setHidden: (hidden: boolean) => void;
   setCollapsed: (collapsed: boolean) => void;
+  count: number;
 }) => {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
@@ -70,6 +77,25 @@ const CustomHeader = ({
     { Icon: LinkOutlined, title: "Drag & Drop", onClick: () => setVisible(true) },
     { Icon: BookOutlined, title: "Bookmarks", onClick: () => setVisibleB(true) },
   ];
+
+  const handleToggleSidebar = () => {
+    if (!collapsed && !hidden) {
+      // Currently expanded → collapse
+      setCollapsed(true);
+    } else if (collapsed && !hidden) {
+      // Currently collapsed → hide
+      setHidden(true);
+    } else if (hidden) {
+      // Currently hidden → show & expand
+      setHidden(false);
+      setCollapsed(false);
+    }
+  };
+
+  const getToggleIcon = (collapsed: boolean, hidden: boolean) => {
+    if (hidden) return <MenuUnfoldOutlined />; // Hidden state
+    return collapsed ? <CloseOutlined /> : <MenuFoldOutlined />;
+  };
 
   const userMenu = {
     items: [
@@ -107,20 +133,33 @@ const CustomHeader = ({
           justifyContent: "space-between",
           padding: "16px 24px",
           backgroundColor: "#f9fafa",
-          marginLeft: isHovered ? 200 : 80,
+          marginLeft: hidden ? 0 : isHovered ? 200 : 80,
           transition: "margin-left 0.3s ease, padding 0.3s ease",
         }}
       >
-        <Button
-          type="text"
-          icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-          onClick={() => setCollapsed(!collapsed)}
-          style={{
-            fontSize: "20px",
-            width: 48,
-            height: 48,
-          }}
-        />
+        <div style={{ display: "flex", alignItems: "center", gap: "25px" }}>
+          {hidden && (
+            <img
+              src="/logoBlue.png"
+              alt="Logo"
+              style={{
+                width: "30px",
+                marginLeft: collapsed ? "0px" : "2px",
+              }}
+            />
+          )}
+          <Button
+            type="text"
+            icon={getToggleIcon(collapsed, hidden)}
+            onClick={handleToggleSidebar}
+            style={{
+              fontSize: "20px",
+              width: 48,
+              height: 48,
+              marginLeft: hidden ? '-15px' : "-25px",
+            }}
+          />
+        </div>
 
         <Input
           prefix={<SearchOutlined style={{ color: "#007B8F" }} />}
@@ -136,7 +175,7 @@ const CustomHeader = ({
         />
 
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          {actions.map(({ Icon, title, onClick }, i) => (
+          {/* {actions.map(({ Icon, title, onClick }, i) => (
             <Tooltip title={title} key={i}>
               <div
                 onClick={onClick}
@@ -158,7 +197,8 @@ const CustomHeader = ({
                 <Icon style={{ color: "#007B8F", fontSize: "18px" }} />
               </div>
             </Tooltip>
-          ))}
+          ))} */}
+          <NotificationBell count={count} onClick={() => console.log("Bell clicked")} />
 
           <Dropdown
             menu={userMenu}
@@ -333,6 +373,7 @@ const NotesDropdown = (props: any) => {
 };
 import { Upload } from 'antd';
 import StickyNotes from "../notes/notescard";
+import NotificationBell from "./notificationicon";
 const { Text } = Typography;
 
 const UploadModal = (props: any) => {

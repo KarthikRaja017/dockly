@@ -256,7 +256,7 @@ const MarketsWidget: React.FC = () => {
             </div>
 
             {/* Market Summary */}
-            <div style={{
+            {/* <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(3, 1fr)',
                 gap: '6px',
@@ -283,10 +283,10 @@ const MarketsWidget: React.FC = () => {
                     </p>
                     <p style={{ fontSize: '9px', color: '#64748b', margin: 0 }}>Unchanged</p>
                 </div>
-            </div>
+            </div> */}
 
             {/* Mini Chart Visualization */}
-            <div style={{
+            {/* <div style={{
                 height: '24px',
                 backgroundColor: '#f8fafc',
                 borderRadius: '6px',
@@ -309,10 +309,10 @@ const MarketsWidget: React.FC = () => {
                         }}
                     />
                 ))}
-            </div>
+            </div> */}
 
             {/* Market Status */}
-            <div style={{
+            {/* <div style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -328,7 +328,7 @@ const MarketsWidget: React.FC = () => {
                     animation: 'pulse 2s infinite'
                 }} />
                 <span>Market Open • Real-time data</span>
-            </div>
+            </div> */}
 
             <style>{`
         @keyframes grow {

@@ -81,7 +81,7 @@ const AlertsSuggestions: React.FC = () => {
         </div>
       </div>
 
-      <div style={{ padding: '24px' }}>
+      <div style={{ padding: '18px' }}>
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',

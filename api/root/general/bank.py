@@ -28,8 +28,8 @@ class BankConnect(Resource):
             return {"error": "Missing userId"}
 
         existing_user = DBHelper.find_one(
-            "bankDetails",
-            filters={"uid": uid},
+            "user_finance_details",
+            filters={"user_id": uid},
             select_fields=["profile_id", "isfinanceuser"],
         )
 
@@ -76,12 +76,12 @@ class BankConnect(Resource):
                 expires_at = result.get("expiresAt")
 
                 userId = DBHelper.insert(
-                    "bankDetails",
-                    return_column="uid",
-                    uid=uid,
-                    email=email,
+                    "user_finance_details",
+                    return_column="user_id",
+                    user_id=uid,
+                    expiresat=expires_at,
                     profile_id=profile_id,
-                    isfinanceuser=True,
+                    isfinanceuser=1,
                 )
 
                 return {

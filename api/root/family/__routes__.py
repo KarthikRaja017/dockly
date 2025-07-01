@@ -43,3 +43,12 @@ family_api.add_resource(GetProjects, "/get/projects")
 family_api.add_resource(AddTask, "/add/task")
 family_api.add_resource(GetTasks, "/get/tasks")
 family_api.add_resource(UpdateTask, "/update/task")
+
+
+family_api.add_resource(AddPersonalInfo, "/add/personal-info")
+family_api.add_resource(GetPersonalInfo, "/get/personal-info")
+family_api.add_resource(UpdatePersonalInfo, "/update/personal-info")
+
+family_api.add_resource(AddSchoolInfo, "/add/school-info")
+family_api.add_resource(AddActivities, "/add/activities")
+family_api.add_resource(GetSchoolInfo, "/get/school-info")

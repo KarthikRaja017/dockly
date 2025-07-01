@@ -1,9 +1,10 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Modal, Card, Button, Input, Checkbox, Typography, notification, Tag, Divider } from 'antd';
+import { Modal, Card, Button, Input, Checkbox, Typography, notification, Tag, Divider, message } from 'antd';
 import { useParams, useRouter } from 'next/navigation';
 import { addFamilyMember } from '../../services/family';
 import { Hubs } from '../../app/comman';
+import { showNotification } from '../../utils/notification';
 const { Text, Title } = Typography;
 
 // Utility functions for validation
@@ -197,6 +198,8 @@ const FamilyInviteForm: React.FC<FamilyInviteFormProps> = ({ visible, onCancel, 
                     // }
                 }
                 setStep('sent');
+            } else if (!status) {
+                showNotification("Error", responseData?.message, "error");
             } else {
                 notification.error({
                     message: 'Error Adding Family Member',
@@ -427,7 +430,7 @@ const FamilyInviteForm: React.FC<FamilyInviteFormProps> = ({ visible, onCancel, 
                 )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '30px' }}>
                     <Button
-                        onClick={() => setStep('permissions')}
+                        onClick={() => setStep('add')}
                         style={{ borderRadius: '20px', padding: '5px 15px' }}
                     >
                         Back
@@ -592,11 +595,25 @@ const FamilyInviteForm: React.FC<FamilyInviteFormProps> = ({ visible, onCancel, 
             onCancel={onCancel}
             footer={null}
             width={600}
-            style={{ borderRadius: '10px' }}
-            styles={{ body: { padding: '20px', borderRadius: '10px' } }}
+            centered
+            style={{
+                borderRadius: '12px',
+                padding: 0,
+                caretColor: "transparent"
+            }}
+            styles={{
+                body: {
+                    padding: 24,
+                    borderRadius: '0 0 12px 12px',
+                    maxHeight: '70vh',
+                    overflowY: 'auto',
+                    background: '#fff',
+                    boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
+                    caretColor: "transparent"
+                },
+            }}
         >
             {step === 'add' && renderAddForm()}
-            {/* {step === 'permissions' && renderPermissions()} */}
             {step === 'share' && renderSharingOptions()}
             {step === 'review' && renderReview()}
             {step === 'sent' && renderSent()}

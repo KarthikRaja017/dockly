@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Calendar, Plus, FileText, Star, Upload, Zap } from 'lucide-react';
 
 const QuickActions: React.FC = () => {
-    const [isDragActive, setIsDragActive] = useState(false);
+    const [isDragActive, setIsDragActive] = useState(true);
 
     const actions = [
         {
@@ -85,7 +85,10 @@ const QuickActions: React.FC = () => {
             {/* Actions Row */}
             <div style={{
                 display: 'flex',
-                gap: '25px',
+                alignContent: 'center',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '45px',
                 marginBottom: '24px',
                 overflowX: 'auto'
             }}>
@@ -97,7 +100,7 @@ const QuickActions: React.FC = () => {
                             display: 'flex',
                             alignItems: 'center',
                             gap: '8px',
-                            padding: '32px 105px',
+                            padding: '32px 85px',
                             backgroundColor: action.bgColor,
                             color: action.textColor,
                             border: 'none',
@@ -127,9 +130,9 @@ const QuickActions: React.FC = () => {
 
             {/* Drag & Drop Zone */}
             <div
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
+                // onDragOver={handleDragOver}
+                // onDragLeave={handleDragLeave}
+                // onDrop={handleDrop}
                 style={{
                     border: `2px dashed ${isDragActive ? '#3b82f6' : '#d1d5db'}`,
                     borderRadius: '16px',

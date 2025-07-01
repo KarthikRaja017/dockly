@@ -5,7 +5,7 @@ from email.message import EmailMessage
 import json
 import re
 import smtplib
-from root.common import DocklyUsers, Permissions, Status
+from root.common import DocklyUsers, HubsEnum, Permissions, Status
 from root.utilis import uniqueId
 from root.users.models import generate_otp, send_otp_email
 from root.config import EMAIL_PASSWORD, EMAIL_SENDER, SMTP_PORT, SMTP_SERVER, WEB_URL
@@ -76,8 +76,9 @@ class InviteFamily(Resource):
             return {"status": 0, "message": f"Failed to invite member: {str(e)}"}, 500
 
 
-def sendInviteEmail(inputData, user, rusername, encodedToken):
-    inviteLink = f"{WEB_URL}/{rusername}/verify-email?token={encodedToken}"
+def sendInviteEmail(inputData, user, rusername, encodedToken, inviteLink):
+    if not inviteLink:
+        inviteLink = f"{WEB_URL}/{rusername}/verify-email?token={encodedToken}"
     u = user["user_name"]
     email_html = generate_invitation_email(
         inputData,
@@ -94,6 +95,19 @@ class AddFamilyMembers(Resource):
     def post(self, uid, user):
         inputData = request.get_json(silent=True)
         # sharedKeys = list(inputData.get("sharedItems", {}).keys())
+        family_member_exists = DBHelper.find_one(
+            "family_members",
+            filters={"email": inputData["email"], "user_id": uid},
+            select_fields=["id"],
+        )
+
+        if family_member_exists:
+            return {
+                "status": 0,
+                "message": "Family member with this email already exists in your family hub.",
+                "payload": {},
+            }
+
         sharedComponents = []
         sharedItems = []
         sharedKeys = []
@@ -129,39 +143,38 @@ class AddFamilyMembers(Resource):
                     "message": "This email is already registered as a guest.",
                 }
             elif existingUser["duser"] == DocklyUsers.PaidMember.value:
-                aid = uniqueId(digit=7, isNum=True)
                 rusername = existingUser["user_name"]
-                fid = DBHelper.insert(
-                    "family_members",
-                    return_column="id",
-                    user_id=user["uid"],
-                    name=inputData.get("name", ""),
-                    relationship=inputData.get("relationship", ""),
-                    access_code=inputData.get("accessCode", ""),
-                    method=inputData.get("method", "Email"),
-                    # access_mapping_code=aid,
-                    # permissions="",
-                    # shared_items="",
+                encodedToken = "<encoded_token>"
+                inviteLink = f"{WEB_URL}/{rusername}/dashboard"
+                sendInviteEmail(
+                    inputData, user, rusername, encodedToken, inviteLink=inviteLink
                 )
-                for id in sharedItemsIds:
-                    aid = DBHelper.insert(
-                        "family_hubs_access_mapping",
-                        return_column="id",
-                        # id=aid,
-                        user_id=user["uid"],
-                        family_member_id=fid,
-                        hubs=id,
-                        permissions=Permissions.Read.value,
-                    )
-            encodedToken = "<encoded_token>"
-            sendInviteEmail(inputData, user, rusername, encodedToken)
-            otpResponse = send_otp_email(inputData["email"], otp)
+                notification = {
+                    "sender_id": user["uid"],
+                    "receiver_id": existingUser["uid"],
+                    "message": f"You have been invited to join the {user['user_name']}'s Family Hub '{rusername}'",
+                    "task_type": "family_request",
+                    "action_required": True,
+                    "status": "pending",
+                    "hub": HubsEnum.Family.value,
+                    "metadata": {
+                        "input_data": inputData,
+                        "shared_items_ids": sharedItemsIds,
+                    },
+                }
+                # Insert notification into the database
+                DBHelper.insert(
+                    "notifications",
+                    return_column="id",
+                    **notification,
+                )
+                # otpResponse = send_otp_email(inputData["email"], otp)
 
-            return {
-                "status": 1,
-                "message": "Family members added successfully",
-                "payload": {},
-            }
+                return {
+                    "status": 1,
+                    "message": "Family member invitation sent successfully",
+                    "payload": {},
+                }
 
         parts = re.split(r"[\s_-]+", rname.strip())
         relationName = parts[0].lower() + "".join(
@@ -199,8 +212,7 @@ class AddFamilyMembers(Resource):
                 is_active=Status.ACTIVE.value,
                 return_column="hubs",
             )
-        sendInviteEmail(inputData, user, rusername, encodedToken)
-        otpResponse = send_otp_email(inputData["email"], otp)
+
         userId = DBHelper.insert(
             "family_members",
             return_column="user_id",
@@ -209,15 +221,127 @@ class AddFamilyMembers(Resource):
             relationship=inputData.get("relationship", ""),
             access_code=inputData.get("accessCode", ""),
             method=inputData.get("method", "Email"),
+            email=inputData.get("email", ""),
             # access_mapping_code =
             # permissions="",
             # shared_items="",
+        )
+        for id in sharedItemsIds:
+            aid = DBHelper.insert(
+                "family_hubs_access_mapping",
+                return_column="id",
+                # id=aid,
+                user_id=user["uid"],
+                family_member_id=userId,
+                hubs=id,
+                permissions=Permissions.Read.value,
+            )
+        sendInviteEmail(inputData, user, rusername, encodedToken, inviteLink=True)
+        otpResponse = send_otp_email(inputData["email"], otp)
+
+        notification = {
+            "sender_id": user["uid"],
+            "receiver_id": existingUser["uid"],
+            "message": f"You have been invited to join the {user['user_name']}'s Family Hub '{rusername}'",
+            "task_type": "family_request",
+            "action_required": True,
+            "status": "pending",
+            "hub": HubsEnum.Family.value,
+            "metadata": {
+                "input_data": inputData,
+                "shared_items_ids": sharedItemsIds,
+            },
+        }
+        # Insert notification into the database
+        DBHelper.insert(
+            "notifications",
+            return_column="id",
+            **notification,
         )
 
         return {
             "status": 1,
             "message": "Family members added successfully",
             "payload": {},
+        }
+
+
+class GetFamilyMembers(Resource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        duser = request.args.get("dUser")
+        familyMembers = []
+
+        # Define common method to clean relationship
+        def clean_relationship(rel):
+            return rel.replace("❤", "").replace("👶", "").replace("👴", "")
+
+        if int(duser) == DocklyUsers.PaidMember.value:
+            members = DBHelper.find_all(
+                table_name="family_members",
+                select_fields=["name", "relationship"],
+                filters={"user_id": uid},
+            )
+            currentUser = {
+                "name": user.get("user_name", "User"),
+                "relationship": "me",
+            }
+            familyMembers.append(currentUser)
+        elif int(duser) == DocklyUsers.Guests.value:
+            fuser = request.args.get("fuser")
+            members = DBHelper.find_all(
+                table_name="family_members",
+                select_fields=["name", "relationship", "user_id"],
+                filters={"user_id": fuser},
+            )
+
+            fuserMember = DBHelper.find_one(
+                "users",
+                filters={"uid": fuser},
+                select_fields=["user_name"],
+            )
+
+            relationship = "Owner"
+
+            familyMember = {
+                "name": fuserMember.get("user_name", "User"),
+                "relationship": relationship,
+            }
+            familyMembers.append(familyMember)
+
+        for member in members:
+            familyMembers.append(
+                {
+                    "name": member["name"],
+                    "relationship": clean_relationship(member["relationship"]),
+                }
+            )
+
+        notifications = DBHelper.find_all(
+            table_name="notifications",
+            filters={"sender_id": uid, "status": "pending"},
+            select_fields=["metadata"],
+        )
+
+        for notification in notifications:
+            metadata = notification.get("metadata", {})
+            if metadata:
+                input_data = metadata.get("input_data", {})
+                familyMembers.append(
+                    {
+                        "name": input_data.get("name", "Unknown"),
+                        "relationship": clean_relationship(
+                            input_data.get("relationship", "Unknown")
+                        ),
+                        "status": "pending",
+                    }
+                )
+        # Add current user info at the end
+
+        return {
+            "status": 1,
+            "message": "Family members fetched successfully",
+            "payload": {"members": familyMembers},
         }
 
 
@@ -617,66 +741,6 @@ class addcustomsection(Resource):
             "status": 1,
             "message": "Custom section added successfully",
             "payload": {"userId": userId},
-        }
-
-
-class GetFamilyMembers(Resource):
-    @auth_required(isOptional=True)
-    def get(self, uid, user):
-        duser = request.args.get("dUser")
-        familyMembers = []
-
-        # Define common method to clean relationship
-        def clean_relationship(rel):
-            return rel.replace("❤", "").replace("👶", "").replace("👴", "")
-
-        if int(duser) == DocklyUsers.PaidMember.value:
-            members = DBHelper.find_all(
-                table_name="family_members",
-                select_fields=["name", "relationship"],
-                filters={"user_id": uid},
-            )
-            currentUser = {
-                "name": user.get("user_name", "User"),
-                "relationship": "me",
-            }
-            familyMembers.append(currentUser)
-        elif int(duser) == DocklyUsers.Guests.value:
-            fuser = request.args.get("fuser")
-            members = DBHelper.find_all(
-                table_name="family_members",
-                select_fields=["name", "relationship", "user_id"],
-                filters={"user_id": fuser},
-            )
-
-            fuserMember = DBHelper.find_one(
-                "users",
-                filters={"uid": fuser},
-                select_fields=["user_name"],
-            )
-
-            relationship = "Owner"
-
-            familyMember = {
-                "name": fuserMember.get("user_name", "User"),
-                "relationship": relationship,
-            }
-            familyMembers.append(familyMember)
-
-        for member in members:
-            familyMembers.append(
-                {
-                    "name": member["name"],
-                    "relationship": clean_relationship(member["relationship"]),
-                }
-            )
-
-        # Add current user info at the end
-
-        return {
-            "status": 1,
-            "message": "Family members fetched successfully",
-            "payload": {"members": familyMembers},
         }
 
 
@@ -1110,3 +1174,533 @@ class UpdateTask(Resource):
         )
 
         return {"status": 1, "message": "Task updated successfully"}
+
+
+class AddPersonalInfo(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        # logger.debug(
+        #     f"Received POST /add/personal-info with data: {request.get_json()}"
+        # )
+        try:
+            inputData = request.get_json(silent=True)
+            if not inputData:
+                # logger.error("No input data provided")
+                return {"status": 0, "message": "No input data provided"}, 400
+
+            personal_info = inputData.get("personal_info", {})
+            if not personal_info:
+                # logger.error("No personal info data provided")
+                return {"status": 0, "message": "No personal info data provided"}, 400
+
+            # Validate required fields
+            required_fields = ["addedBy"]
+            missing_fields = [
+                field for field in required_fields if field not in personal_info
+            ]
+            if missing_fields:
+                # logger.error(f"Missing fields: {missing_fields}")
+                return {
+                    "status": 0,
+                    "message": f"Missing required fields: {', '.join(missing_fields)}",
+                }, 400
+
+            # Validate user_id exists in users table
+            user_check = DBHelper.find_one(table_name="users", filters={"uid": uid})
+            if not user_check:
+                # logger.error(f"Invalid userId: {uid}")
+                return {"status": 0, "message": f"User with ID {uid} not found"}, 400
+
+            current_time = datetime.now().isoformat()
+
+            personal_id = DBHelper.insert(
+                table_name="personal_information",
+                return_column="id",
+                user_id=uid,
+                state_id=personal_info.get("stateId", ""),
+                passport=personal_info.get("passport", ""),
+                license=personal_info.get("license", ""),
+                birth_cert=personal_info.get("birthCert", ""),
+                primary_contact=personal_info.get("primaryContact", ""),
+                primary_phone=personal_info.get("primaryPhone", ""),
+                secondary_contact=personal_info.get("secondaryContact", ""),
+                secondary_phone=personal_info.get("secondaryPhone", ""),
+                emergency_contact=personal_info.get("emergencyContact", ""),
+                emergency_phone=personal_info.get("emergencyPhone", ""),
+                blood_type=personal_info.get("bloodType", ""),
+                height=personal_info.get("height", ""),
+                weight=personal_info.get("weight", ""),
+                eye_color=personal_info.get("eyeColor", ""),
+                physician=personal_info.get("physician", ""),
+                physician_phone=personal_info.get("physicianPhone", ""),
+                dentist=personal_info.get("dentist", ""),
+                dentist_phone=personal_info.get("dentistPhone", ""),
+                insurance=personal_info.get("insurance", ""),
+                member_id=personal_info.get("memberId", ""),
+                group_num=personal_info.get("groupNum", ""),
+                last_checkup=personal_info.get("lastCheckup", ""),
+                allergies=personal_info.get("allergies", ""),
+                medications=personal_info.get("medications", ""),
+                notes=personal_info.get("notes", ""),
+                ssn=personal_info.get("ssn", ""),
+                student_id=personal_info.get("studentId", ""),
+                added_by=personal_info.get("addedBy", ""),
+                added_time=current_time,
+                edited_by=personal_info.get(
+                    "editedBy", personal_info.get("addedBy", "")
+                ),
+                updated_at=current_time,
+            )
+            # logger.info(f"Personal info added for user_id: {uid}, id: {personal_id}")
+            return {
+                "status": 1,
+                "message": "Personal information added successfully",
+                "payload": {"id": personal_id},
+            }, 200
+        except Exception as e:
+            # logger.error(f"Error adding personal info: {str(e)}")
+            return {
+                "status": 0,
+                "message": f"Failed to add personal info: {str(e)}",
+            }, 500
+
+
+class GetPersonalInfo(Resource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        # logger.debug(f"Received GET /get/personal-info for user_id: {uid}")
+        try:
+            personal_info = DBHelper.find_one(
+                table_name="personal_information",
+                select_fields=[
+                    "id",
+                    "state_id",
+                    "passport",
+                    "license",
+                    "birth_cert",
+                    "primary_contact",
+                    "primary_phone",
+                    "secondary_contact",
+                    "secondary_phone",
+                    "emergency_contact",
+                    "emergency_phone",
+                    "blood_type",
+                    "height",
+                    "weight",
+                    "eye_color",
+                    "physician",
+                    "physician_phone",
+                    "dentist",
+                    "dentist_phone",
+                    "insurance",
+                    "member_id",
+                    "group_num",
+                    "last_checkup",
+                    "allergies",
+                    "medications",
+                    "notes",
+                    "ssn",
+                    "student_id",
+                    "added_by",
+                    "added_time",
+                    "edited_by",
+                    "updated_at",
+                ],
+                filters={"user_id": uid},
+            )
+
+            if not personal_info:
+                # logger.info(f"No personal info found for user_id: {uid}")
+                return {
+                    "status": 1,
+                    "message": "No personal information found",
+                    "payload": {},
+                }, 200
+
+            def serialize_datetime(dt):
+                return dt.isoformat() if isinstance(dt, (datetime, date)) else None
+
+            response_data = {
+                "id": personal_info["id"],
+                "stateId": personal_info["state_id"] or "",
+                "passport": personal_info["passport"] or "",
+                "license": personal_info["license"] or "",
+                "birthCert": personal_info["birth_cert"] or "",
+                "primaryContact": personal_info["primary_contact"] or "",
+                "primaryPhone": personal_info["primary_phone"] or "",
+                "secondaryContact": personal_info["secondary_contact"] or "",
+                "secondaryPhone": personal_info["secondary_phone"] or "",
+                "emergencyContact": personal_info["emergency_contact"] or "",
+                "emergencyPhone": personal_info["emergency_phone"] or "",
+                "bloodType": personal_info["blood_type"] or "",
+                "height": personal_info["height"] or "",
+                "weight": personal_info["weight"] or "",
+                "eyeColor": personal_info["eye_color"] or "",
+                "physician": personal_info["physician"] or "",
+                "physicianPhone": personal_info["physician_phone"] or "",
+                "dentist": personal_info["dentist"] or "",
+                "dentistPhone": personal_info["dentist_phone"] or "",
+                "insurance": personal_info["insurance"] or "",
+                "memberId": personal_info["member_id"] or "",
+                "groupNum": personal_info["group_num"] or "",
+                "lastCheckup": serialize_datetime(personal_info["last_checkup"]),
+                "allergies": personal_info["allergies"] or "",
+                "medications": personal_info["medications"] or "",
+                "notes": personal_info["notes"] or "",
+                "ssn": personal_info["ssn"] or "",
+                "studentId": personal_info["student_id"] or "",
+                "addedBy": personal_info["added_by"] or "",
+                "addedTime": serialize_datetime(personal_info["added_time"]),
+                "editedBy": personal_info["edited_by"] or "",
+                "updatedAt": serialize_datetime(personal_info["updated_at"]),
+            }
+
+            return {
+                "status": 1,
+                "message": "Personal information fetched successfully",
+                "payload": response_data,
+            }, 200
+        except Exception as e:
+            # logger.error(f"Error fetching personal info: {str(e)}")
+            return {
+                "status": 0,
+                "message": f"Failed to fetch personal info: {str(e)}",
+            }, 500
+
+
+class UpdatePersonalInfo(Resource):
+    @auth_required(isOptional=True)
+    def put(self, uid, user):
+        # logger.debug(
+        #     f"Received PUT /update/personal-info with data: {request.get_json()}"
+        # )
+        try:
+            inputData = request.get_json(silent=True)
+            if not inputData:
+                # logger.error("No input data provided")
+                return {"status": 0, "message": "No input data provided"}, 400
+
+            personal_info = inputData.get("personal_info", {})
+            if not personal_info:
+                # logger.error("No personal info data provided")
+                return {"status": 0, "message": "No personal info data provided"}, 400
+
+            # Validate required fields
+            required_fields = ["id", "addedBy"]
+            missing_fields = [
+                field for field in required_fields if field not in personal_info
+            ]
+            if missing_fields:
+                # logger.error(f"Missing fields: {missing_fields}")
+                return {
+                    "status": 0,
+                    "message": f"Missing required fields: {', '.join(missing_fields)}",
+                }, 400
+
+            # Validate user_id and record id exist
+            user_check = DBHelper.find_one(table_name="users", filters={"uid": uid})
+            if not user_check:
+                # logger.error(f"Invalid userId: {uid}")
+                return {"status": 0, "message": f"User with ID {uid} not found"}, 400
+
+            record_check = DBHelper.find_one(
+                table_name="personal_information",
+                filters={"id": personal_info["id"], "user_id": uid},
+            )
+            if not record_check:
+                # logger.error(
+                #     f"No personal info record found for id: {personal_info['id']} and user_id: {uid}"
+                # )
+                return {"status": 0, "message": "Personal info record not found"}, 404
+
+            current_time = datetime.now().isoformat()
+
+            DBHelper.update_one(
+                table_name="personal_information",
+                filters={"id": personal_info["id"], "user_id": uid},
+                updates={
+                    "state_id": personal_info.get("stateId", ""),
+                    "passport": personal_info.get("passport", ""),
+                    "license": personal_info.get("license", ""),
+                    "birth_cert": personal_info.get("birthCert", ""),
+                    "primary_contact": personal_info.get("primaryContact", ""),
+                    "primary_phone": personal_info.get("primaryPhone", ""),
+                    "secondary_contact": personal_info.get("secondaryContact", ""),
+                    "secondary_phone": personal_info.get("secondaryPhone", ""),
+                    "emergency_contact": personal_info.get("emergencyContact", ""),
+                    "emergency_phone": personal_info.get("emergencyPhone", ""),
+                    "blood_type": personal_info.get("bloodType", ""),
+                    "height": personal_info.get("height", ""),
+                    "weight": personal_info.get("weight", ""),
+                    "eye_color": personal_info.get("eyeColor", ""),
+                    "physician": personal_info.get("physician", ""),
+                    "physician_phone": personal_info.get("physicianPhone", ""),
+                    "dentist": personal_info.get("dentist", ""),
+                    "dentist_phone": personal_info.get("dentistPhone", ""),
+                    "insurance": personal_info.get("insurance", ""),
+                    "member_id": personal_info.get("memberId", ""),
+                    "group_num": personal_info.get("groupNum", ""),
+                    "last_checkup": personal_info.get("lastCheckup", ""),
+                    "allergies": personal_info.get("allergies", ""),
+                    "medications": personal_info.get("medications", ""),
+                    "notes": personal_info.get("notes", ""),
+                    "ssn": personal_info.get("ssn", ""),
+                    "student_id": personal_info.get("studentId", ""),
+                    "edited_by": personal_info.get(
+                        "editedBy", personal_info.get("addedBy", "")
+                    ),
+                    "updated_at": current_time,
+                },
+            )
+            # logger.info(
+            #     f"Personal info updated for user_id: {uid}, id: {personal_info['id']}"
+            # )
+            return {
+                "status": 1,
+                "message": "Personal information updated successfully",
+                "payload": {"id": personal_info["id"]},
+            }, 200
+        except Exception as e:
+            # logger.error(f"Error updating personal info: {str(e)}")
+            return {
+                "status": 0,
+                "message": f"Failed to update personal info: {str(e)}",
+            }, 500
+
+
+class AddSchoolInfo(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        # logger.debug(f"Received POST /add/school-info with data: {request.get_json()}")
+        try:
+            inputData = request.get_json(silent=True)
+            if not inputData:
+                # logger.error("No input data provided")
+                return {"status": 0, "message": "No input data provided"}, 400
+
+            school_info = inputData.get("school_info", {})
+            if not school_info:
+                # logger.error("No school info data provided")
+                return {"status": 0, "message": "No school info data provided"}, 400
+
+            # Validate required fields (based on the UI and existing patterns)
+            required_fields = [
+                "schoolName",
+                "gradeLevel",
+                "studentId",
+                "graduationYear",
+                "homeroomTeacher",
+                "guidanceCounselor",
+                "currentGpa",
+                "attendanceRate",
+                "schoolAddress",
+                "notes",
+            ]
+            missing_fields = [
+                field for field in required_fields if field not in school_info
+            ]
+            if missing_fields:
+                # logger.error(f"Missing fields: {missing_fields}")
+                return {
+                    "status": 0,
+                    "message": f"Missing required fields: {', '.join(missing_fields)}",
+                }, 400
+
+            current_time = datetime.now().isoformat()
+
+            school_id = DBHelper.insert(
+                "school_info",
+                return_column="id",
+                user_id=uid,
+                school_name=school_info.get("schoolName", ""),
+                grade_level=school_info.get("gradeLevel", ""),
+                student_id=school_info.get("studentId", ""),
+                graduation_year=school_info.get("graduationYear", ""),
+                homeroom_teacher=school_info.get("homeroomTeacher", ""),
+                guidance_counselor=school_info.get("guidanceCounselor", ""),
+                current_gpa=school_info.get("currentGpa", ""),
+                attendance_rate=school_info.get("attendanceRate", ""),
+                school_address=school_info.get("schoolAddress", ""),
+                notes=school_info.get("notes", ""),
+                added_time=current_time,
+                edited_by=school_info.get("editedBy", school_info.get("addedBy", "")),
+                updated_at=current_time,
+            )
+            # logger.info(
+            #     f"School info added: {school_info.get('schoolName')}, id: {school_id}"
+            # )
+            return {
+                "status": 1,
+                "message": "School info added successfully",
+                "payload": {"id": school_id},
+            }, 200
+        except Exception as e:
+            # logger.error(f"Error adding school info: {str(e)}")
+            return {"status": 0, "message": f"Failed to add school info: {str(e)}"}, 500
+
+
+class AddActivities(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        # logger.debug(f"Received POST /add/activities with data: {request.get_json()}")
+        try:
+            inputData = request.get_json(silent=True)
+            if not inputData:
+                # logger.error("No input data provided")
+                return {"status": 0, "message": "No input data provided"}, 400
+
+            activity = inputData.get("activity", {})
+            if not activity:
+                # logger.error("No activity data provided")
+                return {"status": 0, "message": "No activity data provided"}, 400
+
+            # Validate required fields (based on the UI and existing patterns)
+            required_fields = ["title", "schedule", "details", "links"]
+            missing_fields = [
+                field for field in required_fields if field not in activity
+            ]
+            if missing_fields:
+                # logger.error(f"Missing fields: {missing_fields}")
+                return {
+                    "status": 0,
+                    "message": f"Missing required fields: {', '.join(missing_fields)}",
+                }, 400
+
+            current_time = datetime.now().isoformat()
+
+            activity_id = DBHelper.insert(
+                "activities",
+                return_column="id",
+                user_id=uid,
+                title=activity.get("title", ""),
+                schedule=activity.get("schedule", ""),
+                details=json.dumps(activity.get("details", [])),
+                links=json.dumps(activity.get("links", [])),
+                added_time=current_time,
+                edited_by=activity.get("editedBy", activity.get("addedBy", "")),
+                updated_at=current_time,
+            )
+            # logger.info(f"Activity added: {activity.get('title')}, id: {activity_id}")
+            return {
+                "status": 1,
+                "message": "Activity added successfully",
+                "payload": {"id": activity_id},
+            }, 200
+        except Exception as e:
+            # logger.error(f"Error adding activity: {str(e)}")
+            return {"status": 0, "message": f"Failed to add activity: {str(e)}"}, 500
+
+
+class GetSchoolInfo(Resource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        # logger.debug(f"Received GET /get/school-info for user_id: {uid}")
+        try:
+            # Fetch school info
+            school_info = DBHelper.find_one(
+                table_name="school_info",
+                select_fields=[
+                    "id",
+                    "school_name",
+                    "grade_level",
+                    "student_id",
+                    "graduation_year",
+                    "homeroom_teacher",
+                    "guidance_counselor",
+                    "current_gpa",
+                    "attendance_rate",
+                    "school_address",
+                    "notes",
+                    "added_time",
+                    "updated_at",
+                ],
+                filters={"user_id": uid},
+            )
+
+            if not school_info:
+                # logger.info(f"No school info found for user_id: {uid}")
+                return {
+                    "status": 1,
+                    "message": "No school information found",
+                    "payload": {},
+                }, 200
+
+            # Fetch activities
+            activities = DBHelper.find_all(
+                table_name="activities",
+                select_fields=[
+                    "id",
+                    "title",
+                    "schedule",
+                    "details",
+                    "links",
+                    "added_time",
+                    "updated_at",
+                ],
+                filters={"user_id": uid},
+            )
+
+            def serialize_datetime(dt):
+                return dt.isoformat() if isinstance(dt, (datetime, date)) else None
+
+            # Process school info
+            response_school_info = {
+                "id": school_info["id"],
+                "schoolName": school_info["school_name"] or "",
+                "gradeLevel": school_info["grade_level"] or "",
+                "studentId": school_info["student_id"] or "",
+                "graduationYear": school_info["graduation_year"] or "",
+                "homeroomTeacher": school_info["homeroom_teacher"] or "",
+                "guidanceCounselor": school_info["guidance_counselor"] or "",
+                "currentGpa": (
+                    str(school_info["current_gpa"])
+                    if school_info["current_gpa"]
+                    else ""
+                ),
+                "attendanceRate": school_info["attendance_rate"] or "",
+                "schoolAddress": school_info["school_address"] or "",
+                "notes": school_info["notes"] or "",
+                "addedTime": serialize_datetime(school_info["added_time"]),
+                "updatedAt": serialize_datetime(school_info["updated_at"]),
+            }
+
+            # Process activities
+            response_activities = []
+            for activity in activities:
+                # Handle details and links as lists if already parsed, otherwise assume they are JSON strings
+                details = (
+                    activity["details"]
+                    if isinstance(activity["details"], list)
+                    else json.loads(activity["details"]) if activity["details"] else []
+                )
+                links = (
+                    activity["links"]
+                    if isinstance(activity["links"], list)
+                    else json.loads(activity["links"]) if activity["links"] else []
+                )
+                response_activities.append(
+                    {
+                        "id": activity["id"],
+                        "title": activity["title"] or "",
+                        "schedule": activity["schedule"] or "",
+                        "details": details,
+                        "links": links,
+                        "addedTime": serialize_datetime(activity["added_time"]),
+                        "updatedAt": serialize_datetime(activity["updated_at"]),
+                    }
+                )
+
+            return {
+                "status": 1,
+                "message": "School information and activities fetched successfully",
+                "payload": {
+                    "schoolInfo": response_school_info,
+                    "activities": response_activities,
+                },
+            }, 200
+        except Exception as e:
+            # logger.error(f"Error fetching school info: {str(e)}")
+            return {
+                "status": 0,
+                "message": f"Failed to fetch school info: {str(e)}",
+            }, 500

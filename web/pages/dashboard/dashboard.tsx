@@ -441,114 +441,115 @@ import TasksOverview from './TasksOverview';
 import SmartInsights from './SmartInsights';
 
 const Dashboard: React.FC = () => {
-    const [currentDate, setCurrentDate] = useState('');
-    const [userName] = useState('Karthik Raja');
+  const [currentDate, setCurrentDate] = useState('');
+  const [userName] = useState('Karthik Raja');
 
-    useEffect(() => {
-        const options: Intl.DateTimeFormatOptions = {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        };
-        const date = new Date().toLocaleDateString('en-US', options);
-        setCurrentDate(date);
-    }, []);
-
-    const getGreeting = () => {
-        const hour = new Date().getHours();
-        if (hour < 12) return 'Good morning';
-        if (hour < 18) return 'Good afternoon';
-        return 'Good evening';
+  useEffect(() => {
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
     };
+    const date = new Date().toLocaleDateString('en-US', options);
+    setCurrentDate(date);
+  }, []);
 
-    return (
-        <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh', fontFamily: 'Inter, system-ui, sans-serif', marginTop: 50, marginLeft: 30 }}>
-            {/* <Header /> */}
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  };
 
-            <main style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
-                {/* Welcome Section */}
-                <div style={{
-                    marginBottom: '24px',
-                    opacity: 0,
-                    animation: 'fadeInUp 0.6s ease-out forwards'
-                }}>
-                    <h2 style={{
-                        fontSize: '32px',
-                        fontWeight: '700',
-                        color: '#1e293b',
-                        margin: '0 0 8px 0',
-                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent'
-                    }}>
-                        {getGreeting()}, {userName}!
-                    </h2>
-                    <p style={{
-                        color: '#64748b',
-                        fontSize: '16px',
-                        margin: 0
-                    }}>
-                        {currentDate}
-                    </p>
-                </div>
+  return (
+    <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh', fontFamily: 'Inter, system-ui, sans-serif', marginTop: 50, marginLeft: 30 }}>
+      {/* <Header /> */}
 
-                {/* Top Widgets Row - More Compact */}
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                    gap: '16px',
-                    marginBottom: '32px'
-                }}>
-                    <WeatherWidget />
-                    <TopNewsWidget />
-                    <MarketsWidget />
-                </div>
+      <main style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
+        {/* Welcome Section */}
+        <div style={{
+          marginBottom: '24px',
+          opacity: 0,
+          animation: 'fadeInUp 0.6s ease-out forwards'
+        }}>
+          <h2 style={{
+            fontSize: '32px',
+            fontWeight: '700',
+            color: '#1e293b',
+            margin: '0 0 8px 0',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent'
+          }}>
+            {getGreeting()}, {userName}!
+          </h2>
+          <p style={{
+            color: '#64748b',
+            fontSize: '16px',
+            margin: 0
+          }}>
+            {currentDate}
+          </p>
+        </div>
 
-                {/* Smart Insights - New Component */}
-                {/* <SmartInsights /> */}
+        {/* Top Widgets Row - More Compact */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: '16px',
+          marginBottom: '32px'
+        }}>
+          <WeatherWidget />
+          <TopNewsWidget />
+          <MarketsWidget />
+        </div>
 
-                {/* Alerts & Quick Actions */}
-                <AlertsSuggestions />
-                <QuickActions />
+        {/* Smart Insights - New Component */}
+        {/* <SmartInsights /> */}
 
-                {/* Main Content Grid */}
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
-                    gap: '24px',
-                    marginBottom: '32px'
-                }}>
-                    <UpcomingActivities />
-                    <RecentActivity />
-                </div>
+        {/* Alerts & Quick Actions */}
+        <AlertsSuggestions />
+        <QuickActions />
 
-                {/* Secondary Content Grid */}
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
-                    gap: '24px',
-                    marginBottom: '32px'
-                }}>
-                    <TasksOverview />
-                    <ProductivityStats />
-                </div>
+        {/* Main Content Grid */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+          gap: '24px',
+          marginBottom: '32px'
+        }}
+          id="recent-activity">
+          <UpcomingActivities />
+          <RecentActivity />
+        </div>
 
-                {/* Finance and Health Row */}
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: '2fr 1fr',
-                    gap: '24px',
-                    // '@media (max-width: 1024px)': {
-                    //     gridTemplateColumns: '1fr'
-                    // }
-                }}>
-                    <FinanceSnapshot />
-                    <HealthPulse />
-                </div>
-            </main>
+        {/* Secondary Content Grid */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
+          gap: '24px',
+          marginBottom: '32px'
+        }}>
+          <TasksOverview />
+          <ProductivityStats />
+        </div>
 
-            <style>{`
+        {/* Finance and Health Row */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '2fr 1fr',
+          gap: '24px',
+          // '@media (max-width: 1024px)': {
+          //     gridTemplateColumns: '1fr'
+          // }
+        }}>
+          <FinanceSnapshot />
+          <HealthPulse />
+        </div>
+      </main>
+
+      <style>{`
         @keyframes fadeInUp {
           from {
             opacity: 0;
@@ -611,8 +612,8 @@ const Dashboard: React.FC = () => {
         .animate-delay-3 { animation-delay: 0.3s; }
         .animate-delay-4 { animation-delay: 0.4s; }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 };
 
 export default Dashboard;
