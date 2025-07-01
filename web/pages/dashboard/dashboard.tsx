@@ -439,10 +439,14 @@ import HealthPulse from './HealthPulse';
 import ProductivityStats from './ProductivityStats';
 import TasksOverview from './TasksOverview';
 import SmartInsights from './SmartInsights';
+import { useCurrentUser } from '../../app/userContext';
+import { capitalizeEachWord } from '../../app/comman';
 
 const Dashboard: React.FC = () => {
   const [currentDate, setCurrentDate] = useState('');
-  const [userName] = useState('Karthik Raja');
+  // const [userName, setUserName] = useState('UNKNOWN USER');
+  const currentUser = useCurrentUser();
+  const currentUserName = currentUser?.user_name || ""
 
   useEffect(() => {
     const options: Intl.DateTimeFormatOptions = {
@@ -482,7 +486,7 @@ const Dashboard: React.FC = () => {
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent'
           }}>
-            {getGreeting()}, {userName}!
+            {getGreeting()}, {capitalizeEachWord(currentUserName || "UNKNOWN USER")}!
           </h2>
           <p style={{
             color: '#64748b',
