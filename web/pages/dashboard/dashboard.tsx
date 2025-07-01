@@ -440,7 +440,7 @@ import ProductivityStats from './ProductivityStats';
 import TasksOverview from './TasksOverview';
 import SmartInsights from './SmartInsights';
 import { useCurrentUser } from '../../app/userContext';
-import { capitalizeEachWord } from '../../app/comman';
+import { capitalizeEachWord, getGreeting } from '../../app/comman';
 
 const Dashboard: React.FC = () => {
   const [currentDate, setCurrentDate] = useState('');
@@ -459,12 +459,6 @@ const Dashboard: React.FC = () => {
     setCurrentDate(date);
   }, []);
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
-    return 'Good evening';
-  };
 
   return (
     <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh', fontFamily: 'Inter, system-ui, sans-serif', marginTop: 50, marginLeft: 30 }}>
