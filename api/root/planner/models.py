@@ -722,7 +722,7 @@ class AddWeeklyGoals(Resource):
         DBHelper.insert("weekly_goals", return_column="id", **goal)
         try:
             start_dt = datetime.strptime(
-                f"{data.get("date", "")} {data.get("time", "")}", "%Y-%m-%d %I:%M %p"
+                f"{data.get('date', '')} {data.get('time', '')}", "%Y-%m-%d %I:%M %p"
             )
         except ValueError:
             return {"status": 0, "message": "Invalid date/time format", "payload": {}}
@@ -822,7 +822,7 @@ class AddWeeklyTodos(Resource):
         DBHelper.insert("weekly_todos", return_column="id", **todo)
         try:
             start_dt = datetime.strptime(
-                f"{data.get("date", "")} {data.get("time", "")}", "%Y-%m-%d %I:%M %p"
+                f"{data.get('date', '')} {data.get('time', '')}", "%Y-%m-%d %I:%M %p"
             )
         except ValueError:
             return {"status": 0, "message": "Invalid date/time format", "payload": {}}
