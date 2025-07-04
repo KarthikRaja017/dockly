@@ -67,7 +67,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
   }, [pathname]);
 
   if (user === undefined) {
-    return <Spin />;
+    return <DocklyLoader />;
   }
 
   if (loading) {

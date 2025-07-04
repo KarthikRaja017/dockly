@@ -96,76 +96,227 @@
 // export default AccountsList;
 
 
-import React from 'react';
-import { Card, Typography, Row, Col, Avatar, Divider } from 'antd';
+// import React from 'react';
+// import { Card, Typography, Row, Col, Avatar, Divider } from 'antd';
+
+// const { Title, Text } = Typography;
+
+// const accountsData = {
+//   netWorth: 47543.87,
+//   assets: 72543.87,
+//   liabilities: 25000.0,
+//   cashFlow: -506.55,
+//   sections: [
+//     {
+//       title: 'Cash Accounts',
+//       total: 12543.87,
+//       items: [
+//         { name: 'Chase Checking', type: 'Checking Account', value: 4856.23, color: '#3b82f6' },
+//         { name: 'Chase Savings', type: 'Savings Account', value: 7687.64, color: '#3b82f6' },
+//       ],
+//     },
+//     {
+//       title: 'Credit Cards',
+//       total: -3250.0,
+//       items: [
+//         { name: 'Visa Card', type: 'Credit Card', value: -1414.58, color: '#1e40af' },
+//         { name: 'Amex Card', type: 'Credit Card', value: -1835.42, color: '#059669' },
+//       ],
+//     },
+//     {
+//       title: 'Investments',
+//       total: 60000.0,
+//       items: [
+//         { name: 'Fidelity 401(k)', type: 'Retirement', value: 42350.0, color: '#8b5cf6' },
+//         { name: 'Vanguard IRA', type: 'Retirement', value: 17650.0, color: '#0ea5e9' },
+//       ],
+//     },
+//     {
+//       title: 'Loans',
+//       total: -21750.0,
+//       items: [
+//         { name: 'Student Loan', type: 'Sallie Mae', value: -16250.0, color: '#ef4444' },
+//         { name: 'Auto Loan', type: 'Toyota Financial', value: -5500.0, color: '#f97316' },
+//       ],
+//     },
+//   ],
+// };
+
+// const AccountsOverview = () => {
+//   const formatCurrency = (amount: number) =>
+//     `${amount < 0 ? '-' : ''}$${Math.abs(amount).toLocaleString(undefined, {
+//       minimumFractionDigits: 2,
+//     })}`;
+
+//   return (
+//     <Card
+//       style={{
+//         borderRadius: 16,
+//         boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)',
+//         padding: 24,
+//         margin: 24,
+//       }}
+//       bodyStyle={{ padding: 0 }}
+//     >
+//       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
+//         <Title level={4} style={{ margin: 0 }}>
+//           Accounts & Net Worth
+//         </Title>
+//         <Text style={{ color: '#3b82f6', cursor: 'pointer' }}>Manage Accounts</Text>
+//       </div>
+
+//       {/* Net Summary */}
+//       <Row
+//         gutter={24}
+//         style={{
+//           background: '#f9fafb',
+//           borderRadius: 12,
+//           padding: '24px 16px',
+//           marginBottom: 32,
+//         }}
+//       >
+//         <Col span={6}>
+//           <Text type="secondary">Net Worth</Text>
+//           <Title level={3} style={{ color: '#22c55e' }}>
+//             {formatCurrency(accountsData.netWorth)}
+//           </Title>
+//         </Col>
+//         <Col span={6}>
+//           <Text type="secondary">Total Assets</Text>
+//           <Title level={3}>{formatCurrency(accountsData.assets)}</Title>
+//         </Col>
+//         <Col span={6}>
+//           <Text type="secondary">Total Liabilities</Text>
+//           <Title level={3} style={{ color: '#ef4444' }}>
+//             {formatCurrency(accountsData.liabilities)}
+//           </Title>
+//         </Col>
+//         <Col span={6}>
+//           <Text type="secondary">Monthly Cash Flow</Text>
+//           <Title level={3} style={{ color: '#ef4444' }}>
+//             {formatCurrency(accountsData.cashFlow)}
+//           </Title>
+//         </Col>
+//       </Row>
+
+//       {/* Account Sections */}
+//       <Row gutter={[24, 24]}>
+//         {accountsData.sections.map((section, index) => (
+//           <Col span={12} key={index}>
+//             <Card
+//               title={section.title}
+//               extra={
+//                 <Text
+//                   style={{
+//                     color: section.total >= 0 ? '#111827' : '#ef4444',
+//                     fontWeight: 500,
+//                   }}
+//                 >
+//                   {formatCurrency(section.total)}
+//                 </Text>
+//               }
+//               style={{
+//                 borderRadius: 12,
+//                 background: '#ffffff',
+//               }}
+//               bodyStyle={{ padding: 0 }}
+//             >
+//               {section.items.map((item, idx) => (
+//                 <div
+//                   key={idx}
+//                   style={{
+//                     display: 'flex',
+//                     justifyContent: 'space-between',
+//                     alignItems: 'center',
+//                     padding: '12px 16px',
+//                     borderBottom:
+//                       idx !== section.items.length - 1 ? '1px solid #f3f4f6' : 'none',
+//                   }}
+//                 >
+//                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+//                     <Avatar
+//                       style={{
+//                         backgroundColor: item.color,
+//                         fontWeight: 600,
+//                       }}
+//                     >
+//                       {item.name.charAt(0)}
+//                     </Avatar>
+//                     <div>
+//                       <Text style={{ fontWeight: 500 }}>{item.name}</Text>
+//                       <br />
+//                       <Text type="secondary" style={{ fontSize: 12 }}>
+//                         {item.type}
+//                       </Text>
+//                     </div>
+//                   </div>
+//                   <div>
+//                     <Text
+//                       strong
+//                       style={{
+//                         color: item.value < 0 ? '#ef4444' : '#111827',
+//                       }}
+//                     >
+//                       {formatCurrency(item.value)}
+//                     </Text>
+//                   </div>
+//                 </div>
+//               ))}
+//             </Card>
+//           </Col>
+//         ))}
+//       </Row>
+//     </Card>
+//   );
+// };
+
+// export default AccountsOverview;
+
+
+
+
+import React, { useEffect, useState } from 'react';
+import { Card, Typography, Row, Col, Avatar } from 'antd';
+import { getAccounts } from '../../services/apiConfig';
 
 const { Title, Text } = Typography;
 
-const accountsData = {
-  netWorth: 47543.87,
-  assets: 72543.87,
-  liabilities: 25000.0,
-  cashFlow: -506.55,
-  sections: [
-    {
-      title: 'Cash Accounts',
-      total: 12543.87,
-      items: [
-        { name: 'Chase Checking', type: 'Checking Account', value: 4856.23, color: '#3b82f6' },
-        { name: 'Chase Savings', type: 'Savings Account', value: 7687.64, color: '#3b82f6' },
-      ],
-    },
-    {
-      title: 'Credit Cards',
-      total: -3250.0,
-      items: [
-        { name: 'Visa Card', type: 'Credit Card', value: -1414.58, color: '#1e40af' },
-        { name: 'Amex Card', type: 'Credit Card', value: -1835.42, color: '#059669' },
-      ],
-    },
-    {
-      title: 'Investments',
-      total: 60000.0,
-      items: [
-        { name: 'Fidelity 401(k)', type: 'Retirement', value: 42350.0, color: '#8b5cf6' },
-        { name: 'Vanguard IRA', type: 'Retirement', value: 17650.0, color: '#0ea5e9' },
-      ],
-    },
-    {
-      title: 'Loans',
-      total: -21750.0,
-      items: [
-        { name: 'Student Loan', type: 'Sallie Mae', value: -16250.0, color: '#ef4444' },
-        { name: 'Auto Loan', type: 'Toyota Financial', value: -5500.0, color: '#f97316' },
-      ],
-    },
-  ],
-};
-
 const AccountsOverview = () => {
+  const [sections, setSections] = useState<any[]>([]);
+  const [netWorth, setNetWorth] = useState<number>(0);
+  const [assets, setAssets] = useState<number>(0);
+  const [liabilities, setLiabilities] = useState<number>(0);
+  const [cashFlow, setCashFlow] = useState<number>(0);
+
   const formatCurrency = (amount: number) =>
     `${amount < 0 ? '-' : ''}$${Math.abs(amount).toLocaleString(undefined, {
       minimumFractionDigits: 2,
     })}`;
 
+  useEffect(() => {
+    const fetchAccounts = async () => {
+      try {
+        const res = await getAccounts({});
+        const { payload } = res.data;
+        setNetWorth(payload.total_balance || 0);
+        setAssets(payload.assets || 0);
+        setLiabilities(payload.liabilities || 0);
+        setCashFlow(payload.cash_flow || 0);
+        setSections(payload.sections || []);
+      } catch (err) {
+        console.error('Error fetching account data', err);
+      }
+    };
+    fetchAccounts();
+  }, []);
+
   return (
-    <Card
-      style={{
-        borderRadius: 16,
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)',
-        padding: 24,
-        margin: 24,
-      }}
-      bodyStyle={{ padding: 0 }}
-    >
+    <Card style={{ borderRadius: 16, padding: 24, margin: 24 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
-        <Title level={4} style={{ margin: 0 }}>
-          Accounts & Net Worth
-        </Title>
+        <Title level={4}>Accounts & Net Worth</Title>
         <Text style={{ color: '#3b82f6', cursor: 'pointer' }}>Manage Accounts</Text>
       </div>
 
-      {/* Net Summary */}
       <Row
         gutter={24}
         style={{
@@ -177,31 +328,24 @@ const AccountsOverview = () => {
       >
         <Col span={6}>
           <Text type="secondary">Net Worth</Text>
-          <Title level={3} style={{ color: '#22c55e' }}>
-            {formatCurrency(accountsData.netWorth)}
-          </Title>
+          <Title level={3} style={{ color: '#22c55e' }}>{formatCurrency(netWorth)}</Title>
         </Col>
         <Col span={6}>
           <Text type="secondary">Total Assets</Text>
-          <Title level={3}>{formatCurrency(accountsData.assets)}</Title>
+          <Title level={3}>{formatCurrency(assets)}</Title>
         </Col>
         <Col span={6}>
           <Text type="secondary">Total Liabilities</Text>
-          <Title level={3} style={{ color: '#ef4444' }}>
-            {formatCurrency(accountsData.liabilities)}
-          </Title>
+          <Title level={3} style={{ color: '#ef4444' }}>{formatCurrency(liabilities)}</Title>
         </Col>
         <Col span={6}>
           <Text type="secondary">Monthly Cash Flow</Text>
-          <Title level={3} style={{ color: '#ef4444' }}>
-            {formatCurrency(accountsData.cashFlow)}
-          </Title>
+          <Title level={3} style={{ color: '#ef4444' }}>{formatCurrency(cashFlow)}</Title>
         </Col>
       </Row>
 
-      {/* Account Sections */}
       <Row gutter={[24, 24]}>
-        {accountsData.sections.map((section, index) => (
+        {sections.map((section, index) => (
           <Col span={12} key={index}>
             <Card
               title={section.title}
@@ -215,13 +359,10 @@ const AccountsOverview = () => {
                   {formatCurrency(section.total)}
                 </Text>
               }
-              style={{
-                borderRadius: 12,
-                background: '#ffffff',
-              }}
+              style={{ borderRadius: 12, background: '#fff' }}
               bodyStyle={{ padding: 0 }}
             >
-              {section.items.map((item, idx) => (
+              {section.items.map((item: any, idx: number) => (
                 <div
                   key={idx}
                   style={{
@@ -234,12 +375,7 @@ const AccountsOverview = () => {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <Avatar
-                      style={{
-                        backgroundColor: item.color,
-                        fontWeight: 600,
-                      }}
-                    >
+                    <Avatar style={{ backgroundColor: item.color }}>
                       {item.name.charAt(0)}
                     </Avatar>
                     <div>
@@ -250,16 +386,14 @@ const AccountsOverview = () => {
                       </Text>
                     </div>
                   </div>
-                  <div>
-                    <Text
-                      strong
-                      style={{
-                        color: item.value < 0 ? '#ef4444' : '#111827',
-                      }}
-                    >
-                      {formatCurrency(item.value)}
-                    </Text>
-                  </div>
+                  <Text
+                    strong
+                    style={{
+                      color: item.value < 0 ? '#ef4444' : '#111827',
+                    }}
+                  >
+                    {formatCurrency(item.value)}
+                  </Text>
                 </div>
               ))}
             </Card>
@@ -271,3 +405,4 @@ const AccountsOverview = () => {
 };
 
 export default AccountsOverview;
+

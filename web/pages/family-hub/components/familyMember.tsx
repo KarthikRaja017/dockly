@@ -5,6 +5,7 @@ import { useCurrentUser } from '../../../app/userContext';
 import { getUsersFamilyMembers } from '../../../services/family';
 import FamilyInviteForm from '../FamilyInviteForm';
 import FamilyHubMemberDetails from './profile';
+import { capitalizeEachWord, PRIMARY_COLOR } from '../../../app/comman';
 
 interface FamilyMember {
     id: number;
@@ -31,8 +32,23 @@ const FamilyMembers: React.FC<FamilyMembersProps> = ({ profileVisible, setProfil
     const dUser = currentUser?.duser;
 
     const getRandomColor = () => {
-        const colors = ['#FF6B6B', '#6BCB77', '#4D96FF', '#FFD93D', '#845EC2'];
-        return colors[Math.floor(Math.random() * colors.length)];
+        const colors = [
+            '#FF6B6B', // red
+            '#6BCB77', // green
+            '#FFD93D', // yellow
+            '#845EC2', // purple
+            '#FF9671', // orange
+            '#FFC75F', // light orange
+            '#F9F871', // pastel yellow
+            '#D65DB1', // pinkish purple
+            '#FFB085', // peach
+            '#B0C926'  // lime green
+        ];
+
+        // Ensure primary color is not in the list
+        const filteredColors = colors.filter(color => color.toLowerCase() !== PRIMARY_COLOR.toLowerCase());
+
+        return filteredColors[Math.floor(Math.random() * filteredColors.length)];
     };
 
     const getMembers = async () => {
@@ -53,13 +69,13 @@ const FamilyMembers: React.FC<FamilyMembersProps> = ({ profileVisible, setProfil
                         .toUpperCase();
 
                     const role = member.relationship?.replace(/[^a-zA-Z\s]/g, '') || "Unknown";
-
+                    const color = role.toLowerCase() === 'me' ? PRIMARY_COLOR : getRandomColor();
                     return {
                         id,
                         name,
                         role,
                         type: 'family',
-                        color: getRandomColor(),
+                        color,
                         initials,
                         status: member.status || 'accepted',
                     };
@@ -237,7 +253,7 @@ const FamilyMembers: React.FC<FamilyMembersProps> = ({ profileVisible, setProfil
                                 textAlign: 'center',
                                 color: '#374151',
                             }}>
-                                {member.name}
+                                {capitalizeEachWord(member?.name)}
                             </div>
                             <div style={{
                                 fontSize: '13px',

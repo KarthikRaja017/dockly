@@ -287,8 +287,8 @@
 import React, { useState } from "react";
 import { ArrowRight, ArrowUpRightFromSquareIcon, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import customCalendar from "../dashboard/calendar";
-import { Typography } from "antd";
-import { ACTIVE_BG_COLOR, PRIMARY_COLOR } from "../../app/comman";
+import { Tooltip, Typography } from "antd";
+import { ACTIVE_BG_COLOR, capitalizeEachWord, PRIMARY_COLOR } from "../../app/comman";
 // Removed unused CalenderProps type and moved interfaces outside
 
 interface Event {
@@ -316,6 +316,7 @@ interface CalendarProps {
     data: CalendarData;
     onAddEvent?: (event: Omit<Event, "id">) => void;
     onEventClick?: (event: Event) => void;
+    personColors?: { [person: string]: { color: string; email: string } };
 }
 
 
@@ -567,6 +568,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
     data,
     onAddEvent,
     onEventClick,
+    personColors = {}
 }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [view, setView] = useState<"Day" | "Week" | "Month" | "Year">("Week");
@@ -574,60 +576,8 @@ const CustomCalendar: React.FC<CalendarProps> = ({
     const [isNavigating, setIsNavigating] = useState(false);
     const [hoveredEvent, setHoveredEvent] = useState<string | null>(null);
 
-    const personColors = {
-        John: "#3B82F6",
-        Sarah: "#8B5CF6",
-        Emma: "#EC4899",
-        Liam: "#F59E0B",
-        Family: "#10B981",
-    };
-
-    // Sample data for demonstration
-    const sampleData: CalendarData = {
-        events: [
-            {
-                id: "1",
-                title: "Team Meeting",
-                startTime: "10:00 AM",
-                date: new Date().toISOString().split("T")[0],
-                person: "John",
-                color: personColors.John,
-            },
-            {
-                id: "2",
-                title: "Yoga Class",
-                startTime: "6:00 PM",
-                date: new Date(Date.now() + 86400000).toISOString().split("T")[0],
-                person: "Sarah",
-                color: personColors.Sarah,
-            },
-            {
-                id: "3",
-                title: "Soccer Practice",
-                startTime: "4:00 PM",
-                date: new Date(Date.now() + 172800000).toISOString().split("T")[0],
-                person: "Emma",
-                color: personColors.Emma,
-            },
-        ],
-        meals: [
-            {
-                id: "1",
-                name: "Grilled Salmon",
-                emoji: "🐟",
-                date: new Date().toISOString().split("T")[0],
-            },
-            {
-                id: "2",
-                name: "Pasta Carbonara",
-                emoji: "🍝",
-                date: new Date(Date.now() + 86400000).toISOString().split("T")[0],
-            },
-        ],
-    };
-
     const finalData =
-        data?.events.length > 0 || data?.meals.length > 0 ? data : sampleData;
+        data?.events.length > 0 || data?.meals.length > 0 ? data : sampleCalendarData;
     if (!data?.events) return null;
     // Natural Language Processing for event parsing
     const parseEventText = (text: string) => {
@@ -807,14 +757,15 @@ const CustomCalendar: React.FC<CalendarProps> = ({
             .replace(/\s+/g, " ")
             .trim();
 
+        const colorObj =
+            personColors[eventPerson as keyof typeof personColors] ||
+            personColors.Family;
         return {
             title: eventTitle || "New Event",
             startTime: eventTime,
             date: eventDate.toISOString().split("T")[0],
             person: eventPerson,
-            color:
-                personColors[eventPerson as keyof typeof personColors] ||
-                personColors.Family,
+            color: colorObj && typeof colorObj === "object" ? colorObj.color : "#10B981",
         };
     };
 
@@ -2309,43 +2260,44 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                 }}
             >
                 {Object.entries(personColors).map(([person, color], index) => (
-                    <div
-                        key={person}
-                        style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "6px",
-                            fontSize: "13px",
-                            padding: "6px 12px",
-                            backgroundColor: "white",
-                            borderRadius: "16px",
-                            boxShadow: "0 2px 4px rgba(0, 0, 0, 0.05)",
-                            transition: "all 0.3s ease",
-                            animation: `slideInUp 0.6s ease ${index * 0.1}s both`,
-                            cursor: "pointer",
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = "translateY(-2px)";
-                            e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.1)";
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = "translateY(0)";
-                            e.currentTarget.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.05)";
-                        }}
-                    >
+                    <Tooltip key={person} title={color.email}> {/* ⬅️ Show email on hover */}
                         <div
                             style={{
-                                width: "12px",
-                                height: "12px",
-                                backgroundColor: color,
-                                borderRadius: "50%",
-                                boxShadow: `0 0 0 2px ${color}20`,
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "6px",
+                                fontSize: "13px",
+                                padding: "6px 12px",
+                                backgroundColor: "white",
+                                borderRadius: "16px",
+                                boxShadow: "0 2px 4px rgba(0, 0, 0, 0.05)",
+                                transition: "all 0.3s ease",
+                                animation: `slideInUp 0.6s ease ${index * 0.1}s both`,
+                                cursor: "pointer",
                             }}
-                        />
-                        <span style={{ color: "#374151", fontWeight: "500" }}>
-                            {person}
-                        </span>
-                    </div>
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = "translateY(-2px)";
+                                e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.1)";
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = "translateY(0)";
+                                e.currentTarget.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.05)";
+                            }}
+                        >
+                            <div
+                                style={{
+                                    width: "12px",
+                                    height: "12px",
+                                    backgroundColor: color.color,
+                                    borderRadius: "50%",
+                                    boxShadow: `0 0 0 2px ${color.color}20`,
+                                }}
+                            />
+                            <span style={{ color: "#374151", fontWeight: "500" }}>
+                                {capitalizeEachWord(person)}
+                            </span>
+                        </div>
+                    </Tooltip>
                 ))}
             </div>
         </div >

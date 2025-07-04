@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Card, Tooltip, Typography } from "antd";
@@ -19,6 +20,7 @@ const { Title } = Typography;
 const CashFlow = ({ bankDetails }: any) => {
     const transactions = bankDetails?.transactions?.nodes ?? [];
 
+
     const graphData = getLastSixMonthsSummary(transactions);
 
     return (
@@ -31,7 +33,6 @@ const CashFlow = ({ bankDetails }: any) => {
                 margin: "20px",
                 width: "1300px",
             }}
-            bodyStyle={{ padding: 0 }}
         >
             <div style={{ display: "flex" }}>
                 <div>
@@ -129,3 +130,4 @@ const getLastSixMonthsSummary = (transactions: any[] = []) => {
 
     return summary;
 };
+

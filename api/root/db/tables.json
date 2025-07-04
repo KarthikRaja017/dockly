@@ -96,6 +96,7 @@
         "id SERIAL PRIMARY KEY",
         "user_id VARCHAR REFERENCES users(uid)",
         "provider VARCHAR",
+        "email VARCHAR",
         "access_token VARCHAR",
         "refresh_token VARCHAR",
         "expires_at TIMESTAMP",
@@ -142,6 +143,7 @@
         "name TEXT",
         "relationship TEXT",
         "user_id VARCHAR REFERENCES users(uid)",
+        "fm_user_id VARCHAR",
         "email VARCHAR(255)",
         "access_code VARCHAR",
         "method VARCHAR",
@@ -542,6 +544,37 @@
         "priority INT",
         "goal_status INT",
         "status INT",
+        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+      ]
+    },
+
+    {
+      "table_name": "bank_accounts",
+      "columns": [
+        "id SERIAL PRIMARY KEY",
+        "user_id VARCHAR REFERENCES users(uid)",
+        "name VARCHAR(100) NOT NULL",
+        "provider VARCHAR(100)",
+        "access_token VARCHAR",
+        "current_balance NUMERIC",
+        "currency VARCHAR(100)",
+        "transacted_first DATE",
+        "transacted_last DATE"
+      ]
+    },
+
+    {
+      "table_name": "user_bank_transactions",
+      "columns": [
+        "id SERIAL PRIMARY KEY",
+        "user_id VARCHAR REFERENCES users(uid)",
+        "transaction_id VARCHAR(255) UNIQUE",
+        "date DATE",
+        "description TEXT",
+        "amount DECIMAL(12, 2)",
+        "status VARCHAR(50)",
+        "currency_code VARCHAR(10)",
+        "entry_type VARCHAR(10)",
         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
       ]
     }

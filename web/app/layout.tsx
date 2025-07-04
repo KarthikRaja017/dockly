@@ -4,7 +4,7 @@ export const metadata = {
   title: "Dockly",
   description: "A simple and elegant way to manage your containers",
   icons: {
-    icon: "/logoBlue.png", 
+    icon: "/dockly-header.png",
   },
 };
 

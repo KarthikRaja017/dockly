@@ -1,6 +1,130 @@
+# import os
+# import threading
+# import subprocess
+# from datetime import timedelta
+# from flask import Flask
+# from flask_cors import CORS
+# from flask_restful import Api
+# from flask_jwt_extended import JWTManager
+# from flask_socketio import SocketIO, emit
+# import eventlet
+
+# # Config and DB
+# from root.config import G_SECRET_KEY
+# from root.db.db import postgres
+
+# eventlet.monkey_patch()
+
+# # Global instances
+# api = Api()
+# jwt = JWTManager()
+# socketio = SocketIO(
+#     cors_allowed_origins=[
+#         "http://localhost:3000",
+#         "http://localhost:5173",
+#         "https://localhost:5173",
+#     ],
+#     async_mode="eventlet",
+# )
+
+
+# def background_sync(bw_manager):
+#     try:
+#         if bw_manager.session_key:
+#             env = os.environ.copy()
+#             env["BW_SESSION"] = bw_manager.session_key
+#             result = subprocess.run(
+#                 ["bw", "sync"], capture_output=True, text=True, env=env
+#             )
+#             if result.returncode == 0:
+#                 socketio.emit("sync_complete", {"message": "Background sync completed"})
+#             else:
+#                 socketio.emit("sync_error", {"message": result.stderr})
+#     except Exception as e:
+#         socketio.emit("sync_error", {"message": str(e)})
+
+
+# def create_app(test_config=None):
+#     app = Flask(__name__, instance_relative_config=True)
+#     app.config["SECRET_KEY"] = G_SECRET_KEY
+#     app.permanent_session_lifetime = timedelta(minutes=60)
+
+#     # Enable CORS
+#     CORS(
+#         app,
+#         # resources={
+#         #     r"/server/api/vault/*": {
+#         #         "origins": [
+#         #             "http://localhost:3000",
+#         #             "http://localhost:5173",
+#         #             "https://localhost:5173",
+#         #         ],
+#         #         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+#         #         "allow_headers": ["Content-Type", "Authorization"],
+#         #     }
+#         # },
+#     )
+
+#     # Initialize extensions
+#     jwt.init_app(app)
+#     socketio.init_app(app)
+#     postgres.init_app()
+
+#     # Avoid circular imports
+#     from root.vault.models import bw_manager
+
+#     # WebSocket handlers
+#     @socketio.on("connect")
+#     def handle_connect():
+#         print("Client connected")
+#         emit("connected", {"message": "Connected to Bitwarden manager"})
+
+#     @socketio.on("disconnect")
+#     def handle_disconnect():
+#         print("Client disconnected")
+
+#     @socketio.on("request_sync")
+#     def handle_sync_request():
+#         if bw_manager.is_logged_in:
+#             threading.Thread(target=background_sync, args=(bw_manager,)).start()
+#         else:
+#             emit("sync_error", {"message": "Not logged in"})
+
+#     # Register Blueprints
+#     from root.users import users_bp
+#     from root.db import db_bp
+#     from root.bookmarks import bookmarks_bp
+#     from root.general import general_bp
+#     from root.google import google_bp
+#     from root.microsoft import microsoft_bp
+#     from root.settings import settings_bp
+#     from root.family import family_bp
+#     from root.notes import notes_bp
+#     from root.dashboard import dashboard_bp
+#     from root.planner import planner_bp
+#     from root.notifications import notifications_bp
+#     from root.vault import vault_bp
+
+#     app.register_blueprint(users_bp)
+#     app.register_blueprint(db_bp)
+#     app.register_blueprint(bookmarks_bp)
+#     app.register_blueprint(general_bp)
+#     app.register_blueprint(google_bp)
+#     app.register_blueprint(microsoft_bp)
+#     app.register_blueprint(settings_bp)
+#     app.register_blueprint(family_bp)
+#     app.register_blueprint(notes_bp)
+#     app.register_blueprint(dashboard_bp)
+#     app.register_blueprint(planner_bp)
+#     app.register_blueprint(notifications_bp)
+#     app.register_blueprint(vault_bp)
+
+#     return app, socketio
+
+
 from datetime import timedelta
 
-from flask import Flask
+from flask import Flask, app
 from flask_jwt_extended import JWTManager
 from flask_restful import Api
 from flask_cors import CORS

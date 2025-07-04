@@ -1,126 +1,17 @@
-// "use client";
-// import { Card, Button, Pagination } from "antd";
-// import { Avatar } from "antd";
-// import { BankOutlined } from "@ant-design/icons";
-// import { useState } from "react";
+'use client';
 
-// const TransactionItem = (props: any) => {
-//   const { description, date, amount, entryType, currencyCode, status } =
-//     props.data;
-//   const isIncome = entryType === "CREDIT";
-//   const formattedAmount = `${isIncome ? "+" : "-"}${currencyCode} ${Math.abs(
-//     amount
-//   ).toFixed(2)}`;
-
-//   const icon = <BankOutlined />;
-
-//   const safeDate =
-//     typeof date === "string"
-//       ? date
-//       : new Date(date).toLocaleDateString("en-US", {
-//           year: "numeric",
-//           month: "short",
-//           day: "numeric",
-//         });
-
-//   return (
-//     <div
-//       style={{
-//         display: "flex",
-//         alignItems: "center",
-//         padding: "12px 0",
-//         borderBottom: "1px solid #f0f0f0",
-//         justifyContent: "space-between",
-//       }}
-//     >
-//       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-//         <Avatar
-//           size="large"
-//           style={{
-//             backgroundColor: "#e6f4ff",
-//             fontSize: 20,
-//           }}
-//           icon={icon}
-//         />
-//         <div>
-//           <div style={{ fontWeight: 600 }}>{description}</div>
-//           <div style={{ color: "#999", fontSize: 13 }}>{entryType}</div>
-//         </div>
-//       </div>
-//       <div style={{ textAlign: "right" }}>
-//         <div
-//           style={{
-//             fontWeight: 600,
-//             color: isIncome ? "green" : "red",
-//           }}
-//         >
-//           {formattedAmount}
-//         </div>
-//         <div style={{ fontSize: 12, color: "#999" }}>{safeDate}</div>
-//       </div>
-//     </div>
-//   );
-// };
-
-// const RecentTransactions = (props: any) => {
-//   const transactions = Array.isArray(props.transactions)
-//     ? props.transactions
-//     : [];
-//   const [currentPage, setCurrentPage] = useState(1);
-//   const pageSize = 10;
-
-//   const startIndex = (currentPage - 1) * pageSize;
-//   const currentData = transactions.slice(startIndex, startIndex + pageSize);
-
-//   return (
-//     <Card
-//       title="💳 Recent Transactions"
-//       extra={
-//         <Button type="text" icon={<span style={{ fontSize: 16 }}>⋯</span>} />
-//       }
-//       style={{
-//         borderRadius: 16,
-//         boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
-//         background: "#ffffff",
-//         maxWidth: 1500,
-//       }}
-//     >
-//       {currentData.map((tx: any, index: number) => (
-//         <TransactionItem key={tx.id || index} data={tx} />
-//       ))}
-//       <div style={{ display: "flex", justifyContent: "end" }}>
-//         <Pagination
-//           current={currentPage}
-//           pageSize={pageSize}
-//           total={transactions.length}
-//           onChange={(page) => setCurrentPage(page)}
-//           style={{ marginTop: 20, textAlign: "right" }}
-//         />
-//       </div>
-
-//       <div
-//         style={{
-//           marginTop: 16,
-//           padding: "8px 12px",
-//           border: "1px solid #ddd",
-//           borderRadius: 8,
-//           textAlign: "center",
-//           cursor: "pointer",
-//           color: "#555",
-//         }}
-//       >
-//         🔍 View All Transactions
-//       </div>
-//     </Card>
-//   );
-// };
-
-// export default RecentTransactions;
-
-
-
-import React from 'react';
-import { Card, List, Typography, Avatar, Row, Col } from 'antd';
+import React, { useEffect, useState } from 'react';
+import {
+  Card,
+  List,
+  Typography,
+  Avatar,
+  Row,
+  Col,
+  Spin,
+  message,
+  Pagination,
+} from 'antd';
 import {
   ShoppingCartOutlined,
   DollarCircleOutlined,
@@ -128,134 +19,182 @@ import {
   CoffeeOutlined,
   LaptopOutlined,
   HomeOutlined,
+  BankOutlined,
 } from '@ant-design/icons';
+import { useQuilttSession } from '@quiltt/react';
+import {
+  saveBankTransactions,
+  getSavedTransactions,
+} from '../../services/apiConfig';
+import DocklyLoader from '../../utils/docklyLoader';
 
 const { Text } = Typography;
 
-const transactions = [
-  {
-    name: 'Whole Foods Market',
-    category: 'Groceries',
-    date: 'Today, 2:34 PM',
-    amount: -87.43,
-    account: 'Chase Checking',
-    icon: <ShoppingCartOutlined />,
-    color: '#fde68a',
-  },
-  {
-    name: 'Direct Deposit',
-    category: 'Income',
-    date: 'Jun 15, 9:00 AM',
-    amount: 1649.45,
-    account: 'Chase Checking',
-    icon: <DollarCircleOutlined />,
-    color: '#bbf7d0',
-  },
-  {
-    name: 'Shell Gas Station',
-    category: 'Transportation',
-    date: 'Jun 14, 5:45 PM',
-    amount: -52.18,
-    account: 'Visa Card',
-    icon: <CarOutlined />,
-    color: '#fecaca',
-  },
-  {
-    name: 'Chipotle Mexican Grill',
-    category: 'Dining Out',
-    date: 'Jun 14, 12:30 PM',
-    amount: -14.85,
-    account: 'Chase Checking',
-    icon: <CoffeeOutlined />,
-    color: '#bfdbfe',
-  },
-  {
-    name: 'Netflix Subscription',
-    category: 'Entertainment',
-    date: 'Jun 13, 12:00 AM',
-    amount: -19.99,
-    account: 'Amex Card',
-    icon: <LaptopOutlined />,
-    color: '#ddd6fe',
-  },
-  {
-    name: 'Property Management LLC',
-    category: 'Housing',
-    date: 'Jun 1, 8:00 AM',
-    amount: -850.0,
-    account: 'Chase Checking',
-    icon: <HomeOutlined />,
-    color: '#fca5a5',
-  },
-];
+const RecentTransactions = ({
+  isFullscreen = false,
+  onViewAll,
+}: {
+  isFullscreen?: boolean;
+  onViewAll?: () => void;
+}) => {
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
-const RecentTransactions = (props: any) => {
-  const { isFullscreen = false } = props;
-  const formatCurrency = (amount: number) => {
-    const formatted = `$${Math.abs(amount).toFixed(2)}`;
-    return amount < 0 ? `-${formatted}` : `+${formatted}`;
+  const { session } = useQuilttSession();
+
+  const getIcon = (desc: string) => {
+    const lower = desc.toLowerCase();
+    if (lower.includes('salary') || lower.includes('deposit')) return <DollarCircleOutlined />;
+    if (lower.includes('netflix') || lower.includes('subscription')) return <LaptopOutlined />;
+    if (lower.includes('gas') || lower.includes('transport')) return <CarOutlined />;
+    if (lower.includes('coffee') || lower.includes('restaurant')) return <CoffeeOutlined />;
+    if (lower.includes('home') || lower.includes('rent')) return <HomeOutlined />;
+    if (lower.includes('bank') || lower.includes('transfer')) return <BankOutlined />;
+    return <ShoppingCartOutlined />;
+  };
+
+  useEffect(() => {
+    fetchAndSaveTransactions();
+  }, []);
+
+  const fetchAndSaveTransactions = async () => {
+    const user_id = localStorage.getItem('userId');
+    if (!user_id || !session) {
+      message.error('Missing user session or ID');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await saveBankTransactions({ session, user_id });
+      const response = await getSavedTransactions({ user_id });
+      const txns = response?.transactions || [];
+
+      const formattedTxns = txns.map((txn: any) => ({
+        name: txn.description,
+        category: txn.entry_type === 'DEBIT' ? 'Debit' : 'Credit',
+        date: new Date(txn.date).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+        }),
+        amount: txn.amount,
+        account: 'Account',
+        icon: getIcon(txn.description),
+        color: txn.amount < 0 ? '#fecaca' : '#bbf7d0',
+      }));
+
+      setTransactions(formattedTxns);
+      message.success(`${formattedTxns.length} transactions loaded.`);
+    } catch (err) {
+      console.error('❌ Error fetching or saving transactions:', err);
+      message.error('Failed to load transactions.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const displayedTransactions = isFullscreen
+    ? transactions.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+    : transactions.slice(0, 6);
+
+  const handleViewAllClick = () => {
+    if (onViewAll) {
+      onViewAll(); // 🔁 Let parent handle navigation
+    } else {
+      setExpanded(true);
+    }
   };
 
   return (
     <Card
       title="Recent Transactions"
-      extra={isFullscreen ? <></> : <Text style={{ color: '#3b82f6', cursor: 'pointer' }}>View All</Text>}
+      extra={
+        !isFullscreen && (
+          <Text style={{ color: '#3b82f6', cursor: 'pointer' }} onClick={handleViewAllClick}>
+            View All
+          </Text>
+        )
+      }
       style={{
         borderRadius: 16,
         margin: 24,
         boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
-        // ...(isFullscreen ? { width: 900 } : { width: 900 })
+        height: isFullscreen ? 'auto' : 520,
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+      bodyStyle={{
+        paddingRight: 12,
+        paddingTop: 8,
+        overflow: 'hidden',
       }}
     >
-      <List
-        itemLayout="horizontal"
-        dataSource={transactions}
-        renderItem={(item) => (
-          <List.Item>
-            <List.Item.Meta
-              avatar={
-                <Avatar
-                  style={{
-                    backgroundColor: item.color,
-                    fontSize: 18,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                  size="large"
-                  icon={item.icon}
+      {loading ? (
+        <DocklyLoader />
+      ) : (
+        <>
+          <List
+            itemLayout="horizontal"
+            dataSource={displayedTransactions}
+            renderItem={(item) => (
+              <List.Item>
+                <List.Item.Meta
+                  avatar={
+                    <Avatar
+                      style={{
+                        backgroundColor: item.color,
+                        fontSize: 18,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                      size="large"
+                      icon={item.icon}
+                    />
+                  }
+                  title={<Text style={{ fontWeight: 500 }}>{item.name}</Text>}
+                  description={
+                    <Text type="secondary">
+                      {item.category} • {item.date}
+                    </Text>
+                  }
                 />
-              }
-              title={
-                <Text style={{ fontWeight: 500 }}>{item.name}</Text>
-              }
-              description={
-                <Text type="secondary">
-                  {item.category} • {item.date}
-                </Text>
-              }
+                <Row style={{ textAlign: 'right' }}>
+                  <Col span={24}>
+                    <Text
+                      strong
+                      style={{
+                        color: item.amount < 0 ? '#ef4444' : '#22c55e',
+                        fontSize: 16,
+                      }}
+                    >
+                      {item.amount < 0 ? '-' : '+'}${Math.abs(item.amount).toFixed(2)}
+                    </Text>
+                  </Col>
+                  <Col span={24}>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      {item.account}
+                    </Text>
+                  </Col>
+                </Row>
+              </List.Item>
+            )}
+          />
+          {isFullscreen && (
+            <Pagination
+              current={currentPage}
+              pageSize={pageSize}
+              total={transactions.length}
+              onChange={(page) => setCurrentPage(page)}
+              style={{ textAlign: 'right', marginTop: 12 }}
+              showSizeChanger={false}
             />
-            <Row style={{ textAlign: 'right' }}>
-              <Col span={24}>
-                <Text
-                  strong
-                  style={{
-                    color: item.amount < 0 ? '#ef4444' : '#22c55e',
-                    fontSize: 16,
-                  }}
-                >
-                  {formatCurrency(item.amount)}
-                </Text>
-              </Col>
-              <Col span={24}>
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  {item.account}
-                </Text>
-              </Col>
-            </Row>
-          </List.Item>
-        )}
-      />
+          )}
+        </>
+      )}
     </Card>
   );
 };

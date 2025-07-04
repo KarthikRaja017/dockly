@@ -156,9 +156,10 @@ const FinanceIntroBoard = () => {
               backgroundColor: "#e6f7ff",
               padding: "20px",
               borderRadius: 8,
-              marginTop: 30,
-              width: 1350,
+              marginTop: 50,
+              width: 1300,
               textAlign: "left",
+              // marginLeft: 55,
             }}
           >
             <Title level={3} style={{ color: "#1890ff" }}>

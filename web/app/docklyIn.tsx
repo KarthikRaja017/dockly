@@ -110,24 +110,24 @@ const DocklyLogin = () => {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              marginBottom: 24,
+              marginBottom: 0,
             }}
           >
             <img
-              src="/logoBlue.png"
+              src="/dockly.png"
               alt="Logo"
               style={{
-                width: "150px",
+                width: "950px",
                 transition: "width 0.3s ease-in-out",
               }}
             />
           </div>
-          <Title level={3}>Welcome to Dockly</Title>
+          <Title level={3} style={{ marginBottom: 0 }}>Welcome to Dockly</Title>
           <p>Enter your Dockly URL to get started</p>
 
           <div
             style={{
-              marginTop: 24,
+              marginTop: 4,
               marginBottom: 16,
               display: "flex",
               width: 320,

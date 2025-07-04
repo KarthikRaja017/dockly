@@ -58,8 +58,8 @@ class AddGoogleCalendar(Resource):
         username = request.args.get("username")
         uid = request.args.get("userId")
         session["username"] = username
-        session["uid"] = uid
-        stateData = json.dumps({"uid": uid, "username": username})
+        session["user_id"] = uid
+        stateData = json.dumps({"user_id": uid, "username": username})
         encoded_state = quote(stateData)
 
         auth_url = (
@@ -87,8 +87,8 @@ class GetCalendarEvents(Resource):
             "user_object",
         ]
         allCreds = DBHelper.find(
-            "google_tokens",  # Consider renaming to "oauth_tokens"
-            filters={"uid": uid},
+            "connected_accounts",  # Consider renaming to "oauth_tokens"
+            filters={"user_id": uid},
             select_fields=selectFields,
         )
 
@@ -146,9 +146,9 @@ class GetCalendarEvents(Resource):
                         if not access_token:
                             raise Exception("Unable to refresh Microsoft token.")
                         DBHelper.update_one(
-                            table_name="google_tokens",  # Rename to `oauth_tokens` ideally
+                            table_name="connected_accounts",  # Rename to `oauth_tokens` ideally
                             filters={
-                                "uid": uid,
+                                "user_id": uid,
                                 "email": email,
                                 "provider": "microsoft",
                             },
@@ -196,7 +196,14 @@ class GetCalendarEvents(Resource):
                 # Use a compound key to handle same email across providers
                 account_key = f"{provider}:{email}"
 
-                connected_accounts.append({"provider": provider, "email": email})
+                connected_accounts.append(
+                    {
+                        "provider": provider,
+                        "email": email,
+                        "color": color,
+                        "userName": user.get("user_name", ""),
+                    }
+                )
 
                 account_colors[account_key] = color
 
@@ -213,15 +220,16 @@ class GetCalendarEvents(Resource):
                 continue
 
         merged_events.sort(key=lambda e: e.get("start", {}).get("dateTime", ""))
-
+        # merged_events.append({"user_name": user.get("user_name", "")})
         return {
             "status": 1,
             "message": "Merged calendar events from all connected accounts.",
             "payload": {
                 "events": merged_events,
                 "connected_accounts": connected_accounts,
-                "account_colors": account_colors,
-                "usersObjects": usersObjects,
+                # "connected_accounts": connected_accounts,
+                # "account_colors": account_colors,
+                # "usersObjects": usersObjects,
             },
         }
 
@@ -234,8 +242,8 @@ def refresh_microsoft_token(refresh_token):
     token_url = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
 
     data = {
-        "client_id": MICROSOFT_CLIENT_ID,
-        "client_secret": MICROSOFT_CLIENT_SECRET,
+        # "client_id": MICROSOFT_CLIENT_ID,
+        # "client_secret": MICROSOFT_CLIENT_SECRET,
         "grant_type": "refresh_token",
         "refresh_token": refresh_token,
         "scope": "offline_access Calendars.Read",
@@ -260,7 +268,9 @@ class GoogleCallback(Resource):
 
         if state:
             stateData = json.loads(state)
-            uid = stateData.get("uid")
+            user_id = stateData.get("user_id")
+            if not user_id:
+                return
             username = stateData.get("username")
 
         # Step 1: Exchange code for tokens
@@ -299,7 +309,7 @@ class GoogleCallback(Resource):
             return {"error": "Email not found"}, 400
 
         # Step 3: Get or create user
-        userId = session.get("uid") or email  # fallback if uid not in session
+        userId = session.get("user_id") or email  # fallback if uid not in session
         user = users.get(userId)
         if not user:
             users[userId] = {
@@ -311,9 +321,9 @@ class GoogleCallback(Resource):
             user = users[userId]
 
         existingEmail = DBHelper.find_one(
-            "google_tokens",
+            "connected_accounts",
             filters={
-                "uid": uid,
+                "user_id": user_id,
                 "email": email,
                 "provider": "google",
             },
@@ -322,10 +332,11 @@ class GoogleCallback(Resource):
 
         if not existingEmail:
             inserted_id = DBHelper.insert(
-                "google_tokens",
-                uid=uid,
+                "connected_accounts",
+                user_id=user_id,
                 email=email,
                 access_token=access_token,
+                provider="google",
                 refresh_token=refresh_token,
                 expires_at=(
                     datetime.utcnow() + timedelta(seconds=expires_in)
@@ -570,7 +581,7 @@ class AddGoogleCalendarEvent(Resource):
 
         # Fetch user Google credentials from DB
         user_cred = DBHelper.find_one(
-            "google_tokens",
+            "connected_accounts",
             filters={"uid": uid},
             select_fields=["access_token", "refresh_token", "email"],
         )

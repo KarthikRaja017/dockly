@@ -1,5 +1,7 @@
+
+
 "use client";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Tabs, Typography } from "antd";
 import Overview from "./overView";
 import UpcomingBills from "./upcomingBills";
@@ -14,22 +16,34 @@ import FinancialSummary from "./financialSummary";
 import AccountsOverview from "./accountsList";
 import GoalsCard from "./goalcard";
 import RecurringTransactions from "./recurringTransactions";
+import { DollarSign } from "lucide-react";
+import DocklyLoader from "../../utils/docklyLoader";
+
 const { Text, Title } = Typography;
 
-const FinanceTabs = (props: any) => {
-  // const { bankDetails } = props;
-  const [bankDetails, setBankDetails] = React.useState<any>(null);
+const FinanceTabs = () => {
+  const [bankDetails, setBankDetails] = useState<any>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [activeKey, setActiveKey] = useState("1");
   const { session } = useQuilttSession();
+
   const getUserBankAccount = async () => {
+    setLoading(true);
     const response = await getBankAccount({ session: session });
     const data = response?.data?.data;
     if (data) {
       setBankDetails(data);
     }
+    setLoading(false);
   };
+
   useEffect(() => {
     getUserBankAccount();
   }, []);
+
+  const goToTransactionsTab = () => {
+    setActiveKey("3");
+  };
 
   const items = [
     {
@@ -37,63 +51,22 @@ const FinanceTabs = (props: any) => {
       key: "1",
       children: (
         <>
-          {/* <div style={{ display: "flex", gap: 10 }}>
-            {bankDetails && (
-              <>
-                <div>
-                  <CashFlow bankDetails={bankDetails} />
-                  <Overview bankDetails={bankDetails} />
-                  <AccountsList
-                    accountDetails={bankDetails.connections[0].accounts}
-                  />
-                  <div style={{ marginTop: 10 }}>
-                    <MonthlyBudget />
-                  </div>
-                </div>
-                <div
-                  style={{ display: "flex", flexDirection: "column", gap: 10 }}
-                >
-                  <FinancialSummary />
-                  <SavingsGoals />
-                  <RecentTransactions
-                    transactions={bankDetails.transactions.nodes}
-                  />
-                </div>
-              </>
-            )}
+          <div style={{ display: "flex" }}>
+            {bankDetails && <CashFlow bankDetails={bankDetails} />}
           </div>
-          <div style={{ marginTop: 20 }}>
-            {bankDetails && (
-              <AccountsList
-                accountDetails={bankDetails.connections[0].accounts}
-              />
-            )}
+          <div style={{ display: "flex" }}>
+            <div style={{ width: 950 }}>
+              <MonthlyBudget />
+            </div>
+            <GoalsCard />
           </div>
-          <div style={{ marginTop: 20, display: "flex" }}>
-            {bankDetails && (
-              <RecentTransactions
-                transactions={bankDetails.transactions.nodes}
-              />
-            )}
-          </div> */}
-          <>
-            <div style={{ display: 'flex' }}>
-              {bankDetails && (<CashFlow bankDetails={bankDetails} />)}
+          <div style={{ display: "flex" }}>
+            <div style={{ width: 950 }}>
+              <RecentTransactions onViewAll={goToTransactionsTab} />
             </div>
-            <div style={{ display: 'flex' }}>
-              <div style={{ width: 950 }}>
-                <MonthlyBudget />
-              </div>
-              <GoalsCard />
-            </div>
-            <div style={{ display: 'flex' }}>
-              <div style={{ width: 950 }}>
-                <RecentTransactions />
-              </div>
-              <RecurringTransactions />
-            </div>
-            <AccountsList />
-          </>
+            <RecurringTransactions />
+          </div>
+          <AccountsList />
         </>
       ),
     },
@@ -102,13 +75,7 @@ const FinanceTabs = (props: any) => {
       key: "2",
       children: (
         <div>
-          {/* Uncomment and use when data is available */}
-          {bankDetails && (
-            // <AccountsList
-            //   accountDetails={bankDetails.connections[0].accounts}
-            // />
-            <AccountsOverview />
-          )}
+          {bankDetails && <AccountsOverview />}
         </div>
       ),
     },
@@ -118,7 +85,6 @@ const FinanceTabs = (props: any) => {
       children: (
         <>
           {bankDetails && (
-            // <RecentTransactions transactions={bankDetails.transactions.nodes} />
             <RecentTransactions isFullscreen={true} />
           )}
         </>
@@ -144,9 +110,16 @@ const FinanceTabs = (props: any) => {
     },
   ];
 
+  if (loading) {
+    return <DocklyLoader />;
+  }
+
   return (
     <div style={{ margin: "65px 10px 10px 60px" }}>
-      <Title level={2} style={{ marginBottom: '20px', marginLeft: 40 }}>Finance</Title>
+      {/* <Title level={2} style={{ marginBottom: "20px", marginLeft: 40 }}>
+        Financesss
+      </Title> */}
+      <BoardTitle />
       <div
         style={{
           margin: 20,
@@ -156,7 +129,8 @@ const FinanceTabs = (props: any) => {
         }}
       >
         <Tabs
-          defaultActiveKey="1"
+          activeKey={activeKey}
+          onChange={(key) => setActiveKey(key)}
           tabBarGutter={30}
           tabBarStyle={{
             marginBottom: 24,
@@ -173,3 +147,43 @@ const FinanceTabs = (props: any) => {
 };
 
 export default FinanceTabs;
+
+
+const BoardTitle: React.FC = () => {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        // marginBottom: '24px',
+        padding: '16px',
+      }}
+    >
+      <div
+        style={{
+          width: '48px',
+          height: '48px',
+          // backgroundColor: '#e6f4ea',
+          color: '#2e7d32',
+          borderRadius: '12px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginRight: '16px',
+        }}
+      >
+        <DollarSign size={24} />
+      </div>
+      <h1
+        style={{
+          fontSize: '24px',
+          fontWeight: 600,
+          color: '#1b1f23',
+          margin: 0,
+        }}
+      >
+        Finance Board
+      </h1>
+    </div>
+  );
+};

@@ -95,18 +95,25 @@ class AddFamilyMembers(Resource):
     def post(self, uid, user):
         inputData = request.get_json(silent=True)
         # sharedKeys = list(inputData.get("sharedItems", {}).keys())
+        if inputData["email"] == user["email"]:
+            return {
+                "status": 0,
+                "message": "You cannot add yourself as a family member.",
+                "payload": {},
+            }
+
         family_member_exists = DBHelper.find_one(
             "family_members",
             filters={"email": inputData["email"], "user_id": uid},
             select_fields=["id"],
         )
 
-        if family_member_exists:
-            return {
-                "status": 0,
-                "message": "Family member with this email already exists in your family hub.",
-                "payload": {},
-            }
+        # if family_member_exists:
+        #     return {
+        #         "status": 0,
+        #         "message": "Family member with this email already exists in your family hub.",
+        #         "payload": {},
+        #     }
 
         sharedComponents = []
         sharedItems = []
@@ -160,6 +167,7 @@ class AddFamilyMembers(Resource):
                     "metadata": {
                         "input_data": inputData,
                         "shared_items_ids": sharedItemsIds,
+                        "sender_user": user,
                     },
                 }
                 # Insert notification into the database
@@ -337,7 +345,6 @@ class GetFamilyMembers(Resource):
                     }
                 )
         # Add current user info at the end
-
         return {
             "status": 1,
             "message": "Family members fetched successfully",
@@ -561,11 +568,33 @@ class GetGuardianEmergencyInfo(Resource):
     @auth_required(isOptional=True)
     def get(self, uid, user):
         try:
-            emergency_info = DBHelper.find_all(
-                table_name="guardian_emergency_info",
-                select_fields=["name", "relation", "phone", "details"],
+            # 1. Get family members (both sent and received invites)
+            sent_invites = DBHelper.find_all(
+                table_name="family_members",
+                select_fields=["fm_user_id"],
                 filters={"user_id": uid},
             )
+            received_invites = DBHelper.find_all(
+                table_name="family_members",
+                select_fields=["user_id"],
+                filters={"fm_user_id": uid},
+            )
+
+            # 2. Combine all family member IDs including self
+            family_member_ids = [m["fm_user_id"] for m in sent_invites] + [
+                m["user_id"] for m in received_invites
+            ]
+            family_member_ids = list(set(family_member_ids + [uid]))
+
+            # 3. Fetch emergency info for all family members
+            emergency_info = DBHelper.find_in(
+                table_name="guardian_emergency_info",
+                select_fields=["name", "relation", "phone", "details", "user_id"],
+                field="user_id",
+                values=family_member_ids,
+            )
+
+            # 4. Format the response
             info_list = []
             for info in emergency_info:
                 info_list.append(
@@ -574,13 +603,18 @@ class GetGuardianEmergencyInfo(Resource):
                         "relationship": info["relation"],
                         "phone": info["phone"] or "N/A",
                         "details": info["details"] or "N/A",
+                        "user_id": info[
+                            "user_id"
+                        ],  # Optional: to know whose info this is
                     }
                 )
+
             return {
                 "status": 1,
                 "message": "Guardian emergency info fetched successfully",
                 "payload": {"emergencyInfo": info_list},
             }, 200
+
         except Exception as e:
             return {
                 "status": 0,
@@ -750,7 +784,14 @@ class addcustomsection(Resource):
 class GetFamilyTasks(Resource):
     @auth_required(isOptional=True)
     def get(self, uid, user):
-        tasks = DBHelper.find_all(
+        familyMembers = DBHelper.find_all(
+            table_name="family_members",
+            select_fields=["fm_user_id"],
+            filters={"user_id": uid},
+        )
+        familyMembersIds = [member["fm_user_id"] for member in familyMembers]
+        familyMembersIds.append(uid)
+        familyMembersTasks = DBHelper.find_in(
             table_name="sharedtasks",
             select_fields=[
                 "task",
@@ -760,11 +801,11 @@ class GetFamilyTasks(Resource):
                 "added_by",
                 "added_time",
             ],
-            filters={"user_id": uid},
+            field="user_id",
+            values=[familyMembersIds],  # or uids variable
         )
-
         task_list = []
-        for task in tasks:
+        for task in familyMembersTasks:
             task_list.append(
                 {
                     "task": task["task"],
@@ -959,7 +1000,25 @@ class GetNotes(Resource):
     @auth_required(isOptional=True)
     def get(self, uid=None, user=None):
         try:
-            # ✅ Fetch only the notes for the current user
+            # 1. Fetch both sent and received invites
+            sent_invites = DBHelper.find_all(
+                table_name="family_members",
+                select_fields=["fm_user_id"],
+                filters={"user_id": uid},
+            )
+            received_invites = DBHelper.find_all(
+                table_name="family_members",
+                select_fields=["user_id"],
+                filters={"fm_user_id": uid},
+            )
+
+            # 2. Combine and deduplicate
+            family_member_ids = [m["fm_user_id"] for m in sent_invites] + [
+                m["user_id"] for m in received_invites
+            ]
+            family_member_ids = list(set(family_member_ids + [uid]))
+
+            # 3. Fetch notes from all those UIDs
             select_fields = [
                 "id",
                 "title",
@@ -968,12 +1027,16 @@ class GetNotes(Resource):
                 "created_at",
                 "updated_at",
             ]
-            user_notes = DBHelper.find(
-                "notes_lists", filters={"user_id": uid}, select_fields=select_fields
+            notes_raw = DBHelper.find_in(
+                table_name="notes_lists",
+                select_fields=select_fields,
+                field="user_id",
+                values=family_member_ids,
             )
 
+            # 4. Format results
             notes = []
-            for note in user_notes:
+            for note in notes_raw:
                 notes.append(
                     {
                         "id": note["id"],
@@ -1049,9 +1112,26 @@ class AddProject(Resource):
 class GetProjects(Resource):
     @auth_required(isOptional=True)
     def get(self, uid, user):
-        projects = DBHelper.find_all(
+        sent_invites = DBHelper.find_all(
+            table_name="family_members",
+            select_fields=["fm_user_id"],
+            filters={"user_id": uid},
+        )
+        received_invites = DBHelper.find_all(
+            table_name="family_members",
+            select_fields=["user_id"],
+            filters={"fm_user_id": uid},
+        )
+
+        # Extract IDs
+        familyMembersIds = [m["fm_user_id"] for m in sent_invites] + [
+            m["user_id"] for m in received_invites
+        ]
+        familyMembersIds = list(set(familyMembersIds + [uid]))
+
+        # Fetch projects for all related user IDs
+        projects = DBHelper.find_in(
             table_name="projects",
-            filters={"uid": uid},
             select_fields=[
                 "project_id",
                 "title",
@@ -1062,22 +1142,23 @@ class GetProjects(Resource):
                 "created_at",
                 "updated_at",
             ],
+            field="uid",
+            values=familyMembersIds,
         )
 
-        formatted = []
-        for p in projects:
-            formatted.append(
-                {
-                    "project_id": p["project_id"],
-                    "title": p["title"],
-                    "description": p["description"],
-                    "due_date": p["due_date"].isoformat() if p["due_date"] else None,
-                    "meta": p["meta"],
-                    "progress": p["progress"],
-                    "created_at": p["created_at"].isoformat(),
-                    "updated_at": p["updated_at"].isoformat(),
-                }
-            )
+        formatted = [
+            {
+                "project_id": p["project_id"],
+                "title": p["title"],
+                "description": p["description"],
+                "due_date": p["due_date"].isoformat() if p["due_date"] else None,
+                "meta": p["meta"],
+                "progress": p["progress"],
+                "created_at": p["created_at"].isoformat(),
+                "updated_at": p["updated_at"].isoformat(),
+            }
+            for p in projects
+        ]
 
         return {
             "status": 1,
@@ -1111,9 +1192,24 @@ class GetTasks(Resource):
     def get(self, uid, user):
         project_id = request.args.get("project_id")
 
-        tasks = DBHelper.find_all(
+        sent_invites = DBHelper.find_all(
+            table_name="family_members",
+            select_fields=["fm_user_id"],
+            filters={"user_id": uid},
+        )
+        received_invites = DBHelper.find_all(
+            table_name="family_members",
+            select_fields=["user_id"],
+            filters={"fm_user_id": uid},
+        )
+
+        familyMembersIds = [m["fm_user_id"] for m in sent_invites] + [
+            m["user_id"] for m in received_invites
+        ]
+        familyMembersIds = list(set(familyMembersIds + [uid]))
+
+        tasks = DBHelper.find_in(
             table_name="tasks",
-            filters={"uid": uid, "project_id": project_id},
             select_fields=[
                 "task_id",
                 "title",
@@ -1121,22 +1217,26 @@ class GetTasks(Resource):
                 "assignee",
                 "type",
                 "completed",
+                "project_id",  # ✅ Now included
             ],
+            field="uid",
+            values=familyMembersIds,
         )
 
-        # Format the task list to convert 'due_date' to string
-        formatted_tasks = []
-        for t in tasks:
-            formatted_tasks.append(
-                {
-                    "task_id": t["task_id"],
-                    "title": t["title"],
-                    "due_date": t["due_date"].isoformat() if t["due_date"] else None,
-                    "assignee": t["assignee"],
-                    "type": t["type"],
-                    "completed": t["completed"],
-                }
-            )
+        # Filter only tasks for the requested project
+        tasks = [t for t in tasks if str(t.get("project_id")) == str(project_id)]
+
+        formatted_tasks = [
+            {
+                "task_id": t["task_id"],
+                "title": t["title"],
+                "due_date": t["due_date"].isoformat() if t["due_date"] else None,
+                "assignee": t["assignee"],
+                "type": t["type"],
+                "completed": t["completed"],
+            }
+            for t in tasks
+        ]
 
         return {
             "status": 1,

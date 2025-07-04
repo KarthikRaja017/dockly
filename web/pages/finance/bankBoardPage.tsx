@@ -20,6 +20,7 @@ import {
 import FinanceIntroBoard from "./financeBoard";
 import BankPage from "./bankPage";
 import { useRouter } from "next/navigation";
+import DocklyLoader from "../../utils/docklyLoader";
 
 const { Title } = Typography;
 export default function BankBoardPage() {
@@ -65,9 +66,9 @@ export default function BankBoardPage() {
 
   if (loading) {
     return (
-      <div>
-        <Spin />
-      </div>
+      // <div>
+      <DocklyLoader />
+      // </div>
     ); // Or a spinner
   }
 

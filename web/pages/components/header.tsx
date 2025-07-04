@@ -13,6 +13,7 @@ import {
   List,
   Segmented,
   Dropdown,
+  Card,
 } from "antd";
 import {
   PlusOutlined,
@@ -31,11 +32,17 @@ import {
   MenuUnfoldOutlined,
   MenuFoldOutlined,
   CloseOutlined,
+  ChromeOutlined,
 } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import { useCurrentUser } from "../../app/userContext";
 import { ACTIVE_BG_COLOR, capitalizeEachWord, DEFAULT_TEXT_COLOR, PRIMARY_COLOR } from "../../app/comman";
 
+interface ConnectionStatus {
+  apple: boolean;
+  outlook: boolean;
+  google: boolean;
+}
 const CustomHeader = ({
   isHovered,
   collapsed,
@@ -59,9 +66,17 @@ const CustomHeader = ({
   const [image, setImage] = useState<string>("");
   const [name, setName] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
   const currentUser = useCurrentUser();
 
   const initials = userName ? userName.slice(0, 2).toUpperCase() : "DU";
+
+  function trimGooglePhotoUrl(url: string): string {
+    const index = url.indexOf('=');
+    return index !== -1 ? url.substring(0, index) : url;
+  }
+
+  const trimmedUrl = trimGooglePhotoUrl(image);
 
   useEffect(() => {
     const user = localStorage.getItem("user");
@@ -118,6 +133,9 @@ const CustomHeader = ({
       }
     },
   };
+  const showModal = () => {
+    setIsModalVisible(true);
+  };
 
   return (
     <>
@@ -138,16 +156,6 @@ const CustomHeader = ({
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "25px" }}>
-          {hidden && (
-            <img
-              src="/logoBlue.png"
-              alt="Logo"
-              style={{
-                width: "30px",
-                marginLeft: collapsed ? "0px" : "2px",
-              }}
-            />
-          )}
           <Button
             type="text"
             icon={getToggleIcon(collapsed, hidden)}
@@ -159,6 +167,19 @@ const CustomHeader = ({
               marginLeft: hidden ? '-15px' : "-25px",
             }}
           />
+          {hidden && (
+            <img
+              src="/dockly-full.png"
+              alt="Logo"
+              style={{
+                width: "200px",
+                marginLeft: "-60px",
+                marginTop: "-50px",
+                marginBottom: "-40px",
+                marginRight: "-40px",
+              }}
+            />
+          )}
         </div>
 
         <Input
@@ -198,8 +219,11 @@ const CustomHeader = ({
               </div>
             </Tooltip>
           ))} */}
-          <NotificationBell count={count} onClick={() => console.log("Bell clicked")} />
 
+          <NotificationBell count={count} onClick={() => console.log("Bell clicked")} />
+          <div onClick={showModal} style={{ cursor: "pointer" }}>
+            <CatppuccinFolderConnection />
+          </div>
           <Dropdown
             menu={userMenu}
             trigger={["click"]}
@@ -224,19 +248,24 @@ const CustomHeader = ({
               </div>
               {image ? (
                 <Avatar
-                  src={image}
+                  src={trimmedUrl}
                   size={40}
-                  style={{ cursor: "pointer", border: "2px solid #007B8F" }}
+                  style={{ cursor: "pointer", border: `2px solid ${DEFAULT_TEXT_COLOR}` }}
                 />
               ) : (
                 <Avatar
                   style={{
                     backgroundColor: ACTIVE_BG_COLOR,
+                    // backgroundColor: "#007B8F",
+                    // backgroundColor: PRIMARY_COLOR,
+                    // color: "white",
                     color: DEFAULT_TEXT_COLOR,
-                    border: "2px solid #007B8F",
+                    border: `2px solid ${PRIMARY_COLOR}`,
+                    fontSize: "bold",
+
                   }}
                 >
-                  {initials}
+                  <strong>{initials}</strong>
                 </Avatar>
               )}
             </div>
@@ -249,6 +278,7 @@ const CustomHeader = ({
       <UploadModal visible={visible} setVisible={setVisible} />
       <AddAccountModal visible={visibleG} setVisible={setVisibleG} />
       <BookmarksModal visible={visibleB} setVisible={setVisibleB} />
+      <FolderConnectionModal setIsModalVisible={setIsModalVisible} isModalVisible={isModalVisible} />
     </>
   );
 };
@@ -374,7 +404,13 @@ const NotesDropdown = (props: any) => {
 import { Upload } from 'antd';
 import StickyNotes from "../notes/notescard";
 import NotificationBell from "./notificationicon";
+import { CatppuccinFolderConnection } from "./icons";
+import { Apple, Check, FolderOpen, Mail } from "lucide-react";
+import FolderConnectionModal from "./connect";
 const { Text } = Typography;
+
+// Add prop types for FolderConnectionModal
+
 
 const UploadModal = (props: any) => {
   const { visible, setVisible } = props;

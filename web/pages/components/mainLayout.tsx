@@ -20,7 +20,7 @@ interface MainLayoutProps {
 export default function MainLayout({ children, colors }: MainLayoutProps) {
   // const [hoverRef, isHovered] = useIsHovered();
   const [collapsed, setCollapsed] = useState(false);
-  const [hidden, setHidden] = useState(true);
+  const [hidden, setHidden] = useState(false);
 
   return (
     <Layout style={{

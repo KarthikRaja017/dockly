@@ -235,26 +235,46 @@ const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ collapsed }, ref) =>
         }}
         onClick={() => router.push(`/${username}/dashboard`)}
       >
-        <img
-          src="/logoBlue.png"
+        {collapsed ? <img
+          src="/dockly.png"
           alt="Logo"
           style={{
-            width: "30px",
-            marginLeft: collapsed ? "0px" : "2px",
+            width: "200px",
+            marginLeft: "-80px",
+            marginTop: "-20px",
+            marginBottom: "-30px",
           }}
-        />
-        {!collapsed && (
-          <h2
+        /> :
+          < img
+            src="/dockly-full.png"
+            alt="Logo"
             style={{
-              margin: 0,
-              color: PRIMARY_COLOR,
-              marginTop: 0,
-              marginLeft: "10px",
+              width: "200px",
+              marginLeft: "-40px",
+              marginTop: "-20px",
+              marginBottom: "-30px",
             }}
-          >
-            DOCKLY
-          </h2>
-        )}
+          />}
+        {/* {!collapsed && (
+          // <h2
+          //   style={{
+          //     margin: 0,
+          //     color: PRIMARY_COLOR,
+          //     marginTop: 0,
+          //     marginLeft: "10px",
+          //   }}
+          // >
+          //   DOCKLY
+          // </h2>
+          <img
+            src="/dockly-full.png"
+            alt="Logo"
+            style={{
+              width: "30px",
+              marginLeft: collapsed ? "0px" : "2px",
+            }}
+          />
+        )} */}
       </div>
 
       {menuGroup("Command Center", [

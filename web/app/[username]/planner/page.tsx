@@ -28,6 +28,9 @@ import {
     getWeeklyGoals,
     getWeeklyTodos,
 } from "../../../services/planner";
+import { getCalendarEvents } from "../../../services/google";
+import DocklyLoader from "../../../utils/docklyLoader";
+import { Calendar } from "lucide-react";
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 
@@ -78,10 +81,60 @@ const Planner = () => {
     >([]);
     const [weeklyFocus, setWeeklyFocus] = useState("");
     const [showAddButton, setShowAddButton] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [isGoalModalVisible, setIsGoalModalVisible] = useState(false);
     const [isEventModalVisible, setIsEventModalVisible] = useState(false);
     const [isTodoModalVisible, setIsTodoModalVisible] = useState(false);
     const [isProjectModalVisible, setIsProjectModalVisible] = useState(false);
+    const [calendarEvents, setCalendarEvents] = useState<
+        {
+            id: string;
+            title: string;
+            startTime: string;
+            date: string;
+            person: string;
+            color: string;
+        }[]
+    >([]);
+
+    const [personColors, setPersonColors] = useState<{ [person: string]: { color: string; email: string } }>({});
+    const PlannerTitle: React.FC = () => {
+        return (
+            <div
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    marginBottom: '24px',
+                }}
+            >
+                <div
+                    style={{
+                        width: '48px',
+                        height: '48px',
+                        backgroundColor: '#ecfdf5',
+                        color: '#10b981',
+                        borderRadius: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: '6px',
+                    }}
+                >
+                    <Calendar size={24} />
+                </div>
+                <h1
+                    style={{
+                        fontSize: '24px',
+                        fontWeight: 600,
+                        color: '#111827',
+                        margin: 0,
+                    }}
+                >
+                    Planner
+                </h1>
+            </div>
+        );
+    };
 
     const [eventForm] = Form.useForm();
     const [goalForm] = Form.useForm();
@@ -134,6 +187,7 @@ const Planner = () => {
             values.time = values.time.format("h:mm A");
             const response = await addWeeklyGoal({ ...values });
             goalForm.resetFields();
+            getGoals();
             setIsGoalModalVisible(false);
         });
     };
@@ -157,11 +211,6 @@ const Planner = () => {
         }
     };
 
-    useEffect(() => {
-        // Fetch goals when the component mounts
-        getGoals();
-    }, []);
-
     const handleAddTodo = () => {
         todoForm.validateFields().then(async (values) => {
             // setTodos([
@@ -183,6 +232,7 @@ const Planner = () => {
             values.time = values.time.format("h:mm A");
             const response = await addWeeklyTodo({ ...values });
             todoForm.resetFields();
+            getTodo();
             setIsTodoModalVisible(false);
         });
     };
@@ -206,13 +256,46 @@ const Planner = () => {
             console.error("Error fetching todos:", error);
         }
     };
+    const fetchEvents = async () => {
+        try {
+            setLoading(true);
+            const response = await getCalendarEvents({});
+            const rawEvents = response?.data?.payload?.events;
+            const connectedAccounts = response?.data?.payload?.connected_accounts || [];
+            if (rawEvents) {
+                // localStorage.setItem('calendar', '1');
+                // setStep(5);
+                setPersonColors({ [connectedAccounts[0].userName]: { color: rawEvents[0].account_color, email: connectedAccounts[0].email } });
+                setCalendarEvents(transformEvents(rawEvents));
+            }
+        } catch (error) {
+            console.error('Error fetching events:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
+    const transformEvents = (rawEvents: any[]): any[] => {
+        return rawEvents.map((event, index) => {
+            const startDateTime = event.start?.dateTime;
+            const creatorEmail = event.creator?.email || 'Unknown';
+
+            return {
+                id: event.id || index.toString(), // fallback to index if no id
+                title: event.summary || 'No Title',
+                startTime: startDateTime ? dayjs(startDateTime).format('hh:mm A') : 'N/A',
+                date: startDateTime ? dayjs(startDateTime).format('YYYY-MM-DD') : 'N/A',
+                person: creatorEmail.split('@')[0], // use the part before '@' as name
+                color: event.account_color || '#10B981', // fallback color
+            };
+        });
+    };
 
     useEffect(() => {
-        // Fetch todos when the component mounts
+        fetchEvents();
+        getGoals();
         getTodo();
     }, []);
-
 
     const handleAddProject = () => {
         projectForm.validateFields().then((values) => {
@@ -267,6 +350,10 @@ const Planner = () => {
         );
     };
 
+    if (loading) {
+        return <DocklyLoader />;
+    }
+
     return (
         <div
             style={{
@@ -291,9 +378,7 @@ const Planner = () => {
                         marginBottom: 8,
                     }}
                 >
-                    <Title level={3} style={{ margin: 0, fontSize: 26, fontWeight: 900 }}>
-                        Planner
-                    </Title>
+                    <PlannerTitle />
                     <Button
                         type="primary"
                         icon={<PlusOutlined />}
@@ -321,7 +406,7 @@ const Planner = () => {
                                 height: "100%",
                             }}
                         >
-                            <CalendarComponent data={sampleCalendarData} />
+                            <CalendarComponent data={{ events: calendarEvents, meals: [] }} personColors={personColors} />
                         </div>
                         {/* </Card> */}
                     </Col>
@@ -337,6 +422,7 @@ const Planner = () => {
                                 marginBottom: 8,
                                 display: "flex",
                                 flexDirection: "column",
+                                marginTop: 30
                             }}
                         >
                             <TextArea

@@ -7,7 +7,7 @@ import psycopg2
 
 class DBHelper:
     @staticmethod
-    def insert(table_name, return_column="uid", **kwargs):
+    def insert(table_name, return_column="user_id", **kwargs):
         conn = None
         cur = None
         try:
@@ -223,12 +223,11 @@ class DBHelper:
         conn = None
         cur = None
         try:
-            # Ensure values is a list of integers
             if not isinstance(values, list):
                 values = list(values)
 
-            # Optional: Cast to int to avoid string issues
-            values = [int(v) for v in values]
+            if values and isinstance(values[0], list):
+                values = values[0]
 
             conn = postgres.get_connection()
             cur = conn.cursor(cursor_factory=RealDictCursor)
@@ -241,12 +240,76 @@ class DBHelper:
                 table=sql.Identifier(table_name),
                 field=sql.Identifier(field),
             )
-            cur.execute(query, (values,))  # %s expects a sequence here
-            results = cur.fetchall()
-            return results
+            cur.execute(query, (values,))
+            return cur.fetchall()
 
         except Exception as e:
             print("Error in find_in:", e)
+            raise e
+        finally:
+            if cur:
+                cur.close()
+            if conn:
+                postgres.release_connection(conn)
+
+    @staticmethod
+    def insert_ignore_duplicates(table_name, unique_key=None, **kwargs):
+        conn = None
+        cur = None
+        try:
+            # Prepare column names and values
+            columns = ", ".join(kwargs.keys())
+            values = list(kwargs.values())
+            placeholders = ", ".join(["%s"] * len(values))
+
+            # Create SQL: INSERT ... ON CONFLICT DO NOTHING
+            sql = f"""
+                INSERT INTO {table_name} ({columns})
+                VALUES ({placeholders})
+                ON CONFLICT ({unique_key}) DO NOTHING
+            """
+
+            # Get DB connection and execute
+            conn = postgres.get_connection()
+            cur = conn.cursor()
+            cur.execute(sql, values)
+            conn.commit()
+
+        except Exception as e:
+            print("❌ Error in insert_ignore_duplicates:", e)
+            raise e
+        finally:
+            if cur:
+                cur.close()
+            if conn:
+                postgres.release_connection(conn)
+
+    @staticmethod
+    def delete_all(table_name, filters=None):
+        conn = None
+        cur = None
+        try:
+            conn = postgres.get_connection()
+            cur = conn.cursor()
+
+            if filters:
+                where_clause = sql.SQL(" AND ").join(
+                    sql.Composed([sql.Identifier(k), sql.SQL(" = "), sql.Placeholder()])
+                    for k in filters.keys()
+                )
+                query = sql.SQL("DELETE FROM {table} WHERE {where}").format(
+                    table=sql.Identifier(table_name), where=where_clause
+                )
+                values = list(filters.values())
+            else:
+                query = sql.SQL("DELETE FROM {table}").format(
+                    table=sql.Identifier(table_name)
+                )
+                values = []
+
+            cur.execute(query, values)
+            conn.commit()
+        except Exception as e:
             raise e
         finally:
             if cur:

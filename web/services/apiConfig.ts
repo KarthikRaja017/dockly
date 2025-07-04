@@ -1,8 +1,9 @@
 import axios from 'axios';
 
-// export const API_URL = 'http://192.168.1.8:5000/server/api';
-export const API_URL = 'https://dockly.onrender.com/server/api'; //DEPLOYMENT
-
+// // export const API_URL = 'http://192.168.1.8:5000/server/api';
+// export const API_URL = 'https://dockly.onrender.com/server/api'; //DEPLOYMENT
+export const API_URL =
+  process.env.REACT_APP_API_URL || 'http://localhost:5000/server/api';
 export const api = axios.create({
   baseURL: API_URL,
   headers: {
@@ -67,4 +68,34 @@ export async function getCurrentUser(params: string) {
   return api.get('/user/get/currentUser', {
     params: { params },
   });
+}
+
+export async function saveBankTransactions(params: any) {
+  return api.post('/save/bank-transactions', params).then((res) => res.data);
+}
+
+export async function getSavedTransactions(params: any) {
+  return api.post('/get/saved-transactions', params).then((res) => res.data);
+}
+
+export async function getRecurringTransactions(params: any) {
+  return api
+    .post('/get/recurring-transactions', params)
+    .then((res) => res.data);
+}
+
+export async function addAccounts(params: any) {
+  return api.post('/add/accounts', params);
+}
+
+export async function getAccounts(params: any) {
+  return api.post('/get/accounts', params);
+}
+
+export async function getExpenseIncome(params: any) {
+  return api.post('/get/income-expense', params).then((res) => res.data);
+}
+// /get/total-balance
+export async function getTotalBalance(params: any) {
+  return api.post('/get/total-balance', params).then((res) => res.data);
 }

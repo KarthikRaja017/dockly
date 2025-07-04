@@ -1300,7 +1300,6 @@ const FamilyTasks: React.FC = () => {
 
       const projectsWithTasks = await Promise.all(
         rawProjects.map(async (proj: any) => {
-          // Fetch tasks for this specific project
           const taskRes = await getTasks({ project_id: proj.project_id });
           const rawTasks = taskRes.data.payload.tasks || [];
 
@@ -1405,13 +1404,11 @@ const FamilyTasks: React.FC = () => {
     const updatedStatus = !task.completed;
 
     try {
-      // Update in backend
       await updateTask({
         task_id: task.id,
         completed: updatedStatus,
       });
 
-      // Update in frontend state
       setProjects(prev =>
         prev.map(project => {
           if (project.project_id === projectId) {
@@ -1475,14 +1472,26 @@ const FamilyTasks: React.FC = () => {
       liam: { bg: 'rgba(236, 72, 153, 0.1)', color: '#ec4899' },
       all: { bg: '#eef1ff', color: '#3355ff' },
     };
-    return { ...base, backgroundColor: colors[type]?.bg || '#eee', color: colors[type]?.color || '#333' };
+    return {
+      ...base,
+      backgroundColor: colors[type]?.bg || '#eee',
+      color: colors[type]?.color || '#333',
+    };
   };
 
-
   return (
-    <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px' }}>
+    <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', marginBottom: '20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-        <h2 style={{ fontSize: '20px', fontWeight: 600, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <h2
+          style={{
+            fontSize: '20px',
+            fontWeight: 600,
+            margin: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+        >
           <CheckSquare size={20} /> Family Tasks & Projects
         </h2>
         <button
@@ -1493,72 +1502,129 @@ const FamilyTasks: React.FC = () => {
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
-        {projects.map(project => (
-          <div key={project.project_id} style={{ border: '1px solid #e5e7eb', padding: '16px', borderRadius: '8px' }}>
-            <h3>{project.title}</h3>
-            {project.description && <p style={{ fontSize: 12 }}>{project.description}</p>}
-            {project.due_date && (
-              <p style={{ fontSize: 12, color: '#9ca3af' }}>
-                Due Date: {dayjs(project.due_date).format('MMM D, YYYY')}
-              </p>
-            )}
-            <div style={{ marginBottom: 10, color: '#6b7280', fontSize: 12 }}>
-              {project.meta?.map((m, i) => (
-                <span key={i}>{m} {i < project.meta.length - 1 && '• '} </span>
-              ))}
-            </div>
-
-            <div style={{ marginBottom: 16 }}>
-              {project.tasks.map(task => (
-                <div
-                  key={task.id}
-                  style={{
-                    backgroundColor: '#fff',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '6px',
-                    padding: '12px',
-                    marginBottom: '8px',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: 4 }}>
-                    <input
-                      type="checkbox"
-                      checked={task.completed}
-                      onChange={() => toggleTask(project.project_id, task.id)}
-                    />
-                    <div style={{ flex: 1 }}>{task.title}</div>
-                    <div style={getAssigneeStyle(task.type)}>{task.assignee}</div>
-                    <Edit
-                      size={14}
-                      style={{ cursor: 'pointer', opacity: 0.6 }}
-                      onClick={() => {
-                        setEditingTask({ projectId: project.project_id, task });
-                        setEditTaskModal(true);
-                      }}
-                    />
-                  </div>
-                  <div style={{ fontSize: 11, color: '#6b7280' }}>{task.due}</div>
-                </div>
-              ))}
-            </div>
-
-            <button
-              onClick={() => addTaskToBackend(project.project_id)}
+      {projects.length === 0 ? (
+        <div
+          style={{
+            textAlign: 'center',
+            padding: '20px 0px',
+            border: '2px dashed #e5e7eb',
+            borderRadius: '12px',
+            background: '#fafbff',
+            marginTop: 10,
+          }}
+        >
+          <img
+            src="https://cdn-icons-png.flaticon.com/512/4076/4076549.png"
+            alt="No Projects"
+            style={{ width: '120px', marginBottom: '20px', opacity: 0.6 }}
+          />
+          <h3 style={{ fontSize: '20px', color: '#333', marginBottom: '10px' }}>
+            No Projects Yet
+          </h3>
+          <p style={{ color: '#777', fontSize: '14px', marginBottom: '20px' }}>
+            Start organizing your tasks by creating your first project.
+          </p>
+          <button
+            onClick={() => setModalVisible(true)}
+            style={{
+              background: '#3355ff',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '10px 20px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              fontSize: '14px',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+              transition: 'background 0.3s',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#1d40e0')}
+            onMouseLeave={e => (e.currentTarget.style.background = '#3355ff')}
+          >
+            <Plus size={14} style={{ marginRight: 6 }} /> Create Project
+          </button>
+        </div>
+      ) : (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: '20px',
+          }}
+        >
+          {projects.map(project => (
+            <div
+              key={project.project_id}
               style={{
-                width: '100%',
-                padding: '8px',
-                border: '2px dashed #e5e7eb',
-                backgroundColor: 'transparent',
-                borderRadius: '6px',
-                color: '#6b7280',
+                border: '1px solid #e5e7eb',
+                padding: '16px',
+                borderRadius: '8px',
               }}
             >
-              + Add task
-            </button>
-          </div>
-        ))}
-      </div>
+              <h3>{project.title}</h3>
+              {project.description && <p style={{ fontSize: 12 }}>{project.description}</p>}
+              {project.due_date && (
+                <p style={{ fontSize: 12, color: '#9ca3af' }}>
+                  Due Date: {dayjs(project.due_date).format('MMM D, YYYY')}
+                </p>
+              )}
+              <div style={{ marginBottom: 10, color: '#6b7280', fontSize: 12 }}>
+                {project.meta?.map((m, i) => (
+                  <span key={i}>{m} {i < project.meta.length - 1 && '• '} </span>
+                ))}
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                {project.tasks.map(task => (
+                  <div
+                    key={task.id}
+                    style={{
+                      backgroundColor: '#fff',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '6px',
+                      padding: '12px',
+                      marginBottom: '8px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: 4 }}>
+                      <input
+                        type="checkbox"
+                        checked={task.completed}
+                        onChange={() => toggleTask(project.project_id, task.id)}
+                      />
+                      <div style={{ flex: 1 }}>{task.title}</div>
+                      <div style={getAssigneeStyle(task.type)}>{task.assignee}</div>
+                      <Edit
+                        size={14}
+                        style={{ cursor: 'pointer', opacity: 0.6 }}
+                        onClick={() => {
+                          setEditingTask({ projectId: project.project_id, task });
+                          setEditTaskModal(true);
+                        }}
+                      />
+                    </div>
+                    <div style={{ fontSize: 11, color: '#6b7280' }}>{task.due}</div>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={() => addTaskToBackend(project.project_id)}
+                style={{
+                  width: '100%',
+                  padding: '8px',
+                  border: '2px dashed #e5e7eb',
+                  backgroundColor: 'transparent',
+                  borderRadius: '6px',
+                  color: '#6b7280',
+                }}
+              >
+                + Add task
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       <Modal
         open={modalVisible}
@@ -1581,7 +1647,9 @@ const FamilyTasks: React.FC = () => {
           />
           <DatePicker
             value={newProjectMeta ? dayjs(newProjectMeta) : null}
-            onChange={(_, dateString) => setNewProjectMeta(Array.isArray(dateString) ? dateString[0] || '' : dateString)}
+            onChange={(_, dateString) =>
+              setNewProjectMeta(Array.isArray(dateString) ? dateString[0] || '' : dateString)
+            }
             placeholder="Due Date"
             style={{ width: '100%' }}
             disabledDate={current => current && current < dayjs().startOf('day')}
@@ -1645,7 +1713,6 @@ const FamilyTasks: React.FC = () => {
     </div>
   );
 };
-
 
 
 type Category = {
@@ -1859,8 +1926,8 @@ const FamilyNotes: React.FC = () => {
                 <span style={{ fontSize: '12px', background: '#e5e7eb', padding: '2px 8px', borderRadius: '12px' }}>
                   {category.items.length}
                 </span>
-                <ExportOutlined
-                  style={{ cursor: 'pointer', fontSize: 16, color: '#555' }}
+                <PlusOutlined
+                  style={{ cursor: 'pointer', fontSize: 16, color: PRIMARY_COLOR }}
                   onClick={() => openModal(index)}
                   onMouseEnter={(e) => (e.currentTarget.style.color = '#3355ff')}
                   onMouseLeave={(e) => (e.currentTarget.style.color = '#555')}
@@ -1870,8 +1937,46 @@ const FamilyNotes: React.FC = () => {
             </div>
             <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
               {category.items.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '20px 0', color: '#999', fontStyle: 'italic' }}>
-                  No notes yet.
+                <div
+                  style={{
+                    textAlign: 'center',
+                    padding: '04px 10px',
+                    border: '2px dashed #e5e7eb',
+                    borderRadius: '12px',
+                    background: '#fafbff',
+                    marginTop: 20,
+                  }}
+                >
+                  {/* <img
+                    src="https://cdn-icons-png.flaticon.com/512/6561/6561337.png"
+                    alt="No Tasks"
+                    style={{ width: '100px', marginBottom: '16px', opacity: 0.6 }}
+                  /> */}
+                  <h3 style={{ fontSize: '18px', color: '#333', marginBottom: '8px' }}>
+                    No Tasks Available
+                  </h3>
+                  <p style={{ color: '#777', fontSize: '14px', marginBottom: '16px' }}>
+                    Add a new note to get started on this category.
+                  </p>
+                  <button
+                    onClick={() => openModal(index)}
+                    style={{
+                      background: '#3355ff',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '8px 16px',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                      transition: 'background 0.3s',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = '#1d40e0')}
+                    onMouseLeave={e => (e.currentTarget.style.background = '#3355ff')}
+                  >
+                    <Plus size={13} style={{ marginRight: 6 }} /> Add Note
+                  </button>
                 </div>
               ) : (
                 category.items.map((note: any, i: any) => (
@@ -2188,6 +2293,7 @@ import CalendarWithMeals, { sampleCalendarData } from '../../../pages/components
 import CustomCalendar from '../../../pages/components/customCalendar';
 import FamilyMembers from '../../../pages/family-hub/components/familyMember';
 import FamilyHubMemberDetails from '../../../pages/family-hub/components/profile';
+import { PRIMARY_COLOR } from '../../comman';
 
 const FamilyCalendar: React.FC = () => {
   const [activeView, setActiveView] = useState('week');

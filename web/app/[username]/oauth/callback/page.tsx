@@ -17,7 +17,7 @@ const OAuthCallback = () => {
         const user = jwtDecode(token);
         localStorage.setItem('accessToken', token);
         localStorage.setItem('user', JSON.stringify(user));
-        router.replace(`/${username}/calendar`);
+        router.replace(`/${username}/planner`);
       } catch (error) {
         router.replace('/login');
       }

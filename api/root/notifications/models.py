@@ -56,16 +56,18 @@ class RespondNotification(Resource):
             userMetaData = notification.get("metadata", {})
             userResponseData = userMetaData.get("input_data", {})
             sharedItemsIds = userMetaData.get("shared_items_ids", [])
+            senderUser = userMetaData.get("sender_user", {})
             # aid = uniqueId(digit=7, isNum=True)
             fid = DBHelper.insert(
                 "family_members",
                 return_column="id",
                 user_id=user["uid"],
-                name=userResponseData.get("name", ""),
+                name=senderUser.get("user_name", ""),
                 relationship=userResponseData.get("relationship", ""),
                 access_code=userResponseData.get("accessCode", ""),
                 method=userResponseData.get("method", "Email"),
-                email=userResponseData.get("email", ""),
+                email=senderUser.get("email", ""),
+                fm_user_id=senderUser.get("uid", ""),
                 # access_mapping_code=aid,
                 # permissions="",
                 # shared_items="",
@@ -79,6 +81,7 @@ class RespondNotification(Resource):
                 access_code=userResponseData.get("accessCode", ""),
                 method=userResponseData.get("method", "Email"),
                 email=userResponseData.get("email", ""),
+                fm_user_id=user["uid"],
                 # access_mapping_code=aid,
                 # permissions="",
                 # shared_items="",
