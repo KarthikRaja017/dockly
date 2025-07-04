@@ -385,11 +385,9 @@
         "id VARCHAR(255) PRIMARY KEY",
         "user_id VARCHAR(255) REFERENCES users(uid) ON DELETE CASCADE",
         "title VARCHAR(255) NOT NULL",
-        "description TEXT",
         "time VARCHAR(50) NOT NULL",
-        "type VARCHAR(50) NOT NULL",
         "date DATE NOT NULL",
-        "status VARCHAR(50) DEFAULT 'Yet to Start'",
+        "is_active INT",
         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
         "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
       ]

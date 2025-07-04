@@ -83,11 +83,14 @@ const FolderConnectionModal: React.FC<FolderConnectionModalProps> = ({ isModalVi
                 style={{
                     borderRadius: '16px',
                 }}
-                bodyStyle={{
-                    padding: '32px',
-                    background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
-                    borderRadius: '16px',
+                styles={{
+                    body: {
+                        padding: '32px',
+                        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+                        borderRadius: '16px'
+                    }
                 }}
+
                 closeIcon={
                     <div
                         style={{

@@ -33,6 +33,7 @@ API_URL = os.getenv("API_URL", "http://localhost:5000/server/api")
 print(f"API_URL: {API_URL}")
 WEB_URL = os.getenv("WEB_URL", "http://localhost:3000")
 print(f"WEB_URL: {WEB_URL}")
+uri = "https://oauth2.googleapis.com/token"
 
 
 # firebase_cred_path = os.getenv("FIREBASE_CRED_PATH")

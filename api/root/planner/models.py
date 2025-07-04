@@ -164,49 +164,6 @@
 #         return {"status": 1, "message": message, "payload": {}}
 
 
-# # class AddEvents(Resource):
-# #     @auth_required(isOptional=True)
-# #     def post(self, uid, user):
-# #         inputData = request.get_json(silent=True)
-# #         id = inputData.get("id", None)
-# #         if id:
-# #             DBHelper.update_one(
-# #                 table_name='events',
-# #                 filters={'id': id, 'user_id': uid},
-# #                 updates={
-# #                     'title': inputData.get("title", ""),
-# #                     'description': inputData.get("description", ""),
-# #                     'time': inputData.get("time", ""),
-# #                     'type': inputData.get("type", ""),
-# #                     'date': inputData.get("date", ""),
-# #                     'status': inputData.get("status", "Yet to Start")
-# #                 }
-# #             )
-# #             return {
-# #                 "status": 1,
-# #                 "message": "Event Updated Successfully",
-# #                 "payload": {}
-# #             }
-# #         else:
-# #             DBHelper.insert(
-# #                 'events',
-# #                 return_column='id',
-# #                 user_id=uid,
-# #                 id=inputData.get("id", str(uuid.uuid4())),
-# #                 title=inputData.get("title", ""),
-# #                 description=inputData.get("description", ""),
-# #                 time=inputData.get("time", ""),
-# #                 type=inputData.get("type", ""),
-# #                 date=inputData.get("date", ""),
-# #                 status=inputData.get("status", "Yet to Start")
-# #             )
-# #             return {
-# #                 "status": 1,
-# #                 "message": "Event Added Successfully",
-# #                 "payload": {}
-# #             }
-
-
 # class GetEvents(Resource):
 #     @auth_required(isOptional=True)
 #     def get(self, uid, user):
@@ -732,13 +689,19 @@
 #         return {"status": 1, "message": "Note Deleted Successfully", "payload": {}}
 
 
+from datetime import timedelta, datetime
 from flask import request
 from flask_restful import Resource
 
+from root.google.models import SCOPE
 from root.db.dbHelper import DBHelper
 from root.common import GoalStatus, Priority, Status
 from root.utilis import uniqueId
 from root.auth.auth import auth_required
+from google.oauth2.credentials import Credentials
+from root.config import CLIENT_ID, CLIENT_SECRET, uri
+from googleapiclient.discovery import build
+from google.auth.exceptions import GoogleAuthError
 
 
 class AddWeeklyGoals(Resource):
@@ -757,11 +720,69 @@ class AddWeeklyGoals(Resource):
             "status": Status.ACTIVE.value,
         }
         DBHelper.insert("weekly_goals", return_column="id", **goal)
+        try:
+            start_dt = datetime.strptime(
+                f"{data.get("date", "")} {data.get("time", "")}", "%Y-%m-%d %I:%M %p"
+            )
+        except ValueError:
+            return {"status": 0, "message": "Invalid date/time format", "payload": {}}
+        create_calendar_event(uid, data.get("goal", ""), start_dt)
         return {
             "status": 1,
             "message": "Weekly Goal Added Successfully",
             "payload": goal,
         }
+
+
+class AddEvents(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        inputData = request.get_json(silent=True)
+        id = inputData.get("id", None)
+        unid = uniqueId(digit=15, isNum=True)
+
+        title = inputData.get("title", "")
+        date = inputData.get("date", "")
+        time = inputData.get("time", "")
+
+        if id:
+            DBHelper.update_one(
+                table_name="events",
+                filters={"id": id, "user_id": uid},
+                updates={"title": title, "time": time, "date": date},
+            )
+            message = "Event Updated Successfully"
+        else:
+            DBHelper.insert(
+                "events",
+                return_column="id",
+                user_id=uid,
+                id=unid,
+                title=title,
+                time=time,
+                date=date,
+                is_active=1,
+            )
+            message = "Event Added Successfully"
+
+        # Convert to datetime
+        try:
+            start_dt = datetime.strptime(f"{date} {time}", "%Y-%m-%d %I:%M %p")
+        except ValueError:
+            return {"status": 0, "message": "Invalid date/time format", "payload": {}}
+        create_calendar_event(uid, title, start_dt)
+        # try:
+        #     create_calendar_event(uid, title, start_dt)
+        # except GoogleAuthError as e:
+        #     return {
+        #         "status": 0,
+        #         "message": "No Gmail or OutLook account connected. Please connect your account. But it is Stored in Our Dockly",
+        #         "payload": {"error": str(e)},
+        #     }
+        # except Exception as e:
+        #     print("Unexpected calendar error:", e)
+
+        return {"status": 1, "message": message, "payload": {}}
 
 
 class GetWeeklyGoals(Resource):
@@ -799,6 +820,13 @@ class AddWeeklyTodos(Resource):
             "completed": False,
         }
         DBHelper.insert("weekly_todos", return_column="id", **todo)
+        try:
+            start_dt = datetime.strptime(
+                f"{data.get("date", "")} {data.get("time", "")}", "%Y-%m-%d %I:%M %p"
+            )
+        except ValueError:
+            return {"status": 0, "message": "Invalid date/time format", "payload": {}}
+        create_calendar_event(uid, data.get("text", ""), start_dt)
         return {
             "status": 1,
             "message": "Weekly todo Added Successfully",
@@ -816,3 +844,39 @@ class GetWeeklyTodos(Resource):
             select_fields=["id", "text", "date", "time", "completed", "priority"],
         )
         return {"status": 1, "payload": todos}
+
+
+def create_calendar_event(user_id, title, start_dt, end_dt=None, attendees=None):
+    user_cred = DBHelper.find_one(
+        "connected_accounts",
+        filters={"user_id": user_id},
+        select_fields=["access_token", "refresh_token", "email"],
+    )
+    if not user_cred:
+        raise Exception("No connected Google account found.")
+
+    creds = Credentials(
+        token=user_cred["access_token"],
+        refresh_token=user_cred["refresh_token"],
+        token_uri=uri,
+        client_id=CLIENT_ID,
+        client_secret=CLIENT_SECRET,
+        scopes=SCOPE.split(),
+    )
+
+    service = build("calendar", "v3", credentials=creds)
+
+    if end_dt is None:
+        end_dt = start_dt + timedelta(hours=1)
+
+    event = {
+        "summary": title,
+        "start": {"dateTime": start_dt.isoformat(), "timeZone": "Asia/Kolkata"},
+        "end": {"dateTime": end_dt.isoformat(), "timeZone": "Asia/Kolkata"},
+        "attendees": attendees or [],
+        "guestsCanModify": True,
+        "guestsCanInviteOthers": True,
+        "guestsCanSeeOtherGuests": True,
+    }
+
+    return service.events().insert(calendarId="primary", body=event).execute()

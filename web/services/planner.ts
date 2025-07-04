@@ -43,6 +43,10 @@ export async function addWeeklyGoal(params: any) {
   return api.post('/add/weekly-goals', params);
 }
 
+export async function addEvents(params: any) {
+  return api.post('/add/events', params);
+}
+
 export async function getWeeklyGoals(params: {}) {
   return api.get('/get/weekly-goals', { params });
 }

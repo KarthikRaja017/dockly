@@ -23,6 +23,7 @@ import { useEffect } from "react";
 import { } from "../../../services/family";
 import dayjs from "dayjs";
 import {
+    addEvents,
     addWeeklyGoal,
     addWeeklyTodo,
     getWeeklyGoals,
@@ -31,6 +32,7 @@ import {
 import { getCalendarEvents } from "../../../services/google";
 import DocklyLoader from "../../../utils/docklyLoader";
 import { Calendar } from "lucide-react";
+import { showNotification } from "../../../utils/notification";
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 
@@ -140,6 +142,7 @@ const Planner = () => {
     const [goalForm] = Form.useForm();
     const [todoForm] = Form.useForm();
     const [projectForm] = Form.useForm();
+    // const [form] = Form.useForm();
 
     const getPriorityColor = (priority: string) => {
         switch (priority) {
@@ -155,43 +158,50 @@ const Planner = () => {
     };
 
     const handleAddEvent = () => {
-        eventForm.validateFields().then((values) => {
-            setEvents([
-                ...events,
-                {
-                    id: Date.now().toString(),
-                    title: values.title,
-                    time: values.time.format("h:mm A"),
-                    type: "custom",
-                    date: values.date.format("YYYY-MM-DD"),
-                },
-            ]);
+        setLoading(true);
+        eventForm.validateFields().then(async (values) => {
+            values.date = values.date.format("YYYY-MM-DD");
+            values.time = values.time.format("h:mm A");
+            const response = await addEvents({ ...values });
+            const { message, status } = response.data;
+            if (status) {
+                showNotification("Success", message, "success");
+                setIsEventModalVisible(false);
+                fetchEvents();
+            } else {
+                showNotification("Error", message, "error");
+                setIsEventModalVisible(false)
+                fetchEvents();
+            }
             eventForm.resetFields();
-            setIsEventModalVisible(false);
         });
+        setLoading(false);
     };
 
     const handleAddGoal = async () => {
+        setLoading(true);
         goalForm.validateFields().then(async (values) => {
-            // setGoals([
-            //   ...goals,
-            // {
-            //   id: Date.now().toString(),
-            //   text: values.goal,
-            //   completed: false,
-            //   date: values.date.format("YYYY-MM-DD"),
-            //   time: values.time.format("h:mm A"),
-            // },
-            // ]);
             values.date = values.date.format("YYYY-MM-DD");
             values.time = values.time.format("h:mm A");
             const response = await addWeeklyGoal({ ...values });
+            const { message, status } = response.data;
+            if (status) {
+                showNotification("Success", message, "success");
+                getGoals();
+                setIsGoalModalVisible(false);
+                fetchEvents();
+            } else {
+                showNotification("Error", message, "error");
+                getGoals();
+                setIsGoalModalVisible(false);
+                fetchEvents();
+            }
             goalForm.resetFields();
-            getGoals();
-            setIsGoalModalVisible(false);
         });
+        setLoading(false);
     };
     const getGoals = async () => {
+        setLoading(true);
         try {
             const response = await getWeeklyGoals({});
             const rawGoals = response.data.payload;
@@ -209,34 +219,32 @@ const Planner = () => {
         } catch (error) {
             console.error("Error fetching goals:", error);
         }
+        setLoading(false);
     };
 
     const handleAddTodo = () => {
+        setLoading(true);
         todoForm.validateFields().then(async (values) => {
-            // setTodos([
-            //   ...todos,
-            //   {
-            //     id: Date.now().toString(),
-            //     text: values.text,
-            //     completed: false,
-            //     priority: values.priority,
-            //     date: values.date.format("YYYY-MM-DD"),
-            //     time: values.time.format("h:mm A"),
-            //   },
-            // ]);
-            //     todoForm.resetFields();
-            //     setIsTodoModalVisible(false);
-            //   });
-            // };
             values.date = values.date.format("YYYY-MM-DD");
             values.time = values.time.format("h:mm A");
             const response = await addWeeklyTodo({ ...values });
+            const { message, status } = response.data;
+            if (status) {
+                showNotification("Success", message, "success");
+                getTodo();
+                setIsTodoModalVisible(false);
+                fetchEvents();
+            } else {
+                showNotification("Error", message, "error");
+                setIsTodoModalVisible(false);
+                fetchEvents();
+            }
             todoForm.resetFields();
-            getTodo();
-            setIsTodoModalVisible(false);
         });
+        setLoading(false);
     };
     const getTodo = async () => {
+        setLoading(true)
         try {
             const response = await getWeeklyTodos({});
             const rawTodos = response.data.payload;
@@ -255,6 +263,7 @@ const Planner = () => {
         } catch (error) {
             console.error("Error fetching todos:", error);
         }
+        setLoading(false);
     };
     const fetchEvents = async () => {
         try {
@@ -353,7 +362,6 @@ const Planner = () => {
     if (loading) {
         return <DocklyLoader />;
     }
-
     return (
         <div
             style={{
@@ -685,6 +693,7 @@ const Planner = () => {
                     onCancel={handleCancelEvent}
                     okText="Add Event"
                     cancelText="Cancel"
+                    loading={loading}
                 >
                     <Form form={eventForm} layout="vertical">
                         <Form.Item
@@ -702,13 +711,16 @@ const Planner = () => {
                             rules={[{ required: true, message: "Please select a date" }]}
                             initialValue={dayjs()}
                         >
-                            <DatePicker style={{ width: "100%" }} />
+                            <DatePicker
+                                style={{ width: "100%" }}
+                                disabledDate={(current) => current && current < dayjs().startOf("day")}
+                            />
                         </Form.Item>
                         <Form.Item
                             name="time"
                             label="Time"
                             rules={[{ required: true, message: "Please select a time" }]}
-                            initialValue={dayjs().hour(12).minute(0)}
+                            initialValue={dayjs().add(10, "minute").startOf("minute")}
                         >
                             <TimePicker
                                 use12Hours
@@ -716,6 +728,31 @@ const Planner = () => {
                                 minuteStep={10}
                                 showSecond={false}
                                 style={{ width: "100%" }}
+                                disabledTime={() => {
+                                    const selectedDate = eventForm.getFieldValue("date");
+                                    const now = dayjs();
+
+                                    if (selectedDate && dayjs(selectedDate).isSame(now, 'day')) {
+                                        const currentHour = now.hour();
+                                        const currentMinute = now.minute();
+
+                                        return {
+                                            disabledHours: () =>
+                                                Array.from({ length: 24 }, (_, i) => i).filter((h) => h < currentHour),
+                                            disabledMinutes: (selectedHour: number) => {
+                                                if (selectedHour === currentHour) {
+                                                    return Array.from({ length: 60 }, (_, i) => i).filter((m) => m < currentMinute);
+                                                }
+                                                return [];
+                                            },
+                                        };
+                                    }
+
+                                    return {
+                                        disabledHours: () => [],
+                                        disabledMinutes: () => [],
+                                    };
+                                }}
                             />
                         </Form.Item>
                     </Form>
@@ -728,6 +765,7 @@ const Planner = () => {
                     onCancel={handleCancelGoal}
                     okText="Add Goal"
                     cancelText="Cancel"
+                    loading={loading}
                 >
                     <Form form={goalForm} layout="vertical">
                         <Form.Item
@@ -745,13 +783,16 @@ const Planner = () => {
                             rules={[{ required: true, message: "Please select a date" }]}
                             initialValue={dayjs()}
                         >
-                            <DatePicker style={{ width: "100%" }} />
+                            <DatePicker
+                                style={{ width: "100%" }}
+                                disabledDate={(current) => current && current < dayjs().startOf("day")}
+                            />
                         </Form.Item>
                         <Form.Item
                             name="time"
                             label="Time"
                             rules={[{ required: true, message: "Please select a time" }]}
-                            initialValue={dayjs().hour(12).minute(0)}
+                            initialValue={dayjs().add(10, "minute").startOf("minute")}
                         >
                             <TimePicker
                                 use12Hours
@@ -759,6 +800,31 @@ const Planner = () => {
                                 minuteStep={10}
                                 showSecond={false}
                                 style={{ width: "100%" }}
+                                disabledTime={() => {
+                                    const selectedDate = eventForm.getFieldValue("date");
+                                    const now = dayjs();
+
+                                    if (selectedDate && dayjs(selectedDate).isSame(now, 'day')) {
+                                        const currentHour = now.hour();
+                                        const currentMinute = now.minute();
+
+                                        return {
+                                            disabledHours: () =>
+                                                Array.from({ length: 24 }, (_, i) => i).filter((h) => h < currentHour),
+                                            disabledMinutes: (selectedHour: number) => {
+                                                if (selectedHour === currentHour) {
+                                                    return Array.from({ length: 60 }, (_, i) => i).filter((m) => m < currentMinute);
+                                                }
+                                                return [];
+                                            },
+                                        };
+                                    }
+
+                                    return {
+                                        disabledHours: () => [],
+                                        disabledMinutes: () => [],
+                                    };
+                                }}
                             />
                         </Form.Item>
                     </Form>
@@ -771,6 +837,7 @@ const Planner = () => {
                     onCancel={handleCancelTodo}
                     okText="Add Task"
                     cancelText="Cancel"
+                    loading={loading}
                 >
                     <Form form={todoForm} layout="vertical">
                         <Form.Item
@@ -798,13 +865,16 @@ const Planner = () => {
                             rules={[{ required: true, message: "Please select a date" }]}
                             initialValue={dayjs()}
                         >
-                            <DatePicker style={{ width: "100%" }} />
+                            <DatePicker
+                                style={{ width: "100%" }}
+                                disabledDate={(current) => current && current < dayjs().startOf("day")}
+                            />
                         </Form.Item>
                         <Form.Item
                             name="time"
                             label="Time"
                             rules={[{ required: true, message: "Please select a time" }]}
-                            initialValue={dayjs().hour(12).minute(0)}
+                            initialValue={dayjs().add(10, "minute").startOf("minute")}
                         >
                             <TimePicker
                                 use12Hours
@@ -812,6 +882,31 @@ const Planner = () => {
                                 minuteStep={10}
                                 showSecond={false}
                                 style={{ width: "100%" }}
+                                disabledTime={() => {
+                                    const selectedDate = eventForm.getFieldValue("date");
+                                    const now = dayjs();
+
+                                    if (selectedDate && dayjs(selectedDate).isSame(now, 'day')) {
+                                        const currentHour = now.hour();
+                                        const currentMinute = now.minute();
+
+                                        return {
+                                            disabledHours: () =>
+                                                Array.from({ length: 24 }, (_, i) => i).filter((h) => h < currentHour),
+                                            disabledMinutes: (selectedHour: number) => {
+                                                if (selectedHour === currentHour) {
+                                                    return Array.from({ length: 60 }, (_, i) => i).filter((m) => m < currentMinute);
+                                                }
+                                                return [];
+                                            },
+                                        };
+                                    }
+
+                                    return {
+                                        disabledHours: () => [],
+                                        disabledMinutes: () => [],
+                                    };
+                                }}
                             />
                         </Form.Item>
                     </Form>
@@ -848,7 +943,10 @@ const Planner = () => {
                             rules={[{ required: true, message: "Please select a due date" }]}
                             initialValue={dayjs()}
                         >
-                            <DatePicker style={{ width: "100%" }} />
+                            <DatePicker
+                                style={{ width: "100%" }}
+                                disabledDate={(current) => current && current < dayjs().startOf("day")}
+                            />
                         </Form.Item>
                     </Form>
                 </Modal>

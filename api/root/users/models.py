@@ -201,7 +201,6 @@ class SaveUserEmail(Resource):
                 )
             otp = generate_otp()
             otpResponse = send_otp_email(email, otp)
-            print(f"otpResponse: {otpResponse}")
             # otpResponse = {"otp": otp, "email": email}
             username = (
                 existingUser.get("user_name", "")
@@ -227,7 +226,6 @@ class SaveUserEmail(Resource):
             )
             otp = generate_otp()
             otpResponse = send_otp_email(email, otp)
-            print(f"otpResponse: {otpResponse}")
             # otpResponse = {"otp": otp, "email": email}
             if existingUser:
                 uid = existingUser.get("uid")
@@ -252,11 +250,13 @@ class SaveUserEmail(Resource):
                     return_column="uid",
                     uid=uid,
                     email="",
-                    mobile="",
+                    # mobile="",
                     user_name=username,
                     is_email_verified=False,
-                    is_phone_verified=False,
+                    # is_phone_verified=False,
                     duser=DocklyUsers.PaidMember.value,
+                    is_active=Status.ACTIVE.value,
+                    splan=0,
                 )
                 return {
                     "status": 1,

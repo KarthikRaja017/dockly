@@ -19,11 +19,17 @@
 #     UpdateNotes,
 #     DeleteNotes,
 # )
-from .models import AddWeeklyGoals, AddWeeklyTodos, GetWeeklyGoals, GetWeeklyTodos
+from .models import (
+    AddEvents,
+    AddWeeklyGoals,
+    AddWeeklyTodos,
+    GetWeeklyGoals,
+    GetWeeklyTodos,
+)
 from . import planner_api
 
 # # Event Routes
-# planner_api.add_resource(AddEvents, "/add/events")
+planner_api.add_resource(AddEvents, "/add/events")
 # planner_api.add_resource(GetEvents, "/get/events")
 # planner_api.add_resource(UpdateEvents, "/update/events/<string:event_id>")
 # planner_api.add_resource(DeleteEvents, "/delete/events/<string:event_id>")

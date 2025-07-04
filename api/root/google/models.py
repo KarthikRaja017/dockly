@@ -8,13 +8,14 @@ from flask_restful import Resource
 import pytz
 from root.utilis import uniqueId
 from root.db.dbHelper import DBHelper
-from root.config import API_URL, CLIENT_ID, CLIENT_SECRET, WEB_URL
+from root.config import API_URL, CLIENT_ID, CLIENT_SECRET, WEB_URL, uri
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from urllib.parse import quote
 import dateparser
 from dateparser.search import search_dates
 from pytz import timezone, utc
+
 
 # MICROSOFT_CLIENT_ID = "98fa92ef-f5ba-4765-bd81-9ce209dda01b"
 # MICROSOFT_CLIENT_SECRET = "Kar8Q~CRDjWSLixLfJyi3gQglRhkKXcd~JIftcds"
@@ -36,7 +37,7 @@ SCOPE = (
     "https://www.googleapis.com/auth/userinfo.email "
     "https://www.googleapis.com/auth/userinfo.profile"
 )
-uri = "https://oauth2.googleapis.com/token"
+
 
 # Define a list of distinct light pastel colors
 light_colors = [
