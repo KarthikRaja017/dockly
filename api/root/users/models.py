@@ -201,6 +201,7 @@ class SaveUserEmail(Resource):
                 )
             otp = generate_otp()
             otpResponse = send_otp_email(email, otp)
+            print(f"otpResponse: {otpResponse}")
             # otpResponse = {"otp": otp, "email": email}
             username = (
                 existingUser.get("user_name", "")
@@ -226,6 +227,7 @@ class SaveUserEmail(Resource):
             )
             otp = generate_otp()
             otpResponse = send_otp_email(email, otp)
+            print(f"otpResponse: {otpResponse}")
             # otpResponse = {"otp": otp, "email": email}
             if existingUser:
                 uid = existingUser.get("uid")

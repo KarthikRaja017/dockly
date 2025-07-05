@@ -28,11 +28,14 @@ import {
     addWeeklyTodo,
     getWeeklyGoals,
     getWeeklyTodos,
+    addWeeklyFocus,
+    getWeeklyFocus,
 } from "../../../services/planner";
 import { getCalendarEvents } from "../../../services/google";
 import DocklyLoader from "../../../utils/docklyLoader";
 import { Calendar } from "lucide-react";
 import { showNotification } from "../../../utils/notification";
+import { FamilyTasks } from "../../../pages/family-hub/family-hub";
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 
@@ -65,6 +68,14 @@ const Planner = () => {
             time: string;
         }[]
     >([]);
+    const [focus, setFocus] = useState<
+        {
+            map: any;
+            id: string;
+            focus: string;
+        }[]
+    >([]);
+
 
     const [projects, setProjects] = useState<
         {
@@ -88,6 +99,7 @@ const Planner = () => {
     const [isEventModalVisible, setIsEventModalVisible] = useState(false);
     const [isTodoModalVisible, setIsTodoModalVisible] = useState(false);
     const [isProjectModalVisible, setIsProjectModalVisible] = useState(false);
+    const [isFocusModalVisible, setIsFocusModalVisible] = useState(false);
     const [calendarEvents, setCalendarEvents] = useState<
         {
             id: string;
@@ -142,7 +154,7 @@ const Planner = () => {
     const [goalForm] = Form.useForm();
     const [todoForm] = Form.useForm();
     const [projectForm] = Form.useForm();
-    // const [form] = Form.useForm();
+    const [focusForm] = Form.useForm();
 
     const getPriorityColor = (priority: string) => {
         switch (priority) {
@@ -160,45 +172,95 @@ const Planner = () => {
     const handleAddEvent = () => {
         setLoading(true);
         eventForm.validateFields().then(async (values) => {
-            values.date = values.date.format("YYYY-MM-DD");
-            values.time = values.time.format("h:mm A");
-            const response = await addEvents({ ...values });
-            const { message, status } = response.data;
-            if (status) {
-                showNotification("Success", message, "success");
+            try {
+                values.date = values.date.format("YYYY-MM-DD");
+                values.time = values.time.format("h:mm A");
+
+                const response = await addEvents({ ...values });
+                const { message, status } = response.data;
+
+                if (status) {
+                    showNotification("Success", message, "success");
+                } else {
+                    showNotification("Error", message, "error");
+                }
+
                 setIsEventModalVisible(false);
                 fetchEvents();
-            } else {
-                showNotification("Error", message, "error");
-                setIsEventModalVisible(false)
-                fetchEvents();
+                eventForm.resetFields();
+            } catch (err) {
+                showNotification("Error", "Something went wrong", "error");
+            } finally {
+                setLoading(false); // ✅ Now inside async flow and will wait
             }
-            eventForm.resetFields();
+        }).catch(() => {
+            setLoading(false); // ❗In case validation fails
         });
-        setLoading(false);
     };
+
+
+
+    const handleAddFocus = async () => {
+        setLoading(true);
+        focusForm.validateFields().then(async (values) => {
+            const response = await addWeeklyFocus({ ...values });
+            focusForm.resetFields();
+            setIsFocusModalVisible(false);
+            getFocus();
+            setLoading(false);
+        });
+    };
+
+    const getFocus = async () => {
+        try {
+            const response = await getWeeklyFocus({});
+            const rawFocus = response.data.payload;
+
+            const formattedFocus = rawFocus.map((item: any) => ({
+                id: item.id,
+                focus: item.focus,
+            }));
+
+            setFocus(formattedFocus);
+        } catch (error) {
+            console.error("Error fetching focus:", error);
+        }
+    };
+
+    useEffect(() => {
+        getFocus();
+    }, []);
+
+
 
     const handleAddGoal = async () => {
         setLoading(true);
         goalForm.validateFields().then(async (values) => {
-            values.date = values.date.format("YYYY-MM-DD");
-            values.time = values.time.format("h:mm A");
-            const response = await addWeeklyGoal({ ...values });
-            const { message, status } = response.data;
-            if (status) {
-                showNotification("Success", message, "success");
+            try {
+                values.date = values.date.format("YYYY-MM-DD");
+                values.time = values.time.format("h:mm A");
+
+                const response = await addWeeklyGoal({ ...values });
+                const { message, status } = response.data;
+
+                if (status) {
+                    showNotification("Success", message, "success");
+                } else {
+                    showNotification("Error", message, "error");
+                }
+
                 getGoals();
                 setIsGoalModalVisible(false);
                 fetchEvents();
-            } else {
-                showNotification("Error", message, "error");
-                getGoals();
-                setIsGoalModalVisible(false);
-                fetchEvents();
+                goalForm.resetFields();
+            } catch (error) {
+                showNotification("Error", "Something went wrong", "error");
+            } finally {
+                setLoading(false); // ✅ Ensures it's called after everything
             }
-            goalForm.resetFields();
+        }).catch(() => {
+            setLoading(false); // ❗In case validation fails
         });
-        setLoading(false);
     };
     const getGoals = async () => {
         setLoading(true);
@@ -225,23 +287,31 @@ const Planner = () => {
     const handleAddTodo = () => {
         setLoading(true);
         todoForm.validateFields().then(async (values) => {
-            values.date = values.date.format("YYYY-MM-DD");
-            values.time = values.time.format("h:mm A");
-            const response = await addWeeklyTodo({ ...values });
-            const { message, status } = response.data;
-            if (status) {
-                showNotification("Success", message, "success");
+            try {
+                values.date = values.date.format("YYYY-MM-DD");
+                values.time = values.time.format("h:mm A");
+
+                const response = await addWeeklyTodo({ ...values });
+                const { message, status } = response.data;
+
+                if (status) {
+                    showNotification("Success", message, "success");
+                } else {
+                    showNotification("Error", message, "error");
+                }
+
                 getTodo();
                 setIsTodoModalVisible(false);
                 fetchEvents();
-            } else {
-                showNotification("Error", message, "error");
-                setIsTodoModalVisible(false);
-                fetchEvents();
+                todoForm.resetFields();
+            } catch (error) {
+                showNotification("Error", "Something went wrong", "error");
+            } finally {
+                setLoading(false); // ✅ Ensures loading ends after everything
             }
-            todoForm.resetFields();
+        }).catch(() => {
+            setLoading(false); // ❗Reset loading if validation fails
         });
-        setLoading(false);
     };
     const getTodo = async () => {
         setLoading(true)
@@ -362,6 +432,11 @@ const Planner = () => {
     if (loading) {
         return <DocklyLoader />;
     }
+    function handleCancelFocus(e: React.MouseEvent<HTMLButtonElement>): void {
+        focusForm.resetFields();
+        setIsFocusModalVisible(false);
+    }
+
     return (
         <div
             style={{
@@ -419,43 +494,70 @@ const Planner = () => {
                         {/* </Card> */}
                     </Col>
                     <Col span={8}>
+
+
                         <Card
                             title="Weekly Focus"
+                            extra={
+                                <Button
+                                    type="primary"
+                                    icon={<PlusOutlined />}
+                                    onClick={() => setIsFocusModalVisible(true)}
+                                />
+                            }
                             style={{
                                 borderRadius: 12,
                                 boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
                                 backgroundColor: "white",
-                                border: "1px solid #e5e7eb",
+                                border: "1px solid rgb(235, 236, 243)",
                                 height: "300px",
                                 marginBottom: 8,
                                 display: "flex",
                                 flexDirection: "column",
-                                marginTop: 30
                             }}
                         >
-                            <TextArea
-                                value={weeklyFocus}
-                                onChange={(e) => setWeeklyFocus(e.target.value)}
-                                placeholder="What's your main focus this week?"
+                            <div
                                 style={{
-                                    padding: 12,
-                                    backgroundColor: "#f9fafb",
-                                    borderRadius: 8,
-                                    border: "none",
-                                    flex: 1,
+                                    padding: "12px 16px",
+                                    overflowY: "auto",
+                                    height: "220px",
                                 }}
-                            />
-                            {showAddButton && (
-                                <Button
-                                    type="primary"
-                                    icon={<PlusOutlined />}
-                                    size="small"
-                                    onClick={handleAddWeeklyFocus}
-                                    style={{ alignSelf: "flex-end", marginTop: 8 }}
-                                >
-                                    Add
-                                </Button>
-                            )}
+                            >
+                                {focus.length === 0 ? (
+                                    <div
+                                        style={{
+                                            backgroundColor: "#e5e7eb",
+                                            padding: "16px",
+                                            borderRadius: 8,
+                                            textAlign: "center",
+                                            color: "#6b7280",
+                                        }}
+                                    >
+                                        you can add your main focus this week?
+                                    </div>
+                                ) : (
+                                    <div>
+                                        {focus.map((focusItem, index) => (
+                                            <div
+                                                key={focusItem.id}
+                                                style={{
+                                                    backgroundColor: "#e5e7eb",
+                                                    padding: "16px",
+                                                    borderRadius: 8,
+                                                    marginBottom: 8,
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "space-between",
+                                                }}
+                                            >
+                                                <span>
+                                                    {index + 1}. {focusItem.focus}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </Card>
                         <Card
                             title="Weekly Goals"
@@ -600,100 +702,30 @@ const Planner = () => {
                 </Row>
                 <Row gutter={[8, 8]}>
                     <Col span={24}>
-                        <Card
-                            title="Tasks & Projects"
-                            extra={
-                                <Space>
-                                    <Space>
-                                        {["All", "Personal", "Work", "Custom"].map((filter) => (
-                                            <Button
-                                                key={filter}
-                                                type={filter === "All" ? "primary" : "default"}
-                                                size="small"
-                                            >
-                                                {filter}
-                                            </Button>
-                                        ))}
-                                    </Space>
-                                    <Button
-                                        type="primary"
-                                        icon={<PlusOutlined />}
-                                        onClick={() => setIsProjectModalVisible(true)}
-                                    />
-                                </Space>
-                            }
-                            style={{
-                                borderRadius: 12,
-                                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-                                backgroundColor: "white",
-                                border: "1px solid #e5e7eb",
-                                display: "flex",
-                                flexDirection: "column",
-                            }}
-                        >
-                            <Row
-                                gutter={[8, 8]}
-                                wrap={true}
-                                style={{
-                                    padding: "12px 16px", overflowY: "auto", height: "220px"
-                                }}
-                            >
-                                {projects.map((project) => (
-                                    <Col key={project.id} span={12}>
-                                        <Card
-                                            style={{
-                                                borderRadius: 12,
-                                                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-                                                backgroundColor: "white",
-                                                border: "1px solid #e5e7eb",
-                                                height: "180px",
-                                            }}
-                                        >
-                                            <div style={{ marginBottom: 12 }}>
-                                                <Title
-                                                    level={4}
-                                                    style={{
-                                                        margin: 0,
-                                                        fontSize: 16,
-                                                        fontWeight: 600,
-                                                        color: "#374151",
-                                                    }}
-                                                >
-                                                    {project.title}
-                                                </Title>
-                                                <Text style={{ fontSize: 12, color: "#6b7280" }}>
-                                                    {project.category} • Due {project.dueDate}
-                                                </Text>
-                                            </div>
-                                            <Button
-                                                style={{
-                                                    width: "100%",
-                                                    padding: 8,
-                                                    border: "2px dashed #e5e7eb",
-                                                    backgroundColor: "transparent",
-                                                    borderRadius: 6,
-                                                    color: "#6b7280",
-                                                    fontSize: 13,
-                                                }}
-                                            >
-                                                + Add deliverable
-                                            </Button>
-                                        </Card>
-                                    </Col>
-                                ))}
-                            </Row>
-                        </Card>
+                        <FamilyTasks />
                     </Col>
                 </Row>
 
                 <Modal
                     title="Add New Event"
                     open={isEventModalVisible}
-                    onOk={handleAddEvent}
                     onCancel={handleCancelEvent}
-                    okText="Add Event"
-                    cancelText="Cancel"
-                    loading={loading}
+                    maskClosable={!loading}
+                    closable={!loading}
+                    footer={[
+                        <Button key="cancel" onClick={handleCancelEvent} disabled={loading}>
+                            Cancel
+                        </Button>,
+                        <Button
+                            key="submit"
+                            type="primary"
+                            loading={loading}
+                            onClick={handleAddEvent}
+                            disabled={loading}
+                        >
+                            Add Event
+                        </Button>,
+                    ]}
                 >
                     <Form form={eventForm} layout="vertical">
                         <Form.Item
@@ -759,13 +791,46 @@ const Planner = () => {
                 </Modal>
 
                 <Modal
+                    title="Add Weekly Focus"
+                    open={isFocusModalVisible}
+                    onOk={handleAddFocus}
+                    onCancel={handleCancelFocus}
+                    okText="Add Focus"
+                    cancelText="Cancel"
+                >
+                    <Form form={focusForm} layout="vertical">
+                        <Form.Item
+                            name="focus"
+                            label="Focus"
+                            rules={[
+                                { required: true, message: "Please enter your weekly focus" },
+                            ]}
+                        >
+                            <Input placeholder="Enter your weekly focus..." />
+                        </Form.Item>
+                    </Form>
+                </Modal>
+
+                <Modal
                     title="Add Weekly Goal"
                     open={isGoalModalVisible}
-                    onOk={handleAddGoal}
                     onCancel={handleCancelGoal}
-                    okText="Add Goal"
-                    cancelText="Cancel"
-                    loading={loading}
+                    maskClosable={!loading}
+                    closable={!loading}
+                    footer={[
+                        <Button key="cancel" onClick={handleCancelGoal} disabled={loading}>
+                            Cancel
+                        </Button>,
+                        <Button
+                            key="submit"
+                            type="primary"
+                            loading={loading}
+                            onClick={handleAddGoal}
+                            disabled={loading}
+                        >
+                            Add Goal
+                        </Button>,
+                    ]}
                 >
                     <Form form={goalForm} layout="vertical">
                         <Form.Item
@@ -833,11 +898,23 @@ const Planner = () => {
                 <Modal
                     title="Add New To-Do"
                     open={isTodoModalVisible}
-                    onOk={handleAddTodo}
                     onCancel={handleCancelTodo}
-                    okText="Add Task"
-                    cancelText="Cancel"
-                    loading={loading}
+                    maskClosable={!loading}
+                    closable={!loading}
+                    footer={[
+                        <Button key="cancel" onClick={handleCancelTodo} disabled={loading}>
+                            Cancel
+                        </Button>,
+                        <Button
+                            key="submit"
+                            type="primary"
+                            loading={loading}
+                            onClick={handleAddTodo}
+                            disabled={loading}
+                        >
+                            Add Task
+                        </Button>,
+                    ]}
                 >
                     <Form form={todoForm} layout="vertical">
                         <Form.Item
@@ -915,10 +992,21 @@ const Planner = () => {
                 <Modal
                     title="Add New Project"
                     open={isProjectModalVisible}
-                    onOk={handleAddProject}
                     onCancel={handleCancelProject}
-                    okText="Add Project"
-                    cancelText="Cancel"
+                    footer={[
+                        <Button key="cancel" onClick={handleCancelProject}>
+                            Cancel
+                        </Button>,
+                        <Button
+                            key="submit"
+                            type="primary"
+                            loading={loading}
+                            onClick={handleAddProject}
+                            disabled={loading}
+                        >
+                            Add Project
+                        </Button>,
+                    ]}
                 >
                     <Form form={projectForm} layout="vertical">
                         <Form.Item

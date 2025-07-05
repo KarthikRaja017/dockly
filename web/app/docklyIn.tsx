@@ -25,10 +25,14 @@ const DocklyLogin = () => {
   }, []);
 
   const handleSignUp = async (values: any) => {
+    const trimmedUsername = username.trim();
+    if (!trimmedUsername) {
+      showNotification("Error", "Username cannot be empty or whitespace.", "error");
+      return;
+    }
+
     setLoading(true);
     try {
-      setLoading(true);
-      // Define ApiResponse type inline if not imported elsewhere
       type ApiResponse = {
         status: boolean;
         message: string;
@@ -42,19 +46,18 @@ const DocklyLogin = () => {
       };
 
       const response: AxiosResponse<ApiResponse> = await addUsername({
-        userName: username,
+        userName: trimmedUsername,
         email: email,
       });
+
       const { status, message: msg, payload } = response.data;
 
       if (!status) {
         showNotification("Error", msg, "error");
-      }
-
-      if (status) {
+      } else {
         showNotification("Success", msg, "success");
         localStorage.setItem("userId", payload.userId || "");
-        localStorage.setItem("username", username);
+        localStorage.setItem("username", trimmedUsername);
         if (payload?.otpStatus?.otp) {
           localStorage.setItem("storedOtp", payload?.otpStatus.otp || "");
           localStorage.setItem("email", payload?.email || "");
@@ -62,10 +65,9 @@ const DocklyLogin = () => {
         if (payload?.token) {
           localStorage.setItem("Dtoken", payload?.token || "");
         }
-        router.push(`/${username}${payload.redirectUrl}`);
+        router.push(`/${trimmedUsername}${payload.redirectUrl}`);
       }
     } catch (error: any) {
-      console.error("SignUp Error:", error);
       const errMsg =
         error?.response?.data?.message ||
         "Something went wrong during registration.";
@@ -100,6 +102,7 @@ const DocklyLogin = () => {
             alignItems: "center",
             justifyContent: "center",
             background: "#f9f9f9",
+            caretColor: "transparent",
           }}
         >
           <div
@@ -145,6 +148,16 @@ const DocklyLogin = () => {
               }}
               value={username}
               onChange={setUsername}
+              onKeyDown={(e: any) => {
+                if (e.key === 'Enter') {
+                  const trimmed = username.trim();
+                  if (trimmed) {
+                    handleSignUp({ userName: trimmed });
+                  } else {
+                    showNotification("Error", "Username cannot be empty or whitespace.", "error");
+                  }
+                }
+              }}
             />
           </div>
 

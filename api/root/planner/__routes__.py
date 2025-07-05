@@ -25,6 +25,8 @@ from .models import (
     AddWeeklyTodos,
     GetWeeklyGoals,
     GetWeeklyTodos,
+    AddWeeklyFocus,
+    GetWeeklyFocus,
 )
 from . import planner_api
 
@@ -66,3 +68,6 @@ planner_api.add_resource(GetWeeklyGoals, "/get/weekly-goals")
 
 planner_api.add_resource(AddWeeklyTodos, "/add/weekly-todos")
 planner_api.add_resource(GetWeeklyTodos, "/get/weekly-todos")
+
+planner_api.add_resource(AddWeeklyFocus, "/add/weekly-focus")
+planner_api.add_resource(GetWeeklyFocus, "/get/weekly-focus")

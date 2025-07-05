@@ -519,6 +519,125 @@ class AddAccounts(Resource):
         }
 
 
+# class GetAccounts(Resource):
+#     @auth_required(isOptional=True)
+#     def post(self, uid, user):
+#         accounts = DBHelper.find_all(
+#             "bank_accounts",
+#             filters={"user_id": uid},
+#             select_fields=[
+#                 "id",
+#                 "name",
+#                 "provider",
+#                 "current_balance",
+#                 "currency",
+#                 "transacted_first",
+#                 "transacted_last",
+#             ],
+#         )
+
+#         def classify(acc):
+#             name = (acc.get("name") or "").lower()
+#             provider = (acc.get("provider") or "").lower()
+
+#             if (
+#                 "loan" in name
+#                 or "loan" in provider
+#                 or "mortgage" in name
+#                 or "mortgage" in provider
+#             ):
+#                 return "Loans"
+#             elif (
+#                 "credit" in name
+#                 or "card" in provider
+#                 or "amex" in provider
+#                 or "visa" in provider
+#             ):
+#                 return "Credit Cards"
+#             elif (
+#                 "investment" in name
+#                 or "401" in name
+#                 or "fidelity" in provider
+#                 or "vanguard" in provider
+#             ):
+#                 return "Investments"
+#             else:
+#                 return "Cash Accounts"
+
+#         COLOR_MAP = {
+#             "Loans": "#ef4444",
+#             "Credit Cards": "#1e40af",
+#             "Investments": "#8b5cf6",
+#             "Cash Accounts": "#3b82f6",
+#         }
+
+#         sections = {}
+
+#         for acc in accounts:
+#             section = classify(acc)
+#             item = {
+#                 "name": acc["name"],
+#                 "type": acc["provider"],
+#                 "value": float(acc["current_balance"] or 0),
+#                 "color": COLOR_MAP.get(section, "#3b82f6"),
+#             }
+
+#             if section not in sections:
+#                 sections[section] = {
+#                     "title": section,
+#                     "total": 0,
+#                     "items": [],
+#                 }
+#             sections[section]["total"] += item["value"]
+#             sections[section]["items"].append(item)
+
+#         total_balance = sum(float(acc["current_balance"] or 0) for acc in accounts)
+
+#         ordered_titles = ["Cash Accounts", "Credit Cards", "Investments", "Loans"]
+#         ordered_sections = [
+#             sections[title] for title in ordered_titles if title in sections
+#         ]
+
+#         return {
+#             "status": 1,
+#             "message": "Accounts grouped",
+#             "payload": {
+#                 "sections": ordered_sections,
+#                 "total_balance": total_balance,
+#             },
+#         }
+
+
+# class getTotalBalance(Resource):
+#     @auth_required(isOptional=True)
+#     def post(self, uid, user):
+#         accounts = DBHelper.find_all(
+#             "bank_accounts",
+#             filters={"user_id": uid},
+#             select_fields=[
+#                 "id",
+#                 "current_balance",
+#             ],
+#         )
+
+#         sections = {}
+
+#         for acc in accounts:
+
+#             item = {
+#                 "value": float(acc["current_balance"] or 0),
+#             }
+
+#         total_balance = sum(float(acc["current_balance"] or 0) for acc in accounts)
+#         print(f"Total balance for user {uid}: {total_balance}")
+
+#         return {
+#             "status": 1,
+#             "message": "Accounts grouped",
+#             "total_balance": total_balance,
+#         }
+
+
 class GetAccounts(Resource):
     @auth_required(isOptional=True)
     def post(self, uid, user):
@@ -575,23 +694,37 @@ class GetAccounts(Resource):
 
         for acc in accounts:
             section = classify(acc)
+            balance = float(acc["current_balance"] or 0)
             item = {
                 "name": acc["name"],
                 "type": acc["provider"],
-                "value": float(acc["current_balance"] or 0),
+                "value": balance,
                 "color": COLOR_MAP.get(section, "#3b82f6"),
             }
 
             if section not in sections:
                 sections[section] = {
                     "title": section,
-                    "total": 0,
+                    "total_balance": 0,
+                    "negative_balance": 0,
                     "items": [],
                 }
-            sections[section]["total"] += item["value"]
+            if balance >= 0:
+                sections[section]["total_balance"] += balance
+            else:
+                sections[section]["negative_balance"] += balance
             sections[section]["items"].append(item)
 
-        total_balance = sum(float(acc["current_balance"] or 0) for acc in accounts)
+        total_balance = sum(
+            float(acc["current_balance"] or 0)
+            for acc in accounts
+            if float(acc["current_balance"] or 0) >= 0
+        )
+        negative_balance = sum(
+            float(acc["current_balance"] or 0)
+            for acc in accounts
+            if float(acc["current_balance"] or 0) < 0
+        )
 
         ordered_titles = ["Cash Accounts", "Credit Cards", "Investments", "Loans"]
         ordered_sections = [
@@ -604,6 +737,7 @@ class GetAccounts(Resource):
             "payload": {
                 "sections": ordered_sections,
                 "total_balance": total_balance,
+                "negative_balance": negative_balance,
             },
         }
 
@@ -620,21 +754,24 @@ class getTotalBalance(Resource):
             ],
         )
 
-        sections = {}
-
-        for acc in accounts:
-
-            item = {
-                "value": float(acc["current_balance"] or 0),
-            }
-
-        total_balance = sum(float(acc["current_balance"] or 0) for acc in accounts)
-        print(f"Total balance for user {uid}: {total_balance}")
+        total_balance = sum(
+            float(acc["current_balance"] or 0)
+            for acc in accounts
+            if float(acc["current_balance"] or 0) >= 0
+        )
+        negative_balance = sum(
+            float(acc["current_balance"] or 0)
+            for acc in accounts
+            if float(acc["current_balance"] or 0) < 0
+        )
+        print(f"Total balance (positive) for user {uid}: {total_balance}")
+        print(f"Negative balance for user {uid}: {negative_balance}")
 
         return {
             "status": 1,
-            "message": "Accounts grouped",
+            "message": "Account balances retrieved",
             "total_balance": total_balance,
+            "negative_balance": negative_balance,
         }
 
 

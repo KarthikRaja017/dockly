@@ -74,13 +74,26 @@ export const DEFAULT_TEXT_COLOR = "#343434";
 export const SIDEBAR_BG = "#f9fafa";
 
 export const LowercaseInput = (props: any) => {
-  const { value, onChange, ...restProps } = props;
+  const { value, onChange, onKeyDown, style = {}, ...restProps } = props;
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const lowerValue = e.target.value.toLowerCase();
-    onChange?.(lowerValue);
+    let inputValue = e.target.value.toLowerCase();
+    inputValue = inputValue.replace(/\s+/g, "_");
+    onChange?.(inputValue);
   };
 
-  return <Input {...restProps} value={value} onChange={handleChange} />;
+  return (
+    <Input
+      {...restProps}
+      value={value}
+      onChange={handleChange}
+      onKeyDown={onKeyDown}
+      style={{
+        ...style,
+        caretColor: "#000",
+      }}
+    />
+  );
 };
 
 export const getGreeting = () => {

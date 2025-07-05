@@ -52,6 +52,18 @@ class RespondNotification(Resource):
                 "task_type",
             ],
         )
+
+        gid = DBHelper.find_one(
+            table_name="family_members",
+            filters={"user_id": uid},
+            select_fields=["family_group_id"],
+        )
+
+        if not gid:
+            gid = uniqueId(digit=5, isNum=True, prefix="G")
+        else:
+            gid = gid.get("family_group_id")
+
         if notification.get("task_type") == "family_request":
             userMetaData = notification.get("metadata", {})
             userResponseData = userMetaData.get("input_data", {})
@@ -68,6 +80,7 @@ class RespondNotification(Resource):
                 method=userResponseData.get("method", "Email"),
                 email=senderUser.get("email", ""),
                 fm_user_id=senderUser.get("uid", ""),
+                family_group_id=gid,
                 # access_mapping_code=aid,
                 # permissions="",
                 # shared_items="",
@@ -82,6 +95,7 @@ class RespondNotification(Resource):
                 method=userResponseData.get("method", "Email"),
                 email=userResponseData.get("email", ""),
                 fm_user_id=user["uid"],
+                family_group_id=gid,
                 # access_mapping_code=aid,
                 # permissions="",
                 # shared_items="",

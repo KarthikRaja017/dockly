@@ -6,6 +6,7 @@ import { getUsersFamilyMembers } from '../../../services/family';
 import FamilyInviteForm from '../FamilyInviteForm';
 import FamilyHubMemberDetails from './profile';
 import { capitalizeEachWord, PRIMARY_COLOR } from '../../../app/comman';
+import DocklyLoader from '../../../utils/docklyLoader';
 
 interface FamilyMember {
     id: number;
@@ -128,7 +129,9 @@ const FamilyMembers: React.FC<FamilyMembersProps> = ({ profileVisible, setProfil
 
     const handleFamilyCancel = () => setIsFamilyModalVisible(false);
     const handlePetCancel = () => setIsPetModalVisible(false); // Placeholder for pets
-
+    if (loading) {
+        return <DocklyLoader />
+    }
     return (
         <div style={{
             backgroundColor: 'white',

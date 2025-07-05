@@ -43,6 +43,10 @@ interface ConnectionStatus {
   outlook: boolean;
   google: boolean;
 }
+export function trimGooglePhotoUrl(url: string): string {
+  const index = url.indexOf('=');
+  return index !== -1 ? url.substring(0, index) : url;
+}
 const CustomHeader = ({
   isHovered,
   collapsed,
@@ -71,10 +75,6 @@ const CustomHeader = ({
 
   const initials = userName ? userName.slice(0, 2).toUpperCase() : "DU";
 
-  function trimGooglePhotoUrl(url: string): string {
-    const index = url.indexOf('=');
-    return index !== -1 ? url.substring(0, index) : url;
-  }
 
   const trimmedUrl = trimGooglePhotoUrl(image);
 

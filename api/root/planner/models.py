@@ -880,3 +880,35 @@ def create_calendar_event(user_id, title, start_dt, end_dt=None, attendees=None)
     }
 
     return service.events().insert(calendarId="primary", body=event).execute()
+
+
+class AddWeeklyFocus(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        data = request.get_json(silent=True)
+        print(f"==>> data: {data}")
+        id = uniqueId(digit=15, isNum=True)
+
+        focus = {
+            "id": id,
+            "user_id": uid,
+            "focus": data.get("focus", ""),
+        }
+        DBHelper.insert("weekly-focus", return_column="id", **focus)
+        return {
+            "status": 1,
+            "message": "Weekly focus Added Successfully",
+            "payload": focus,
+        }
+
+
+class GetWeeklyFocus(Resource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        # todos = DBHelper.find_all("weekly_todos", {"uid": uid})
+        focus = DBHelper.find_all(
+            "weekly-focus",
+            {"user_id": uid},
+            select_fields=["id", "focus"],
+        )
+        return {"status": 1, "payload": focus}

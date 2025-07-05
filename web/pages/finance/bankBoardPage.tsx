@@ -28,7 +28,9 @@ export default function BankBoardPage() {
   const [profileId, setProfileId] = useState("");
   const [emailId, setEmailId] = useState("");
   const [isFinanceAccount, setIsFinanceAccount] = useState(false);
+  console.log("🚀 ~ BankBoardPage ~ isFinanceAccount:", isFinanceAccount)
   const [bankDetails, setBankDetails] = useState<any>(null);
+  console.log("🚀 ~ BankBoardPage ~ bankDetails:", bankDetails)
   const [loading, setLoading] = useState(true); // <-- Add loading state
   const [connectionId, setConnectionId] = useState<string>();
   const [username, setUsername] = useState<string>("");

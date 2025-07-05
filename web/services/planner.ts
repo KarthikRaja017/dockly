@@ -25,8 +25,6 @@ interface WeeklyFocus {
   id?: string;
   uid: string;
   description: string;
-  date?: string;
-  time?: string;
 }
 
 interface WeeklyTodo {
@@ -57,4 +55,12 @@ export async function addWeeklyTodo(params: WeeklyTodo) {
 
 export async function getWeeklyTodos(params: {}) {
   return api.get('/get/weekly-todos', { params });
+}
+
+export async function addWeeklyFocus(params: WeeklyFocus) {
+  return api.post('/add/weekly-focus', params);
+}
+
+export async function getWeeklyFocus(params: {}) {
+  return api.get('/get/weekly-focus', { params });
 }

@@ -14,6 +14,10 @@ export async function getRecentActivities(params: any) {
   return api.get('/get/notifications', { params });
 }
 
+export async function getUserConnectedAccounts(params: any) {
+  return api.get('/get/connected-accounts', { params });
+}
+
 export async function respondToNotification(params: any) {
   return api.post('/respond/notification', params);
 }

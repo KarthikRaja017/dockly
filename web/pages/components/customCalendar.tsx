@@ -2236,7 +2236,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     padding: "20px",
                     boxShadow:
                         "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-                    height: "600px", // CONSISTENT HEIGHT FOR ALL VIEWS
+                    height: "750px", // CONSISTENT HEIGHT FOR ALL VIEWS
                     display: "flex",
                     flexDirection: "column",
                     animation: "fadeInUp 0.6s ease",

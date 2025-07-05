@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Row, Col, Typography, Input, Button } from "antd";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { AxiosResponse } from "axios";
-import { emailVerification, signInVerification } from "../../services/apiConfig";
+import { emailVerification } from "../../services/apiConfig";
 import { showNotification } from "../../utils/notification";
 import DocklyLoader from "../../utils/docklyLoader";
 
@@ -20,16 +20,17 @@ type ApiResponse = {
 
 const VerifyEmailPage: React.FC = () => {
   const [otp, setOtp] = useState(["", "", "", ""]);
-  const router = useRouter();
-  const params = useParams() || {};
   const [loading, setLoading] = useState(false);
-  const username = params.username;
   const [userId, setUserId] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const [duser, setDuser] = useState<string | null>(null);
   const [storedOtp, setStoredOtp] = useState<string | null>(null);
+  const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
+  const router = useRouter();
+  const params = useParams() || {};
   const searchParams = useSearchParams();
   const encodedToken = searchParams?.get("token");
+  const username = params.username;
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -48,17 +49,15 @@ const VerifyEmailPage: React.FC = () => {
         localStorage.setItem("userId", userId || "");
         localStorage.setItem("fuser", fuser || "");
         localStorage.setItem("duser", duser);
-        setDuser(duser)
-        setEmail(email)
-        setStoredOtp(otp)
-        setUserId(userId)
+        setDuser(duser);
+        setEmail(email);
+        setStoredOtp(otp);
+        setUserId(userId);
       } catch (err) {
         console.error("Invalid or malformed token");
       }
     }
   }, [encodedToken]);
-
-  const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
   const handleChange = (value: string, index: number) => {
     if (/^\d?$/.test(value)) {
@@ -68,6 +67,13 @@ const VerifyEmailPage: React.FC = () => {
 
       if (value && index < 3) {
         inputsRef.current[index + 1]?.focus();
+      }
+
+      const fullCode = newOtp.join("");
+      if (fullCode.length === 4 && newOtp.every((v) => v !== "")) {
+        setTimeout(() => {
+          handleContinue(newOtp);
+        }, 200);
       }
     }
   };
@@ -81,36 +87,43 @@ const VerifyEmailPage: React.FC = () => {
     }
   };
 
-  const handleContinue = async () => {
-    setLoading(true)
-    const code = otp.join("");
-    if (code.length > 4) {
-      alert("Please enter a valid 4-digit code");
+  const handleContinue = async (providedOtp?: string[]) => {
+    const code = (providedOtp || otp).join("");
+    if (code.length !== 4) {
       showNotification("Error", "Please enter a valid 4-digit code", "error");
+      return;
     }
-    if (code.length === 4) {
+
+    setLoading(true);
+
+    try {
       const response: AxiosResponse<ApiResponse> = await emailVerification({
         userId,
         otp: code,
         storedOtp: storedOtp,
-        duser: duser
+        duser: duser,
       });
+
       const { status, message: msg, payload } = response.data;
+
       if (!status) {
         showNotification("Error", msg, "error");
-      }
-      if (status) {
+      } else {
         const token = payload?.token || "";
         localStorage.setItem("Dtoken", token);
         showNotification("Success", msg, "success");
         router.push(`/${username}/dashboard`);
       }
+    } catch (error) {
+      console.error("OTP verification error", error);
+      showNotification("Error", "Something went wrong", "error");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false)
   };
 
   if (loading) {
-    return <DocklyLoader />
+    return <DocklyLoader />;
   }
 
   return (
@@ -158,7 +171,8 @@ const VerifyEmailPage: React.FC = () => {
           type="primary"
           block
           size="large"
-          onClick={handleContinue}
+          onClick={() => handleContinue()}
+          disabled={otp.join("").length !== 4}
           style={{ marginTop: 32, backgroundColor: "#0047FF" }}
         >
           Continue

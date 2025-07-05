@@ -146,6 +146,7 @@
         "fm_user_id VARCHAR",
         "email VARCHAR(255)",
         "access_code VARCHAR",
+        "family_group_id VARCHAR",
         "method VARCHAR",
         "created_at TIMESTAMP"
       ]
@@ -574,6 +575,18 @@
         "currency_code VARCHAR(10)",
         "entry_type VARCHAR(10)",
         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+      ]
+    },
+
+    {
+      "table_name": "weekly-focus",
+      "columns": [
+        "id VARCHAR(255) PRIMARY KEY",
+        "user_id VARCHAR(255) REFERENCES users(uid) ON DELETE CASCADE",
+        "focus VARCHAR(255) NOT NULL",
+        "is_active INT DEFAULT 1",
+        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
       ]
     }
   ]

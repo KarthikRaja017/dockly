@@ -136,3 +136,28 @@ class GetUserHubs(Resource):
         #     userUtilities.append(utilities)
 
         return {"status": 1, "payload": {"hubs": userHubs, "utilities": userUtilities}}
+
+
+class GetConnectedAccounts(Resource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        accounts = DBHelper.find_all(
+            table_name="connected_accounts",
+            select_fields=["provider", "email", "user_object"],
+            filters={"user_id": uid},
+        )
+        connectedAccounts = []
+        for account in accounts:
+            connectedAccounts.append(
+                {
+                    "provider": account.get("provider"),
+                    "email": account.get("email"),
+                    "user_object": account.get("user_object"),
+                }
+            )
+
+        return {
+            "status": 1,
+            "payload": {"connectedAccounts": connectedAccounts},
+            "message": "accounts fetched successfully",
+        }

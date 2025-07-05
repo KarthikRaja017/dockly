@@ -94,7 +94,7 @@ class AddFamilyMembers(Resource):
     @auth_required(isOptional=True)
     def post(self, uid, user):
         inputData = request.get_json(silent=True)
-        # sharedKeys = list(inputData.get("sharedItems", {}).keys())
+
         if inputData["email"] == user["email"]:
             return {
                 "status": 0,
@@ -102,39 +102,30 @@ class AddFamilyMembers(Resource):
                 "payload": {},
             }
 
+        # Check for existing family member
         family_member_exists = DBHelper.find_one(
             "family_members",
             filters={"email": inputData["email"], "user_id": uid},
             select_fields=["id"],
         )
 
-        # if family_member_exists:
-        #     return {
-        #         "status": 0,
-        #         "message": "Family member with this email already exists in your family hub.",
-        #         "payload": {},
-        #     }
+        if family_member_exists:
+            return {
+                "status": 0,
+                "message": "Family member with this email already exists in your family hub.",
+                "payload": {},
+            }
 
-        sharedComponents = []
-        sharedItems = []
-        sharedKeys = []
+        # Prepare shared item IDs
+        sharedKeys = list(inputData["sharedItems"].keys())
+        sharedComponents = [val for v in inputData["sharedItems"].values() for val in v]
+        sharedItems = [
+            DBHelper.find_one("hubs", filters={"name": key}, select_fields=["hid"])
+            for key in sharedKeys
+        ]
+        sharedItemsIds = [item["hid"] for item in sharedItems if item]
+
         otp = generate_otp()
-
-        for key, value in inputData["sharedItems"].items():
-            sharedKeys.append(key)
-            sharedComponents.extend(value)
-        for key in sharedKeys:
-            id = DBHelper.find_one(
-                "hubs",
-                filters={"name": key},
-                select_fields=["hid"],
-            )
-            sharedItems.append(id)
-
-        sharedItemsIds = []
-        for i in sharedItems:
-            sharedItemsIds.append(i["hid"])
-
         rname = inputData["name"]
 
         existingUser = DBHelper.find_one(
@@ -143,23 +134,29 @@ class AddFamilyMembers(Resource):
             select_fields=["uid", "duser", "user_name"],
         )
 
+        # ========== EXISTING USER FLOW ==========
         if existingUser:
             if existingUser["duser"] == DocklyUsers.Guests.value:
                 return {
                     "status": 0,
                     "message": "This email is already registered as a guest.",
                 }
-            elif existingUser["duser"] == DocklyUsers.PaidMember.value:
+
+            if existingUser["duser"] == DocklyUsers.PaidMember.value:
                 rusername = existingUser["user_name"]
-                encodedToken = "<encoded_token>"
+                encodedToken = "<encoded_token>"  # Create a real token if needed
                 inviteLink = f"{WEB_URL}/{rusername}/dashboard"
+
                 sendInviteEmail(
                     inputData, user, rusername, encodedToken, inviteLink=inviteLink
                 )
+                # family_member_ids = get_connected_family_member_ids(uid)
+                # print(f"family_member_ids: {family_member_ids}")
+                # ✅ Create notification
                 notification = {
                     "sender_id": user["uid"],
                     "receiver_id": existingUser["uid"],
-                    "message": f"You have been invited to join the {user['user_name']}'s Family Hub '{rusername}'",
+                    "message": f"You have been invited to join {user['user_name']}'s Family Hub '{rusername}'",
                     "task_type": "family_request",
                     "action_required": True,
                     "status": "pending",
@@ -168,15 +165,29 @@ class AddFamilyMembers(Resource):
                         "input_data": inputData,
                         "shared_items_ids": sharedItemsIds,
                         "sender_user": user,
+                        # "familyMembers_ids": family_member_ids,
                     },
                 }
-                # Insert notification into the database
-                DBHelper.insert(
-                    "notifications",
-                    return_column="id",
-                    **notification,
+
+                notification_id = DBHelper.insert(
+                    "notifications", return_column="id", **notification
                 )
-                # otpResponse = send_otp_email(inputData["email"], otp)
+
+                # ✅ Emit real-time socket notification
+                # try:
+                #     from app import socketio  # adjust import path as needed
+
+                #     socketio.emit(
+                #         "family_invite",
+                #         {
+                #             "to": existingUser["uid"],
+                #             "message": notification["message"],
+                #             "notification_id": notification_id,
+                #             "metadata": notification["metadata"],
+                #         },
+                #     )
+                # except Exception as e:
+                #     print(f"Socket emit error: {e}")
 
                 return {
                     "status": 1,
@@ -184,11 +195,14 @@ class AddFamilyMembers(Resource):
                     "payload": {},
                 }
 
+        # ========== NEW GUEST USER FLOW ==========
+        # Generate unique guest username
         parts = re.split(r"[\s_-]+", rname.strip())
         relationName = parts[0].lower() + "".join(
             word.capitalize() for word in parts[1:]
         )
         rusername = uniqueId(digit=3, isNum=True, prefix=relationName)
+
         uid = uniqueId(digit=5, isNum=True, prefix="USER")
         payload = json.dumps(
             {
@@ -200,7 +214,8 @@ class AddFamilyMembers(Resource):
             }
         )
         encodedToken = base64.urlsafe_b64encode(payload.encode()).decode()
-        docklyUser = DBHelper.insert(
+
+        DBHelper.insert(
             "users",
             return_column="uid",
             uid=uid,
@@ -211,8 +226,9 @@ class AddFamilyMembers(Resource):
             duser=DocklyUsers.Guests.value,
             splan=0,
         )
+
         for id in sharedItemsIds:
-            shared = DBHelper.insert(
+            DBHelper.insert(
                 table_name="users_access_hubs",
                 user_id=uid,
                 id=f"{uid}-{id}",
@@ -230,46 +246,25 @@ class AddFamilyMembers(Resource):
             access_code=inputData.get("accessCode", ""),
             method=inputData.get("method", "Email"),
             email=inputData.get("email", ""),
-            # access_mapping_code =
-            # permissions="",
-            # shared_items="",
         )
+        # print(f"userId: {userId}")
+
         for id in sharedItemsIds:
-            aid = DBHelper.insert(
+            DBHelper.insert(
                 "family_hubs_access_mapping",
                 return_column="id",
-                # id=aid,
                 user_id=user["uid"],
                 family_member_id=userId,
                 hubs=id,
                 permissions=Permissions.Read.value,
             )
-        sendInviteEmail(inputData, user, rusername, encodedToken, inviteLink=True)
-        otpResponse = send_otp_email(inputData["email"], otp)
 
-        notification = {
-            "sender_id": user["uid"],
-            "receiver_id": existingUser["uid"],
-            "message": f"You have been invited to join the {user['user_name']}'s Family Hub '{rusername}'",
-            "task_type": "family_request",
-            "action_required": True,
-            "status": "pending",
-            "hub": HubsEnum.Family.value,
-            "metadata": {
-                "input_data": inputData,
-                "shared_items_ids": sharedItemsIds,
-            },
-        }
-        # Insert notification into the database
-        DBHelper.insert(
-            "notifications",
-            return_column="id",
-            **notification,
-        )
+        sendInviteEmail(inputData, user, rusername, encodedToken, inviteLink=True)
+        send_otp_email(inputData["email"], otp)
 
         return {
             "status": 1,
-            "message": "Family members added successfully",
+            "message": "Family member added successfully",
             "payload": {},
         }
 
@@ -278,53 +273,65 @@ class GetFamilyMembers(Resource):
     @auth_required(isOptional=True)
     def get(self, uid, user):
         duser = request.args.get("dUser")
+        fuser = request.args.get("fuser")
         familyMembers = []
 
-        # Define common method to clean relationship
         def clean_relationship(rel):
             return rel.replace("❤", "").replace("👶", "").replace("👴", "")
 
-        if int(duser) == DocklyUsers.PaidMember.value:
-            members = DBHelper.find_all(
-                table_name="family_members",
-                select_fields=["name", "relationship"],
-                filters={"user_id": uid},
-            )
-            currentUser = {
-                "name": user.get("user_name", "User"),
-                "relationship": "me",
+        # Step 1: Get family group id of the user
+        gid = DBHelper.find_one(
+            table_name="family_members",
+            select_fields=["family_group_id"],
+            filters={"user_id": uid},
+        )
+
+        group_id = gid.get("family_group_id") if gid else None
+        if not group_id:
+            return {
+                "status": 1,
+                "message": "No family group found",
+                "payload": {"members": []},
             }
-            familyMembers.append(currentUser)
-        elif int(duser) == DocklyUsers.Guests.value:
-            fuser = request.args.get("fuser")
-            members = DBHelper.find_all(
-                table_name="family_members",
-                select_fields=["name", "relationship", "user_id"],
-                filters={"user_id": fuser},
+
+        # Step 2: Get all members in that group
+        group_members = DBHelper.find_all(
+            table_name="family_members",
+            select_fields=["name", "relationship", "fm_user_id", "email"],
+            filters={"family_group_id": group_id},
+        )
+
+        for member in group_members:
+            relationship = (
+                "me"
+                if member["fm_user_id"] == uid
+                else clean_relationship(member["relationship"])
             )
-
-            fuserMember = DBHelper.find_one(
-                "users",
-                filters={"uid": fuser},
-                select_fields=["user_name"],
-            )
-
-            relationship = "Owner"
-
-            familyMember = {
-                "name": fuserMember.get("user_name", "User"),
-                "relationship": relationship,
-            }
-            familyMembers.append(familyMember)
-
-        for member in members:
             familyMembers.append(
                 {
                     "name": member["name"],
-                    "relationship": clean_relationship(member["relationship"]),
+                    "relationship": relationship,
+                    "email": member.get("email", ""),
                 }
             )
 
+        # Step 3: If guest, add the owner
+        if int(duser) == DocklyUsers.Guests.value and fuser:
+            fuserMember = DBHelper.find_one(
+                table_name="users",
+                filters={"uid": fuser},
+                select_fields=["user_name", "email"],
+            )
+            if fuserMember:
+                familyMembers.append(
+                    {
+                        "name": fuserMember.get("user_name", "User"),
+                        "relationship": "Owner",
+                        "email": fuserMember.get("email", ""),
+                    }
+                )
+
+        # Step 4: Add pending invites
         notifications = DBHelper.find_all(
             table_name="notifications",
             filters={"sender_id": uid, "status": "pending"},
@@ -342,13 +349,25 @@ class GetFamilyMembers(Resource):
                             input_data.get("relationship", "Unknown")
                         ),
                         "status": "pending",
+                        "email": input_data.get("email", ""),
                     }
                 )
-        # Add current user info at the end
+
+        # Step 5: Remove duplicate emails
+        unique_members = []
+        seen_emails = set()
+        for member in familyMembers:
+            email = member.get("email", "").lower().strip()
+            if not email or email not in seen_emails:
+                seen_emails.add(email)
+                # Remove email from final output if you don't want to expose it
+                member.pop("email", None)
+                unique_members.append(member)
+
         return {
             "status": 1,
             "message": "Family members fetched successfully",
-            "payload": {"members": familyMembers},
+            "payload": {"members": unique_members},
         }
 
 
@@ -564,28 +583,40 @@ class GetContacts(Resource):
             return {"status": 0, "message": f"Failed to fetch contacts: {str(e)}"}, 500
 
 
+def get_connected_family_member_ids(uid: str) -> list:
+    """
+    Returns a unique list of all family member IDs connected to the given user:
+    - Members this user has added (sent invites)
+    - Members who added this user (received invites)
+    - Includes the current user (uid) as well
+    """
+
+    sent_invites = DBHelper.find_all(
+        table_name="family_members",
+        select_fields=["fm_user_id"],
+        filters={"user_id": uid},
+    )
+
+    received_invites = DBHelper.find_all(
+        table_name="family_members",
+        select_fields=["user_id"],
+        filters={"fm_user_id": uid},
+    )
+
+    # Extract ids
+    sent_ids = [m["fm_user_id"] for m in sent_invites if m.get("fm_user_id")]
+    received_ids = [m["user_id"] for m in received_invites if m.get("user_id")]
+
+    # Combine and deduplicate, including current user
+    all_ids = list(set(sent_ids + received_ids + [uid]))
+    return all_ids
+
+
 class GetGuardianEmergencyInfo(Resource):
     @auth_required(isOptional=True)
     def get(self, uid, user):
         try:
-            # 1. Get family members (both sent and received invites)
-            sent_invites = DBHelper.find_all(
-                table_name="family_members",
-                select_fields=["fm_user_id"],
-                filters={"user_id": uid},
-            )
-            received_invites = DBHelper.find_all(
-                table_name="family_members",
-                select_fields=["user_id"],
-                filters={"fm_user_id": uid},
-            )
-
-            # 2. Combine all family member IDs including self
-            family_member_ids = [m["fm_user_id"] for m in sent_invites] + [
-                m["user_id"] for m in received_invites
-            ]
-            family_member_ids = list(set(family_member_ids + [uid]))
-
+            family_member_ids = get_connected_family_member_ids(uid)
             # 3. Fetch emergency info for all family members
             emergency_info = DBHelper.find_in(
                 table_name="guardian_emergency_info",

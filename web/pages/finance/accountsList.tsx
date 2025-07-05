@@ -277,7 +277,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Card, Typography, Row, Col, Avatar } from 'antd';
-import { getAccounts } from '../../services/apiConfig';
+import { getAccounts, getExpenseIncome } from '../../services/apiConfig';
 
 const { Title, Text } = Typography;
 
@@ -287,6 +287,7 @@ const AccountsOverview = () => {
   const [assets, setAssets] = useState<number>(0);
   const [liabilities, setLiabilities] = useState<number>(0);
   const [cashFlow, setCashFlow] = useState<number>(0);
+  console.log("🚀 ~ AccountsOverview ~ cashFlow:", cashFlow)
 
   const formatCurrency = (amount: number) =>
     `${amount < 0 ? '-' : ''}$${Math.abs(amount).toLocaleString(undefined, {
@@ -301,15 +302,33 @@ const AccountsOverview = () => {
         setNetWorth(payload.total_balance || 0);
         setAssets(payload.assets || 0);
         setLiabilities(payload.liabilities || 0);
-        setCashFlow(payload.cash_flow || 0);
+        // setCashFlow(payload.negative_balance || 0);
         setSections(payload.sections || []);
+
       } catch (err) {
         console.error('Error fetching account data', err);
       }
     };
     fetchAccounts();
   }, []);
+  useEffect(() => {
+    const fetchIncomeExpense = async () => {
+      try {
+        const response = await getExpenseIncome({});
 
+        if (response.expense_total !== undefined) {
+          setCashFlow(Number(response.expense_total));
+        }
+
+      } catch (error) {
+        console.error('Error fetching income and expense:', error);
+
+      }
+    };
+
+    fetchIncomeExpense();
+  }
+    , []);
   return (
     <Card style={{ borderRadius: 16, padding: 24, margin: 24 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>

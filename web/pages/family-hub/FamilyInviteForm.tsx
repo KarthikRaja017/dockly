@@ -62,6 +62,7 @@ const FamilyInviteForm: React.FC<FamilyInviteFormProps> = ({ visible, onCancel, 
     );
     const [pendingMember, setPendingMember] = useState<FormDataState | null>(null);
     const [username, setUsername] = useState<string>('');
+    const [systemNotification, setSystemNotification] = useState(null);
     const [loading, setLoading] = useState<boolean>(false);
     const router = useRouter();
     const params = useParams();
@@ -77,7 +78,6 @@ const FamilyInviteForm: React.FC<FamilyInviteFormProps> = ({ visible, onCancel, 
     }, [params?.username]);
 
     useEffect(() => {
-        console.log('Modal visibility changed:', visible, 'Resetting form');
         if (!visible) {
             setStep('add');
             setFormData({
@@ -125,7 +125,6 @@ const FamilyInviteForm: React.FC<FamilyInviteFormProps> = ({ visible, onCancel, 
         }));
     };
 
-    // Handle sharing options
     const isParentChecked = (categoryName: string) => {
         const category = Hubs.find((c) => c.label.name === categoryName);
         return category?.children.length
@@ -158,14 +157,10 @@ const FamilyInviteForm: React.FC<FamilyInviteFormProps> = ({ visible, onCancel, 
         });
     };
 
-    // Handle form submission with mailto
     const handleSendInvitation = async () => {
         setLoading(true);
         try {
             const response = await addFamilyMember({ ...formData, sharedItems: formData.sharedItems, username });
-            // console.log('addFamilyMember response:', response); // Debug log
-
-            // Safely access response properties
             const responseData = response?.data || response; // Fallback to response if .data is undefined
             const status = responseData?.status ?? false;
             const responseMessage = responseData?.message ?? 'Unknown error';
@@ -174,29 +169,6 @@ const FamilyInviteForm: React.FC<FamilyInviteFormProps> = ({ visible, onCancel, 
                 // Save the form data via onSubmit
                 onSubmit(formData);
                 setPendingMember(formData);
-                // Prepare and send email if method is Email
-                if (formData.method === 'Email') {
-                    // const subject = `Family Hub Invitation for ${formData.name}`;
-                    // const sharedItemsList = Object.entries(formData.sharedItems)
-                    //     .flatMap(([category, items]) => items.map(item => `${category}: ${item}`))
-                    //     .join(', ');
-                    // const body = `Dear ${formData.name},\n\nYou have been invited to join our Family Hub with the following access:\n- Relationship: ${formData.relationship.replace('❤️', '').replace('👶', '').replace('👴', '')}\n- Access Level: ${formData.permissions.type}\n- Shared Items: ${sharedItemsList || 'None'}\n\nPlease contact us to accept this invitation.\n\nBest regards,\n${username || 'Family Hub Team'}`;
-                    // const encodedSubject = encodeURIComponent(subject);
-                    // const encodedBody = encodeURIComponent(body);
-                    // const mailtoLink = `mailto:${formData.email}?subject=${encodedSubject}&body=${encodedBody}`;
-
-                    // try {
-                    //     window.location.href = mailtoLink;
-                    // } catch (mailError) {
-                    //     console.error('Error opening mailto:', mailError);
-                    //     notification.warning({
-                    //         message: 'Email Client Issue',
-                    //         description: 'Unable to open the email client, but the family member was added successfully.',
-                    //         placement: 'topRight',
-                    //         duration: 3,
-                    //     });
-                    // }
-                }
                 setStep('sent');
             } else if (!status) {
                 showNotification("Error", responseData?.message, "error");
@@ -588,6 +560,7 @@ const FamilyInviteForm: React.FC<FamilyInviteFormProps> = ({ visible, onCancel, 
             </Button>
         </div>
     );
+
 
     return (
         <Modal
