@@ -364,6 +364,12 @@ class GetFamilyMembers(Resource):
                 member.pop("email", None)
                 unique_members.append(member)
 
+        # Step 6: Fallback - if no members found, return the current user
+        if not unique_members:
+            unique_members.append(
+                {"name": user.get("user_name", "User"), "relationship": "me"}
+            )
+
         return {
             "status": 1,
             "message": "Family members fetched successfully",
