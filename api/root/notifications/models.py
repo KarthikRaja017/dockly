@@ -55,7 +55,7 @@ class RespondNotification(Resource):
 
         gid = DBHelper.find_one(
             table_name="family_members",
-            filters={"user_id": uid},
+            filters={"user_id": notification.get("sender_id")},
             select_fields=["family_group_id"],
         )
 
