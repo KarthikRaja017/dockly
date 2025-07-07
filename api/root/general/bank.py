@@ -351,95 +351,11 @@ class RecurringTransactions(Resource):
         if not user_id:
             return {"error": "Missing user_id"}, 400
 
-        txns = DBHelper.find_all(
-            table_name="user_bank_transactions",
-            filters={"user_id": user_id},
-            select_fields=["description", "date", "amount"],
-        )
-
-        # Group by normalized description
-        grouped = defaultdict(list)
-        for txn in txns:
-            desc = txn["description"].lower().strip()
-            grouped[desc].append(txn)
-
-        recurring = []
-
-        for desc, items in grouped.items():
-            if len(items) < 2:
-                continue  # need at least 2 occurrences to detect pattern
-
-            # Sort by date
-            items.sort(
-                key=lambda x: (
-                    x["date"]
-                    if isinstance(x["date"], (datetime, date))
-                    else datetime.strptime(x["date"], "%Y-%m-%d")
-                )
-            )
-            date_diffs = []
-
-            for i in range(1, len(items)):
-                d1 = items[i - 1]["date"]
-                d2 = items[i]["date"]
-
-                # Convert to datetime if it's a date
-                if isinstance(d1, date) and not isinstance(d1, datetime):
-                    d1 = datetime.combine(d1, datetime.min.time())
-                if isinstance(d2, date) and not isinstance(d2, datetime):
-                    d2 = datetime.combine(d2, datetime.min.time())
-
-                diff = (d2 - d1).days
-                date_diffs.append(diff)
-
-            if not date_diffs:
-                continue
-
-            most_common_diff = Counter(date_diffs).most_common(1)[0]
-            if most_common_diff[1] < 2:
-                continue
-
-            # classify frequency
-            gap = most_common_diff[0]
-            if 27 <= gap <= 32:
-                frequency = "Monthly"
-            elif 6 <= gap <= 8:
-                frequency = "Weekly"
-            else:
-                continue
-
-            last_txn = items[-1]
-
-            recurring.append(
-                {
-                    "description": desc.title(),
-                    "amount": (
-                        float(last_txn["amount"])
-                        if isinstance(last_txn["amount"], Decimal)
-                        else last_txn["amount"]
-                    ),
-                    "last_date": (
-                        last_txn["date"].isoformat()
-                        if isinstance(last_txn["date"], (date, datetime))
-                        else last_txn["date"]
-                    ),
-                    "frequency": frequency,
-                }
-            )
-
-        return {"recurring_transactions": recurring}
-
-    def post(self):
-        data = request.get_json()
-        user_id = data.get("user_id")
-
-        if not user_id:
-            return {"error": "Missing user_id"}, 400
-
         transactions = DBHelper.find_all(
             table_name="user_bank_transactions",
             filters={"user_id": user_id},
             select_fields=["transaction_id", "date", "description", "amount"],
+            limit=500,
         )
 
         # Step 1: Group by description

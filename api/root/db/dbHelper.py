@@ -178,7 +178,7 @@ class DBHelper:
                 postgres.release_connection(conn)
 
     @staticmethod
-    def find_all(table_name, filters=None, select_fields=None):
+    def find_all(table_name, filters=None, select_fields=None, retry=False):
         conn = None
         cur = None
         try:
@@ -210,8 +210,15 @@ class DBHelper:
 
             return cur.fetchall()
 
+        except psycopg2.OperationalError as e:
+            if not retry:
+                # Retry once if it fails due to connection issues
+                return DBHelper.find_all(table_name, filters, select_fields, retry=True)
+            raise Exception("Database connection failed after retry") from e
+
         except Exception as e:
             raise e
+
         finally:
             if cur:
                 cur.close()
