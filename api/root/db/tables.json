@@ -561,7 +561,18 @@
         "transacted_last DATE"
       ]
     },
-
+    {
+      "table_name": "smartnotes",
+      "columns": [
+        "id SERIAL PRIMARY KEY",
+        "user_id VARCHAR(255) NOT NULL",
+        "note TEXT NOT NULL",
+        "timing TIMESTAMP",
+        "members TEXT",
+        "source VARCHAR(50) DEFAULT 'planner'",
+        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+      ]
+    },
     {
       "table_name": "user_bank_transactions",
       "columns": [

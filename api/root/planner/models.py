@@ -693,7 +693,7 @@ from datetime import timedelta, datetime
 from flask import request
 from flask_restful import Resource
 
-from root.google.models import SCOPE
+from root.google.models import SCOPE, extract_datetime
 from root.db.dbHelper import DBHelper
 from root.common import GoalStatus, Priority, Status
 from root.utilis import uniqueId
@@ -738,6 +738,7 @@ class AddEvents(Resource):
     @auth_required(isOptional=True)
     def post(self, uid, user):
         inputData = request.get_json(silent=True)
+        print(f"inputData: {inputData}")
         id = inputData.get("id", None)
         unid = uniqueId(digit=15, isNum=True)
 
@@ -912,3 +913,117 @@ class GetWeeklyFocus(Resource):
             select_fields=["id", "focus"],
         )
         return {"status": 1, "payload": focus}
+
+
+class AddSmartNote(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        inputData = request.get_json(silent=True)
+        full_text = inputData.get("note", "")
+        members = inputData.get("members", "")
+        uid = inputData.get("userId", "")
+        frontend_timing = inputData.get("timing")
+        source = inputData.get("source", "planner")  # default source
+
+        if frontend_timing:
+            try:
+                parsed_datetime = datetime.fromisoformat(frontend_timing)
+            except Exception as e:
+                print("Invalid frontend timing:", e)
+                parsed_datetime = extract_datetime(full_text)
+        else:
+            parsed_datetime = extract_datetime(full_text)
+
+        DBHelper.insert(
+            "smartnotes",
+            user_id=uid,
+            note=full_text,
+            timing=parsed_datetime,
+            members=members,
+            source=source,
+        )
+
+        try:
+            create_calendar_event(
+                user_id=uid,
+                title=full_text,
+                start_dt=parsed_datetime,
+            )
+        except Exception as e:
+            print("Failed to create calendar event:", e)
+
+        return {
+            "status": 1,
+            "message": "Smart Note Added Successfully",
+            "payload": {
+                "parsedTiming": parsed_datetime.isoformat(),
+            },
+        }
+
+
+class GetSmartNotes(Resource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        source = request.args.get("source")
+        filters = {"user_id": uid}
+        if source:
+            filters["source"] = source
+
+        notes = DBHelper.find_all(
+            table_name="smartnotes",
+            filters=filters,
+            select_fields=["id", "note", "timing", "members", "created_at"],
+        )
+
+        user_notes = []
+        for note in notes:
+            user_notes.append(
+                {
+                    "id": note["id"],
+                    "note": note["note"],
+                    "timing": note["timing"].isoformat() if note["timing"] else None,
+                    "members": note["members"],
+                    "created_at": (
+                        note["created_at"].isoformat() if note["created_at"] else None
+                    ),
+                }
+            )
+
+        return {
+            "status": 1,
+            "message": "Smart Notes fetched successfully",
+            "payload": {"notes": user_notes},
+        }
+
+
+class FrequentNotes(Resource):
+    def get(self, uid):
+        source = request.args.get("source")
+        filters = {"user_id": uid}
+        if source:
+            filters["source"] = source
+
+        notes = DBHelper.find_all(
+            table_name="smartnotes", filters=filters, select_fields=["note"]
+        )
+
+        note_counts = {}
+        for note in notes:
+            text = note["note"].strip()
+            note_counts[text] = note_counts.get(text, 0) + 1
+
+        if not note_counts:
+            return [], 200
+
+        sorted_notes = sorted(note_counts.items(), key=lambda x: x[1], reverse=True)
+        top_notes = [note[0] for note in sorted_notes[:3]]
+
+        if len(top_notes) < 3:
+            all_notes = list(note_counts.keys())
+            for n in all_notes:
+                if n not in top_notes:
+                    top_notes.append(n)
+                    if len(top_notes) == 3:
+                        break
+
+        return top_notes, 200

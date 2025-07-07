@@ -291,7 +291,11 @@ class GetFamilyMembers(Resource):
             return {
                 "status": 1,
                 "message": "No family group found",
-                "payload": {"members": []},
+                "payload": {
+                    "members": [
+                        {"name": user.get("user_name", "User"), "relationship": "me"}
+                    ]
+                },
             }
 
         # Step 2: Get all members in that group
@@ -365,10 +369,12 @@ class GetFamilyMembers(Resource):
                 unique_members.append(member)
 
         # Step 6: Fallback - if no members found, return the current user
-        if not unique_members:
-            unique_members.append(
-                {"name": user.get("user_name", "User"), "relationship": "me"}
-            )
+        # print(f"unique_membyyyyyyyyyyyyyyyyyyyers: {unique_members}")
+        # if not unique_members:
+        #     print(f"unique_members: {unique_members}")
+        #     unique_members.append(
+        #         {"name": user.get("user_name", "User"), "relationship": "me"}
+        #     )
 
         return {
             "status": 1,

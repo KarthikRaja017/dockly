@@ -64,3 +64,23 @@ export async function addWeeklyFocus(params: WeeklyFocus) {
 export async function getWeeklyFocus(params: {}) {
   return api.get('/get/weekly-focus', { params });
 }
+
+export async function addSmartNotes(params: any) {
+  return api.post('/add/smart-notes', params);
+}
+
+export async function getSmartNotes(params: any) {
+  return api.get('/get/smart-notes', {
+    params: { ...params },
+  });
+}
+
+export async function fetchNoteSuggestions(
+  uid: string,
+  source: string
+): Promise<string[]> {
+  const response = await api.get(`/smartnotes/suggestions/${uid}`, {
+    params: { source },
+  });
+  return response.data;
+}

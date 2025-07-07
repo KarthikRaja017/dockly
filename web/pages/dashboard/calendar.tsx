@@ -1,5 +1,5 @@
 import React from "react";
-import RenderCalendarCard from "../components/customCalendar";
+import RenderCalendarCard from "../components/customCalendar1";
 import EventCarousel from "../components/eventCarousel";
 import { Plus } from "lucide-react";
 import { motion } from "framer-motion";

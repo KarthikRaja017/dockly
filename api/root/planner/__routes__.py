@@ -21,8 +21,11 @@
 # )
 from .models import (
     AddEvents,
+    AddSmartNote,
     AddWeeklyGoals,
     AddWeeklyTodos,
+    FrequentNotes,
+    GetSmartNotes,
     GetWeeklyGoals,
     GetWeeklyTodos,
     AddWeeklyFocus,
@@ -71,3 +74,8 @@ planner_api.add_resource(GetWeeklyTodos, "/get/weekly-todos")
 
 planner_api.add_resource(AddWeeklyFocus, "/add/weekly-focus")
 planner_api.add_resource(GetWeeklyFocus, "/get/weekly-focus")
+
+
+planner_api.add_resource(AddSmartNote, "/add/smart-notes")
+planner_api.add_resource(GetSmartNotes, "/get/smart-notes")
+planner_api.add_resource(FrequentNotes, "/smartnotes/suggestions/<string:uid>")

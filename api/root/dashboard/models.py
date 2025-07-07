@@ -90,7 +90,7 @@ class GetBoards(Resource):
 class GetUserHubs(Resource):
     @auth_required(isOptional=True)
     def get(self, uid, user):
-        print(f"uid: {uid}")
+        # print(f"uid: {uid}")
         hubs = DBHelper.find_all(
             table_name="users_access_hubs",
             select_fields=[

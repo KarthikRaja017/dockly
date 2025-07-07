@@ -20,7 +20,7 @@ class PostgreSQL:
                 print("✅ Postgres connection pool created successfully.")
             except Exception as e:
                 print(f"❌ Failed to create Postgres connection pool: {e}")
-                self.connection_pool = None  # important to reset if failed
+                self.connection_pool = None  # Important to reset if failed
 
     def get_connection(self):
         if not self.connection_pool:

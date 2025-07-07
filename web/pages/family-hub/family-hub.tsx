@@ -1,50 +1,84 @@
-'use client'
-import { ArrowRightCircle, Plus, Users } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
-import { DeleteOutlined, EditOutlined, ExportOutlined, EyeOutlined, PhoneOutlined, PlusOutlined, SafetyOutlined } from '@ant-design/icons';
-import { Input as AntInput, Button, Col, Form, Input, message, Modal, Popconfirm, Row, Select, Space } from 'antd';
+"use client";
+import { ArrowRightCircle, Plus, Users } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import {
+    DeleteOutlined,
+    EditOutlined,
+    ExportOutlined,
+    EyeOutlined,
+    PhoneOutlined,
+    PlusOutlined,
+    SafetyOutlined,
+} from "@ant-design/icons";
+import {
+    Input as AntInput,
+    Button,
+    Col,
+    Form,
+    Input,
+    message,
+    Modal,
+    Popconfirm,
+    Row,
+    Select,
+    Space,
+} from "antd";
 
-import { addContacts, addGuardians, addNote, addProject, addTask, getAllNotes, getGuardians, getProjects, getTasks, getUserContacts, updateTask } from '../../services/family';
+import {
+    addContacts,
+    addGuardians,
+    addNote,
+    addProject,
+    addTask,
+    getAllNotes,
+    getGuardians,
+    getProjects,
+    getTasks,
+    getUserContacts,
+    updateTask,
+} from "../../services/family";
 
 const FamilyHubPage: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [profileVisible, setProfileVisible] = useState(false);
 
     if (loading) {
-        return <DocklyLoader />
+        return <DocklyLoader />;
     }
     return (
         <div
             style={{
-                display: 'flex',
-                height: '100vh',
-                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                display: "flex",
+                height: "100vh",
+                fontFamily:
+                    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
                 lineHeight: 1.5,
-                color: '#374151',
-                backgroundColor: '#f9fafb',
+                color: "#374151",
+                backgroundColor: "#f9fafb",
                 marginLeft: 40,
-                marginTop: 50
+                marginTop: 50,
             }}
         >
-            {profileVisible && (
-                <FamilyHubMemberDetails />
-            )}
+            {profileVisible && <FamilyHubMemberDetails />}
             {!profileVisible && (
                 <div
                     style={{
                         flex: 1,
-                        overflowY: 'auto',
-                        padding: '20px 30px',
+                        overflowY: "auto",
+                        padding: "20px 30px",
                     }}
                 >
                     <BoardTitle />
-                    <FamilyMembers profileVisible={profileVisible} setProfileVisible={setProfileVisible} />
+                    <FamilyMembers
+                        profileVisible={profileVisible}
+                        setProfileVisible={setProfileVisible}
+                    />
                     <div
                         style={{
-                            display: 'grid',
-                            gridTemplateColumns: '1fr 400px',
-                            gap: '24px',
-                            marginBottom: '24px',
+                            display: "grid",
+                            gridTemplateColumns: "1fr 400px",
+                            gap: "24px",
+                            marginBottom: "24px",
                         }}
                     >
                         <CustomCalendar data={sampleCalendarData} />
@@ -53,14 +87,14 @@ const FamilyHubPage: React.FC = () => {
 
                     <FamilyNotes />
 
-                    <FamilyTasks />
+                    <FamilyTasks isPlanner={false} />
 
                     <div
                         style={{
-                            display: 'grid',
-                            gridTemplateColumns: '1fr 1fr',
-                            gap: '24px',
-                            marginBottom: '24px',
+                            display: "grid",
+                            gridTemplateColumns: "1fr 1fr",
+                            gap: "24px",
+                            marginBottom: "24px",
                         }}
                     >
                         <GuardiansEmergencyInfo />
@@ -103,12 +137,16 @@ interface ContactSection {
     title: string;
     type: string;
     items: ContactItem[];
-}// page.tsx (Update GuardiansEmergencyInfo)
+} // page.tsx (Update GuardiansEmergencyInfo)
 const GuardiansEmergencyInfo: React.FC = () => {
     const [guardianInfo, setGuardianInfo] = useState<GuardianSection[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [modalType, setModalType] = useState<'guardian' | 'section-edit' | 'new-section'>('guardian');
-    const [currentSectionIndex, setCurrentSectionIndex] = useState<number | null>(null);
+    const [modalType, setModalType] = useState<
+        "guardian" | "section-edit" | "new-section"
+    >("guardian");
+    const [currentSectionIndex, setCurrentSectionIndex] = useState<number | null>(
+        null
+    );
     const [currentItemIndex, setCurrentItemIndex] = useState<number | null>(null);
     const [form] = Form.useForm();
     const [sectionItems, setSectionItems] = useState<GuardianItem[]>([]);
@@ -116,9 +154,21 @@ const GuardiansEmergencyInfo: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
 
     const guardianRelations = [
-        'Grandmother', 'Grandfather', 'Uncle', 'Aunt', 'Family Friend',
-        'Sibling', 'Cousin', 'Neighbor', 'Other Family Member', 'Policy ',
-        'Family Doctor', 'Insurance ', 'Specialist', 'health', 'provider',
+        "Grandmother",
+        "Grandfather",
+        "Uncle",
+        "Aunt",
+        "Family Friend",
+        "Sibling",
+        "Cousin",
+        "Neighbor",
+        "Other Family Member",
+        "Policy ",
+        "Family Doctor",
+        "Insurance ",
+        "Specialist",
+        "health",
+        "provider",
     ];
 
     const getGuardian = async () => {
@@ -131,38 +181,57 @@ const GuardiansEmergencyInfo: React.FC = () => {
                 const groupedByType: Record<string, GuardianItem[]> = {
                     guardian: [],
                     insurance: [], // Life Insurance
-                    medical: [],  // Medical Information
+                    medical: [], // Medical Information
                     // Emergency Guardians
                 };
 
                 payload.emergencyInfo.forEach((info: GuardianItem) => {
                     const relLower = info.relationship.toLowerCase();
-                    if (relLower.includes('policy') || relLower.includes('insurance') || relLower.includes('provider')) {
-                        groupedByType['insurance'].push(info);
-                    } else if (relLower.includes('doctor') || relLower.includes('health') || relLower.includes('pediatrician') || relLower.includes('specialist')) {
-                        groupedByType['medical'].push(info);
+                    if (
+                        relLower.includes("policy") ||
+                        relLower.includes("insurance") ||
+                        relLower.includes("provider")
+                    ) {
+                        groupedByType["insurance"].push(info);
+                    } else if (
+                        relLower.includes("doctor") ||
+                        relLower.includes("health") ||
+                        relLower.includes("pediatrician") ||
+                        relLower.includes("specialist")
+                    ) {
+                        groupedByType["medical"].push(info);
                     } else {
-                        groupedByType['guardian'].push(info); // Default to Emergency Guardians
+                        groupedByType["guardian"].push(info); // Default to Emergency Guardians
                     }
                 });
 
                 // Define all sections with potential empty arrays
                 const formattedSections: GuardianSection[] = [
-                    { title: 'Emergency Guardians', type: 'guardian', items: groupedByType['guardian'] },
-                    { title: 'Life Insurance', type: 'insurance', items: groupedByType['insurance'] },
-                    { title: 'Medical Information', type: 'medical', items: groupedByType['medical'] },
-
-
+                    {
+                        title: "Emergency Guardians",
+                        type: "guardian",
+                        items: groupedByType["guardian"],
+                    },
+                    {
+                        title: "Life Insurance",
+                        type: "insurance",
+                        items: groupedByType["insurance"],
+                    },
+                    {
+                        title: "Medical Information",
+                        type: "medical",
+                        items: groupedByType["medical"],
+                    },
                 ];
 
                 setGuardianInfo(formattedSections);
             } else {
-                setError('Failed to fetch guardian info');
-                message.error('Failed to fetch guardian info');
+                setError("Failed to fetch guardian info");
+                message.error("Failed to fetch guardian info");
             }
         } catch (err) {
-            setError('Error fetching guardian info');
-            message.error('Error fetching guardian info');
+            setError("Error fetching guardian info");
+            message.error("Error fetching guardian info");
         } finally {
             setLoading(false);
         }
@@ -173,7 +242,7 @@ const GuardiansEmergencyInfo: React.FC = () => {
     }, []);
 
     const showModal = (
-        type: 'guardian' | 'section-edit' | 'new-section',
+        type: "guardian" | "section-edit" | "new-section",
         sectionIndex: number | null = null,
         itemIndex: number | null = null
     ) => {
@@ -181,9 +250,13 @@ const GuardiansEmergencyInfo: React.FC = () => {
         setCurrentSectionIndex(sectionIndex);
         setCurrentItemIndex(itemIndex);
 
-        if (type === 'section-edit' && sectionIndex !== null) {
+        if (type === "section-edit" && sectionIndex !== null) {
             setSectionItems(guardianInfo[sectionIndex].items);
-        } else if (type === 'guardian' && sectionIndex !== null && itemIndex !== null) {
+        } else if (
+            type === "guardian" &&
+            sectionIndex !== null &&
+            itemIndex !== null
+        ) {
             form.setFieldsValue(guardianInfo[sectionIndex].items[itemIndex]);
         } else {
             form.resetFields();
@@ -196,24 +269,24 @@ const GuardiansEmergencyInfo: React.FC = () => {
             await form.validateFields();
             const values = form.getFieldsValue();
 
-            if (modalType === 'new-section') {
+            if (modalType === "new-section") {
                 const newSection: GuardianSection = {
                     title: values.sectionName,
-                    type: 'other',
+                    type: "other",
                     items: [],
                 };
                 setGuardianInfo([...guardianInfo, newSection]);
-                message.success('New section created!');
+                message.success("New section created!");
                 setIsModalOpen(false);
                 form.resetFields();
-            } else if (modalType === 'guardian' && currentSectionIndex !== null) {
+            } else if (modalType === "guardian" && currentSectionIndex !== null) {
                 setLoading(true);
                 const payload = {
                     name: values.name,
                     relationship: values.relation,
                     phone: values.phone,
-                    details: values.details || '',
-                    addedBy: localStorage.getItem('userId') || 'current_user',
+                    details: values.details || "",
+                    addedBy: localStorage.getItem("userId") || "current_user",
                 };
 
                 const response = await addGuardians(payload);
@@ -227,23 +300,24 @@ const GuardiansEmergencyInfo: React.FC = () => {
                     };
 
                     if (currentItemIndex !== null) {
-                        updatedGuardianInfo[currentSectionIndex].items[currentItemIndex] = newItem;
-                        message.success('Guardian info updated!');
+                        updatedGuardianInfo[currentSectionIndex].items[currentItemIndex] =
+                            newItem;
+                        message.success("Guardian info updated!");
                     } else {
                         updatedGuardianInfo[currentSectionIndex].items.push(newItem);
-                        message.success('Guardian info added!');
+                        message.success("Guardian info added!");
                     }
 
                     setGuardianInfo(updatedGuardianInfo);
                     setIsModalOpen(false);
                     form.resetFields();
                 } else {
-                    message.error('Failed to save guardian info');
+                    message.error("Failed to save guardian info");
                 }
             }
         } catch (error) {
-            console.error('Error in handleOk:', error);
-            message.error('Failed to save guardian info. Please try again.');
+            console.error("Error in handleOk:", error);
+            message.error("Failed to save guardian info. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -254,7 +328,7 @@ const GuardiansEmergencyInfo: React.FC = () => {
         updatedGuardianInfo[sectionIndex].items.splice(itemIndex, 1);
         setGuardianInfo(updatedGuardianInfo);
         setSectionItems(updatedGuardianInfo[sectionIndex].items);
-        message.success('Item deleted successfully!');
+        message.success("Item deleted successfully!");
     };
 
     const handleCancel = () => {
@@ -264,21 +338,21 @@ const GuardiansEmergencyInfo: React.FC = () => {
 
     const renderFormFields = () => {
         switch (modalType) {
-            case 'new-section':
+            case "new-section":
                 return (
                     <Form.Item
                         name="sectionName"
                         label="Section Name"
-                        rules={[{ required: true, message: 'Please enter section name!' }]}
+                        rules={[{ required: true, message: "Please enter section name!" }]}
                     >
                         <Input
                             placeholder="Enter section name (e.g., 'Family Friends')"
-                            style={{ width: '100%' }}
+                            style={{ width: "100%" }}
                         />
                     </Form.Item>
                 );
 
-            case 'guardian':
+            case "guardian":
                 return (
                     <>
                         <Row gutter={16}>
@@ -286,23 +360,36 @@ const GuardiansEmergencyInfo: React.FC = () => {
                                 <Form.Item
                                     name="name"
                                     label="Full Name"
-                                    rules={[{ required: true, message: 'Please input the name!' }]}
+                                    rules={[
+                                        { required: true, message: "Please input the name!" },
+                                    ]}
                                 >
-                                    <Input placeholder="Enter full name" style={{ width: '100%' }} />
+                                    <Input
+                                        placeholder="Enter full name"
+                                        style={{ width: "100%" }}
+                                    />
                                 </Form.Item>
                             </Col>
                             <Col span={12}>
                                 <Form.Item
                                     name="relation"
                                     label="Relationship/Role"
-                                    rules={[{ required: true, message: 'Please select or input the relationship!' }]}
+                                    rules={[
+                                        {
+                                            required: true,
+                                            message: "Please select or input the relationship!",
+                                        },
+                                    ]}
                                 >
                                     <Select
                                         placeholder="Select or type relationship"
                                         showSearch
                                         allowClear
-                                        options={guardianRelations.map((rel) => ({ label: rel, value: rel }))}
-                                        style={{ width: '100%' }}
+                                        options={guardianRelations.map((rel) => ({
+                                            label: rel,
+                                            value: rel,
+                                        }))}
+                                        style={{ width: "100%" }}
                                     />
                                 </Form.Item>
                             </Col>
@@ -311,49 +398,54 @@ const GuardiansEmergencyInfo: React.FC = () => {
                         <Form.Item
                             name="phone"
                             label="Phone Number"
-                            rules={[{ required: true, message: 'Please input the phone number!' }]}
+                            rules={[
+                                { required: true, message: "Please input the phone number!" },
+                            ]}
                         >
-                            <Input placeholder="Enter phone number (e.g., (555) 123-4567)" style={{ width: '100%' }} />
+                            <Input
+                                placeholder="Enter phone number (e.g., (555) 123-4567)"
+                                style={{ width: "100%" }}
+                            />
                         </Form.Item>
 
                         <Form.Item name="details" label="Additional Details">
                             <Input.TextArea
                                 placeholder="Enter additional details (e.g., address, notes)"
                                 rows={3}
-                                style={{ width: '100%' }}
+                                style={{ width: "100%" }}
                             />
                         </Form.Item>
                     </>
                 );
 
-            case 'section-edit':
+            case "section-edit":
                 return (
                     <div
                         style={{
-                            maxHeight: '500px',
-                            overflowY: 'auto',
-                            padding: '16px',
+                            maxHeight: "500px",
+                            overflowY: "auto",
+                            padding: "16px",
                         }}
                     >
                         {sectionItems.map((item, index) => (
                             <div
                                 key={index}
                                 style={{
-                                    marginBottom: '16px',
-                                    padding: '16px',
-                                    backgroundColor: '#f8fafc',
-                                    borderRadius: '8px',
-                                    border: '1px solid #e2e8f0',
-                                    position: 'relative',
+                                    marginBottom: "16px",
+                                    padding: "16px",
+                                    backgroundColor: "#f8fafc",
+                                    borderRadius: "8px",
+                                    border: "1px solid #e2e8f0",
+                                    position: "relative",
                                 }}
                             >
                                 <div
                                     style={{
-                                        position: 'absolute',
-                                        top: '12px',
-                                        right: '12px',
-                                        display: 'flex',
-                                        gap: '8px',
+                                        position: "absolute",
+                                        top: "12px",
+                                        right: "12px",
+                                        display: "flex",
+                                        gap: "8px",
                                     }}
                                 >
                                     <Button
@@ -363,14 +455,16 @@ const GuardiansEmergencyInfo: React.FC = () => {
                                         onClick={() => {
                                             setIsModalOpen(false);
                                             setTimeout(() => {
-                                                showModal('guardian', currentSectionIndex, index);
+                                                showModal("guardian", currentSectionIndex, index);
                                             }, 100);
                                         }}
-                                        style={{ color: '#3b82f6' }}
+                                        style={{ color: "#3b82f6" }}
                                     />
                                     <Popconfirm
                                         title="Are you sure to delete this item?"
-                                        onConfirm={() => handleItemDelete(currentSectionIndex!, index)}
+                                        onConfirm={() =>
+                                            handleItemDelete(currentSectionIndex!, index)
+                                        }
                                         okText="Yes"
                                         cancelText="No"
                                     >
@@ -378,7 +472,7 @@ const GuardiansEmergencyInfo: React.FC = () => {
                                             type="text"
                                             size="small"
                                             icon={<DeleteOutlined />}
-                                            style={{ color: '#dc2626' }}
+                                            style={{ color: "#dc2626" }}
                                         />
                                     </Popconfirm>
                                 </div>
@@ -386,24 +480,26 @@ const GuardiansEmergencyInfo: React.FC = () => {
                                 <div
                                     style={{
                                         fontWeight: 600,
-                                        fontSize: '14px',
-                                        marginBottom: '4px',
-                                        paddingRight: '80px',
+                                        fontSize: "14px",
+                                        marginBottom: "4px",
+                                        paddingRight: "80px",
                                     }}
                                 >
                                     {item.name}
                                 </div>
                                 <div
                                     style={{
-                                        color: '#6b7280',
-                                        fontSize: '12px',
-                                        marginBottom: '4px',
+                                        color: "#6b7280",
+                                        fontSize: "12px",
+                                        marginBottom: "4px",
                                     }}
                                 >
                                     {item.relationship} • {item.phone}
                                 </div>
                                 {item.details && (
-                                    <div style={{ color: '#9ca3af', fontSize: '11px' }}>{item.details}</div>
+                                    <div style={{ color: "#9ca3af", fontSize: "11px" }}>
+                                        {item.details}
+                                    </div>
                                 )}
                             </div>
                         ))}
@@ -411,8 +507,8 @@ const GuardiansEmergencyInfo: React.FC = () => {
                             type="dashed"
                             size="small"
                             icon={<PlusOutlined />}
-                            onClick={() => showModal('guardian', currentSectionIndex, null)}
-                            style={{ width: '100%', marginTop: '16px', borderRadius: '6px' }}
+                            onClick={() => showModal("guardian", currentSectionIndex, null)}
+                            style={{ width: "100%", marginTop: "16px", borderRadius: "6px" }}
                         >
                             Add
                         </Button>
@@ -427,102 +523,108 @@ const GuardiansEmergencyInfo: React.FC = () => {
     return (
         <div
             style={{
-                backgroundColor: 'white',
-                borderRadius: '16px',
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                padding: '24px',
-                border: '1px solid #e5e7eb',
+                backgroundColor: "white",
+                borderRadius: "16px",
+                boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                padding: "24px",
+                border: "1px solid #e5e7eb",
             }}
         >
             <div
                 style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '24px',
-                    paddingBottom: '16px',
-                    borderBottom: '2px solid #f3f4f6',
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: "24px",
+                    paddingBottom: "16px",
+                    borderBottom: "2px solid #f3f4f6",
                 }}
             >
                 <h3
                     style={{
-                        fontSize: '20px',
+                        fontSize: "20px",
                         fontWeight: 700,
-                        color: '#111827',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
+                        color: "#111827",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
                         margin: 0,
                     }}
                 >
-                    <SafetyOutlined style={{ color: '#3b82f6', fontSize: '24px' }} />
+                    <SafetyOutlined style={{ color: "#3b82f6", fontSize: "24px" }} />
                     Guardians & Emergency Info
                 </h3>
-
             </div>
 
             {loading ? (
                 <div>Loading...</div>
             ) : error ? (
-                <div style={{ color: '#dc2626' }}>{error}</div>
+                <div style={{ color: "#dc2626" }}>{error}</div>
             ) : guardianInfo.length === 0 ? (
-                <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: '14px', padding: '20px 0' }}>
+                <div
+                    style={{
+                        textAlign: "center",
+                        color: "#9ca3af",
+                        fontSize: "14px",
+                        padding: "20px 0",
+                    }}
+                >
                     No guardian info available. Click 'Add' to get started.
                 </div>
             ) : (
                 guardianInfo.map((section, sectionIndex) => (
-                    <div key={sectionIndex} style={{ marginBottom: '28px' }}>
+                    <div key={sectionIndex} style={{ marginBottom: "28px" }}>
                         <div
                             style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                marginBottom: '12px',
-                                padding: '8px 0',
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                marginBottom: "12px",
+                                padding: "8px 0",
                             }}
                         >
                             <h4
                                 style={{
-                                    fontSize: '14px',
+                                    fontSize: "14px",
                                     fontWeight: 600,
-                                    color: '#374151',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.5px',
+                                    color: "#374151",
+                                    textTransform: "uppercase",
+                                    letterSpacing: "0.5px",
                                     margin: 0,
                                 }}
                             >
                                 {section.title}
                             </h4>
-                            <div style={{ display: 'flex', gap: '8px' }}>
+                            <div style={{ display: "flex", gap: "8px" }}>
                                 <Button
                                     type="text"
                                     size="small"
                                     icon={<ArrowRightCircle size={16} />}
-                                    onClick={() => showModal('section-edit', sectionIndex, null)}
-                                    style={{ color: '#3b82f6' }}
+                                    onClick={() => showModal("section-edit", sectionIndex, null)}
+                                    style={{ color: "#3b82f6" }}
                                 />
-
                             </div>
                         </div>
 
                         <div
                             style={{
-                                backgroundColor: '#f8fafc',
-                                borderRadius: '12px',
-                                padding: '16px',
-                                border: '1px solid #e2e8f0',
+                                backgroundColor: "#f8fafc",
+                                borderRadius: "12px",
+                                padding: "16px",
+                                border: "1px solid #e2e8f0",
                             }}
                         >
                             {section.items.length === 0 ? (
                                 <div
                                     style={{
-                                        textAlign: 'center',
-                                        color: '#9ca3af',
-                                        fontSize: '14px',
-                                        padding: '20px 0',
+                                        textAlign: "center",
+                                        color: "#9ca3af",
+                                        fontSize: "14px",
+                                        padding: "20px 0",
                                     }}
                                 >
-                                    No {section.title.toLowerCase()} available. Click 'Add' to get started.
+                                    No {section.title.toLowerCase()} available. Click 'Add' to get
+                                    started.
                                 </div>
                             ) : (
                                 <>
@@ -530,49 +632,55 @@ const GuardiansEmergencyInfo: React.FC = () => {
                                         <div
                                             key={itemIndex}
                                             style={{
-                                                display: 'flex',
-                                                alignItems: 'flex-start',
-                                                padding: '12px 0',
+                                                display: "flex",
+                                                alignItems: "flex-start",
+                                                padding: "12px 0",
                                                 borderBottom:
-                                                    itemIndex < Math.min(section.items.length, 2) - 1 ? '1px solid #e5e7eb' : 'none',
+                                                    itemIndex < Math.min(section.items.length, 2) - 1
+                                                        ? "1px solid #e5e7eb"
+                                                        : "none",
                                             }}
                                         >
                                             <div style={{ flex: 1 }}>
                                                 <div
                                                     style={{
                                                         fontWeight: 600,
-                                                        color: '#111827',
-                                                        fontSize: '14px',
-                                                        marginBottom: '4px',
+                                                        color: "#111827",
+                                                        fontSize: "14px",
+                                                        marginBottom: "4px",
                                                     }}
                                                 >
                                                     {item.name}
                                                 </div>
                                                 <div
                                                     style={{
-                                                        color: '#6b7280',
-                                                        fontSize: '13px',
-                                                        marginBottom: '2px',
+                                                        color: "#6b7280",
+                                                        fontSize: "13px",
+                                                        marginBottom: "2px",
                                                     }}
                                                 >
                                                     {item.relationship} • {item.phone}
                                                 </div>
                                                 {item.details && (
-                                                    <div style={{ color: '#9ca3af', fontSize: '12px' }}>{item.details}</div>
+                                                    <div style={{ color: "#9ca3af", fontSize: "12px" }}>
+                                                        {item.details}
+                                                    </div>
                                                 )}
                                             </div>
-                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                            <div style={{ display: "flex", gap: "8px" }}>
                                                 {/*  */}
                                             </div>
                                         </div>
                                     ))}
                                     {section.items.length > 2 && (
-                                        <div style={{ textAlign: 'center', marginTop: '12px' }}>
+                                        <div style={{ textAlign: "center", marginTop: "12px" }}>
                                             <Button
                                                 type="link"
                                                 icon={<EyeOutlined />}
-                                                onClick={() => showModal('section-edit', sectionIndex, null)}
-                                                style={{ color: '#6b7280' }}
+                                                onClick={() =>
+                                                    showModal("section-edit", sectionIndex, null)
+                                                }
+                                                style={{ color: "#6b7280" }}
                                             >
                                                 View All ({section.items.length} items)
                                             </Button>
@@ -587,42 +695,40 @@ const GuardiansEmergencyInfo: React.FC = () => {
 
             <Modal
                 title={
-                    modalType === 'new-section'
-                        ? 'Add New Guardian Section'
-                        : modalType === 'guardian'
+                    modalType === "new-section"
+                        ? "Add New Guardian Section"
+                        : modalType === "guardian"
                             ? currentItemIndex !== null
-                                ? 'Edit Guardian Info'
-                                : 'Add New Guardian'
-                            : 'Manage Guardian Section'
+                                ? "Edit Guardian Info"
+                                : "Add New Guardian"
+                            : "Manage Guardian Section"
                 }
                 open={isModalOpen}
-                onOk={modalType !== 'section-edit' ? handleOk : () => setIsModalOpen(false)}
+                onOk={
+                    modalType !== "section-edit" ? handleOk : () => setIsModalOpen(false)
+                }
                 onCancel={handleCancel}
                 okText={
-                    modalType === 'section-edit'
-                        ? 'Close'
+                    modalType === "section-edit"
+                        ? "Close"
                         : currentItemIndex !== null
-                            ? 'Update'
-                            : modalType === 'new-section'
-                                ? 'Create Section'
-                                : 'Add'
+                            ? "Update"
+                            : modalType === "new-section"
+                                ? "Create Section"
+                                : "Add"
                 }
-                cancelText={modalType === 'section-edit' ? null : 'Cancel'}
-                width={modalType === 'section-edit' ? 700 : 700}
+                cancelText={modalType === "section-edit" ? null : "Cancel"}
+                width={modalType === "section-edit" ? 700 : 700}
                 style={{ top: 20 }}
                 confirmLoading={loading}
             >
-                <Form form={form} layout="vertical" style={{ marginTop: '16px' }}>
+                <Form form={form} layout="vertical" style={{ marginTop: "16px" }}>
                     {renderFormFields()}
                 </Form>
             </Modal>
         </div>
     );
 };
-
-
-
-
 
 // page.tsx (Update ImportantContacts)
 // Define ContactItem and ContactSection types
@@ -644,8 +750,12 @@ interface ContactSection {
 const ImportantContacts: React.FC = () => {
     const [contacts, setContacts] = useState<ContactSection[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [modalType, setModalType] = useState<'contact' | 'section-edit' | 'new-section'>('contact');
-    const [currentSectionIndex, setCurrentSectionIndex] = useState<number | null>(null);
+    const [modalType, setModalType] = useState<
+        "contact" | "section-edit" | "new-section"
+    >("contact");
+    const [currentSectionIndex, setCurrentSectionIndex] = useState<number | null>(
+        null
+    );
     const [currentItemIndex, setCurrentItemIndex] = useState<number | null>(null);
     const [form] = Form.useForm();
     const [sectionItems, setSectionItems] = useState<ContactItem[]>([]);
@@ -653,11 +763,30 @@ const ImportantContacts: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
 
     const contactRoles: { [key: string]: string[] } = {
-        important: ['Emergency Response', 'Hospital', 'Fire Department', 'Police', 'Emergency Care'],
-        school: ['Elementary School', 'Middle School', 'High School', 'Principal', 'Teacher'],
-        professional: ['Doctor', 'Dentist', 'Lawyer', 'Financial Advisor', 'Therapist', 'Pediatrician'],
-        activity: ['Coach', 'Instructor', 'Tutor', 'Activity Leader'],
-        other: ['Custom Role'],
+        important: [
+            "Emergency Response",
+            "Hospital",
+            "Fire Department",
+            "Police",
+            "Emergency Care",
+        ],
+        school: [
+            "Elementary School",
+            "Middle School",
+            "High School",
+            "Principal",
+            "Teacher",
+        ],
+        professional: [
+            "Doctor",
+            "Dentist",
+            "Lawyer",
+            "Financial Advisor",
+            "Therapist",
+            "Pediatrician",
+        ],
+        activity: ["Coach", "Instructor", "Tutor", "Activity Leader"],
+        other: ["Custom Role"],
     };
 
     const getContacts = async () => {
@@ -677,41 +806,53 @@ const ImportantContacts: React.FC = () => {
                 payload.contacts.forEach((section: any) => {
                     section.items.forEach((item: any) => {
                         const roleLower = item.role.toLowerCase();
-                        if (contactRoles.important.some(r => roleLower.includes(r.toLowerCase()))) {
-                            groupedByType['important'].push({
-                                icon: '🚨',
+                        if (
+                            contactRoles.important.some((r) =>
+                                roleLower.includes(r.toLowerCase())
+                            )
+                        ) {
+                            groupedByType["important"].push({
+                                icon: "🚨",
                                 name: item.name,
                                 role: item.role,
                                 phone: item.phone,
-                                bgColor: '#fee2e2',
-                                textColor: '#dc2626',
+                                bgColor: "#fee2e2",
+                                textColor: "#dc2626",
                             });
-                        } else if (contactRoles.school.some(r => roleLower.includes(r.toLowerCase()))) {
-                            groupedByType['school'].push({
-                                icon: '🏫',
+                        } else if (
+                            contactRoles.school.some((r) =>
+                                roleLower.includes(r.toLowerCase())
+                            )
+                        ) {
+                            groupedByType["school"].push({
+                                icon: "🏫",
                                 name: item.name,
                                 role: item.role,
                                 phone: item.phone,
-                                bgColor: '#dcfce7',
-                                textColor: '#16a34a',
+                                bgColor: "#dcfce7",
+                                textColor: "#16a34a",
                             });
-                        } else if (contactRoles.professional.some(r => roleLower.includes(r.toLowerCase()))) {
-                            groupedByType['professional'].push({
-                                icon: '👨‍⚕',
+                        } else if (
+                            contactRoles.professional.some((r) =>
+                                roleLower.includes(r.toLowerCase())
+                            )
+                        ) {
+                            groupedByType["professional"].push({
+                                icon: "👨‍⚕",
                                 name: item.name,
                                 role: item.role,
                                 phone: item.phone,
-                                bgColor: '#f0f4f8',
-                                textColor: '#374151',
+                                bgColor: "#f0f4f8",
+                                textColor: "#374151",
                             });
                         } else {
-                            groupedByType['other'].push({
-                                icon: '👤',
+                            groupedByType["other"].push({
+                                icon: "👤",
                                 name: item.name,
                                 role: item.role,
                                 phone: item.phone,
-                                bgColor: '#f0f4f8',
-                                textColor: '#374151',
+                                bgColor: "#f0f4f8",
+                                textColor: "#374151",
                             });
                         }
                     });
@@ -719,21 +860,33 @@ const ImportantContacts: React.FC = () => {
 
                 // Define all sections with potential empty arrays
                 const formattedSections: ContactSection[] = [
-                    { title: 'Important Contacts', type: 'important', items: groupedByType['important'] },
-                    { title: 'Schools', type: 'school', items: groupedByType['school'] },
-                    { title: 'Professional Services', type: 'professional', items: groupedByType['professional'] },
-                    { title: 'Other Contacts', type: 'other', items: groupedByType['other'] },
+                    {
+                        title: "Important Contacts",
+                        type: "important",
+                        items: groupedByType["important"],
+                    },
+                    { title: "Schools", type: "school", items: groupedByType["school"] },
+                    {
+                        title: "Professional Services",
+                        type: "professional",
+                        items: groupedByType["professional"],
+                    },
+                    {
+                        title: "Other Contacts",
+                        type: "other",
+                        items: groupedByType["other"],
+                    },
                 ];
 
                 setContacts(formattedSections);
             } else {
-                setError('Failed to fetch contacts');
-                message.error('Failed to fetch contacts');
+                setError("Failed to fetch contacts");
+                message.error("Failed to fetch contacts");
             }
         } catch (error) {
-            console.error('Failed to fetch contacts:', error);
-            setError('Error fetching contacts');
-            message.error('Error fetching contacts');
+            console.error("Failed to fetch contacts:", error);
+            setError("Error fetching contacts");
+            message.error("Error fetching contacts");
         } finally {
             setLoading(false);
         }
@@ -744,7 +897,7 @@ const ImportantContacts: React.FC = () => {
     }, []);
 
     const showModal = (
-        type: 'contact' | 'section-edit' | 'new-section',
+        type: "contact" | "section-edit" | "new-section",
         sectionIndex: number | null = null,
         itemIndex: number | null = null
     ) => {
@@ -752,17 +905,21 @@ const ImportantContacts: React.FC = () => {
         setCurrentSectionIndex(sectionIndex);
         setCurrentItemIndex(itemIndex);
 
-        if (type === 'section-edit' && sectionIndex !== null) {
+        if (type === "section-edit" && sectionIndex !== null) {
             setSectionItems(contacts[sectionIndex].items);
-        } else if (type === 'contact' && sectionIndex !== null && itemIndex !== null) {
+        } else if (
+            type === "contact" &&
+            sectionIndex !== null &&
+            itemIndex !== null
+        ) {
             form.setFieldsValue(contacts[sectionIndex].items[itemIndex]);
         } else {
             form.resetFields();
-            if (type === 'contact') {
+            if (type === "contact") {
                 form.setFieldsValue({
-                    bgColor: '#f0f4f8',
-                    textColor: '#374151',
-                    icon: '👤',
+                    bgColor: "#f0f4f8",
+                    textColor: "#374151",
+                    icon: "👤",
                 });
             }
         }
@@ -774,9 +931,9 @@ const ImportantContacts: React.FC = () => {
             await form.validateFields();
             const formValues = form.getFieldsValue();
 
-            if (modalType === 'contact' && currentSectionIndex !== null) {
+            if (modalType === "contact" && currentSectionIndex !== null) {
                 setLoading(true);
-                const addedBy = localStorage.getItem('userId') || 'current_user';
+                const addedBy = localStorage.getItem("userId") || "current_user";
                 const payload = {
                     contacts: {
                         name: formValues.name,
@@ -799,32 +956,33 @@ const ImportantContacts: React.FC = () => {
                     };
 
                     if (currentItemIndex !== null) {
-                        updatedContacts[currentSectionIndex].items[currentItemIndex] = newContact;
+                        updatedContacts[currentSectionIndex].items[currentItemIndex] =
+                            newContact;
                     } else {
                         updatedContacts[currentSectionIndex].items.push(newContact);
                     }
 
                     setContacts(updatedContacts);
-                    message.success('Contact added successfully!');
+                    message.success("Contact added successfully!");
                     setIsModalOpen(false);
                     form.resetFields();
                 } else {
-                    message.error('Failed to save contact');
+                    message.error("Failed to save contact");
                 }
-            } else if (modalType === 'new-section') {
+            } else if (modalType === "new-section") {
                 const newSection: ContactSection = {
                     title: formValues.sectionName,
-                    type: 'other',
+                    type: "other",
                     items: [],
                 };
                 setContacts([...contacts, newSection]);
-                message.success('Section created successfully!');
+                message.success("Section created successfully!");
                 setIsModalOpen(false);
                 form.resetFields();
             }
         } catch (error) {
-            console.error('Error in handleOk:', error);
-            message.error('Failed to save contact. Please try again.');
+            console.error("Error in handleOk:", error);
+            message.error("Failed to save contact. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -835,7 +993,7 @@ const ImportantContacts: React.FC = () => {
         updatedContacts[sectionIndex].items.splice(itemIndex, 1);
         setContacts(updatedContacts);
         setSectionItems(updatedContacts[sectionIndex].items);
-        message.success('Item deleted successfully!');
+        message.success("Item deleted successfully!");
     };
 
     const handleCancel = () => {
@@ -845,23 +1003,24 @@ const ImportantContacts: React.FC = () => {
 
     const renderFormFields = () => {
         switch (modalType) {
-            case 'new-section':
+            case "new-section":
                 return (
                     <Form.Item
                         name="sectionName"
                         label="Section Name"
-                        rules={[{ required: true, message: 'Please enter section name!' }]}
+                        rules={[{ required: true, message: "Please enter section name!" }]}
                     >
                         <Input
                             placeholder="Enter section name (e.g., 'Tutors')"
-                            style={{ width: '100%' }}
+                            style={{ width: "100%" }}
                         />
                     </Form.Item>
                 );
 
-            case 'contact':
+            case "contact":
                 const currentSection = contacts[currentSectionIndex || 0];
-                const availableRoles = contactRoles[currentSection?.type] || contactRoles.other;
+                const availableRoles =
+                    contactRoles[currentSection?.type] || contactRoles.other;
 
                 return (
                     <>
@@ -870,18 +1029,26 @@ const ImportantContacts: React.FC = () => {
                                 <Form.Item
                                     name="icon"
                                     label="Icon"
-                                    rules={[{ required: true, message: 'Please input an icon!' }]}
+                                    rules={[{ required: true, message: "Please input an icon!" }]}
                                 >
-                                    <Input placeholder="Enter emoji (e.g., 🚨)" style={{ width: '100%' }} />
+                                    <Input
+                                        placeholder="Enter emoji (e.g., 🚨)"
+                                        style={{ width: "100%" }}
+                                    />
                                 </Form.Item>
                             </Col>
                             <Col span={16}>
                                 <Form.Item
                                     name="name"
                                     label="Name/Organization"
-                                    rules={[{ required: true, message: 'Please input the name!' }]}
+                                    rules={[
+                                        { required: true, message: "Please input the name!" },
+                                    ]}
                                 >
-                                    <Input placeholder="Enter name or organization" style={{ width: '100%' }} />
+                                    <Input
+                                        placeholder="Enter name or organization"
+                                        style={{ width: "100%" }}
+                                    />
                                 </Form.Item>
                             </Col>
                         </Row>
@@ -891,14 +1058,19 @@ const ImportantContacts: React.FC = () => {
                                 <Form.Item
                                     name="role"
                                     label="Role/Position"
-                                    rules={[{ required: true, message: 'Please input the role!' }]}
+                                    rules={[
+                                        { required: true, message: "Please input the role!" },
+                                    ]}
                                 >
                                     <Select
                                         placeholder="Select or type role"
                                         showSearch
                                         allowClear
-                                        options={availableRoles.map((role: any) => ({ label: role, value: role }))}
-                                        style={{ width: '100%' }}
+                                        options={availableRoles.map((role: any) => ({
+                                            label: role,
+                                            value: role,
+                                        }))}
+                                        style={{ width: "100%" }}
                                     />
                                 </Form.Item>
                             </Col>
@@ -906,43 +1078,51 @@ const ImportantContacts: React.FC = () => {
                                 <Form.Item
                                     name="phone"
                                     label="Phone Number"
-                                    rules={[{ required: true, message: 'Please input the phone number!' }]}
+                                    rules={[
+                                        {
+                                            required: true,
+                                            message: "Please input the phone number!",
+                                        },
+                                    ]}
                                 >
-                                    <Input placeholder="Enter phone number" style={{ width: '100%' }} />
+                                    <Input
+                                        placeholder="Enter phone number"
+                                        style={{ width: "100%" }}
+                                    />
                                 </Form.Item>
                             </Col>
                         </Row>
                     </>
                 );
 
-            case 'section-edit':
+            case "section-edit":
                 return (
                     <div
                         style={{
-                            maxHeight: '500px',
-                            overflowY: 'auto',
-                            padding: '16px',
+                            maxHeight: "500px",
+                            overflowY: "auto",
+                            padding: "16px",
                         }}
                     >
                         {sectionItems.map((item, index) => (
                             <div
                                 key={index}
                                 style={{
-                                    marginBottom: '16px',
-                                    padding: '16px',
-                                    backgroundColor: '#f8fafc',
-                                    borderRadius: '8px',
-                                    border: '1px solid #e2e8f0',
-                                    position: 'relative',
+                                    marginBottom: "16px",
+                                    padding: "16px",
+                                    backgroundColor: "#f8fafc",
+                                    borderRadius: "8px",
+                                    border: "1px solid #e2e8f0",
+                                    position: "relative",
                                 }}
                             >
                                 <div
                                     style={{
-                                        position: 'absolute',
-                                        top: '12px',
-                                        right: '12px',
-                                        display: 'flex',
-                                        gap: '8px',
+                                        position: "absolute",
+                                        top: "12px",
+                                        right: "12px",
+                                        display: "flex",
+                                        gap: "8px",
                                     }}
                                 >
                                     <Button
@@ -952,14 +1132,16 @@ const ImportantContacts: React.FC = () => {
                                         onClick={() => {
                                             setIsModalOpen(false);
                                             setTimeout(() => {
-                                                showModal('contact', currentSectionIndex, index);
+                                                showModal("contact", currentSectionIndex, index);
                                             }, 100);
                                         }}
-                                        style={{ color: '#3b82f6' }}
+                                        style={{ color: "#3b82f6" }}
                                     />
                                     <Popconfirm
                                         title="Are you sure to delete this contact?"
-                                        onConfirm={() => handleItemDelete(currentSectionIndex!, index)}
+                                        onConfirm={() =>
+                                            handleItemDelete(currentSectionIndex!, index)
+                                        }
                                         okText="Yes"
                                         cancelText="No"
                                     >
@@ -967,55 +1149,54 @@ const ImportantContacts: React.FC = () => {
                                             type="text"
                                             size="small"
                                             icon={<DeleteOutlined />}
-                                            style={{ color: '#dc2626' }}
+                                            style={{ color: "#dc2626" }}
                                         />
                                     </Popconfirm>
                                 </div>
 
                                 <div
                                     style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '12px',
-                                        paddingRight: '80px',
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "12px",
+                                        paddingRight: "80px",
                                     }}
                                 >
                                     <div
                                         style={{
-                                            width: '32px',
-                                            height: '32px',
+                                            width: "32px",
+                                            height: "32px",
                                             backgroundColor: item.bgColor,
-                                            borderRadius: '8px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
+                                            borderRadius: "8px",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
                                             color: item.textColor,
-                                            fontSize: '16px',
+                                            fontSize: "16px",
                                         }}
                                     >
                                         {item.icon}
                                     </div>
                                     <div>
-                                        <div style={{ fontWeight: 600, fontSize: '14px' }}>{item.name}</div>
-                                        <div style={{ color: '#6b7280', fontSize: '12px' }}>
+                                        <div style={{ fontWeight: 600, fontSize: "14px" }}>
+                                            {item.name}
+                                        </div>
+                                        <div style={{ color: "#6b7280", fontSize: "12px" }}>
                                             {item.role} • {item.phone}
                                         </div>
                                     </div>
                                 </div>
-
-
                             </div>
                         ))}
                         <Button
                             type="dashed"
                             size="small"
                             icon={<PlusOutlined />}
-                            onClick={() => showModal('contact', currentSectionIndex, null)}
-                            style={{ width: '100%', marginTop: '16px', borderRadius: '6px' }}
+                            onClick={() => showModal("contact", currentSectionIndex, null)}
+                            style={{ width: "100%", marginTop: "16px", borderRadius: "6px" }}
                         >
                             Add
                         </Button>
-
                     </div>
                 );
 
@@ -1027,102 +1208,108 @@ const ImportantContacts: React.FC = () => {
     return (
         <div
             style={{
-                backgroundColor: 'white',
-                borderRadius: '16px',
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                padding: '24px',
-                border: '1px solid #e5e7eb',
+                backgroundColor: "white",
+                borderRadius: "16px",
+                boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                padding: "24px",
+                border: "1px solid #e5e7eb",
             }}
         >
             <div
                 style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '24px',
-                    paddingBottom: '16px',
-                    borderBottom: '2px solid #f3f4f6',
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: "24px",
+                    paddingBottom: "16px",
+                    borderBottom: "2px solid #f3f4f6",
                 }}
             >
                 <h3
                     style={{
-                        fontSize: '20px',
+                        fontSize: "20px",
                         fontWeight: 700,
-                        color: '#111827',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
+                        color: "#111827",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
                         margin: 0,
                     }}
                 >
-                    <PhoneOutlined style={{ color: '#10b981', fontSize: '24px' }} />
+                    <PhoneOutlined style={{ color: "#10b981", fontSize: "24px" }} />
                     Important Contacts
                 </h3>
-
             </div>
 
             {loading ? (
                 <div>Loading...</div>
             ) : error ? (
-                <div style={{ color: '#dc2626' }}>{error}</div>
+                <div style={{ color: "#dc2626" }}>{error}</div>
             ) : contacts.length === 0 ? (
-                <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: '14px', padding: '20px 0' }}>
+                <div
+                    style={{
+                        textAlign: "center",
+                        color: "#9ca3af",
+                        fontSize: "14px",
+                        padding: "20px 0",
+                    }}
+                >
                     No contacts available. Click 'Add' to get started.
                 </div>
             ) : (
                 contacts.map((section, sectionIndex) => (
-                    <div key={sectionIndex} style={{ marginBottom: '28px' }}>
+                    <div key={sectionIndex} style={{ marginBottom: "28px" }}>
                         <div
                             style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                marginBottom: '12px',
-                                padding: '8px 0',
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                marginBottom: "12px",
+                                padding: "8px 0",
                             }}
                         >
                             <h4
                                 style={{
-                                    fontSize: '14px',
+                                    fontSize: "14px",
                                     fontWeight: 600,
-                                    color: '#374151',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.5px',
+                                    color: "#374151",
+                                    textTransform: "uppercase",
+                                    letterSpacing: "0.5px",
                                     margin: 0,
                                 }}
                             >
                                 {section.title}
                             </h4>
-                            <div style={{ display: 'flex', gap: '8px' }}>
+                            <div style={{ display: "flex", gap: "8px" }}>
                                 <Button
                                     type="text"
                                     size="small"
                                     icon={<ArrowRightCircle size={16} />}
-                                    onClick={() => showModal('section-edit', sectionIndex, null)}
-                                    style={{ color: '#3b82f6' }}
+                                    onClick={() => showModal("section-edit", sectionIndex, null)}
+                                    style={{ color: "#3b82f6" }}
                                 />
-
                             </div>
                         </div>
 
                         <div
                             style={{
-                                backgroundColor: '#f8fafc',
-                                borderRadius: '12px',
-                                padding: '16px',
-                                border: '1px solid #e2e8f0',
+                                backgroundColor: "#f8fafc",
+                                borderRadius: "12px",
+                                padding: "16px",
+                                border: "1px solid #e2e8f0",
                             }}
                         >
                             {section.items.length === 0 ? (
                                 <div
                                     style={{
-                                        textAlign: 'center',
-                                        color: '#9ca3af',
-                                        fontSize: '14px',
-                                        padding: '20px 0',
+                                        textAlign: "center",
+                                        color: "#9ca3af",
+                                        fontSize: "14px",
+                                        padding: "20px 0",
                                     }}
                                 >
-                                    No {section.title.toLowerCase()} available. Click 'Add' to get started.
+                                    No {section.title.toLowerCase()} available. Click 'Add' to get
+                                    started.
                                 </div>
                             ) : (
                                 <>
@@ -1130,26 +1317,28 @@ const ImportantContacts: React.FC = () => {
                                         <div
                                             key={contactIndex}
                                             style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                padding: '12px 0',
+                                                display: "flex",
+                                                alignItems: "center",
+                                                padding: "12px 0",
                                                 borderBottom:
-                                                    contactIndex < Math.min(section.items.length, 2) - 1 ? '1px solid #e5e7eb' : 'none',
+                                                    contactIndex < Math.min(section.items.length, 2) - 1
+                                                        ? "1px solid #e5e7eb"
+                                                        : "none",
                                             }}
                                         >
                                             <div
                                                 style={{
-                                                    width: '40px',
-                                                    height: '40px',
+                                                    width: "40px",
+                                                    height: "40px",
                                                     backgroundColor: contact.bgColor,
-                                                    borderRadius: '10px',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    marginRight: '12px',
+                                                    borderRadius: "10px",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                    marginRight: "12px",
                                                     color: contact.textColor,
-                                                    fontSize: '18px',
-                                                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                                                    fontSize: "18px",
+                                                    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
                                                 }}
                                             >
                                                 {contact.icon}
@@ -1158,29 +1347,31 @@ const ImportantContacts: React.FC = () => {
                                                 <div
                                                     style={{
                                                         fontWeight: 600,
-                                                        color: '#111827',
-                                                        fontSize: '14px',
-                                                        marginBottom: '2px',
+                                                        color: "#111827",
+                                                        fontSize: "14px",
+                                                        marginBottom: "2px",
                                                     }}
                                                 >
                                                     {contact.name}
                                                 </div>
-                                                <div style={{ color: '#6b7280', fontSize: '13px' }}>
+                                                <div style={{ color: "#6b7280", fontSize: "13px" }}>
                                                     {contact.role} • {contact.phone}
                                                 </div>
                                             </div>
-                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                            <div style={{ display: "flex", gap: "8px" }}>
                                                 {/*  */}
                                             </div>
                                         </div>
                                     ))}
                                     {section.items.length > 2 && (
-                                        <div style={{ textAlign: 'center', marginTop: '12px' }}>
+                                        <div style={{ textAlign: "center", marginTop: "12px" }}>
                                             <Button
                                                 type="link"
                                                 icon={<EyeOutlined />}
-                                                onClick={() => showModal('section-edit', sectionIndex, null)}
-                                                style={{ color: '#6b7280' }}
+                                                onClick={() =>
+                                                    showModal("section-edit", sectionIndex, null)
+                                                }
+                                                style={{ color: "#6b7280" }}
                                             >
                                                 View All ({section.items.length} items)
                                             </Button>
@@ -1195,32 +1386,34 @@ const ImportantContacts: React.FC = () => {
 
             <Modal
                 title={
-                    modalType === 'new-section'
-                        ? 'Add New Contact Section'
-                        : modalType === 'contact'
+                    modalType === "new-section"
+                        ? "Add New Contact Section"
+                        : modalType === "contact"
                             ? currentItemIndex !== null
-                                ? 'Edit Contact Info'
-                                : 'Add New Contact'
-                            : 'Manage Contact Section'
+                                ? "Edit Contact Info"
+                                : "Add New Contact"
+                            : "Manage Contact Section"
                 }
                 open={isModalOpen}
-                onOk={modalType !== 'section-edit' ? handleOk : () => setIsModalOpen(false)}
+                onOk={
+                    modalType !== "section-edit" ? handleOk : () => setIsModalOpen(false)
+                }
                 onCancel={handleCancel}
                 okText={
-                    modalType === 'section-edit'
-                        ? 'Close'
+                    modalType === "section-edit"
+                        ? "Close"
                         : currentItemIndex !== null
-                            ? 'Update'
-                            : modalType === 'new-section'
-                                ? 'Create Section'
-                                : 'Add'
+                            ? "Update"
+                            : modalType === "new-section"
+                                ? "Create Section"
+                                : "Add"
                 }
-                cancelText={modalType === 'section-edit' ? null : 'Cancel'}
-                width={modalType === 'section-edit' ? 700 : 700}
+                cancelText={modalType === "section-edit" ? null : "Cancel"}
+                width={modalType === "section-edit" ? 700 : 700}
                 style={{ top: 20 }}
                 confirmLoading={loading}
             >
-                <Form form={form} layout="vertical" style={{ marginTop: '16px' }}>
+                <Form form={form} layout="vertical" style={{ marginTop: "16px" }}>
                     {renderFormFields()}
                 </Form>
             </Modal>
@@ -1228,10 +1421,9 @@ const ImportantContacts: React.FC = () => {
     );
 };
 
-
-import { DatePicker } from 'antd';
-import { CheckSquare, Edit } from 'lucide-react';
-import dayjs from 'dayjs';
+import { DatePicker } from "antd";
+import { CheckSquare, Edit } from "lucide-react";
+import dayjs from "dayjs";
 
 type Task = {
     id: number;
@@ -1253,34 +1445,50 @@ type Project = {
     tasks: Task[];
 };
 
-const assignees = [
-    { label: 'John', value: 'john' },
-    { label: 'Sarah', value: 'sarah' },
-    { label: 'Emma', value: 'emma' },
-    { label: 'Liam', value: 'liam' },
-    { label: 'All', value: 'all' },
-];
+
 
 type Note = {
     title: string;
     description: string;
 };
+type FamilyTasksProps = {
+    isPlanner: boolean;
+};
 
-export const FamilyTasks: React.FC = () => {
+export const FamilyTasks: React.FC<FamilyTasksProps> = (props: any) => {
+    const { isPlanner } = props;
     const [uid, setUid] = useState<string | null>(null);
     const [projects, setProjects] = useState<Project[]>([]);
     const [modalVisible, setModalVisible] = useState(false);
-    const [newProjectName, setNewProjectName] = useState('');
-    const [newProjectDescription, setNewProjectDescription] = useState('');
-    const [newProjectMeta, setNewProjectMeta] = useState<string>('');
+    const [newProjectName, setNewProjectName] = useState("");
+    const [newProjectDescription, setNewProjectDescription] = useState("");
+    const [newProjectMeta, setNewProjectMeta] = useState<string>("");
     const [editTaskModal, setEditTaskModal] = useState(false);
-    const [editingTask, setEditingTask] = useState<{ projectId: string; task: Task | null }>({
-        projectId: '',
+    const [editingTask, setEditingTask] = useState<{
+        projectId: string;
+        task: Task | null;
+    }>({
+        projectId: "",
         task: null,
     });
+    const [loading, setLoading] = useState(false);
 
+    let assignees = [
+        { label: "John", value: "john" },
+        { label: "Sarah", value: "sarah" },
+        { label: "Emma", value: "emma" },
+        { label: "Liam", value: "liam" },
+        { label: "All", value: "all" },
+    ];
+
+    if (isPlanner) {
+        assignees = [
+            { label: "Personal", value: "personal" },
+            { label: "Work", value: "work" },
+        ];
+    }
     useEffect(() => {
-        const stored = localStorage.getItem('userId');
+        const stored = localStorage.getItem("userId");
         if (stored) setUid(stored);
     }, []);
 
@@ -1289,6 +1497,7 @@ export const FamilyTasks: React.FC = () => {
     }, []);
 
     const fetchProjects = async () => {
+        setLoading(true);
         try {
             const res = await getProjects();
             const rawProjects = res.data.payload.projects || [];
@@ -1304,7 +1513,7 @@ export const FamilyTasks: React.FC = () => {
                         assignee: task.assignee,
                         type: task.type,
                         completed: task.completed,
-                        due: task.completed ? 'Completed' : 'Due today',
+                        due: task.completed ? "Completed" : "Due today",
                         dueDate: task.due_date,
                     }));
 
@@ -1315,7 +1524,11 @@ export const FamilyTasks: React.FC = () => {
                         meta: Object.values(proj.meta || {}),
                         due_date: proj.due_date,
                         progress: tasks.length
-                            ? Math.round((tasks.filter((t: any) => t.completed).length / tasks.length) * 100)
+                            ? Math.round(
+                                (tasks.filter((t: any) => t.completed).length /
+                                    tasks.length) *
+                                100
+                            )
                             : 0,
                         tasks,
                     };
@@ -1325,11 +1538,13 @@ export const FamilyTasks: React.FC = () => {
             setProjects(projectsWithTasks);
         } catch (err) {
             console.error(err);
-            message.error('Failed to load projects');
+            message.error("Failed to load projects");
         }
+        setLoading(false);
     };
 
     const handleAddProject = async () => {
+        setLoading(true);
         if (!newProjectName.trim()) return;
         try {
             await addProject({
@@ -1338,30 +1553,32 @@ export const FamilyTasks: React.FC = () => {
                 description: newProjectDescription,
                 due_date: newProjectMeta,
             });
-            message.success('Project added');
+            message.success("Project added");
             setModalVisible(false);
-            setNewProjectName('');
-            setNewProjectDescription('');
-            setNewProjectMeta('');
+            setNewProjectName("");
+            setNewProjectDescription("");
+            setNewProjectMeta("");
             fetchProjects();
         } catch (error) {
             console.error(error);
-            message.error('Failed to add project');
+            message.error("Failed to add project");
         }
+        setLoading(false);
     };
 
     const addTaskToBackend = async (projectId: string) => {
+        setLoading(true);
         if (!uid) return;
-        const project = projects.find(p => p.project_id === projectId);
+        const project = projects.find((p) => p.project_id === projectId);
         if (!project) return;
 
         const newTask = {
             uid,
             project_id: projectId,
-            title: 'New task',
-            assignee: 'All',
-            type: 'all',
-            due_date: dayjs().format('YYYY-MM-DD'),
+            title: "New task",
+            assignee: "All",
+            type: "all",
+            due_date: dayjs().format("YYYY-MM-DD"),
             completed: false,
         };
 
@@ -1369,31 +1586,34 @@ export const FamilyTasks: React.FC = () => {
             await addTask(newTask);
 
             const newTaskObj: Task = {
-                id: Math.max(...project.tasks.map(t => t.id), 0) + 1,
-                title: 'New task',
-                assignee: 'All',
-                type: 'all',
+                id: Math.max(...project.tasks.map((t) => t.id), 0) + 1,
+                title: "New task",
+                assignee: "All",
+                type: "all",
                 completed: false,
-                due: 'Due today',
+                due: "Due today",
                 dueDate: newTask.due_date,
             };
 
-            setProjects(prev =>
-                prev.map(p =>
-                    p.project_id === projectId ? { ...p, tasks: [...p.tasks, newTaskObj] } : p
+            setProjects((prev) =>
+                prev.map((p) =>
+                    p.project_id === projectId
+                        ? { ...p, tasks: [...p.tasks, newTaskObj] }
+                        : p
                 )
             );
         } catch (err) {
             console.error(err);
-            message.error('Failed to add task');
+            message.error("Failed to add task");
         }
+        setLoading(false);
     };
 
     const toggleTask = async (projectId: string, taskId: number) => {
-        const project = projects.find(p => p.project_id === projectId);
+        const project = projects.find((p) => p.project_id === projectId);
         if (!project) return;
 
-        const task = project.tasks.find(t => t.id === taskId);
+        const task = project.tasks.find((t) => t.id === taskId);
         if (!task) return;
 
         const updatedStatus = !task.completed;
@@ -1404,16 +1624,22 @@ export const FamilyTasks: React.FC = () => {
                 completed: updatedStatus,
             });
 
-            setProjects(prev =>
-                prev.map(project => {
+            setProjects((prev) =>
+                prev.map((project) => {
                     if (project.project_id === projectId) {
-                        const updatedTasks = project.tasks.map(t =>
+                        const updatedTasks = project.tasks.map((t) =>
                             t.id === taskId
-                                ? { ...t, completed: updatedStatus, due: updatedStatus ? 'Completed' : 'Due today' }
+                                ? {
+                                    ...t,
+                                    completed: updatedStatus,
+                                    due: updatedStatus ? "Completed" : "Due today",
+                                }
                                 : t
                         );
                         const progress = Math.round(
-                            (updatedTasks.filter(t => t.completed).length / updatedTasks.length) * 100
+                            (updatedTasks.filter((t) => t.completed).length /
+                                updatedTasks.length) *
+                            100
                         );
                         return { ...project, tasks: updatedTasks, progress };
                     }
@@ -1422,7 +1648,7 @@ export const FamilyTasks: React.FC = () => {
             );
         } catch (err) {
             console.error(err);
-            message.error('Failed to update task status');
+            message.error("Failed to update task status");
         }
     };
 
@@ -1438,10 +1664,10 @@ export const FamilyTasks: React.FC = () => {
                 type: editingTask.task.type,
             });
 
-            setProjects(prev =>
-                prev.map(project => {
+            setProjects((prev) =>
+                prev.map((project) => {
                     if (project.project_id === editingTask.projectId) {
-                        const updatedTasks = project.tasks.map(task =>
+                        const updatedTasks = project.tasks.map((task) =>
                             task.id === editingTask.task!.id ? editingTask.task! : task
                         );
                         return { ...project, tasks: updatedTasks };
@@ -1450,48 +1676,74 @@ export const FamilyTasks: React.FC = () => {
                 })
             );
 
-            message.success('Task updated');
+            message.success("Task updated");
             setEditTaskModal(false);
         } catch (err) {
             console.error(err);
-            message.error('Failed to update task');
+            message.error("Failed to update task");
         }
     };
 
     const getAssigneeStyle = (type: string) => {
-        const base = { fontSize: '12px', padding: '2px 8px', borderRadius: '12px', fontWeight: 500 };
+        const base = {
+            fontSize: "12px",
+            padding: "2px 8px",
+            borderRadius: "12px",
+            fontWeight: 500,
+        };
         const colors: any = {
-            john: { bg: 'rgba(51, 85, 255, 0.1)', color: '#3355ff' },
-            sarah: { bg: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' },
-            emma: { bg: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6' },
-            liam: { bg: 'rgba(236, 72, 153, 0.1)', color: '#ec4899' },
-            all: { bg: '#eef1ff', color: '#3355ff' },
+            john: { bg: "rgba(51, 85, 255, 0.1)", color: "#3355ff" },
+            sarah: { bg: "rgba(99, 102, 241, 0.1)", color: "#6366f1" },
+            emma: { bg: "rgba(139, 92, 246, 0.1)", color: "#8b5cf6" },
+            liam: { bg: "rgba(236, 72, 153, 0.1)", color: "#ec4899" },
+            all: { bg: "#eef1ff", color: "#3355ff" },
         };
         return {
             ...base,
-            backgroundColor: colors[type]?.bg || '#eee',
-            color: colors[type]?.color || '#333',
+            backgroundColor: colors[type]?.bg || "#eee",
+            color: colors[type]?.color || "#333",
         };
     };
 
+    if (loading) {
+        return <DocklyLoader />;
+    }
+
     return (
-        <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', marginBottom: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+        <div
+            style={{
+                backgroundColor: "white",
+                borderRadius: "12px",
+                padding: "24px",
+                marginBottom: "20px",
+            }}
+        >
+            <div
+                style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    marginBottom: "20px",
+                }}
+            >
                 <h2
                     style={{
-                        fontSize: '20px',
+                        fontSize: "20px",
                         fontWeight: 600,
                         margin: 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
                     }}
                 >
                     <CheckSquare size={20} /> Family Tasks & Projects
                 </h2>
                 <button
                     onClick={() => setModalVisible(true)}
-                    style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: '6px' }}
+                    style={{
+                        padding: "8px 16px",
+                        border: "1px solid rgb(238, 240, 244)",
+                        borderRadius: "6px",
+                    }}
                 >
                     <Plus size={16} /> New Project
                 </button>
@@ -1500,41 +1752,41 @@ export const FamilyTasks: React.FC = () => {
             {projects.length === 0 ? (
                 <div
                     style={{
-                        textAlign: 'center',
-                        padding: '20px 0px',
-                        border: '2px dashed #e5e7eb',
-                        borderRadius: '12px',
-                        background: '#fafbff',
+                        textAlign: "center",
+                        padding: "20px 0px",
+                        border: "2px dashed #e5e7eb",
+                        borderRadius: "12px",
+                        background: "#fafbff",
                         marginTop: 10,
                     }}
                 >
                     <img
                         src="https://cdn-icons-png.flaticon.com/512/4076/4076549.png"
                         alt="No Projects"
-                        style={{ width: '120px', marginBottom: '20px', opacity: 0.6 }}
+                        style={{ width: "120px", marginBottom: "20px", opacity: 0.6 }}
                     />
-                    <h3 style={{ fontSize: '20px', color: '#333', marginBottom: '10px' }}>
+                    <h3 style={{ fontSize: "20px", color: "#333", marginBottom: "10px" }}>
                         No Projects Yet
                     </h3>
-                    <p style={{ color: '#777', fontSize: '14px', marginBottom: '20px' }}>
+                    <p style={{ color: "#777", fontSize: "14px", marginBottom: "20px" }}>
                         Start organizing your tasks by creating your first project.
                     </p>
                     <button
                         onClick={() => setModalVisible(true)}
                         style={{
-                            background: '#3355ff',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            padding: '10px 20px',
+                            background: "#3355ff",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "6px",
+                            padding: "10px 20px",
                             fontWeight: 500,
-                            cursor: 'pointer',
-                            fontSize: '14px',
-                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                            transition: 'background 0.3s',
+                            cursor: "pointer",
+                            fontSize: "14px",
+                            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+                            transition: "background 0.3s",
                         }}
-                        onMouseEnter={e => (e.currentTarget.style.background = '#1d40e0')}
-                        onMouseLeave={e => (e.currentTarget.style.background = '#3355ff')}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "#1d40e0")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = "#3355ff")}
                     >
                         <Plus size={14} style={{ marginRight: 6 }} /> Create Project
                     </button>
@@ -1542,63 +1794,81 @@ export const FamilyTasks: React.FC = () => {
             ) : (
                 <div
                     style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-                        gap: '20px',
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+                        gap: "20px",
                     }}
                 >
-                    {projects.map(project => (
+                    {projects.map((project) => (
                         <div
                             key={project.project_id}
                             style={{
-                                border: '1px solid #e5e7eb',
-                                padding: '16px',
-                                borderRadius: '8px',
+                                border: "1px solid #e5e7eb",
+                                padding: "16px",
+                                borderRadius: "8px",
                             }}
                         >
                             <h3>{project.title}</h3>
-                            {project.description && <p style={{ fontSize: 12 }}>{project.description}</p>}
+                            {project.description && (
+                                <p style={{ fontSize: 12 }}>{project.description}</p>
+                            )}
                             {project.due_date && (
-                                <p style={{ fontSize: 12, color: '#9ca3af' }}>
-                                    Due Date: {dayjs(project.due_date).format('MMM D, YYYY')}
+                                <p style={{ fontSize: 12, color: "#9ca3af" }}>
+                                    Due Date: {dayjs(project.due_date).format("MMM D, YYYY")}
                                 </p>
                             )}
-                            <div style={{ marginBottom: 10, color: '#6b7280', fontSize: 12 }}>
+                            <div style={{ marginBottom: 10, color: "#6b7280", fontSize: 12 }}>
                                 {project.meta?.map((m, i) => (
-                                    <span key={i}>{m} {i < project.meta.length - 1 && '• '} </span>
+                                    <span key={i}>
+                                        {m} {i < project.meta.length - 1 && "• "}{" "}
+                                    </span>
                                 ))}
                             </div>
 
                             <div style={{ marginBottom: 16 }}>
-                                {project.tasks.map(task => (
+                                {project.tasks.map((task) => (
                                     <div
                                         key={task.id}
                                         style={{
-                                            backgroundColor: '#fff',
-                                            border: '1px solid #e5e7eb',
-                                            borderRadius: '6px',
-                                            padding: '12px',
-                                            marginBottom: '8px',
+                                            backgroundColor: "#fff",
+                                            border: "1px solid #e5e7eb",
+                                            borderRadius: "6px",
+                                            padding: "12px",
+                                            marginBottom: "8px",
                                         }}
                                     >
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: 4 }}>
+                                        <div
+                                            style={{
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: "8px",
+                                                marginBottom: 4,
+                                            }}
+                                        >
                                             <input
                                                 type="checkbox"
                                                 checked={task.completed}
                                                 onChange={() => toggleTask(project.project_id, task.id)}
                                             />
                                             <div style={{ flex: 1 }}>{task.title}</div>
-                                            <div style={getAssigneeStyle(task.type)}>{task.assignee}</div>
+                                            <div style={getAssigneeStyle(task.type)}>
+                                                {task.assignee}
+                                            </div>
                                             <Edit
                                                 size={14}
-                                                style={{ cursor: 'pointer', opacity: 0.6 }}
+                                                style={{ cursor: "pointer", opacity: 0.6 }}
                                                 onClick={() => {
-                                                    setEditingTask({ projectId: project.project_id, task });
+                                                    setEditingTask({
+                                                        projectId: project.project_id,
+                                                        task,
+                                                    });
                                                     setEditTaskModal(true);
                                                 }}
                                             />
                                         </div>
-                                        <div style={{ fontSize: 11, color: '#6b7280' }}>{task.due}</div>
+                                        <div style={{ fontSize: 11, color: "#6b7280" }}>
+                                            {task.due}
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -1606,12 +1876,12 @@ export const FamilyTasks: React.FC = () => {
                             <button
                                 onClick={() => addTaskToBackend(project.project_id)}
                                 style={{
-                                    width: '100%',
-                                    padding: '8px',
-                                    border: '2px dashed #e5e7eb',
-                                    backgroundColor: 'transparent',
-                                    borderRadius: '6px',
-                                    color: '#6b7280',
+                                    width: "100%",
+                                    padding: "8px",
+                                    border: "2px dashed #e5e7eb",
+                                    backgroundColor: "transparent",
+                                    borderRadius: "6px",
+                                    color: "#6b7280",
                                 }}
                             >
                                 + Add task
@@ -1628,26 +1898,30 @@ export const FamilyTasks: React.FC = () => {
                 onOk={handleAddProject}
                 okText="Add"
             >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     <Input
                         value={newProjectName}
-                        onChange={e => setNewProjectName(e.target.value)}
+                        onChange={(e) => setNewProjectName(e.target.value)}
                         placeholder="Project Name"
                     />
                     <Input.TextArea
                         rows={3}
                         value={newProjectDescription}
-                        onChange={e => setNewProjectDescription(e.target.value)}
+                        onChange={(e) => setNewProjectDescription(e.target.value)}
                         placeholder="Description"
                     />
                     <DatePicker
                         value={newProjectMeta ? dayjs(newProjectMeta) : null}
                         onChange={(_, dateString) =>
-                            setNewProjectMeta(Array.isArray(dateString) ? dateString[0] || '' : dateString)
+                            setNewProjectMeta(
+                                Array.isArray(dateString) ? dateString[0] || "" : dateString
+                            )
                         }
                         placeholder="Due Date"
-                        style={{ width: '100%' }}
-                        disabledDate={current => current && current < dayjs().startOf('day')}
+                        style={{ width: "100%" }}
+                        disabledDate={(current) =>
+                            current && current < dayjs().startOf("day")
+                        }
                     />
                 </div>
             </Modal>
@@ -1659,11 +1933,11 @@ export const FamilyTasks: React.FC = () => {
                 onCancel={() => setEditTaskModal(false)}
                 onOk={updateEditedTask}
             >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     <Input
                         value={editingTask.task?.title}
-                        onChange={e =>
-                            setEditingTask(prev => ({
+                        onChange={(e) =>
+                            setEditingTask((prev) => ({
                                 ...prev,
                                 task: { ...prev.task!, title: e.target.value },
                             }))
@@ -1671,32 +1945,37 @@ export const FamilyTasks: React.FC = () => {
                         placeholder="Task Name"
                     />
                     <DatePicker
-                        value={editingTask.task?.dueDate ? dayjs(editingTask.task.dueDate) : null}
+                        value={
+                            editingTask.task?.dueDate ? dayjs(editingTask.task.dueDate) : null
+                        }
                         onChange={(_, dateString) => {
-                            if (typeof dateString === 'string') {
-                                setEditingTask(prev => ({
+                            if (typeof dateString === "string") {
+                                setEditingTask((prev) => ({
                                     ...prev,
                                     task: {
                                         ...prev.task!,
-                                        due: `Due ${dayjs(dateString).format('MMM D')}`,
+                                        due: `Due ${dayjs(dateString).format("MMM D")}`,
                                         dueDate: dateString,
                                     },
                                 }));
                             }
                         }}
                         placeholder="Due Date"
-                        style={{ width: '100%' }}
-                        disabledDate={current => current && current < dayjs().startOf('day')}
+                        style={{ width: "100%" }}
+                        disabledDate={(current) =>
+                            current && current < dayjs().startOf("day")
+                        }
                     />
                     <Select
                         value={editingTask.task?.type}
-                        onChange={value => {
-                            setEditingTask(prev => ({
+                        onChange={(value) => {
+                            setEditingTask((prev) => ({
                                 ...prev,
                                 task: {
                                     ...prev.task!,
                                     type: value,
-                                    assignee: assignees.find(a => a.value === value)?.label || 'All',
+                                    assignee:
+                                        assignees.find((a) => a.value === value)?.label || "All",
                                 },
                             }));
                         }}
@@ -1709,7 +1988,6 @@ export const FamilyTasks: React.FC = () => {
     );
 };
 
-
 type Category = {
     title: string;
     icon: string;
@@ -1717,45 +1995,47 @@ type Category = {
 };
 
 const defaultCategories: Category[] = [
-    { title: 'Important Notes', icon: '📝', items: [] },
-    { title: 'Emergency Contacts', icon: '🚨', items: [] },
-    { title: 'House Rules & Routines', icon: '🏠', items: [] },
-    { title: 'Shopping Lists', icon: '🛒', items: [] },
-    { title: 'Birthday & Gift Ideas', icon: '🎁', items: [] },
-    { title: 'Meal Ideas & Recipes', icon: '🍽', items: [] },
+    { title: "Important Notes", icon: "📝", items: [] },
+    { title: "Emergency Contacts", icon: "🚨", items: [] },
+    { title: "House Rules & Routines", icon: "🏠", items: [] },
+    { title: "Shopping Lists", icon: "🛒", items: [] },
+    { title: "Birthday & Gift Ideas", icon: "🎁", items: [] },
+    { title: "Meal Ideas & Recipes", icon: "🍽", items: [] },
 ];
 
 const categoryIdMap: { [key: string]: number } = {
-    'Important Notes': 1,
-    'Emergency Contacts': 2,
-    'House Rules & Routines': 3,
-    'Shopping Lists': 4,
-    'Birthday & Gift Ideas': 5,
-    'Meal Ideas & Recipes': 6,
+    "Important Notes": 1,
+    "Emergency Contacts": 2,
+    "House Rules & Routines": 3,
+    "Shopping Lists": 4,
+    "Birthday & Gift Ideas": 5,
+    "Meal Ideas & Recipes": 6,
 };
-const categoryIdMapReverse: { [key: number]: string } = Object.entries(categoryIdMap).reduce((acc, [title, id]) => {
+const categoryIdMapReverse: { [key: number]: string } = Object.entries(
+    categoryIdMap
+).reduce((acc, [title, id]) => {
     acc[id] = title;
     return acc;
 }, {} as { [key: number]: string });
 
-
 const FamilyNotes: React.FC = () => {
     const [categories, setCategories] = useState(defaultCategories);
     const [modalOpen, setModalOpen] = useState(false);
-    const [activeCategoryIndex, setActiveCategoryIndex] = useState<number | null>(null);
-    const [newNote, setNewNote] = useState({ title: '', description: '' });
+    const [activeCategoryIndex, setActiveCategoryIndex] = useState<number | null>(
+        null
+    );
+    const [newNote, setNewNote] = useState({ title: "", description: "" });
     const [editingNoteIndex, setEditingNoteIndex] = useState<number | null>(null);
     const [newCategoryModal, setNewCategoryModal] = useState(false);
-    const [newCategoryName, setNewCategoryName] = useState('');
+    const [newCategoryName, setNewCategoryName] = useState("");
     const [loading, setLoading] = useState(false);
-
 
     useEffect(() => {
         getNotes();
     }, []);
 
     const getNotes = async () => {
-        setLoading(true)
+        setLoading(true);
         try {
             const response = await getAllNotes();
             const rawNotes = response.data.payload;
@@ -1792,7 +2072,7 @@ const FamilyNotes: React.FC = () => {
             console.error("Error fetching notes:", error);
             message.error("Failed to load notes");
         }
-        setLoading(false)
+        setLoading(false);
     };
 
     const openModal = (index: number) => {
@@ -1804,7 +2084,11 @@ const FamilyNotes: React.FC = () => {
 
     const handleAddNote = async () => {
         setLoading(true);
-        if (!newNote.title.trim() || !newNote.description.trim() || activeCategoryIndex === null) {
+        if (
+            !newNote.title.trim() ||
+            !newNote.description.trim() ||
+            activeCategoryIndex === null
+        ) {
             message.error("Please fill in all fields");
             return;
         }
@@ -1817,7 +2101,10 @@ const FamilyNotes: React.FC = () => {
         }
 
         try {
-            const user_id = typeof window !== "undefined" ? localStorage.getItem("userId") || "" : "";
+            const user_id =
+                typeof window !== "undefined"
+                    ? localStorage.getItem("userId") || ""
+                    : "";
             const response = await addNote({
                 title: newNote.title,
                 description: newNote.description,
@@ -1841,8 +2128,6 @@ const FamilyNotes: React.FC = () => {
         setLoading(false);
     };
 
-
-
     const handleDeleteNote = (idx: number) => {
         const updated = [...categories];
         updated[activeCategoryIndex!].items.splice(idx, 1);
@@ -1859,42 +2144,55 @@ const FamilyNotes: React.FC = () => {
         const name = newCategoryName.trim();
         if (!name) return;
         if (categories.some((c) => c.title === name)) {
-            message.error('Category already exists');
+            message.error("Category already exists");
             return;
         }
-        setCategories([...categories, { title: name, icon: '📁', items: [] }]);
+        setCategories([...categories, { title: name, icon: "📁", items: [] }]);
         setNewCategoryModal(false);
-        setNewCategoryName('');
+        setNewCategoryName("");
     };
     if (loading) {
-        return <DocklyLoader />
+        return <DocklyLoader />;
     }
     return (
-        <div style={{ background: '#fff', borderRadius: 12, padding: 24, marginBottom: 24 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div
+            style={{
+                background: "#fff",
+                borderRadius: 12,
+                padding: 24,
+                marginBottom: 24,
+            }}
+        >
+            <div
+                style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    marginBottom: 20,
+                }}
+            >
                 <h2 style={{ fontSize: 20, fontWeight: 600 }}>Family Notes & Lists</h2>
                 <button
                     style={{
-                        padding: '8px 11px',
-                        backgroundColor: '#eef1ff',
-                        color: '#3355ff',
-                        border: 'none',
-                        borderRadius: '6px',
-                        fontSize: '14px',
+                        padding: "8px 11px",
+                        backgroundColor: "#eef1ff",
+                        color: "#3355ff",
+                        border: "none",
+                        borderRadius: "6px",
+                        fontSize: "14px",
                         fontWeight: 500,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        transition: 'all 0.2s ease',
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        transition: "all 0.2s ease",
                     }}
                     onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#3355ff';
-                        e.currentTarget.style.color = 'white';
+                        e.currentTarget.style.backgroundColor = "#3355ff";
+                        e.currentTarget.style.color = "white";
                     }}
                     onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = '#eef1ff';
-                        e.currentTarget.style.color = '#3355ff';
+                        e.currentTarget.style.backgroundColor = "#eef1ff";
+                        e.currentTarget.style.color = "#3355ff";
                     }}
                     onClick={() => setNewCategoryModal(true)}
                 >
@@ -1902,43 +2200,75 @@ const FamilyNotes: React.FC = () => {
                 </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+            <div
+                style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+                    gap: "20px",
+                }}
+            >
                 {categories.map((category, index) => (
                     <div
                         key={index}
                         style={{
-                            backgroundColor: '#f9fafb',
-                            borderRadius: '8px',
-                            padding: '16px',
-                            border: '1px solid #e5e7eb',
+                            backgroundColor: "#f9fafb",
+                            borderRadius: "8px",
+                            padding: "16px",
+                            border: "1px solid #e5e7eb",
                         }}
                     >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                            <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+                        <div
+                            style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                marginBottom: "12px",
+                            }}
+                        >
+                            <h3
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 8,
+                                    margin: 0,
+                                }}
+                            >
                                 <span>{category.icon}</span> {category.title}
                             </h3>
                             <Space>
-                                <span style={{ fontSize: '12px', background: '#e5e7eb', padding: '2px 8px', borderRadius: '12px' }}>
+                                <span
+                                    style={{
+                                        fontSize: "12px",
+                                        background: "#e5e7eb",
+                                        padding: "2px 8px",
+                                        borderRadius: "12px",
+                                    }}
+                                >
                                     {category.items.length}
                                 </span>
                                 <PlusOutlined
-                                    style={{ cursor: 'pointer', fontSize: 16, color: PRIMARY_COLOR }}
+                                    style={{
+                                        cursor: "pointer",
+                                        fontSize: 16,
+                                        color: PRIMARY_COLOR,
+                                    }}
                                     onClick={() => openModal(index)}
-                                    onMouseEnter={(e) => (e.currentTarget.style.color = '#3355ff')}
-                                    onMouseLeave={(e) => (e.currentTarget.style.color = '#555')}
+                                    onMouseEnter={(e) =>
+                                        (e.currentTarget.style.color = "#3355ff")
+                                    }
+                                    onMouseLeave={(e) => (e.currentTarget.style.color = "#555")}
                                 />
                                 {/* <BoxSelect /> */}
                             </Space>
                         </div>
-                        <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                        <div style={{ maxHeight: "200px", overflowY: "auto" }}>
                             {category.items.length === 0 ? (
                                 <div
                                     style={{
-                                        textAlign: 'center',
-                                        padding: '04px 10px',
-                                        border: '2px dashed #e5e7eb',
-                                        borderRadius: '12px',
-                                        background: '#fafbff',
+                                        textAlign: "center",
+                                        padding: "04px 10px",
+                                        border: "2px dashed #e5e7eb",
+                                        borderRadius: "12px",
+                                        background: "#fafbff",
                                         marginTop: 20,
                                     }}
                                 >
@@ -1947,28 +2277,44 @@ const FamilyNotes: React.FC = () => {
                     alt="No Tasks"
                     style={{ width: '100px', marginBottom: '16px', opacity: 0.6 }}
                   /> */}
-                                    <h3 style={{ fontSize: '18px', color: '#333', marginBottom: '8px' }}>
+                                    <h3
+                                        style={{
+                                            fontSize: "18px",
+                                            color: "#333",
+                                            marginBottom: "8px",
+                                        }}
+                                    >
                                         No Tasks Available
                                     </h3>
-                                    <p style={{ color: '#777', fontSize: '14px', marginBottom: '16px' }}>
+                                    <p
+                                        style={{
+                                            color: "#777",
+                                            fontSize: "14px",
+                                            marginBottom: "16px",
+                                        }}
+                                    >
                                         Add a new note to get started on this category.
                                     </p>
                                     <button
                                         onClick={() => openModal(index)}
                                         style={{
-                                            background: '#3355ff',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: '6px',
-                                            padding: '8px 16px',
+                                            background: "#3355ff",
+                                            color: "white",
+                                            border: "none",
+                                            borderRadius: "6px",
+                                            padding: "8px 16px",
                                             fontWeight: 500,
-                                            cursor: 'pointer',
-                                            fontSize: '13px',
-                                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                                            transition: 'background 0.3s',
+                                            cursor: "pointer",
+                                            fontSize: "13px",
+                                            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+                                            transition: "background 0.3s",
                                         }}
-                                        onMouseEnter={e => (e.currentTarget.style.background = '#1d40e0')}
-                                        onMouseLeave={e => (e.currentTarget.style.background = '#3355ff')}
+                                        onMouseEnter={(e) =>
+                                            (e.currentTarget.style.background = "#1d40e0")
+                                        }
+                                        onMouseLeave={(e) =>
+                                            (e.currentTarget.style.background = "#3355ff")
+                                        }
                                     >
                                         <Plus size={13} style={{ marginRight: 6 }} /> Add Note
                                     </button>
@@ -1979,8 +2325,11 @@ const FamilyNotes: React.FC = () => {
                                         key={i}
                                         style={{
                                             fontSize: 14,
-                                            padding: '6px 0',
-                                            borderBottom: i < category.items.length - 1 ? '1px solid #e5e7eb' : 'none',
+                                            padding: "6px 0",
+                                            borderBottom:
+                                                i < category.items.length - 1
+                                                    ? "1px solid #e5e7eb"
+                                                    : "none",
                                         }}
                                     >
                                         {note.title} - {note.description}
@@ -1995,13 +2344,24 @@ const FamilyNotes: React.FC = () => {
             {/* Notes Modal */}
             <Modal
                 open={modalOpen}
-                title={activeCategoryIndex !== null ? categories[activeCategoryIndex].title : ''}
+                title={
+                    activeCategoryIndex !== null
+                        ? categories[activeCategoryIndex].title
+                        : ""
+                }
                 onCancel={() => setModalOpen(false)}
                 footer={null}
             >
                 {activeCategoryIndex !== null &&
                     (categories[activeCategoryIndex].items.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: '20px 0', color: '#999', fontStyle: 'italic' }}>
+                        <div
+                            style={{
+                                textAlign: "center",
+                                padding: "20px 0",
+                                color: "#999",
+                                fontStyle: "italic",
+                            }}
+                        >
                             No notes yet. Click "Add Note" to get started.
                         </div>
                     ) : (
@@ -2009,17 +2369,28 @@ const FamilyNotes: React.FC = () => {
                             <div
                                 key={idx}
                                 style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    padding: '8px 0',
-                                    borderBottom: '1px solid #eee',
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    alignItems: "center",
+                                    padding: "8px 0",
+                                    borderBottom: "1px solid #eee",
                                 }}
                             >
-                                <div>{note.title} - {note.description}</div>
+                                <div>
+                                    {note.title} - {note.description}
+                                </div>
                                 <Space>
-                                    <Button icon={<EditOutlined />} onClick={() => handleEditNote(note, idx)} size="small" />
-                                    <Button icon={<DeleteOutlined />} danger onClick={() => handleDeleteNote(idx)} size="small" />
+                                    <Button
+                                        icon={<EditOutlined />}
+                                        onClick={() => handleEditNote(note, idx)}
+                                        size="small"
+                                    />
+                                    <Button
+                                        icon={<DeleteOutlined />}
+                                        danger
+                                        onClick={() => handleDeleteNote(idx)}
+                                        size="small"
+                                    />
                                 </Space>
                             </div>
                         ))
@@ -2034,11 +2405,13 @@ const FamilyNotes: React.FC = () => {
                 <Input
                     placeholder="Note Description"
                     value={newNote.description}
-                    onChange={(e) => setNewNote({ ...newNote, description: e.target.value })}
+                    onChange={(e) =>
+                        setNewNote({ ...newNote, description: e.target.value })
+                    }
                     style={{ marginTop: 8, marginBottom: 12 }}
                 />
                 <Button type="primary" icon={<PlusOutlined />} onClick={handleAddNote}>
-                    {editingNoteIndex !== null ? 'Update Note' : 'Add Note'}
+                    {editingNoteIndex !== null ? "Update Note" : "Add Note"}
                 </Button>
             </Modal>
 
@@ -2060,75 +2433,93 @@ const FamilyNotes: React.FC = () => {
     );
 };
 
-import { Calendar } from 'lucide-react';
-import DocklyLoader from '../../utils/docklyLoader';
-import FamilyHubMemberDetails from './components/profile';
-import FamilyMembers from './components/familyMember';
-import CustomCalendar, { sampleCalendarData } from '../components/customCalendar';
-import { PRIMARY_COLOR } from '../../app/comman';
+import { Calendar } from "lucide-react";
+import DocklyLoader from "../../utils/docklyLoader";
+import FamilyHubMemberDetails from "./components/profile";
+import FamilyMembers from "./components/familyMember";
+import CustomCalendar, {
+    sampleCalendarData,
+} from "../components/customCalendar";
+import { PRIMARY_COLOR } from "../../app/comman";
 
 const UpcomingActivities: React.FC = () => {
     const activities = [
         {
-            day: '23',
-            month: 'Jun',
+            day: "23",
+            month: "Jun",
             title: "Emma's Science Fair",
-            details: '4:00 PM - 7:00 PM • Springfield High School',
-            badge: { text: 'Emma', type: 'emma' },
+            details: "4:00 PM - 7:00 PM • Springfield High School",
+            badge: { text: "Emma", type: "emma" },
         },
         {
-            day: '25',
-            month: 'Jun',
+            day: "25",
+            month: "Jun",
             title: "Liam's Dentist Appointment",
-            details: '2:30 PM • Dr. Wilson Pediatric Dentistry',
-            badge: { text: 'Liam', type: 'liam' },
+            details: "2:30 PM • Dr. Wilson Pediatric Dentistry",
+            badge: { text: "Liam", type: "liam" },
         },
         {
-            day: '27',
-            month: 'Jun',
-            title: 'Family Picnic',
-            details: '11:00 AM • Riverside Park',
-            badge: { text: 'Family', type: 'family' },
+            day: "27",
+            month: "Jun",
+            title: "Family Picnic",
+            details: "11:00 AM • Riverside Park",
+            badge: { text: "Family", type: "family" },
         },
         {
-            day: '03',
-            month: 'Jul',
-            title: 'Anniversary Dinner',
-            details: '7:00 PM • The Vineyard Restaurant',
+            day: "03",
+            month: "Jul",
+            title: "Anniversary Dinner",
+            details: "7:00 PM • The Vineyard Restaurant",
             badges: [
-                { text: 'John', type: 'john' },
-                { text: 'Sarah', type: 'sarah' },
+                { text: "John", type: "john" },
+                { text: "Sarah", type: "sarah" },
             ],
         },
         {
-            day: '15',
-            month: 'Jul',
+            day: "15",
+            month: "Jul",
             title: "Max's Vet Checkup",
-            details: '10:00 AM • Happy Paws Veterinary',
-            badge: { text: 'Pet', type: 'family' },
+            details: "10:00 AM • Happy Paws Veterinary",
+            badge: { text: "Pet", type: "family" },
         },
     ];
 
     const getBadgeStyle = (type: string) => {
         const baseStyle = {
-            fontSize: '12px',
-            padding: '2px 8px',
-            borderRadius: '12px',
+            fontSize: "12px",
+            padding: "2px 8px",
+            borderRadius: "12px",
             fontWeight: 500,
-            marginLeft: '8px',
+            marginLeft: "8px",
         };
 
         switch (type) {
-            case 'john':
-                return { ...baseStyle, backgroundColor: 'rgba(51, 85, 255, 0.1)', color: '#3355ff' };
-            case 'sarah':
-                return { ...baseStyle, backgroundColor: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' };
-            case 'emma':
-                return { ...baseStyle, backgroundColor: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6' };
-            case 'liam':
-                return { ...baseStyle, backgroundColor: 'rgba(236, 72, 153, 0.1)', color: '#ec4899' };
-            case 'family':
-                return { ...baseStyle, backgroundColor: '#eef1ff', color: '#3355ff' };
+            case "john":
+                return {
+                    ...baseStyle,
+                    backgroundColor: "rgba(51, 85, 255, 0.1)",
+                    color: "#3355ff",
+                };
+            case "sarah":
+                return {
+                    ...baseStyle,
+                    backgroundColor: "rgba(99, 102, 241, 0.1)",
+                    color: "#6366f1",
+                };
+            case "emma":
+                return {
+                    ...baseStyle,
+                    backgroundColor: "rgba(139, 92, 246, 0.1)",
+                    color: "#8b5cf6",
+                };
+            case "liam":
+                return {
+                    ...baseStyle,
+                    backgroundColor: "rgba(236, 72, 153, 0.1)",
+                    color: "#ec4899",
+                };
+            case "family":
+                return { ...baseStyle, backgroundColor: "#eef1ff", color: "#3355ff" };
             default:
                 return baseStyle;
         }
@@ -2137,31 +2528,31 @@ const UpcomingActivities: React.FC = () => {
     return (
         <div
             style={{
-                backgroundColor: 'white',
-                borderRadius: '12px',
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
-                padding: '20px',
-                height: '700px',
-                display: 'flex',
-                flexDirection: 'column',
+                backgroundColor: "white",
+                borderRadius: "12px",
+                boxShadow: "0 2px 4px rgba(0, 0, 0, 0.05)",
+                padding: "20px",
+                height: "700px",
+                display: "flex",
+                flexDirection: "column",
             }}
         >
             <div
                 style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '16px',
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: "16px",
                 }}
             >
                 <h3
                     style={{
-                        fontSize: '18px',
+                        fontSize: "18px",
                         fontWeight: 600,
-                        color: '#111827',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
+                        color: "#111827",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
                         margin: 0,
                     }}
                 >
@@ -2170,78 +2561,79 @@ const UpcomingActivities: React.FC = () => {
                 </h3>
                 <button
                     style={{
-                        width: '28px',
-                        height: '28px',
-                        border: 'none',
-                        backgroundColor: '#eef1ff',
-                        color: '#3355ff',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        transition: 'all 0.2s ease',
+                        width: "28px",
+                        height: "28px",
+                        border: "none",
+                        backgroundColor: "#eef1ff",
+                        color: "#3355ff",
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        transition: "all 0.2s ease",
                     }}
                     onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#3355ff';
-                        e.currentTarget.style.color = 'white';
+                        e.currentTarget.style.backgroundColor = "#3355ff";
+                        e.currentTarget.style.color = "white";
                     }}
                     onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = '#eef1ff';
-                        e.currentTarget.style.color = '#3355ff';
+                        e.currentTarget.style.backgroundColor = "#eef1ff";
+                        e.currentTarget.style.color = "#3355ff";
                     }}
                 >
                     <Plus size={16} />
                 </button>
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto' }}>
+            <div style={{ flex: 1, overflowY: "auto" }}>
                 {activities.map((activity, index) => (
                     <div
                         key={index}
                         style={{
-                            display: 'flex',
-                            padding: '12px 0',
-                            borderBottom: index < activities.length - 1 ? '1px solid #e5e7eb' : 'none',
-                            transition: 'all 0.2s ease',
+                            display: "flex",
+                            padding: "12px 0",
+                            borderBottom:
+                                index < activities.length - 1 ? "1px solid #e5e7eb" : "none",
+                            transition: "all 0.2s ease",
                         }}
                         onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#f8fafc';
-                            e.currentTarget.style.marginLeft = '8px';
-                            e.currentTarget.style.marginRight = '-8px';
-                            e.currentTarget.style.borderRadius = '8px';
-                            e.currentTarget.style.paddingLeft = '12px';
-                            e.currentTarget.style.paddingRight = '12px';
+                            e.currentTarget.style.backgroundColor = "#f8fafc";
+                            e.currentTarget.style.marginLeft = "8px";
+                            e.currentTarget.style.marginRight = "-8px";
+                            e.currentTarget.style.borderRadius = "8px";
+                            e.currentTarget.style.paddingLeft = "12px";
+                            e.currentTarget.style.paddingRight = "12px";
                         }}
                         onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'transparent';
-                            e.currentTarget.style.marginLeft = '0';
-                            e.currentTarget.style.marginRight = '0';
-                            e.currentTarget.style.borderRadius = '0';
-                            e.currentTarget.style.paddingLeft = '0';
-                            e.currentTarget.style.paddingRight = '0';
+                            e.currentTarget.style.backgroundColor = "transparent";
+                            e.currentTarget.style.marginLeft = "0";
+                            e.currentTarget.style.marginRight = "0";
+                            e.currentTarget.style.borderRadius = "0";
+                            e.currentTarget.style.paddingLeft = "0";
+                            e.currentTarget.style.paddingRight = "0";
                         }}
                     >
                         <div
                             style={{
-                                width: '45px',
-                                textAlign: 'center',
-                                marginRight: '12px',
+                                width: "45px",
+                                textAlign: "center",
+                                marginRight: "12px",
                             }}
                         >
                             <div
                                 style={{
-                                    fontSize: '16px',
+                                    fontSize: "16px",
                                     fontWeight: 600,
-                                    color: '#374151',
+                                    color: "#374151",
                                 }}
                             >
                                 {activity.day}
                             </div>
                             <div
                                 style={{
-                                    fontSize: '12px',
-                                    color: '#6b7280',
+                                    fontSize: "12px",
+                                    color: "#6b7280",
                                 }}
                             >
                                 {activity.month}
@@ -2251,13 +2643,13 @@ const UpcomingActivities: React.FC = () => {
                         <div style={{ flex: 1 }}>
                             <div
                                 style={{
-                                    fontSize: '14px',
+                                    fontSize: "14px",
                                     fontWeight: 500,
-                                    marginBottom: '2px',
-                                    color: '#374151',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    flexWrap: 'wrap',
+                                    marginBottom: "2px",
+                                    color: "#374151",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    flexWrap: "wrap",
                                 }}
                             >
                                 {activity.title}
@@ -2266,16 +2658,17 @@ const UpcomingActivities: React.FC = () => {
                                         {activity.badge.text}
                                     </span>
                                 )}
-                                {activity.badges && activity.badges.map((badge, badgeIndex) => (
-                                    <span key={badgeIndex} style={getBadgeStyle(badge.type)}>
-                                        {badge.text}
-                                    </span>
-                                ))}
+                                {activity.badges &&
+                                    activity.badges.map((badge, badgeIndex) => (
+                                        <span key={badgeIndex} style={getBadgeStyle(badge.type)}>
+                                            {badge.text}
+                                        </span>
+                                    ))}
                             </div>
                             <div
                                 style={{
-                                    fontSize: '12px',
-                                    color: '#6b7280',
+                                    fontSize: "12px",
+                                    color: "#6b7280",
                                 }}
                             >
                                 {activity.details}
@@ -2288,36 +2681,35 @@ const UpcomingActivities: React.FC = () => {
     );
 };
 
-
 const BoardTitle: React.FC = () => {
     return (
         <div
             style={{
-                display: 'flex',
-                alignItems: 'center',
-                marginBottom: '24px',
+                display: "flex",
+                alignItems: "center",
+                marginBottom: "24px",
             }}
         >
             <div
                 style={{
-                    width: '48px',
-                    height: '48px',
-                    backgroundColor: '#eef1ff',
-                    color: '#3355ff',
-                    borderRadius: '12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginRight: '16px',
+                    width: "48px",
+                    height: "48px",
+                    backgroundColor: "#eef1ff",
+                    color: "#3355ff",
+                    borderRadius: "12px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginRight: "16px",
                 }}
             >
                 <Users size={24} />
             </div>
             <h1
                 style={{
-                    fontSize: '24px',
+                    fontSize: "24px",
                     fontWeight: 600,
-                    color: '#111827',
+                    color: "#111827",
                     margin: 0,
                 }}
             >

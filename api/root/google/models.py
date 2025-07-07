@@ -132,7 +132,7 @@ class GetCalendarEvents(Resource):
                         .list(
                             calendarId="primary",
                             timeMin=datetime.utcnow().isoformat() + "Z",
-                            maxResults=20,
+                            maxResults=40,
                             singleEvents=True,
                             orderBy="startTime",
                         )
@@ -695,61 +695,166 @@ class GetNotes(Resource):
         return {"status": 1, "message": "Notes fetched", "payload": {"notes": notes}}
 
 
-def extract_datetime(text: str, now=None) -> str:
+def extract_datetime(text: str, now: datetime | None = None) -> datetime:
+    """
+    Enhanced version that correctly handles inputs like
+    “meeting at 11th” (bare ordinal → current‑month 11th at 10 a.m.).
+    If the user gives no time, 10 a.m. is assumed.
+
+    CHANGE REQUESTED:
+    • Numeric dates such as “11.7.25”, “11/7/25”, or “11‑7‑25” must be
+      interpreted strictly as **day / month / year**.
+    """
     ist = pytz.timezone("Asia/Kolkata")
-    now = now or datetime.now(ist)
+    now = now.astimezone(ist) if now else datetime.now(ist)
 
-    def to_ist_iso(dt: datetime) -> str:
-        return dt.astimezone(ist).replace(microsecond=0).isoformat()
+    DEFAULT_HOUR = 10
+    DEFAULT_MINUTE = 0
 
-    def extract_time_manually(text: str) -> time | None:
-        match = re.search(r"\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b", text, re.IGNORECASE)
-        if match:
-            hour = int(match.group(1))
-            minute = int(match.group(2) or 0)
-            meridian = match.group(3).lower()
-            if meridian == "pm" and hour != 12:
-                hour += 12
-            if meridian == "am" and hour == 12:
-                hour = 0
-            return time(hour, minute)
-        return None
+    # ── Clean @mentions like @alex or @@john ────────────────────────────────
+    cleaned_text = re.sub(r"@+\w+", "", text).strip()
 
-    # Step 1: Try search_dates (for full datetime matches)
+    # ── Helper: detect explicit time (avoids catching “11th” as 11 a.m.) ───
+    time_regex_12h = re.compile(r"\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b", re.I)
+    time_regex_24h = re.compile(r"\b(\d{1,2}):(\d{2})\b")
+
+    time_match = time_regex_12h.search(cleaned_text) or time_regex_24h.search(
+        cleaned_text
+    )
+
+    explicit_hour = explicit_minute = None
+    if time_match:
+        explicit_hour = int(time_match.group(1))
+        explicit_minute = int(time_match.group(2) or 0)
+
+        # 12‑hour AM/PM handling
+        meridian = (
+            time_match.group(3).lower()
+            if len(time_match.groups()) >= 3 and time_match.group(3)
+            else None
+        )
+        if meridian == "pm" and explicit_hour != 12:
+            explicit_hour += 12
+        if meridian == "am" and explicit_hour == 12:
+            explicit_hour = 0
+
+    # ── Custom date patterns (last pattern = bare “11th”) ────────────────
+    custom_formats = [
+        r"\b\d{1,2}[./-]\d{1,2}[./-]\d{2,4}\b",  # 24.07.25 or 11/7/25 → d/m/y
+        r"\b\d{1,2}(st|nd|rd|th)?\s+\w+\b",  # 15th August
+        r"\bon\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b",
+        r"\b(this|next)?\s*(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b",
+        r"\b\d{1,2}(st|nd|rd|th)\b",  # bare ordinal day (11th)
+    ]
+
+    for pattern in custom_formats:
+        match = re.search(pattern, cleaned_text, re.I)
+        if not match:
+            continue
+
+        date_part = match.group(0).strip()
+
+        # ── A) Numeric d/m/y like “11.7.25” or “11/7/2025” ────────────────
+        if re.fullmatch(r"\d{1,2}[./-]\d{1,2}[./-]\d{2,4}", date_part):
+            # Split on whichever delimiter is present (., /, or -)
+            day_str, month_str, year_str = re.split(r"[./-]", date_part)
+            day = int(day_str)
+            month = int(month_str)
+            year = int(year_str)
+
+            # Expand 2‑digit years: 25 → 2025, 99 → 1999
+            if year < 100:
+                year += 2000 if year < 70 else 1900
+
+            hour = explicit_hour if explicit_hour is not None else DEFAULT_HOUR
+            minute = explicit_minute if explicit_minute is not None else DEFAULT_MINUTE
+
+            try:
+                candidate = ist.localize(datetime(year, month, day, hour, minute))
+            except ValueError:
+                # e.g. 31/02 → let dateparser handle improbable cases
+                pass
+            else:
+                return candidate
+
+        # ── B) Bare ordinal day like “11th” ───────────────────────────────
+        if re.fullmatch(r"\d{1,2}(st|nd|rd|th)", date_part, re.I):
+            day = int(re.sub(r"(st|nd|rd|th)", "", date_part, flags=re.I))
+            hour = explicit_hour if explicit_hour is not None else DEFAULT_HOUR
+            minute = explicit_minute if explicit_minute is not None else DEFAULT_MINUTE
+
+            year, month = now.year, now.month
+            try:
+                candidate = ist.localize(datetime(year, month, day, hour, minute))
+            except ValueError:
+                # “31st” in a 30‑day month → push to next month
+                month += 1
+                if month == 13:
+                    month, year = 1, year + 1
+                candidate = ist.localize(datetime(year, month, day, hour, minute))
+
+            # If date has already passed this month, roll to next month
+            if candidate < now:
+                month += 1
+                if month == 13:
+                    month, year = 1, year + 1
+                candidate = ist.localize(datetime(year, month, day, hour, minute))
+
+            return candidate
+
+        # ── C) Any other recognised date string ──────────────────────────
+        # Compose full phrase: <date_part> <hh:mm>
+        hh = explicit_hour if explicit_hour is not None else DEFAULT_HOUR
+        mm = explicit_minute if explicit_minute is not None else DEFAULT_MINUTE
+        full_phrase = f"{date_part} {hh}:{mm:02d}"
+
+        parsed = search_dates(
+            full_phrase,
+            settings={
+                "PREFER_DATES_FROM": "future",
+                "RELATIVE_BASE": now,
+                "TIMEZONE": "Asia/Kolkata",
+                "TO_TIMEZONE": "Asia/Kolkata",
+                "RETURN_AS_TIMEZONE_AWARE": True,
+                "DATE_ORDER": "DMY",  # ← ensures d/m/y
+            },
+        )
+        if parsed:
+            return parsed[0][1].astimezone(ist)
+
+    # ── D) No explicit date but we *do* have an explicit time ──────────────
+    if explicit_hour is not None:
+        combined = ist.localize(
+            datetime.combine(now.date(), time(explicit_hour, explicit_minute))
+        )
+        if combined < now:
+            combined += timedelta(days=1)
+        return combined
+
+    # ── E) Fallback → ask dateparser to figure things out from whole text ──
     results = search_dates(
-        text,
+        cleaned_text,
         settings={
             "PREFER_DATES_FROM": "future",
             "RELATIVE_BASE": now,
             "TIMEZONE": "Asia/Kolkata",
             "TO_TIMEZONE": "Asia/Kolkata",
             "RETURN_AS_TIMEZONE_AWARE": True,
+            "DATE_ORDER": "DMY",  # ← ensures d/m/y everywhere
         },
     )
 
     if results:
-        results = sorted(results, key=lambda x: len(x[0]), reverse=True)
-        matched_text, parsed_dt = results[0]
-        parsed_dt = parsed_dt.astimezone(ist)
+        dt = results[0][1].astimezone(ist)
+        # If the parsed result had no explicit time, overwrite with 10 a.m.
+        if dt.hour == 0 and dt.minute == 0 and explicit_hour is None:
+            dt = dt.replace(hour=DEFAULT_HOUR, minute=DEFAULT_MINUTE)
+        if dt < now:
+            dt += timedelta(days=1)
+        return dt
 
-        # Handle "only time" (like "10pm") by combining with today's date
-        if re.fullmatch(
-            r"(at\s*)?\d{1,2}(:\d{2})?\s*(am|pm)", matched_text.strip(), re.IGNORECASE
-        ):
-            manual_time = extract_time_manually(matched_text)
-            if manual_time:
-                parsed_dt = ist.localize(datetime.combine(now.date(), manual_time))
-
-        return to_ist_iso(parsed_dt)
-
-    # Step 2: If search_dates fails but there's a time manually
-    manual_time = extract_time_manually(text)
-    if manual_time:
-        parsed_dt = ist.localize(datetime.combine(now.date(), manual_time))
-        return to_ist_iso(parsed_dt)
-
-    # Step 3: fallback to current time
-    return to_ist_iso(now)
+    # ── F) Absolute last resort → return current time (should be rare) ────
+    return now
 
 
 def extract_datetime_us(text: str, now=None) -> str:

@@ -18,7 +18,7 @@ import {
     Space,
 } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
-import CalendarComponent, { sampleCalendarData } from "../../../pages/components/customCalendar";
+import CalendarComponent from "../../../pages/components/customCalendar";
 import { useEffect } from "react";
 import { } from "../../../services/family";
 import dayjs from "dayjs";
@@ -357,14 +357,20 @@ const Planner = () => {
     const transformEvents = (rawEvents: any[]): any[] => {
         return rawEvents.map((event, index) => {
             const startDateTime = event.start?.dateTime;
+            const endDateTime = event.end?.dateTime;
             const creatorEmail = event.creator?.email || 'Unknown';
+
+            // Use dayjs to parse and manipulate time
+            const start = startDateTime ? dayjs(startDateTime) : null;
+            const end = endDateTime ? dayjs(endDateTime) : (start ? start.add(1, 'hour') : null);
 
             return {
                 id: event.id || index.toString(), // fallback to index if no id
                 title: event.summary || 'No Title',
-                startTime: startDateTime ? dayjs(startDateTime).format('hh:mm A') : 'N/A',
-                date: startDateTime ? dayjs(startDateTime).format('YYYY-MM-DD') : 'N/A',
-                person: creatorEmail.split('@')[0], // use the part before '@' as name
+                startTime: start ? start.format('hh:mm A') : 'N/A',
+                endTime: end ? end.format('hh:mm A') : 'N/A',
+                date: start ? start.format('YYYY-MM-DD') : 'N/A',
+                person: creatorEmail.split('@')[0], // part before @
                 color: event.account_color || '#10B981', // fallback color
             };
         });
@@ -484,18 +490,16 @@ const Planner = () => {
                         > */}
                         <div
                             style={{
-                                padding: "12px 16px",
+                                // padding: "12px 16px",
                                 overflowY: "auto",
                                 height: "100%",
                             }}
                         >
-                            <CalendarComponent data={{ events: calendarEvents, meals: [] }} personColors={personColors} />
+                            <CalendarComponent data={{ events: calendarEvents, meals: [] }} personColors={personColors} source="planner" allowMentions={false} fetchEvents={fetchEvents} />
                         </div>
                         {/* </Card> */}
                     </Col>
                     <Col span={8}>
-
-
                         <Card
                             title="Weekly Focus"
                             extra={
@@ -514,6 +518,7 @@ const Planner = () => {
                                 marginBottom: 8,
                                 display: "flex",
                                 flexDirection: "column",
+                                // marginTop: "px",
                             }}
                         >
                             <div
@@ -521,44 +526,43 @@ const Planner = () => {
                                     padding: "12px 16px",
                                     overflowY: "auto",
                                     height: "220px",
+                                    paddingBottom: 24, // ✅ bottom padding
                                 }}
                             >
-                                {focus.length === 0 ? (
+                                {[
+                                    ...focus,
+                                    ...Array(Math.max(3, focus.length + 1) - focus.length).fill(
+                                        {}
+                                    ),
+                                ].map((focusItem, index) => (
                                     <div
+                                        key={focusItem.id || `empty-focus-${index}`}
                                         style={{
-                                            backgroundColor: "#e5e7eb",
+                                            backgroundColor: focusItem.focus ? "#e5e7eb" : "#f5f5f5",
                                             padding: "16px",
                                             borderRadius: 8,
-                                            textAlign: "center",
-                                            color: "#6b7280",
+                                            marginBottom: 8,
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "space-between",
                                         }}
                                     >
-                                        you can add your main focus this week?
+                                        <span
+                                            style={{
+                                                color: focusItem.focus ? "black" : "#9ca3af",
+                                                fontStyle: focusItem.focus ? "normal" : "italic",
+                                                paddingLeft: 6,
+                                            }}
+                                        >
+                                            {focusItem.focus
+                                                ? `${index + 1}. ${focusItem.focus}`
+                                                : `Focus ${index + 1}`}
+                                        </span>
                                     </div>
-                                ) : (
-                                    <div>
-                                        {focus.map((focusItem, index) => (
-                                            <div
-                                                key={focusItem.id}
-                                                style={{
-                                                    backgroundColor: "#e5e7eb",
-                                                    padding: "16px",
-                                                    borderRadius: 8,
-                                                    marginBottom: 8,
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    justifyContent: "space-between",
-                                                }}
-                                            >
-                                                <span>
-                                                    {index + 1}. {focusItem.focus}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
+                                ))}
                             </div>
                         </Card>
+
                         <Card
                             title="Weekly Goals"
                             extra={
@@ -579,17 +583,31 @@ const Planner = () => {
                                 flexDirection: "column",
                             }}
                         >
-                            <div style={{ padding: "12px 16px", overflowY: "auto", height: "220px" }}>
-                                {goals.map((goal, index) => (
+                            <div
+                                style={{
+                                    padding: "12px 16px",
+                                    overflowY: "auto",
+                                    height: "220px",
+                                    paddingBottom: 24, // ✅ bottom padding
+                                }}
+                            >
+                                {[
+                                    ...goals,
+                                    ...Array(Math.max(3, goals.length + 1) - goals.length).fill(
+                                        {}
+                                    ),
+                                ].map((goal, index) => (
                                     <div
-                                        key={goal.id}
+                                        key={goal.id || `empty-goal-${index}`}
                                         style={{
                                             display: "flex",
                                             alignItems: "flex-start",
                                             padding: 12,
-                                            backgroundColor: "white",
+                                            backgroundColor: goal?.id ? "white" : "#f5f5f5",
                                             borderRadius: 8,
-                                            borderLeft: "3px solid #10b981",
+                                            borderLeft: goal?.id
+                                                ? "3px solid #10b981"
+                                                : "1px dashed #d1d5db",
                                             marginBottom: 8,
                                         }}
                                     >
@@ -597,8 +615,8 @@ const Planner = () => {
                                             style={{
                                                 width: 24,
                                                 height: 24,
-                                                backgroundColor: "#10b981",
-                                                color: "white",
+                                                backgroundColor: goal?.id ? "#10b981" : "#d1d5db",
+                                                color: goal?.id ? "white" : "#6b7280",
                                                 borderRadius: "50%",
                                                 display: "flex",
                                                 alignItems: "center",
@@ -611,32 +629,47 @@ const Planner = () => {
                                             {index + 1}
                                         </div>
                                         <div style={{ flex: 1 }}>
-                                            <Input
-                                                value={goal.text}
-                                                onChange={(e) =>
-                                                    setGoals(
-                                                        goals.map((g) =>
-                                                            g.id === goal.id
-                                                                ? { ...g, text: e.target.value }
-                                                                : g
-                                                        )
-                                                    )
-                                                }
-                                                style={{
-                                                    border: "none",
-                                                    backgroundColor: "transparent",
-                                                    fontSize: 14,
-                                                    padding: 0,
-                                                }}
-                                            />
-                                            <Text style={{ fontSize: 12, color: "#6b7280" }}>
-                                                {goal.date} {goal.time}
-                                            </Text>
+                                            {goal?.id ? (
+                                                <>
+                                                    <Input
+                                                        value={goal.text}
+                                                        onChange={(e) =>
+                                                            setGoals(
+                                                                goals.map((g) =>
+                                                                    g.id === goal.id
+                                                                        ? { ...g, text: e.target.value }
+                                                                        : g
+                                                                )
+                                                            )
+                                                        }
+                                                        style={{
+                                                            border: "none",
+                                                            backgroundColor: "transparent",
+                                                            fontSize: 14,
+                                                            padding: "2px 6px", // ✅ text padding
+                                                        }}
+                                                    />
+                                                    <Text style={{ fontSize: 12, color: "#6b7280" }}>
+                                                        {goal.date} {goal.time}
+                                                    </Text>
+                                                </>
+                                            ) : (
+                                                <Text
+                                                    style={{
+                                                        color: "#9ca3af",
+                                                        fontStyle: "italic",
+                                                        paddingLeft: 6,
+                                                    }}
+                                                >
+                                                    Add goal {index + 1}
+                                                </Text>
+                                            )}
                                         </div>
                                     </div>
                                 ))}
                             </div>
                         </Card>
+
                         <Card
                             title="Weekly To-Do List"
                             extra={
@@ -651,49 +684,81 @@ const Planner = () => {
                                 boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
                                 backgroundColor: "white",
                                 border: "1px solid #e5e7eb",
-                                height: "300px",
+                                height: "350px",
                                 display: "flex",
                                 flexDirection: "column",
                             }}
                         >
-                            <div style={{ padding: "12px 16px", overflowY: "auto", height: "220px" }}>
-                                {todos.map((todo) => (
+                            <div
+                                style={{
+                                    padding: "12px 16px",
+                                    overflowY: "auto",
+                                    height: "220px",
+                                    paddingBottom: 24, // ✅ bottom padding
+                                }}
+                            >
+                                {[
+                                    ...todos,
+                                    ...Array(Math.max(3, todos.length + 1) - todos.length).fill(
+                                        {}
+                                    ),
+                                ].map((todo, index) => (
                                     <div
-                                        key={todo.id}
+                                        key={todo.id || `empty-todo-${index}`}
                                         style={{
                                             display: "flex",
                                             alignItems: "center",
                                             padding: "8px 0",
                                             borderBottom: "1px solid #f3f4f6",
+                                            backgroundColor: todo?.id ? "white" : "#f5f5f5",
+                                            paddingLeft: 8,
+                                            borderRadius: 6,
+                                            marginBottom: 4,
                                         }}
                                     >
-                                        <Checkbox
-                                            checked={todo.completed}
-                                            onChange={() => handleToggleTodo(todo.id)}
-                                            style={{ marginRight: 12 }}
-                                        />
-                                        <div style={{ flex: 1 }}>
+                                        {todo?.id ? (
+                                            <>
+                                                <Checkbox
+                                                    checked={todo.completed}
+                                                    onChange={() => handleToggleTodo(todo.id)}
+                                                    style={{ marginRight: 12 }}
+                                                />
+                                                <div style={{ flex: 1 }}>
+                                                    <Text
+                                                        style={{
+                                                            fontSize: 14,
+                                                            color: "#374151",
+                                                            textDecoration: todo.completed
+                                                                ? "line-through"
+                                                                : "none",
+                                                            opacity: todo.completed ? 0.6 : 1,
+                                                            padding: "2px 6px", // ✅ text padding
+                                                        }}
+                                                    >
+                                                        {todo.text}
+                                                    </Text>
+                                                    <div>
+                                                        <Text style={{ fontSize: 12, color: "#6b7280" }}>
+                                                            {todo.date} {todo.time}
+                                                        </Text>
+                                                    </div>
+                                                </div>
+                                                <Tag color={getPriorityColor(todo.priority)}>
+                                                    {todo.priority}
+                                                </Tag>
+                                            </>
+                                        ) : (
                                             <Text
                                                 style={{
+                                                    color: "#9ca3af",
+                                                    fontStyle: "italic",
                                                     fontSize: 14,
-                                                    color: "#374151",
-                                                    textDecoration: todo.completed
-                                                        ? "line-through"
-                                                        : "none",
-                                                    opacity: todo.completed ? 0.6 : 1,
+                                                    paddingLeft: 6, // ✅ placeholder padding
                                                 }}
                                             >
-                                                {todo.text}
+                                                Add To-do {index + 1}
                                             </Text>
-                                            <div>
-                                                <Text style={{ fontSize: 12, color: "#6b7280" }}>
-                                                    {todo.date} {todo.time}
-                                                </Text>
-                                            </div>
-                                        </div>
-                                        <Tag color={getPriorityColor(todo.priority)}>
-                                            {todo.priority}
-                                        </Tag>
+                                        )}
                                     </div>
                                 ))}
                             </div>
@@ -702,7 +767,7 @@ const Planner = () => {
                 </Row>
                 <Row gutter={[8, 8]}>
                     <Col span={24}>
-                        <FamilyTasks />
+                        <FamilyTasks isPlanner={true} />
                     </Col>
                 </Row>
 

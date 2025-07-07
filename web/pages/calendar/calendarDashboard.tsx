@@ -22,8 +22,8 @@ import { GoogleOutlined, MailOutlined, UserOutlined } from "@ant-design/icons";
 import "animate.css";
 import DocklyLoader from "../../utils/docklyLoader";
 import UpcomingActivities from "../components/upcomingActivities";
-import CalendarPage, { sampleCalendarData } from "../components/customCalendar";
-import CustomCalendar from "../components/customCalendar";
+import CalendarPage, { sampleCalendarData } from "../components/customCalendar1";
+import CustomCalendar from "../components/customCalendar1";
 
 const getEventColor = (eventDate: Date) => {
   const now = new Date();
