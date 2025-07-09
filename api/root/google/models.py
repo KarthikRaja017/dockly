@@ -544,6 +544,139 @@ class AddNotes(Resource):
         }
 
 
+class AddEvent(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        inputData = request.get_json(silent=True)
+
+        title = inputData.get("title", "").strip()
+        is_all_day = inputData.get("is_all_day", False)
+
+        if is_all_day:
+            start_date = inputData.get("start_date", "").strip()
+            end_date = inputData.get("end_date", "").strip()
+
+            if not (title and start_date and end_date):
+                return {
+                    "status": 0,
+                    "message": "Required fields missing for all-day event",
+                    "payload": {},
+                }
+
+            insert_data = {
+                "id": uniqueId(digit=6),
+                "user_id": uid,
+                "title": title,
+                "start_time": "12:00 AM",
+                "end_time": "11:59 PM",
+                "date": start_date,
+                "end_date": end_date,
+                "location": inputData.get("location", "").strip(),
+                "description": inputData.get("description", "").strip(),
+                "is_active": 1,
+            }
+
+            # Google event start and end as "date" for all-day
+            google_event = {
+                "summary": title,
+                "start": {"date": start_date, "timeZone": "America/Detroit"},
+                "end": {"date": end_date, "timeZone": "America/Detroit"},
+            }
+
+        else:
+            date = inputData.get("date", "").strip()
+            start_time = inputData.get("start_time", "").strip()
+            end_time = inputData.get("end_time", "").strip()
+
+            if not (title and date and start_time and end_time):
+                return {
+                    "status": 0,
+                    "message": "Required fields missing for timed event",
+                    "payload": {},
+                }
+
+            insert_data = {
+                "id": uniqueId(digit=6),
+                "user_id": uid,
+                "title": title,
+                "start_time": start_time,
+                "end_time": end_time,
+                "date": date,
+                "end_date": date,
+                "location": inputData.get("location", "").strip(),
+                "description": inputData.get("description", "").strip(),
+                "is_active": 1,
+            }
+
+            # Format start and end datetime in RFC3339
+            start_dt = datetime.strptime(f"{date} {start_time}", "%Y-%m-%d %I:%M %p")
+            end_dt = datetime.strptime(f"{date} {end_time}", "%Y-%m-%d %I:%M %p")
+            tz = pytz.timezone("America/Detroit")
+
+            google_event = {
+                "summary": title,
+                "start": {
+                    "dateTime": tz.localize(start_dt).isoformat(),
+                    "timeZone": "America/Detroit",
+                },
+                "end": {
+                    "dateTime": tz.localize(end_dt).isoformat(),
+                    "timeZone": "America/Detroit",
+                },
+            }
+
+        # Save to your own DB
+        DBHelper.insert("events", **insert_data)
+
+        # Try adding to Google Calendar
+        try:
+            user_cred = DBHelper.find_one(
+                "connected_accounts",
+                filters={"uid": uid},
+                select_fields=["access_token", "refresh_token", "email"],
+            )
+
+            if user_cred:
+                creds = Credentials(
+                    token=user_cred["access_token"],
+                    refresh_token=user_cred["refresh_token"],
+                    token_uri=uri,
+                    client_id=CLIENT_ID,
+                    client_secret=CLIENT_SECRET,
+                    scopes=SCOPE.split(),
+                )
+
+                service = build("calendar", "v3", credentials=creds)
+
+                # Optional extras
+                google_event.update(
+                    {
+                        "description": insert_data.get("description", ""),
+                        "location": insert_data.get("location", ""),
+                        "guestsCanModify": True,
+                        "guestsCanInviteOthers": True,
+                        "guestsCanSeeOtherGuests": True,
+                    }
+                )
+
+                created_event = (
+                    service.events()
+                    .insert(calendarId="primary", body=google_event)
+                    .execute()
+                )
+
+                insert_data["google_event_id"] = created_event.get("id")
+
+        except Exception as e:
+            print("Google Calendar Error:", str(e))  # Optionally log it
+
+        return {
+            "status": 1,
+            "message": "Event added successfully.",
+            "payload": insert_data,
+        }
+
+
 class AddGoogleCalendarEvent(Resource):
     @auth_required(isOptional=True)
     def post(self, uid, user):
@@ -696,25 +829,15 @@ class GetNotes(Resource):
 
 
 def extract_datetime(text: str, now: datetime | None = None) -> datetime:
-    """
-    Enhanced version that correctly handles inputs like
-    “meeting at 11th” (bare ordinal → current‑month 11th at 10 a.m.).
-    If the user gives no time, 10 a.m. is assumed.
 
-    CHANGE REQUESTED:
-    • Numeric dates such as “11.7.25”, “11/7/25”, or “11‑7‑25” must be
-      interpreted strictly as **day / month / year**.
-    """
     ist = pytz.timezone("Asia/Kolkata")
     now = now.astimezone(ist) if now else datetime.now(ist)
 
     DEFAULT_HOUR = 10
     DEFAULT_MINUTE = 0
 
-    # ── Clean @mentions like @alex or @@john ────────────────────────────────
     cleaned_text = re.sub(r"@+\w+", "", text).strip()
 
-    # ── Helper: detect explicit time (avoids catching “11th” as 11 a.m.) ───
     time_regex_12h = re.compile(r"\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b", re.I)
     time_regex_24h = re.compile(r"\b(\d{1,2}):(\d{2})\b")
 

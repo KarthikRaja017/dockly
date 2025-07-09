@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { ArrowRight, ChevronLeft, ChevronRight, Plus, MapPin, Clock, User, Calendar as CalendarIcon, Edit, X } from "lucide-react";
-import { Avatar, Card, Col, DatePicker, Divider, Form, Input, Modal, Popover, Row, Select, Space, Spin, Tag, TimePicker, Typography } from "antd";
-import { ClockCircleOutlined, EnvironmentOutlined, LinkOutlined, MailOutlined, PlusOutlined, EditOutlined, UserOutlined } from "@ant-design/icons";
+import { Avatar, Button, Card, Checkbox, Col, DatePicker, Divider, Form, Input, Modal, Popover, Row, Select, Space, Spin, Tag, TimePicker, Typography } from "antd";
+import { ClockCircleOutlined, EnvironmentOutlined, LinkOutlined, MailOutlined, PlusOutlined, EditOutlined, UserOutlined, CalendarOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import SmartInputBox from "./smartInput";
 import { addEvents } from "../../services/planner";
 import { showNotification } from "../../utils/notification";
 import DocklyLoader from "../../utils/docklyLoader";
+import { addEvent } from "../../services/google";
 
 interface Event {
     id: string;
@@ -48,6 +49,23 @@ interface ConnectedAccount {
     accountType: string;
 }
 
+interface Goal {
+    id: string;
+    text: string;
+    completed: boolean;
+    date: string;
+    time: string;
+}
+
+interface Todo {
+    id: string;
+    text: string;
+    completed: boolean;
+    priority: "high" | "medium" | "low";
+    date: string;
+    time: string;
+}
+
 interface CalendarProps {
     data?: CalendarData;
     personColors?: PersonColors;
@@ -57,6 +75,13 @@ interface CalendarProps {
     source?: string;
     allowMentions?: boolean;
     fetchEvents?: () => void;
+    goals?: Goal[];
+    todos?: Todo[];
+    onToggleTodo?: (id: string) => void;
+    onAddGoal?: () => void;
+    onAddTodo?: () => void;
+    enabledHashmentions?: boolean;
+    familyMembers?: { name: string; email?: string }[]
 }
 
 // Default sample data
@@ -200,7 +225,14 @@ const CustomCalendar: React.FC<CalendarProps> = ({
     connectedAccounts = [],
     source,
     allowMentions,
-    fetchEvents
+    enabledHashmentions,
+    fetchEvents,
+    goals = [],
+    todos = [],
+    onToggleTodo,
+    onAddGoal,
+    familyMembers,
+    onAddTodo
 }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [view, setView] = useState<"Day" | "Week" | "Month" | "Year">("Week");
@@ -215,6 +247,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
     const [allEvents, setAllEvents] = useState<Event[] | null>(null);
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
+    const [isAllDay, setIsAllDay] = useState(false);
 
     const [modalData, setModalData] = useState({
         title: '',
@@ -236,10 +269,11 @@ const CustomCalendar: React.FC<CalendarProps> = ({
 
     if (!allEvents) {
         return (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
-                <div style={{ fontSize: '64px', marginBottom: '16px' }}>📅</div>
-                <p style={{ color: '#6b7280', fontSize: '18px', fontWeight: '500' }}>Loading calendar...</p>
-            </div>
+            // <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
+            //     <div style={{ fontSize: '64px', marginBottom: '16px' }}>📅</div>
+            //     <p style={{ color: '#6b7280', fontSize: '18px', fontWeight: '500' }}>Loading calendar...</p>
+            // </div>
+            <DocklyLoader />
         );
     }
 
@@ -291,6 +325,32 @@ const CustomCalendar: React.FC<CalendarProps> = ({
         const [timeHour, timeMinute] = timeStr.split(':').map(Number);
 
         return timeHour < currentHour || (timeHour === currentHour && timeMinute <= currentMinute);
+    };
+
+    // Helper function to get goals for a specific date
+    const getGoalsForDate = (date: Date): Goal[] => {
+        const dateStr = formatDateString(date);
+        return goals.filter(goal => goal.date === dateStr);
+    };
+
+    // Helper function to get todos for a specific date
+    const getTodosForDate = (date: Date): Todo[] => {
+        const dateStr = formatDateString(date);
+        return todos.filter(todo => todo.date === dateStr);
+    };
+
+    // Helper function to get priority color for todos
+    const getPriorityColor = (priority: string) => {
+        switch (priority) {
+            case "high":
+                return "#ef4444";
+            case "medium":
+                return "#f59e0b";
+            case "low":
+                return "#10b981";
+            default:
+                return "#6b7280";
+        }
     };
 
     const parseEventText = (text: string) => {
@@ -670,78 +730,66 @@ const CustomCalendar: React.FC<CalendarProps> = ({
         return connectedAccounts.find(account => account.userName === userName) || null;
     };
 
+
     const handleModalSave = () => {
         setLoading(true);
 
         form.validateFields()
             .then(async (values) => {
-                const { title, date, startTime, endTime, person, location, description } = values;
-
-                // Validate date and time
-                if (isPastDate(date.format('YYYY-MM-DD'))) {
-                    alert("Cannot schedule events in the past. Please select a future date.");
-                    setLoading(false);
-                    return;
-                }
-
-                if (isPastTime(date.format('YYYY-MM-DD'), startTime.format('HH:mm'))) {
-                    alert("Cannot schedule events in the past. Please select a future time.");
-                    setLoading(false);
-                    return;
-                }
-
-                if (endTime.isSameOrBefore(startTime)) {
-                    alert("End time must be after start time.");
-                    setLoading(false);
-                    return;
-                }
-
-                const newEvent = {
-                    id: editingEvent ? editingEvent.id : undefined,
-                    title: title.trim(),
-                    date: date.format('YYYY-MM-DD'),
-                    startTime: startTime.format('h:mm A'),
-                    endTime: endTime.format('h:mm A'),
+                const {
+                    title,
+                    date,
+                    startTime,
+                    endTime,
+                    startDate,
+                    endDate,
                     person,
-                    color: getPersonColor(person),
-                    description: description || '',
-                    location: location || '',
-                };
+                    location,
+                    description,
+                } = values;
+
+                const payload = isAllDay
+                    ? {
+                        is_all_day: true,
+                        title,
+                        start_date: startDate.format("YYYY-MM-DD"),
+                        end_date: endDate.format("YYYY-MM-DD"),
+                        location,
+                        description,
+                    }
+                    : {
+                        is_all_day: false,
+                        title,
+                        date: date.format("YYYY-MM-DD"),
+                        start_time: startTime.format("h:mm A"),
+                        end_time: endTime.format("h:mm A"),
+                        location,
+                        description,
+                    };
 
                 try {
-                    const response = await addEvents({ ...values });
-                    const { message, status } = response.data;
+                    const res = await addEvent(payload);
+                    const { status, message } = res.data;
 
-                    if (status) {
-                        if (fetchEvents) fetchEvents();
+                    if (status === 1) {
                         showNotification("Success", message, "success");
+                        if (fetchEvents) fetchEvents();
                     } else {
                         showNotification("Error", message, "error");
                     }
 
-                    // Optional local update
-                    // if (editingEvent) {
-                    //     setAllEvents(prev => (prev ?? []).map(event =>
-                    //         event.id === editingEvent.id ? newEvent : event
-                    //     ));
-                    // } else {
-                    //     setAllEvents(prev => [...(prev ?? []), newEvent]);
-                    // }
-
-                    if (onAddEvent) onAddEvent(newEvent);
-
                     setIsModalVisible(false);
-                    setEditingEvent(null);
                     form.resetFields();
-                } catch (error) {
-                    console.error("Failed to save event:", error);
-                    showNotification("Error", "Failed to save event.", "error");
+                    setIsAllDay(false);
+                    setEditingEvent(null);
+                } catch (err) {
+                    console.error("Save error:", err);
+                    showNotification("Error", "Something went wrong.", "error");
                 }
 
                 setLoading(false);
             })
-            .catch((error) => {
-                console.log('Validation failed:', error);
+            .catch(() => {
                 setLoading(false);
             });
     };
@@ -890,6 +938,8 @@ const CustomCalendar: React.FC<CalendarProps> = ({
     }) => {
         const isToday = date.toDateString() === new Date().toDateString();
         const isPast = isPastDate(formatDateString(date));
+        const dayGoals = getGoalsForDate(date);
+        const dayTodos = getTodosForDate(date);
 
         return (
             <div
@@ -996,57 +1046,79 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             +{events.length - (compactMode ? 2 : 6)} more events
                         </div>
                     )}
-                </div>
 
-                {showMeals && meals.length > 0 && (
-                    <div
-                        style={{
-                            borderTop: "1px solid #e2e8f0",
-                            paddingTop: "12px",
-                            maxHeight: "80px",
-                            overflowY: "auto",
-                        }}
-                    >
-                        <div
-                            style={{
+                    {/* Show goals for this specific date */}
+                    {dayGoals.length > 0 && (
+                        <div style={{ marginTop: "8px" }}>
+                            <div style={{
                                 fontSize: "10px",
-                                fontWeight: "800",
-                                color: "#6b7280",
-                                marginBottom: "8px",
+                                fontWeight: "700",
+                                color: "#10b981",
+                                marginBottom: "4px",
                                 textTransform: "uppercase",
-                                letterSpacing: "0.8px",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "4px",
-                            }}
-                        >
-                            🍽️ MEALS
-                        </div>
-                        {meals.slice(0, 2).map((meal, mealIndex) => (
-                            <div
-                                key={meal.id}
-                                style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "8px",
-                                    fontSize: "11px",
-                                    color: "#4b5563",
-                                    marginBottom: "6px",
-                                    padding: "6px 8px",
-                                    backgroundColor: "#f8fafc",
-                                    borderRadius: "8px",
-                                    animation: `fadeInLeft 0.5s ease ${mealIndex * 0.1}s both`,
-                                }}
-                            >
-                                <span style={{ fontSize: "14px" }}>{meal.emoji}</span>
-                                <span style={{ fontWeight: "600" }}>{meal.name}</span>
+                                letterSpacing: "0.5px"
+                            }}>
+                                Goals
                             </div>
-                        ))}
-                    </div>
-                )}
+                            {dayGoals.slice(0, 2).map((goal, index) => (
+                                <div
+                                    key={goal.id}
+                                    style={{
+                                        fontSize: "10px",
+                                        color: "#10b981",
+                                        padding: "4px 8px",
+                                        backgroundColor: "#ecfdf5",
+                                        borderRadius: "6px",
+                                        marginBottom: "4px",
+                                        border: "1px solid #bbf7d0",
+                                        textDecoration: goal.completed ? "line-through" : "none",
+                                        opacity: goal.completed ? 0.7 : 1,
+                                    }}
+                                >
+                                    {goal.text}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Show todos for this specific date */}
+                    {dayTodos.length > 0 && (
+                        <div style={{ marginTop: "8px" }}>
+                            <div style={{
+                                fontSize: "10px",
+                                fontWeight: "700",
+                                color: "#f59e0b",
+                                marginBottom: "4px",
+                                textTransform: "uppercase",
+                                letterSpacing: "0.5px"
+                            }}>
+                                To-dos
+                            </div>
+                            {dayTodos.slice(0, 2).map((todo, index) => (
+                                <div
+                                    key={todo.id}
+                                    style={{
+                                        fontSize: "10px",
+                                        color: getPriorityColor(todo.priority),
+                                        padding: "4px 8px",
+                                        backgroundColor: `${getPriorityColor(todo.priority)}15`,
+                                        borderRadius: "6px",
+                                        marginBottom: "4px",
+                                        border: `1px solid ${getPriorityColor(todo.priority)}30`,
+                                        textDecoration: todo.completed ? "line-through" : "none",
+                                        opacity: todo.completed ? 0.7 : 1,
+                                    }}
+                                >
+                                    {todo.text}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
         );
     };
+
     const renderWeekView = () => {
         const weekDays = getWeekDays(currentDate);
         const hours = Array.from({ length: 24 }, (_, i) => i);
@@ -1078,6 +1150,9 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     <div style={{ padding: "16px 12px" }}></div>
                     {weekDays.map((day, index) => {
                         const isToday = day.toDateString() === new Date().toDateString();
+                        const dayGoals = getGoalsForDate(day);
+                        const dayTodos = getTodosForDate(day);
+
                         return (
                             <div
                                 key={index}
@@ -1087,6 +1162,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                     borderLeft: index > 0 ? "1px solid #e2e8f0" : "none",
                                     transition: "all 0.2s ease",
                                     background: isToday ? "linear-gradient(135deg, #3b82f615, #3b82f608)" : "transparent",
+                                    position: "relative",
                                 }}
                             >
                                 <div style={{
@@ -1103,7 +1179,8 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                     fontSize: "24px",
                                     fontWeight: "700",
                                     color: isToday ? "#3b82f6" : "#1f2937",
-                                    position: "relative"
+                                    position: "relative",
+                                    marginBottom: "8px"
                                 }}>
                                     {isToday ? (
                                         <div style={{
@@ -1125,6 +1202,28 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                         </div>
                                     ) : (
                                         day.getDate()
+                                    )}
+                                </div>
+
+                                {/* Show indicators for goals and todos */}
+                                <div style={{ display: "flex", justifyContent: "center", gap: "4px" }}>
+                                    {dayGoals.length > 0 && (
+                                        <div style={{
+                                            width: "6px",
+                                            height: "6px",
+                                            backgroundColor: "#10b981",
+                                            borderRadius: "50%",
+                                            animation: "pulse 2s infinite"
+                                        }} />
+                                    )}
+                                    {dayTodos.length > 0 && (
+                                        <div style={{
+                                            width: "6px",
+                                            height: "6px",
+                                            backgroundColor: "#f59e0b",
+                                            borderRadius: "50%",
+                                            animation: "pulse 2s infinite"
+                                        }} />
                                     )}
                                 </div>
                             </div>
@@ -1398,6 +1497,8 @@ const CustomCalendar: React.FC<CalendarProps> = ({
     const renderDayView = () => {
         const dayEvents = getEventsForDate(currentDate);
         const dayMeals = getMealsForDate(currentDate);
+        const dayGoals = getGoalsForDate(currentDate);
+        const dayTodos = getTodosForDate(currentDate);
 
         return (
             <div
@@ -1527,111 +1628,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             </div>
                         </div>
                     </div>
-
-                    <div style={{ flex: 1 }}>
-                        <div
-                            style={{
-                                background: "linear-gradient(135deg, #ffffff, #f8fafc)",
-                                borderRadius: "20px",
-                                padding: "24px",
-                                border: "1px solid #e2e8f0",
-                                height: "100%",
-                                boxShadow: "0 8px 25px rgba(0, 0, 0, 0.08)",
-                                display: "flex",
-                                flexDirection: "column",
-                            }}
-                        >
-                            <h3
-                                style={{
-                                    margin: "0 0 20px 0",
-                                    fontSize: "22px",
-                                    fontWeight: "800",
-                                    color: "#1f2937",
-                                    animation: "slideInRight 0.5s ease",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "8px",
-                                }}
-                            >
-                                🍽️ Meals
-                            </h3>
-                            <div
-                                style={{
-                                    flex: 1,
-                                    overflowY: "auto",
-                                    scrollbarWidth: "thin",
-                                    scrollbarColor: "#cbd5e1 transparent",
-                                    paddingRight: "8px",
-                                }}
-                            >
-                                {dayMeals.length === 0 ? (
-                                    <div
-                                        style={{
-                                            textAlign: "center",
-                                            padding: "60px 20px",
-                                            animation: "fadeIn 0.5s ease",
-                                        }}
-                                    >
-                                        <div style={{ fontSize: "48px", marginBottom: "16px" }}>🍽️</div>
-                                        <p
-                                            style={{
-                                                color: "#6b7280",
-                                                fontSize: "16px",
-                                                fontWeight: "500",
-                                            }}
-                                        >
-                                            No meals planned for today
-                                        </p>
-                                    </div>
-                                ) : (
-                                    <div
-                                        style={{
-                                            display: "flex",
-                                            flexDirection: "column",
-                                            gap: "12px",
-                                        }}
-                                    >
-                                        {dayMeals.map((meal, index) => (
-                                            <div
-                                                key={meal.id}
-                                                style={{
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    gap: "16px",
-                                                    padding: "16px",
-                                                    background: "linear-gradient(135deg, #f8fafc, #f1f5f9)",
-                                                    borderRadius: "16px",
-                                                    transition: "all 0.3s ease",
-                                                    animation: `slideInRight 0.5s ease ${index * 0.1}s both`,
-                                                    cursor: "pointer",
-                                                    border: "1px solid #e2e8f0",
-                                                }}
-                                                onMouseEnter={(e) => {
-                                                    e.currentTarget.style.background = "linear-gradient(135deg, #e2e8f0, #cbd5e1)";
-                                                    e.currentTarget.style.transform = "translateX(4px) scale(1.02)";
-                                                }}
-                                                onMouseLeave={(e) => {
-                                                    e.currentTarget.style.background = "linear-gradient(135deg, #f8fafc, #f1f5f9)";
-                                                    e.currentTarget.style.transform = "translateX(0) scale(1)";
-                                                }}
-                                            >
-                                                <span style={{ fontSize: "24px" }}>{meal.emoji}</span>
-                                                <span
-                                                    style={{
-                                                        fontSize: "16px",
-                                                        color: "#1f2937",
-                                                        fontWeight: "600",
-                                                    }}
-                                                >
-                                                    {meal.name}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
         );
@@ -1673,6 +1669,22 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             return (
                                 eventDate.getFullYear() === currentYear &&
                                 eventDate.getMonth() === index
+                            );
+                        });
+
+                        const monthGoals = goals.filter((goal) => {
+                            const goalDate = new Date(goal.date);
+                            return (
+                                goalDate.getFullYear() === currentYear &&
+                                goalDate.getMonth() === index
+                            );
+                        });
+
+                        const monthTodos = todos.filter((todo) => {
+                            const todoDate = new Date(todo.date);
+                            return (
+                                todoDate.getFullYear() === currentYear &&
+                                todoDate.getMonth() === index
                             );
                         });
 
@@ -1740,9 +1752,13 @@ const CustomCalendar: React.FC<CalendarProps> = ({
 
                                     {monthDays.slice(0, 35).map((day, dayIndex) => {
                                         const dayEvents = getEventsForDate(day);
+                                        const dayGoals = getGoalsForDate(day);
+                                        const dayTodos = getTodosForDate(day);
                                         const isCurrentMonth = day.getMonth() === index;
                                         const isToday = day.toDateString() === new Date().toDateString();
                                         const isPast = isPastDate(formatDateString(day));
+
+                                        const hasContent = dayEvents.length > 0 || dayGoals.length > 0 || dayTodos.length > 0;
 
                                         return (
                                             <div
@@ -1758,7 +1774,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                                 style={{
                                                     textAlign: "center",
                                                     padding: "6px",
-                                                    background: dayEvents.length > 0
+                                                    background: hasContent
                                                         ? "linear-gradient(135deg, #dbeafe, #bfdbfe)"
                                                         : "transparent",
                                                     borderRadius: "6px",
@@ -1778,7 +1794,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                                 }}
                                                 onMouseLeave={(e) => {
                                                     if (isCurrentMonth && !isPast) {
-                                                        e.currentTarget.style.background = dayEvents.length > 0
+                                                        e.currentTarget.style.background = hasContent
                                                             ? "linear-gradient(135deg, #dbeafe, #bfdbfe)"
                                                             : "transparent";
                                                         e.currentTarget.style.transform = "scale(1)";
@@ -1786,44 +1802,112 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                                 }}
                                             >
                                                 {day.getDate()}
-                                                {dayEvents.length > 0 && (
-                                                    <div
-                                                        style={{
-                                                            position: "absolute",
-                                                            top: "2px",
-                                                            right: "2px",
-                                                            width: "6px",
-                                                            height: "6px",
-                                                            backgroundColor: "#3B82F6",
-                                                            borderRadius: "50%",
-                                                            animation: "pulse 2s infinite",
-                                                        }}
-                                                    />
-                                                )}
+                                                {/* Indicators for different types of content */}
+                                                <div style={{
+                                                    position: "absolute",
+                                                    top: "2px",
+                                                    right: "2px",
+                                                    display: "flex",
+                                                    gap: "1px"
+                                                }}>
+                                                    {dayEvents.length > 0 && (
+                                                        <div
+                                                            style={{
+                                                                width: "4px",
+                                                                height: "4px",
+                                                                backgroundColor: "#3B82F6",
+                                                                borderRadius: "50%",
+                                                                animation: "pulse 2s infinite",
+                                                            }}
+                                                        />
+                                                    )}
+                                                    {dayGoals.length > 0 && (
+                                                        <div
+                                                            style={{
+                                                                width: "4px",
+                                                                height: "4px",
+                                                                backgroundColor: "#10b981",
+                                                                borderRadius: "50%",
+                                                                animation: "pulse 2s infinite",
+                                                            }}
+                                                        />
+                                                    )}
+                                                    {dayTodos.length > 0 && (
+                                                        <div
+                                                            style={{
+                                                                width: "4px",
+                                                                height: "4px",
+                                                                backgroundColor: "#f59e0b",
+                                                                borderRadius: "50%",
+                                                                animation: "pulse 2s infinite",
+                                                            }}
+                                                        />
+                                                    )}
+                                                </div>
                                             </div>
                                         );
                                     })}
                                 </div>
 
-                                {monthEvents.length > 0 && (
-                                    <div
-                                        style={{
-                                            fontSize: "12px",
-                                            color: "#6b7280",
-                                            textAlign: "center",
-                                            fontWeight: "600",
-                                            padding: "8px 12px",
-                                            background: "linear-gradient(135deg, #f1f5f9, #e2e8f0)",
-                                            borderRadius: "8px",
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            gap: "6px",
-                                        }}
-                                    >
-                                        📅 {monthEvents.length} event{monthEvents.length > 1 ? "s" : ""}
-                                    </div>
-                                )}
+                                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                                    {monthEvents.length > 0 && (
+                                        <div
+                                            style={{
+                                                fontSize: "12px",
+                                                color: "#6b7280",
+                                                textAlign: "center",
+                                                fontWeight: "600",
+                                                padding: "6px 12px",
+                                                background: "linear-gradient(135deg, #dbeafe, #bfdbfe)",
+                                                borderRadius: "6px",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                gap: "6px",
+                                            }}
+                                        >
+                                            📅 {monthEvents.length} event{monthEvents.length > 1 ? "s" : ""}
+                                        </div>
+                                    )}
+                                    {monthGoals.length > 0 && (
+                                        <div
+                                            style={{
+                                                fontSize: "12px",
+                                                color: "#6b7280",
+                                                textAlign: "center",
+                                                fontWeight: "600",
+                                                padding: "6px 12px",
+                                                background: "linear-gradient(135deg, #ecfdf5, #d1fae5)",
+                                                borderRadius: "6px",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                gap: "6px",
+                                            }}
+                                        >
+                                            🎯 {monthGoals.length} goal{monthGoals.length > 1 ? "s" : ""}
+                                        </div>
+                                    )}
+                                    {monthTodos.length > 0 && (
+                                        <div
+                                            style={{
+                                                fontSize: "12px",
+                                                color: "#6b7280",
+                                                textAlign: "center",
+                                                fontWeight: "600",
+                                                padding: "6px 12px",
+                                                background: "linear-gradient(135deg, #fef3c7, #fde68a)",
+                                                borderRadius: "6px",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                gap: "6px",
+                                            }}
+                                        >
+                                            ✅ {monthTodos.length} todo{monthTodos.length > 1 ? "s" : ""}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         );
                     })}
@@ -1831,6 +1915,10 @@ const CustomCalendar: React.FC<CalendarProps> = ({
             </div>
         );
     };
+
+    const { Option } = Select;
+
+    const viewOptions = ["Day", "Week", "Month", "Year"] as const;
 
     // Enhanced Modal Components
     const SimpleModal = ({ isVisible, onClose, children }: {
@@ -2326,50 +2414,53 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             : formatDate(currentDate)}
                     </h3>
                 </div>
-
                 <div style={{ display: "flex", gap: "6px" }}>
-                    {(["Day", "Week", "Month", "Year"] as const).map((viewType) => (
-                        <button
-                            key={viewType}
-                            onClick={() => setView(viewType)}
-                            style={{
-                                padding: "12px 20px",
-                                background: view === viewType
-                                    ? "linear-gradient(135deg, #3b82f6, #1d4ed8)"
-                                    : "linear-gradient(135deg, #ffffff, #f8fafc)",
-                                color: view === viewType ? "white" : "#374151",
-                                border: "1px solid #e2e8f0",
-                                borderRadius: "12px",
-                                cursor: "pointer",
-                                fontSize: "14px",
-                                fontWeight: "600",
-                                transition: "all 0.3s ease",
-                                boxShadow: view === viewType
-                                    ? "0 4px 12px rgba(59, 130, 246, 0.3)"
-                                    : "0 2px 8px rgba(0, 0, 0, 0.05)",
-                            }}
-                            onMouseEnter={(e) => {
-                                if (view !== viewType) {
-                                    e.currentTarget.style.background = "linear-gradient(135deg, #f1f5f9, #e2e8f0)";
-                                    e.currentTarget.style.transform = "translateY(-2px)";
-                                }
-                            }}
-                            onMouseLeave={(e) => {
-                                if (view !== viewType) {
-                                    e.currentTarget.style.background = "linear-gradient(135deg, #ffffff, #f8fafc)";
-                                    e.currentTarget.style.transform = "translateY(0)";
-                                }
-                            }}
-                        >
-                            {viewType}
-                        </button>
-                    ))}
+
+                    <Select
+                        value={view}
+                        onChange={(value) => setView(value)}
+                        style={{
+                            width: 180,
+                            borderRadius: 12,
+                            background: 'linear-gradient(135deg, #ffffff, #f8fafc)',
+                            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.05)",
+                            fontWeight: 600,
+                            fontSize: 14
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = "linear-gradient(135deg, #f1f5f9, #e2e8f0)";
+                            e.currentTarget.style.transform = "translateY(-2px)";
+                            e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.1)";
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "linear-gradient(135deg, #ffffff, #f8fafc)";
+                            e.currentTarget.style.transform = "translateY(0)";
+                            e.currentTarget.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.05)";
+                        }}
+                        // suffixIcon={<CalendarOutlined />}
+                        prefix={<CalendarOutlined />}
+                    // dropdownStyle={{
+                    //     borderRadius: 12,
+                    //     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                    // }}
+                    >
+                        {viewOptions.map((option) => (
+                            <Option key={option} value={option}>
+                                {option}
+                            </Option>
+                        ))}
+                    </Select>
+                    <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={() => setIsModalVisible(true)}
+                    />
                 </div>
             </div>
 
             {/* Enhanced Quick Add Event */}
-            <div style={{ marginTop: "24px" }}>
-                <SmartInputBox />
+            <div style={{ marginTop: '24px' }}>
+                <SmartInputBox source={source} allowMentions={allowMentions} enableHashMentions={enabledHashmentions} familyMembers={familyMembers} personColors={personColors} />
             </div>
 
             {/* Enhanced Calendar Views */}
@@ -2391,7 +2482,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                 {view === "Day" && renderDayView()}
                 {view === "Year" && renderYearView()}
             </div>
-
             {/* Enhanced Person Legend */}
             <Card style={{ marginTop: 16 }}>
                 <Space wrap>
@@ -2448,6 +2538,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
             <EventPreviewModal />
 
             {/* Enhanced Event Form Modal */}
+
             <Modal
                 title={
                     <Space>
@@ -2461,6 +2552,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     setIsModalVisible(false);
                     setEditingEvent(null);
                     form.resetFields();
+                    setIsAllDay(false);
                 }}
                 okText={editingEvent ? 'Update Event' : 'Create Event'}
                 width={600}
@@ -2481,75 +2573,86 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                         <Input placeholder="Add a descriptive title" />
                     </Form.Item>
 
-                    <Row gutter={16}>
-                        <Col span={12}>
-                            <Form.Item
-                                name="date"
-                                label="Date"
-                                rules={[{ required: true, message: 'Please select date' }]}
-                            >
-                                <DatePicker
-                                    style={{ width: '100%' }}
-                                    disabledDate={(current) => current && current < dayjs().startOf('day')}
-                                />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item
-                                name="person"
-                                label="Assigned to"
-                                rules={[{ required: true, message: 'Please select person' }]}
-                            >
-                                <Select placeholder="Select person">
-                                    {Object.keys(personColors).map(userName => {
-                                        const account = getConnectedAccount(userName);
-                                        return (
-                                            <Option key={userName} value={userName}>
-                                                <Space>
-                                                    <Avatar
-                                                        size="small"
-                                                        style={{ backgroundColor: getPersonData(userName).color }}
-                                                    >
-                                                        {(account?.displayName || userName).charAt(0).toUpperCase()}
-                                                    </Avatar>
-                                                    {account?.displayName || userName}
-                                                </Space>
-                                            </Option>
-                                        );
-                                    })}
-                                </Select>
-                            </Form.Item>
-                        </Col>
-                    </Row>
+                    {isAllDay ? (
+                        <Row gutter={16}>
+                            <Col span={12}>
+                                <Form.Item
+                                    name="startDate"
+                                    label="Start Date"
+                                    rules={[{ required: true, message: 'Please select start date' }]}
+                                >
+                                    <DatePicker style={{ width: '100%' }} disabledDate={(current) => current && current < dayjs().startOf('day')} />
+                                </Form.Item>
+                            </Col>
+                            <Col span={12}>
+                                <Form.Item
+                                    name="endDate"
+                                    label="End Date"
+                                    rules={[{ required: true, message: 'Please select end date' }]}
+                                >
+                                    <DatePicker style={{ width: '100%' }} disabledDate={(current) => current && current < dayjs().startOf('day')} />
+                                </Form.Item>
+                            </Col>
+                        </Row>
+                    ) : (
+                        <Row gutter={16}>
+                            <Col span={8}>
+                                <Form.Item
+                                    name="date"
+                                    label="Date"
+                                    rules={[{ required: true, message: 'Please select date' }]}
+                                >
+                                    <DatePicker style={{ width: '100%' }} disabledDate={(current) => current && current < dayjs().startOf('day')} />
+                                </Form.Item>
+                            </Col>
+                            <Col span={8}>
+                                <Form.Item
+                                    name="startTime"
+                                    label={<Space><ClockCircleOutlined />Start Time</Space>}
+                                    rules={[{ required: true, message: 'Please select start time' }]}
+                                >
+                                    <TimePicker style={{ width: '100%' }} format="hh:mm A" use12Hours />
+                                </Form.Item>
+                            </Col>
+                            <Col span={8}>
+                                <Form.Item
+                                    name="endTime"
+                                    label={<Space><ClockCircleOutlined />End Time</Space>}
+                                    rules={[{ required: true, message: 'Please select end time' }]}
+                                >
+                                    <TimePicker style={{ width: '100%' }} format="hh:mm A" use12Hours />
+                                </Form.Item>
+                            </Col>
+                        </Row>
+                    )}
 
-                    <Row gutter={16}>
-                        <Col span={12}>
-                            <Form.Item
-                                name="startTime"
-                                label={<Space><ClockCircleOutlined />Start Time</Space>}
-                                rules={[{ required: true, message: 'Please select start time' }]}
-                            >
-                                <TimePicker
-                                    style={{ width: '100%' }}
-                                    format="hh:mm A"
-                                    use12Hours
-                                />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item
-                                name="endTime"
-                                label={<Space><ClockCircleOutlined />End Time</Space>}
-                                rules={[{ required: true, message: 'Please select end time' }]}
-                            >
-                                <TimePicker
-                                    style={{ width: '100%' }}
-                                    format="hh:mm A"
-                                    use12Hours
-                                />
-                            </Form.Item>
-                        </Col>
-                    </Row>
+                    <Form.Item>
+                        <Checkbox checked={isAllDay} onChange={(e) => setIsAllDay(e.target.checked)}>
+                            All day
+                        </Checkbox>
+                    </Form.Item>
+
+                    <Form.Item
+                        name="person"
+                        label="Assigned to"
+                        rules={[{ required: true, message: 'Please select person' }]}
+                    >
+                        <Select placeholder="Select person">
+                            {Object.keys(personColors).map(userName => {
+                                const account = getConnectedAccount(userName);
+                                return (
+                                    <Option key={userName} value={userName}>
+                                        <Space>
+                                            <Avatar size="small" style={{ backgroundColor: getPersonData(userName).color }}>
+                                                {(account?.displayName || userName).charAt(0).toUpperCase()}
+                                            </Avatar>
+                                            {account?.displayName || userName}
+                                        </Space>
+                                    </Option>
+                                );
+                            })}
+                        </Select>
+                    </Form.Item>
 
                     <Form.Item
                         name="location"
@@ -2558,14 +2661,8 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                         <Input placeholder="Add location or meeting link" />
                     </Form.Item>
 
-                    <Form.Item
-                        name="description"
-                        label="Description"
-                    >
-                        <TextArea
-                            rows={4}
-                            placeholder="Add notes, agenda, or additional details"
-                        />
+                    <Form.Item name="description" label="Description">
+                        <TextArea rows={4} placeholder="Add notes, agenda, or additional details" />
                     </Form.Item>
                 </Form>
             </Modal>

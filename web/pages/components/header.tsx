@@ -239,11 +239,9 @@ const CustomHeader = ({
               <div style={{ textAlign: "right" }}>
                 <div style={{ fontSize: "14px", fontWeight: "500" }}>Welcome Back!</div>
                 <div style={{ color: "#007B8F", fontSize: "14px" }}>
-                  {name
-                    ? capitalizeEachWord(name)
-                    : userName
-                      ? capitalizeEachWord(userName)
-                      : "Dockly User"}
+                  {userName
+                    ? capitalizeEachWord(userName)
+                    : "Dockly User"}
                 </div>
               </div>
               {image ? (

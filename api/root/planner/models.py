@@ -690,18 +690,31 @@
 
 
 from datetime import timedelta, datetime
+from email.message import EmailMessage
+import smtplib
 from flask import request
 from flask_restful import Resource
 
-from root.google.models import SCOPE, extract_datetime
+from root.google.models import SCOPE
 from root.db.dbHelper import DBHelper
 from root.common import GoalStatus, Priority, Status
 from root.utilis import uniqueId
 from root.auth.auth import auth_required
 from google.oauth2.credentials import Credentials
-from root.config import CLIENT_ID, CLIENT_SECRET, uri
+from root.config import (
+    CLIENT_ID,
+    CLIENT_SECRET,
+    EMAIL_PASSWORD,
+    EMAIL_SENDER,
+    SMTP_PORT,
+    SMTP_SERVER,
+    uri,
+)
 from googleapiclient.discovery import build
 from google.auth.exceptions import GoogleAuthError
+import dateparser
+from datetime import datetime
+from root.google.models import extract_datetime
 
 
 class AddWeeklyGoals(Resource):
@@ -738,7 +751,6 @@ class AddEvents(Resource):
     @auth_required(isOptional=True)
     def post(self, uid, user):
         inputData = request.get_json(silent=True)
-        print(f"inputData: {inputData}")
         id = inputData.get("id", None)
         unid = uniqueId(digit=15, isNum=True)
 
@@ -883,38 +895,6 @@ def create_calendar_event(user_id, title, start_dt, end_dt=None, attendees=None)
     return service.events().insert(calendarId="primary", body=event).execute()
 
 
-class AddWeeklyFocus(Resource):
-    @auth_required(isOptional=True)
-    def post(self, uid, user):
-        data = request.get_json(silent=True)
-        print(f"==>> data: {data}")
-        id = uniqueId(digit=15, isNum=True)
-
-        focus = {
-            "id": id,
-            "user_id": uid,
-            "focus": data.get("focus", ""),
-        }
-        DBHelper.insert("weekly-focus", return_column="id", **focus)
-        return {
-            "status": 1,
-            "message": "Weekly focus Added Successfully",
-            "payload": focus,
-        }
-
-
-class GetWeeklyFocus(Resource):
-    @auth_required(isOptional=True)
-    def get(self, uid, user):
-        # todos = DBHelper.find_all("weekly_todos", {"uid": uid})
-        focus = DBHelper.find_all(
-            "weekly-focus",
-            {"user_id": uid},
-            select_fields=["id", "focus"],
-        )
-        return {"status": 1, "payload": focus}
-
-
 class AddSmartNote(Resource):
     @auth_required(isOptional=True)
     def post(self, uid, user):
@@ -923,8 +903,13 @@ class AddSmartNote(Resource):
         members = inputData.get("members", "")
         uid = inputData.get("userId", "")
         frontend_timing = inputData.get("timing")
-        source = inputData.get("source", "planner")  # default source
+        source = inputData.get("source", "planner")
+        email = inputData.get("email", "")
 
+        # Detect #
+        # contains_channel = "#" in full_text
+
+        # Extract datetime
         if frontend_timing:
             try:
                 parsed_datetime = datetime.fromisoformat(frontend_timing)
@@ -934,23 +919,33 @@ class AddSmartNote(Resource):
         else:
             parsed_datetime = extract_datetime(full_text)
 
-        DBHelper.insert(
-            "smartnotes",
-            user_id=uid,
-            note=full_text,
-            timing=parsed_datetime,
-            members=members,
-            source=source,
-        )
-
-        try:
-            create_calendar_event(
+        if uid:
+            # Store in smartnotes
+            DBHelper.insert(
+                "smartnotes",
                 user_id=uid,
-                title=full_text,
-                start_dt=parsed_datetime,
+                note=full_text,
+                timing=parsed_datetime,
+                members=members,
+                source=source,
             )
-        except Exception as e:
-            print("Failed to create calendar event:", e)
+            try:
+                create_calendar_event(
+                    user_id=uid,
+                    title=full_text,
+                    start_dt=parsed_datetime,
+                )
+            except Exception as e:
+                print("Failed to create calendar event:", e)
+            if email:
+                try:
+                    send_mention_email(
+                        email=email,
+                        full_text=full_text,
+                        mentioned_by=user.get("user_name") or "a Dockly user",
+                    )
+                except Exception as e:
+                    print("Failed to send mention email:", e)
 
         return {
             "status": 1,
@@ -959,6 +954,39 @@ class AddSmartNote(Resource):
                 "parsedTiming": parsed_datetime.isoformat(),
             },
         }
+
+
+def send_mention_email(email, full_text, mentioned_by):
+    try:
+        msg = EmailMessage()
+        msg["Subject"] = "You were mentioned on Dockly"
+        msg["From"] = EMAIL_SENDER
+        msg["To"] = email
+
+        message_body = f"""
+Hi there,
+
+You were mentioned by *{mentioned_by}* in a Smart Note.
+
+Note Content:
+"{full_text}"
+
+Kindly check Dockly for more details.
+
+Best regards,  
+Dockly Team
+        """.strip()
+
+        msg.set_content(message_body)
+
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(EMAIL_SENDER, EMAIL_PASSWORD)
+            server.send_message(msg)
+
+        return {"status": 1, "email": email}
+    except Exception as e:
+        return {"status": 0, "email": email, "error": str(e)}
 
 
 class GetSmartNotes(Resource):
@@ -1027,3 +1055,35 @@ class FrequentNotes(Resource):
                         break
 
         return top_notes, 200
+
+
+class AddWeeklyFocus(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        data = request.get_json(silent=True)
+        print(f"==>> data: {data}")
+        id = uniqueId(digit=15, isNum=True)
+
+        focus = {
+            "id": id,
+            "user_id": uid,
+            "focus": data.get("focus", ""),
+        }
+        DBHelper.insert("weekly-focus", return_column="id", **focus)
+        return {
+            "status": 1,
+            "message": "Weekly focus Added Successfully",
+            "payload": focus,
+        }
+
+
+class GetWeeklyFocus(Resource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        # todos = DBHelper.find_all("weekly_todos", {"uid": uid})
+        focus = DBHelper.find_all(
+            "weekly-focus",
+            {"user_id": uid},
+            select_fields=["id", "focus"],
+        )
+        return {"status": 1, "payload": focus}

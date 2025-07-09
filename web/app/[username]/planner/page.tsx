@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useState } from "react";
 import {
@@ -16,11 +15,11 @@ import {
     Col,
     Tag,
     Space,
+    message,
 } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
-import CalendarComponent from "../../../pages/components/customCalendar";
 import { useEffect } from "react";
-import { } from "../../../services/family";
+import { addProject, addTask, getProjects, getTasks, updateTask } from "../../../services/family";
 import dayjs from "dayjs";
 import {
     addEvents,
@@ -35,9 +34,31 @@ import { getCalendarEvents } from "../../../services/google";
 import DocklyLoader from "../../../utils/docklyLoader";
 import { Calendar } from "lucide-react";
 import { showNotification } from "../../../utils/notification";
-import { FamilyTasks } from "../../../pages/family-hub/family-hub";
+
+import MiniCalendar from "../../../pages/components/miniCalendar";
+import CustomCalendar from "../../../pages/components/customCalendar";
+import FamilyTasksComponent from "../../../pages/components/familyTasksProjects";
+
 const { Title, Text } = Typography;
-const { TextArea } = Input;
+
+type Task = {
+    id: number;
+    title: string;
+    assignee: string;
+    type: string;
+    completed: boolean;
+    due: string;
+    dueDate?: string;
+};
+type Project = {
+    color?: string;
+    project_id: string;
+    title: string;
+    description: string;
+    due_date: string;
+    progress: number;
+    tasks: Task[];
+};
 
 const Planner = () => {
     const [events, setEvents] = useState<
@@ -77,21 +98,7 @@ const Planner = () => {
     >([]);
 
 
-    const [projects, setProjects] = useState<
-        {
-            id: string;
-            title: string;
-            category: string;
-            dueDate: string;
-            progress: number;
-            deliverables: {
-                id: string;
-                title: string;
-                status: "complete" | "progress" | "planning" | "todo";
-                dueDate: string;
-            }[];
-        }[]
-    >([]);
+    const [projects, setProjects] = useState<Project[]>([]);
     const [weeklyFocus, setWeeklyFocus] = useState("");
     const [showAddButton, setShowAddButton] = useState(true);
     const [loading, setLoading] = useState(false);
@@ -112,6 +119,11 @@ const Planner = () => {
     >([]);
 
     const [personColors, setPersonColors] = useState<{ [person: string]: { color: string; email: string } }>({});
+
+    // New state for mini calendar integration
+    const [currentDate, setCurrentDate] = useState(new Date());
+    const [view, setView] = useState<"Day" | "Week" | "Month" | "Year">("Week");
+
     const PlannerTitle: React.FC = () => {
         return (
             <div
@@ -161,11 +173,88 @@ const Planner = () => {
             case "high":
                 return "error";
             case "medium":
-                起身: return "warning";
+                return "warning";
             case "low":
                 return "default";
             default:
                 return "default";
+        }
+    };
+
+    // Helper function to format date consistently
+    const formatDateString = (date: Date): string => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    // Helper function to get start and end dates based on view
+    const getDateRange = (date: Date, viewType: string) => {
+        const start = new Date(date);
+        const end = new Date(date);
+
+        switch (viewType) {
+            case "Day":
+                // Same day
+                break;
+            case "Week":
+                // Start of week (Sunday) to end of week (Saturday)
+                const dayOfWeek = start.getDay();
+                start.setDate(start.getDate() - dayOfWeek);
+                end.setDate(start.getDate() + 6);
+                break;
+            case "Month":
+                // Start of month to end of month
+                start.setDate(1);
+                end.setMonth(end.getMonth() + 1);
+                end.setDate(0);
+                break;
+            case "Year":
+                // Start of year to end of year
+                start.setMonth(0, 1);
+                end.setMonth(11, 31);
+                break;
+        }
+
+        return { start, end };
+    };
+
+    // Filter goals based on current view and date
+    const getFilteredGoals = () => {
+        const { start, end } = getDateRange(currentDate, view);
+        const startStr = formatDateString(start);
+        const endStr = formatDateString(end);
+
+        return goals.filter(goal => {
+            return goal.date >= startStr && goal.date <= endStr;
+        });
+    };
+
+    // Filter todos based on current view and date
+    const getFilteredTodos = () => {
+        const { start, end } = getDateRange(currentDate, view);
+        const startStr = formatDateString(start);
+        const endStr = formatDateString(end);
+
+        return todos.filter(todo => {
+            return todo.date >= startStr && todo.date <= endStr;
+        });
+    };
+
+    // Get view title for goals and todos sections
+    const getViewTitle = (type: 'Goals' | 'Tasks') => {
+        switch (view) {
+            case "Day":
+                return `Daily ${type}`;
+            case "Week":
+                return `Weekly ${type}`;
+            case "Month":
+                return `Monthly ${type}`;
+            case "Year":
+                return `Yearly ${type}`;
+            default:
+                return `Weekly ${type}`;
         }
     };
 
@@ -191,14 +280,124 @@ const Planner = () => {
             } catch (err) {
                 showNotification("Error", "Something went wrong", "error");
             } finally {
-                setLoading(false); // ✅ Now inside async flow and will wait
+                setLoading(false);
             }
         }).catch(() => {
-            setLoading(false); // ❗In case validation fails
+            setLoading(false);
         });
     };
 
+    const handleAddProjects = async (project: {
+        title: string;
+        description: string;
+        due_date: string;
+    }) => {
+        setLoading(true);
+        try {
+            await addProject({ ...project, source: 'planner' });
+            // message.success('Project added');
+            fetchProjects();
+        } catch {
+            // message.error('Failed to add project');
+        }
+        setLoading(false);
+    };
 
+    const handleAddTask = async (projectId: string) => {
+        setLoading(true);
+        try {
+            await addTask({
+                project_id: projectId,
+                title: 'New Task',
+                assignee: 'All',
+                type: 'low',
+                due_date: dayjs().format('YYYY-MM-DD'),
+                completed: false,
+                // source: 'planner',
+            });
+            fetchProjects();
+        } catch {
+            message.error('Failed to add task');
+        }
+        setLoading(false);
+    };
+
+    const handleToggleTask = async (projectId: string, taskId: number) => {
+        setLoading(true);
+        const project = projects.find((p) => p.project_id === projectId);
+        const task = project?.tasks.find((t) => t.id === taskId);
+        if (!task) return;
+
+        try {
+            await updateTask({ task_id: taskId, completed: !task.completed });
+            fetchProjects();
+        } catch {
+            message.error('Failed to toggle task');
+        }
+        setLoading(false);
+    };
+
+    const handleUpdateTask = (task: Task): void => {
+        setLoading(true);
+        updateTask({
+            task_id: task.id,
+            title: task.title,
+            due_date: task.dueDate,
+            assignee: task.assignee,
+            type: task.type,
+            // source: 'planner',
+        })
+            .then(() => {
+                message.success('Task updated');
+                fetchProjects();
+            })
+            .catch(() => {
+                message.error('Failed to update task');
+            });
+        setLoading(false);
+    };
+
+    const fetchProjects = async () => {
+        setLoading(true);
+        try {
+            const projRes = await getProjects({ source: 'planner' });
+            const rawProjects = projRes.data.payload.projects || [];
+
+            const projectsWithTasks = await Promise.all(
+                rawProjects.map(async (proj: any) => {
+                    const taskRes = await getTasks({ project_id: proj.project_id });
+                    const rawTasks = taskRes.data.payload.tasks || [];
+
+                    const tasks = rawTasks.map((task: any, i: number): Task => ({
+                        id: typeof task.task_id === 'number' ? task.task_id : parseInt(task.task_id) || i + 1,
+                        title: task.title,
+                        assignee: task.assignee,
+                        type: task.type,
+                        completed: task.completed,
+                        due: task.completed ? 'Completed' : `Due ${dayjs(task.due_date).format('MMM D')}`,
+                        dueDate: task.due_date ? String(task.due_date) : '', // Always a string
+                    }));
+
+                    return {
+                        project_id: proj.project_id,
+                        title: proj.title,
+                        description: proj.description,
+                        due_date: proj.due_date,
+                        color: proj.color || '#667eea',
+                        progress: tasks.length
+                            ? Math.round((tasks.filter((t: Task) => t.completed).length / tasks.length) * 100)
+                            : 0,
+                        tasks,
+                    };
+                })
+            );
+
+            setProjects(projectsWithTasks);
+        } catch (err) {
+            // message.error('Failed to load planner projects');
+        }
+        setLoading(false);
+    };
 
     const handleAddFocus = async () => {
         setLoading(true);
@@ -229,9 +428,8 @@ const Planner = () => {
 
     useEffect(() => {
         getFocus();
+        fetchProjects();
     }, []);
-
-
 
     const handleAddGoal = async () => {
         setLoading(true);
@@ -256,12 +454,13 @@ const Planner = () => {
             } catch (error) {
                 showNotification("Error", "Something went wrong", "error");
             } finally {
-                setLoading(false); // ✅ Ensures it's called after everything
+                setLoading(false);
             }
         }).catch(() => {
-            setLoading(false); // ❗In case validation fails
+            setLoading(false);
         });
     };
+
     const getGoals = async () => {
         setLoading(true);
         try {
@@ -276,7 +475,6 @@ const Planner = () => {
                 time: dayjs(item.time, ["h:mm A", "HH:mm"]).format("h:mm A"),
             }));
 
-            // console.log("Formatted Goals:", formattedGoals);
             setGoals(formattedGoals);
         } catch (error) {
             console.error("Error fetching goals:", error);
@@ -307,12 +505,13 @@ const Planner = () => {
             } catch (error) {
                 showNotification("Error", "Something went wrong", "error");
             } finally {
-                setLoading(false); // ✅ Ensures loading ends after everything
+                setLoading(false);
             }
         }).catch(() => {
-            setLoading(false); // ❗Reset loading if validation fails
+            setLoading(false);
         });
     };
+
     const getTodo = async () => {
         setLoading(true)
         try {
@@ -328,13 +527,13 @@ const Planner = () => {
                 time: dayjs(item.time, ["h:mm A", "HH:mm"]).format("h:mm A"),
             }));
 
-            // console.log("Formatted Todos:", formattedTodos);
             setTodos(formattedTodos);
         } catch (error) {
             console.error("Error fetching todos:", error);
         }
         setLoading(false);
     };
+
     const fetchEvents = async () => {
         try {
             setLoading(true);
@@ -342,8 +541,6 @@ const Planner = () => {
             const rawEvents = response?.data?.payload?.events;
             const connectedAccounts = response?.data?.payload?.connected_accounts || [];
             if (rawEvents) {
-                // localStorage.setItem('calendar', '1');
-                // setStep(5);
                 setPersonColors({ [connectedAccounts[0].userName]: { color: rawEvents[0].account_color, email: connectedAccounts[0].email } });
                 setCalendarEvents(transformEvents(rawEvents));
             }
@@ -360,18 +557,17 @@ const Planner = () => {
             const endDateTime = event.end?.dateTime;
             const creatorEmail = event.creator?.email || 'Unknown';
 
-            // Use dayjs to parse and manipulate time
             const start = startDateTime ? dayjs(startDateTime) : null;
             const end = endDateTime ? dayjs(endDateTime) : (start ? start.add(1, 'hour') : null);
 
             return {
-                id: event.id || index.toString(), // fallback to index if no id
+                id: event.id || index.toString(),
                 title: event.summary || 'No Title',
                 startTime: start ? start.format('hh:mm A') : 'N/A',
                 endTime: end ? end.format('hh:mm A') : 'N/A',
                 date: start ? start.format('YYYY-MM-DD') : 'N/A',
-                person: creatorEmail.split('@')[0], // part before @
-                color: event.account_color || '#10B981', // fallback color
+                person: creatorEmail.split('@')[0],
+                color: event.account_color || '#10B981',
             };
         });
     };
@@ -387,12 +583,13 @@ const Planner = () => {
             setProjects([
                 ...projects,
                 {
-                    id: Date.now().toString(),
+                    project_id: Date.now().toString(),
                     title: values.title,
-                    category: values.category,
-                    dueDate: values.dueDate.format("YYYY-MM-DD"),
+                    description: values.category, // or values.description if you have it
+                    due_date: values.dueDate.format("YYYY-MM-DD"),
+                    color: "#667eea",
                     progress: 0,
-                    deliverables: [],
+                    tasks: [],
                 },
             ]);
             projectForm.resetFields();
@@ -435,13 +632,23 @@ const Planner = () => {
         );
     };
 
-    if (loading) {
-        return <DocklyLoader />;
-    }
     function handleCancelFocus(e: React.MouseEvent<HTMLButtonElement>): void {
         focusForm.resetFields();
         setIsFocusModalVisible(false);
     }
+
+    // Handler for mini calendar date selection
+    const handleDateSelect = (date: Date) => {
+        setCurrentDate(date);
+    };
+
+    if (loading) {
+        return <DocklyLoader />;
+    }
+
+    // Get filtered data based on current view
+    const filteredGoals = getFilteredGoals();
+    const filteredTodos = getFilteredTodos();
 
     return (
         <div
@@ -468,47 +675,41 @@ const Planner = () => {
                     }}
                 >
                     <PlannerTitle />
-                    <Button
+                    {/* <Button
                         type="primary"
                         icon={<PlusOutlined />}
                         onClick={() => setIsEventModalVisible(true)}
                     >
                         Add Event
-                    </Button>
+                    </Button> */}
                 </div>
                 <Row gutter={[8, 8]} style={{ marginBottom: 8 }}>
                     <Col span={16}>
-                        {/* <Card
-                            style={{
-                                borderRadius: 12,
-                                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-                                backgroundColor: "white",
-                                border: "1px solid #e5e7eb",
-                                height: "900px",
-                                overflow: "hidden",
-                            }}
-                        > */}
                         <div
                             style={{
-                                // padding: "12px 16px",
                                 overflowY: "auto",
                                 height: "100%",
                             }}
                         >
-                            <CalendarComponent data={{ events: calendarEvents, meals: [] }} personColors={personColors} source="planner" allowMentions={false} fetchEvents={fetchEvents} />
+                            <CustomCalendar
+                                data={{ events: calendarEvents, meals: [] }}
+                                personColors={personColors}
+                                source="planner"
+                                allowMentions={false}
+                                fetchEvents={fetchEvents}
+                                goals={filteredGoals}
+                                todos={filteredTodos}
+                                onToggleTodo={handleToggleTodo}
+                                onAddGoal={() => setIsGoalModalVisible(true)}
+                                onAddTodo={() => setIsTodoModalVisible(true)}
+                                enabledHashmentions={false}
+                            />
                         </div>
-                        {/* </Card> */}
                     </Col>
                     <Col span={8}>
-                        <Card
-                            title="Weekly Focus"
-                            extra={
-                                <Button
-                                    type="primary"
-                                    icon={<PlusOutlined />}
-                                    onClick={() => setIsFocusModalVisible(true)}
-                                />
-                            }
+                        {/* Mini Calendar Card */}
+                        {/* <Card
+                            title="Mini Calendar"
                             style={{
                                 borderRadius: 12,
                                 boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
@@ -518,53 +719,26 @@ const Planner = () => {
                                 marginBottom: 8,
                                 display: "flex",
                                 flexDirection: "column",
-                                // marginTop: "px",
+                            }}
+                        > */}
+                        <div
+                            style={{
+                                padding: "12px 25px",
+                                // height: "420px",
+                                marginLeft: "-20px",
+                                marginTop: "-13px",
                             }}
                         >
-                            <div
-                                style={{
-                                    padding: "12px 16px",
-                                    overflowY: "auto",
-                                    height: "220px",
-                                    paddingBottom: 24, // ✅ bottom padding
-                                }}
-                            >
-                                {[
-                                    ...focus,
-                                    ...Array(Math.max(3, focus.length + 1) - focus.length).fill(
-                                        {}
-                                    ),
-                                ].map((focusItem, index) => (
-                                    <div
-                                        key={focusItem.id || `empty-focus-${index}`}
-                                        style={{
-                                            backgroundColor: focusItem.focus ? "#e5e7eb" : "#f5f5f5",
-                                            padding: "16px",
-                                            borderRadius: 8,
-                                            marginBottom: 8,
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "space-between",
-                                        }}
-                                    >
-                                        <span
-                                            style={{
-                                                color: focusItem.focus ? "black" : "#9ca3af",
-                                                fontStyle: focusItem.focus ? "normal" : "italic",
-                                                paddingLeft: 6,
-                                            }}
-                                        >
-                                            {focusItem.focus
-                                                ? `${index + 1}. ${focusItem.focus}`
-                                                : `Focus ${index + 1}`}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        </Card>
+                            <MiniCalendar
+                                currentDate={currentDate}
+                                onDateSelect={handleDateSelect}
+                                events={calendarEvents}
+                                view={view}
+                            />
+                        </div>
 
                         <Card
-                            title="Weekly Goals"
+                            title={getViewTitle("Goals")}
                             extra={
                                 <Button
                                     type="primary"
@@ -577,23 +751,24 @@ const Planner = () => {
                                 boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
                                 backgroundColor: "white",
                                 border: "1px solid #e5e7eb",
-                                height: "300px",
+                                height: "330px",
                                 marginBottom: 8,
                                 display: "flex",
                                 flexDirection: "column",
+                                marginTop: "-5px",
                             }}
                         >
                             <div
                                 style={{
-                                    padding: "12px 16px",
+                                    // padding: "12px 16px",
                                     overflowY: "auto",
                                     height: "220px",
-                                    paddingBottom: 24, // ✅ bottom padding
+                                    paddingBottom: 24,
                                 }}
                             >
                                 {[
-                                    ...goals,
-                                    ...Array(Math.max(3, goals.length + 1) - goals.length).fill(
+                                    ...filteredGoals,
+                                    ...Array(Math.max(3, filteredGoals.length + 1) - filteredGoals.length).fill(
                                         {}
                                     ),
                                 ].map((goal, index) => (
@@ -602,7 +777,7 @@ const Planner = () => {
                                         style={{
                                             display: "flex",
                                             alignItems: "flex-start",
-                                            padding: 12,
+                                            padding: 8,
                                             backgroundColor: goal?.id ? "white" : "#f5f5f5",
                                             borderRadius: 8,
                                             borderLeft: goal?.id
@@ -646,7 +821,7 @@ const Planner = () => {
                                                             border: "none",
                                                             backgroundColor: "transparent",
                                                             fontSize: 14,
-                                                            padding: "2px 6px", // ✅ text padding
+                                                            padding: "2px 6px",
                                                         }}
                                                     />
                                                     <Text style={{ fontSize: 12, color: "#6b7280" }}>
@@ -669,9 +844,8 @@ const Planner = () => {
                                 ))}
                             </div>
                         </Card>
-
                         <Card
-                            title="Weekly To-Do List"
+                            title={getViewTitle("Tasks")}
                             extra={
                                 <Button
                                     type="primary"
@@ -684,22 +858,22 @@ const Planner = () => {
                                 boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
                                 backgroundColor: "white",
                                 border: "1px solid #e5e7eb",
-                                height: "350px",
+                                height: "340px",
                                 display: "flex",
                                 flexDirection: "column",
                             }}
                         >
                             <div
                                 style={{
-                                    padding: "12px 16px",
+                                    // padding: "12px 16px",
                                     overflowY: "auto",
                                     height: "220px",
-                                    paddingBottom: 24, // ✅ bottom padding
+                                    paddingBottom: 24,
                                 }}
                             >
                                 {[
-                                    ...todos,
-                                    ...Array(Math.max(3, todos.length + 1) - todos.length).fill(
+                                    ...filteredTodos,
+                                    ...Array(Math.max(3, filteredTodos.length + 1) - filteredTodos.length).fill(
                                         {}
                                     ),
                                 ].map((todo, index) => (
@@ -732,7 +906,7 @@ const Planner = () => {
                                                                 ? "line-through"
                                                                 : "none",
                                                             opacity: todo.completed ? 0.6 : 1,
-                                                            padding: "2px 6px", // ✅ text padding
+                                                            padding: "2px 6px",
                                                         }}
                                                     >
                                                         {todo.text}
@@ -753,7 +927,7 @@ const Planner = () => {
                                                     color: "#9ca3af",
                                                     fontStyle: "italic",
                                                     fontSize: 14,
-                                                    paddingLeft: 6, // ✅ placeholder padding
+                                                    paddingLeft: 6,
                                                 }}
                                             >
                                                 Add To-do {index + 1}
@@ -767,10 +941,20 @@ const Planner = () => {
                 </Row>
                 <Row gutter={[8, 8]}>
                     <Col span={24}>
-                        <FamilyTasks isPlanner={true} />
+                        <FamilyTasksComponent
+                            title="Projects"
+                            projects={projects}
+                            onAddProject={handleAddProjects}
+                            onAddTask={handleAddTask}
+                            onToggleTask={handleToggleTask}
+                            onUpdateTask={handleUpdateTask}
+                            showAssigneeInputInEdit={false}
+                            showAvatarInTask={false}
+                        />
                     </Col>
                 </Row>
 
+                {/* All your existing modals remain the same */}
                 <Modal
                     title="Add New Event"
                     open={isEventModalVisible}
@@ -1109,4 +1293,3 @@ const Planner = () => {
 };
 
 export default Planner;
-

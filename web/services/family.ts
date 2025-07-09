@@ -332,9 +332,9 @@ export async function addProject(params: any) {
   return api.post('/add/project', params);
 }
 
-export async function getProjects() {
+export async function getProjects(params: { source?: string } = {}) {
   return api.get('/get/projects', {
-    params: {},
+    params,
   });
 }
 

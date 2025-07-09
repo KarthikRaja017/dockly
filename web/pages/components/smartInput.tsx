@@ -2,38 +2,63 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Input, Button, Tag, message } from 'antd';
+import { Input, Button, Tag, message, Checkbox } from 'antd';
 import { ArrowRightOutlined } from '@ant-design/icons';
-import { showNotification } from '../../utils/notification';
 import { addSmartNotes, fetchNoteSuggestions } from '../../services/planner';
-import DocklyLoader from '../../utils/docklyLoader';
-
-const familyMembers = ['john', 'emma', 'sarah', 'alex', 'mike'];
 
 interface SmartInputBoxProps {
     allowMentions?: boolean;
+    enableHashMentions?: boolean;
     source?: string;
+    familyMembers?: { name: string; email?: string }[];
+    personColors?: PersonColors;
 }
 
-const SmartInputBox: React.FC<SmartInputBoxProps> = ({ allowMentions = false, source = 'planner' }) => {
+interface PersonData {
+    color: string;
+    email?: string;
+}
+interface PersonColors {
+    [key: string]: PersonData;
+}
+const isValidEmail = (text: string): boolean => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text);
+};
+
+const SmartInputBox: React.FC<SmartInputBoxProps> = ({
+    allowMentions = false,
+    enableHashMentions = false,
+    source = 'planner',
+    personColors = {},
+    familyMembers
+}) => {
     const [newEventText, setNewEventText] = useState('');
     const [showMentions, setShowMentions] = useState(false);
     const [cursorPosition, setCursorPosition] = useState(0);
+    const [mentionQuery, setMentionQuery] = useState('');
     const [frequentNotes, setFrequentNotes] = useState<string[]>([]);
-    const [loading, setLoading] = useState(false);
     const inputRef = useRef<any>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [loading, setLoading] = useState(false);
+    const [hashPosition, setHashPosition] = useState<{ left: number; top: number }>({ left: 0, top: 0 });
+
+    // const familyMembers = ['vini', 'emma', 'sri'];
+    // const memberNames = (familyMembers ?? []).map((m) => m.toLowerCase());
+    const memberNames = (familyMembers ?? []).map((m) => m.name.toLowerCase());
 
     useEffect(() => {
         const uid = localStorage.getItem('userId') || '';
         if (!uid) return;
 
         const fetchSuggestions = async () => {
+            setLoading(true);
             try {
                 const suggestions = await fetchNoteSuggestions(uid, source);
                 setFrequentNotes(suggestions);
             } catch (err) {
                 console.error('Failed to load frequent notes', err);
             }
+            setLoading(false);
         };
 
         fetchSuggestions();
@@ -46,22 +71,34 @@ const SmartInputBox: React.FC<SmartInputBoxProps> = ({ allowMentions = false, so
         setNewEventText(value);
         setCursorPosition(cursor);
 
-        const triggerIndex = value.lastIndexOf('@', cursor - 1);
-        const justTypedAt = triggerIndex !== -1 && cursor === triggerIndex + 1;
+        const match = value.slice(0, cursor).match(/#(\S*)$/);
+        const query = match?.[1] ?? '';
+        const isHashMentionActive = !!match && enableHashMentions;
 
-        if (justTypedAt && !allowMentions) {
-            showNotification(
-                'Mentions not supported here',
-                'To mention family members, please use the Family Hub page.',
-                'warning'
+        if (isHashMentionActive) {
+            const matchedMembers = memberNames.filter((member) =>
+                member.toLowerCase().startsWith(query.toLowerCase())
             );
-        }
 
-        if (
-            allowMentions &&
-            (justTypedAt || (triggerIndex !== -1 && /\s/.test(value[triggerIndex + 1])))
-        ) {
-            setShowMentions(true);
+            if (matchedMembers.length > 0) {
+                setMentionQuery(query);
+                setShowMentions(true);
+
+                setTimeout(() => {
+                    if (inputRef.current && containerRef.current) {
+                        const input = inputRef.current.resizableTextArea?.textArea;
+                        const rect = input.getBoundingClientRect();
+                        const relativeLeft = (cursor - 1) * 7;
+
+                        setHashPosition({
+                            left: relativeLeft,
+                            top: rect.height,
+                        });
+                    }
+                }, 0);
+            } else {
+                setShowMentions(false);
+            }
         } else {
             setShowMentions(false);
         }
@@ -70,9 +107,9 @@ const SmartInputBox: React.FC<SmartInputBoxProps> = ({ allowMentions = false, so
     const handleSelectMention = (mention: string) => {
         const before = newEventText.substring(0, cursorPosition);
         const after = newEventText.substring(cursorPosition);
-        const updatedText = before + mention + ' ' + after;
 
-        setNewEventText(updatedText);
+        const updatedBefore = before.replace(/#\S*$/, `#${mention} `);
+        setNewEventText(updatedBefore + after);
         setShowMentions(false);
 
         setTimeout(() => {
@@ -81,17 +118,32 @@ const SmartInputBox: React.FC<SmartInputBoxProps> = ({ allowMentions = false, so
     };
 
     const handleAddEvent = async () => {
-        if (!newEventText.trim()) return;
         setLoading(true);
+        if (!newEventText.trim()) return;
 
         const uid = localStorage.getItem('userId') || '';
-        const memberMatch = newEventText.match(/@(\w+)/);
-        const memberName = memberMatch ? memberMatch[1] : '';
+
+        const hashMatch = newEventText.match(/#(\S+)/);
+        let memberName = '';
+        let emailId = '';
+
+        if (hashMatch && hashMatch[1]) {
+            const hashText = hashMatch[1];
+
+            if (isValidEmail(hashText)) {
+                emailId = hashText;
+            } else if (memberNames.includes(hashText.toLowerCase())) {
+                memberName = hashText;
+            }
+        }
+
+        // console.log('🔵 emailId:', emailId);
 
         try {
             await addSmartNotes({
                 note: newEventText,
                 members: memberName,
+                email: emailId,
                 userId: uid,
                 source: source,
             });
@@ -105,75 +157,23 @@ const SmartInputBox: React.FC<SmartInputBoxProps> = ({ allowMentions = false, so
         setLoading(false);
     };
 
-    if (loading) {
-        return <DocklyLoader />;
-    }
+    const filteredMembers = memberNames.filter((member) =>
+        member.toLowerCase().startsWith(mentionQuery.toLowerCase())
+    );
 
     return (
         <div style={{ marginBottom: '16px' }}>
-            <div style={{ position: 'relative', display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <Input
-                    ref={inputRef}
-                    value={newEventText}
-                    onChange={handleInputChange}
-                    onPressEnter={handleAddEvent}
-                    placeholder="Try: 'Soccer practice for Emma next Monday at 4pm' or 'Family dinner tomorrow @6pm'"
-                    style={{
-                        borderRadius: 10,
-                        padding: '14px 16px',
-                        fontSize: 14,
-                        flex: 1,
-                        backgroundColor: '#fff',
-                        border: '1px solid #d1d5db',
-                    }}
-                />
-                <Button
-                    type="primary"
-                    shape="circle"
-                    icon={<ArrowRightOutlined />}
-                    onClick={handleAddEvent}
-                    style={{
-                        height: 44,
-                        width: 44,
-                        fontSize: 16,
-                        backgroundColor: '#3b82f6',
-                        borderColor: '#3b82f6',
-                    }}
-                />
-
-                {allowMentions && showMentions && (
-                    <div
-                        style={{
-                            position: 'absolute',
-                            top: 50,
-                            left: 10,
-                            background: '#fff',
-                            border: '1px solid #ccc',
-                            borderRadius: 6,
-                            padding: '4px 8px',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                            zIndex: 10,
-                        }}
-                    >
-                        {familyMembers.map((member) => (
-                            <div
-                                key={member}
-                                onClick={() => handleSelectMention(`@${member}`)}
-                                style={{
-                                    padding: '6px 8px',
-                                    cursor: 'pointer',
-                                    fontSize: 13,
-                                    color: '#333',
-                                }}
-                            >
-                                @{member}
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', fontSize: 11, color: '#6b7280', marginTop: 8 }}>
+            {/* Try Suggestions */}
+            <div
+                style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '6px',
+                    fontSize: 11,
+                    color: '#6b7280',
+                    marginBottom: 8,
+                }}
+            >
                 <span style={{ fontWeight: 600 }}>Try:</span>
                 {frequentNotes.map((example, index) => (
                     <Tag
@@ -190,10 +190,128 @@ const SmartInputBox: React.FC<SmartInputBoxProps> = ({ allowMentions = false, so
                     </Tag>
                 ))}
             </div>
+
+            {/* Input + Button */}
+            <div
+                ref={containerRef}
+                style={{ position: 'relative', display: 'flex', gap: '8px', alignItems: 'center' }}
+            >
+                <Input
+                    ref={inputRef}
+                    value={newEventText}
+                    onChange={handleInputChange}
+                    onPressEnter={handleAddEvent}
+                    placeholder="Try: 'Meet with #emma or #name@email.com tomorrow 5pm'"
+                    style={{
+                        borderRadius: 10,
+                        padding: '14px 16px',
+                        fontSize: 14,
+                        flex: 1,
+                        backgroundColor: '#fff',
+                        border: '1px solid #d1d5db',
+                        caretColor: 'black'
+                    }}
+
+                />
+                <Button
+                    type="primary"
+                    shape="circle"
+                    icon={<ArrowRightOutlined />}
+                    onClick={handleAddEvent}
+                    style={{
+                        height: 44,
+                        width: 44,
+                        fontSize: 16,
+                        backgroundColor: '#3b82f6',
+                        borderColor: '#3b82f6',
+                    }}
+                    loading={loading}
+                />
+
+                {showMentions && (
+                    <div
+                        style={{
+                            position: 'absolute',
+                            top: hashPosition.top + 53,
+                            left: hashPosition.left + 230,
+                            background: '#fff',
+                            border: '1px solid #ccc',
+                            borderRadius: 6,
+                            padding: '4px 8px',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                            zIndex: 10,
+                            minWidth: 200,
+                        }}
+                    >
+                        {filteredMembers.map((member) => (
+                            <div
+                                key={member}
+                                onClick={() => handleSelectMention(member)}
+                                style={{
+                                    padding: '6px 8px',
+                                    cursor: 'pointer',
+                                    fontSize: 13,
+                                    color: '#333',
+                                }}
+                            >
+                                #{member}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* Connected Account Section */}
+            <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {Object.entries(personColors).map(([name, { color, email }]) => (
+                    <div
+                        key={email}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            backgroundColor: `${color}1A`, // Light background (10% opacity)
+                            padding: '6px 10px',
+                            borderRadius: '20px',
+                            border: `1px solid ${color}`,
+                            fontSize: 13,
+                            fontWeight: 500,
+                            color: color,
+                            width: "270px"
+                        }}
+                    >
+                        <Checkbox
+                            style={{ marginRight: 8 }}
+                            defaultChecked
+                            onChange={(e) => {
+                                const isChecked = e.target.checked;
+                                message.info(
+                                    `${email} ${isChecked ? 'selected' : 'deselected'} for event creation`
+                                );
+                            }}
+                        />
+                        <div
+                            style={{
+                                width: 22,
+                                height: 22,
+                                backgroundColor: color,
+                                color: 'white',
+                                borderRadius: '50%',
+                                textAlign: 'center',
+                                lineHeight: '22px',
+                                fontWeight: 600,
+                                marginRight: 8,
+                                flexShrink: 0,
+                            }}
+                        >
+                            {name[0]}
+                        </div>
+                        {email}
+                    </div>
+                ))}
+            </div>
         </div>
     );
+
 };
 
 export default SmartInputBox;
-
-
