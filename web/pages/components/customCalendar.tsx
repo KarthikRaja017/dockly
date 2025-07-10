@@ -8,6 +8,8 @@ import { addEvents } from "../../services/planner";
 import { showNotification } from "../../utils/notification";
 import DocklyLoader from "../../utils/docklyLoader";
 import { addEvent } from "../../services/google";
+import { PRIMARY_COLOR } from "../../app/comman";
+import { useCurrentUser } from "../../app/userContext";
 
 interface Event {
     id: string;
@@ -81,7 +83,13 @@ interface CalendarProps {
     onAddGoal?: () => void;
     onAddTodo?: () => void;
     enabledHashmentions?: boolean;
-    familyMembers?: { name: string; email?: string }[]
+    familyMembers?: { name: string; email?: string }[];
+    onDateChange?: (date: Date) => void;
+    onViewChange?: (view: 'Day' | 'Week' | 'Month' | 'Year') => void;
+    currentDate?: Date;
+    setCurrentDate?: (date: Date) => void;
+    setBackup?: (data: any) => void;
+    backup?: any;
 }
 
 // Default sample data
@@ -213,15 +221,12 @@ const defaultPersonColors: PersonColors = {
     Family: { color: "#10B981", email: "family@example.com" },
 };
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 const { TextArea } = Input;
-const { Option } = Select;
 
 const CustomCalendar: React.FC<CalendarProps> = ({
     data,
     personColors = defaultPersonColors,
-    onAddEvent,
-    onEventClick,
     connectedAccounts = [],
     source,
     allowMentions,
@@ -229,35 +234,26 @@ const CustomCalendar: React.FC<CalendarProps> = ({
     fetchEvents,
     goals = [],
     todos = [],
-    onToggleTodo,
-    onAddGoal,
     familyMembers,
-    onAddTodo
+    onDateChange,
+    onViewChange,
+    currentDate,
+    setCurrentDate,
+    setBackup,
+    backup
 }) => {
-    const [currentDate, setCurrentDate] = useState(new Date());
     const [view, setView] = useState<"Day" | "Week" | "Month" | "Year">("Week");
-    const [newEventText, setNewEventText] = useState("");
     const [isNavigating, setIsNavigating] = useState(false);
     const [hoveredEvent, setHoveredEvent] = useState<string | null>(null);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [isPreviewVisible, setIsPreviewVisible] = useState(false);
-    const [selectedSlot, setSelectedSlot] = useState<{ date: string; time: string } | null>(null);
     const [editingEvent, setEditingEvent] = useState<Event | null>(null);
-    const [previewingEvent, setPreviewingEvent] = useState<Event | null>(null);
+    const [previewingEvent, setPreviewingEvent] = useState<any | null>(null);
     const [allEvents, setAllEvents] = useState<Event[] | null>(null);
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
     const [isAllDay, setIsAllDay] = useState(false);
-
-    const [modalData, setModalData] = useState({
-        title: '',
-        date: '',
-        startTime: '',
-        endTime: '',
-        person: Object.keys(personColors)[0] || 'Family',
-        location: '',
-        description: ''
-    });
+    const user = useCurrentUser();
 
     useEffect(() => {
         if (data?.events) {
@@ -267,14 +263,8 @@ const CustomCalendar: React.FC<CalendarProps> = ({
         }
     }, [data?.events]);
 
-    if (!allEvents) {
-        return (
-            // <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
-            //     <div style={{ fontSize: '64px', marginBottom: '16px' }}>📅</div>
-            //     <p style={{ color: '#6b7280', fontSize: '18px', fontWeight: '500' }}>Loading calendar...</p>
-            // </div>
-            <DocklyLoader />
-        );
+    if (allEvents === null || allEvents.length === 0) {
+        return <DocklyLoader />
     }
 
     const getPersonData = (person: string): PersonData => {
@@ -286,10 +276,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({
         meals: data?.meals || sampleCalendarData.meals
     };
 
-    // Helper function to get person color
-    const getPersonColor = (person: string): string => {
-        return personColors[person]?.color || "#10B981";
-    };
 
     // Helper function to get all person names
     const getPersonNames = (): string[] => {
@@ -353,187 +339,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({
         }
     };
 
-    const parseEventText = (text: string) => {
-        const today = new Date();
-        let eventDate = new Date(today);
-        let eventTime = "12:00 PM";
-        let eventTitle = text;
-        let eventPerson = getPersonNames()[0] || "Family";
-
-        const cleanText = text.toLowerCase().trim();
-
-        const personNames = getPersonNames().map((p) => p.toLowerCase());
-        for (const person of personNames) {
-            if (cleanText.includes(person.toLowerCase())) {
-                eventPerson = getPersonNames().find(p => p.toLowerCase() === person) || eventPerson;
-                break;
-            }
-        }
-
-        const timePatterns = [
-            /(\d{1,2}):(\d{2})\s*(am|pm)/i,
-            /(\d{1,2})\s*(am|pm)/i,
-            /at\s+(\d{1,2}):(\d{2})\s*(am|pm)/i,
-            /at\s+(\d{1,2})\s*(am|pm)/i,
-            /@\s*(\d{1,2}):(\d{2})\s*(am|pm)/i,
-            /@\s*(\d{1,2})\s*(am|pm)/i,
-        ];
-
-        for (const pattern of timePatterns) {
-            const match = cleanText.match(pattern);
-            if (match) {
-                let hours = parseInt(match[1]);
-                const minutes = match[2] ? parseInt(match[2]) : 0;
-                const period = match[3] || match[2];
-
-                if (period && period.toLowerCase() === "pm" && hours !== 12) {
-                    hours += 12;
-                } else if (period && period.toLowerCase() === "am" && hours === 12) {
-                    hours = 0;
-                }
-
-                eventTime = `${hours > 12 ? hours - 12 : hours || 12}:${minutes
-                    .toString()
-                    .padStart(2, "0")} ${hours >= 12 ? "PM" : "AM"}`;
-                break;
-            }
-        }
-
-        const datePatterns = [
-            {
-                pattern:
-                    /\b(next\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i,
-                type: "weekday",
-            },
-            { pattern: /\b(tomorrow)\b/i, type: "tomorrow" },
-            { pattern: /\b(today)\b/i, type: "today" },
-            { pattern: /\b(next\s+week)\b/i, type: "next_week" },
-            { pattern: /\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/, type: "date" },
-            { pattern: /\b(\d{1,2})\/(\d{1,2})\b/, type: "short_date" },
-            {
-                pattern:
-                    /\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})\b/i,
-                type: "month_day",
-            },
-        ];
-
-        for (const { pattern, type } of datePatterns) {
-            const match = cleanText.match(pattern);
-            if (match) {
-                switch (type) {
-                    case "weekday": {
-                        const weekdays = [
-                            "sunday",
-                            "monday",
-                            "tuesday",
-                            "wednesday",
-                            "thursday",
-                            "friday",
-                            "saturday",
-                        ];
-                        const targetDay = weekdays.indexOf(match[2].toLowerCase());
-                        const currentDay = today.getDay();
-                        const isNext = match[1] && match[1].toLowerCase().includes("next");
-
-                        let daysToAdd = targetDay - currentDay;
-                        if (daysToAdd <= 0 || isNext) {
-                            daysToAdd += 7;
-                        }
-
-                        eventDate = new Date(today);
-                        eventDate.setDate(today.getDate() + daysToAdd);
-                        break;
-                    }
-
-                    case "tomorrow":
-                        eventDate = new Date(today);
-                        eventDate.setDate(today.getDate() + 1);
-                        break;
-
-                    case "today":
-                        eventDate = new Date(today);
-                        break;
-
-                    case "next_week":
-                        eventDate = new Date(today);
-                        eventDate.setDate(today.getDate() + 7);
-                        break;
-
-                    case "date":
-                        eventDate = new Date(
-                            parseInt(match[3]),
-                            parseInt(match[1]) - 1,
-                            parseInt(match[2])
-                        );
-                        break;
-
-                    case "short_date":
-                        eventDate = new Date(
-                            today.getFullYear(),
-                            parseInt(match[1]) - 1,
-                            parseInt(match[2])
-                        );
-                        break;
-
-                    case "month_day": {
-                        const months = [
-                            "january",
-                            "february",
-                            "march",
-                            "april",
-                            "may",
-                            "june",
-                            "july",
-                            "august",
-                            "september",
-                            "october",
-                            "november",
-                            "december",
-                        ];
-                        const monthIndex = months.indexOf(match[1].toLowerCase());
-                        eventDate = new Date(
-                            today.getFullYear(),
-                            monthIndex,
-                            parseInt(match[2])
-                        );
-                        break;
-                    }
-                }
-                break;
-            }
-        }
-
-        eventTitle = text
-            .replace(
-                /\b(next\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/gi,
-                ""
-            )
-            .replace(/\b(tomorrow|today|next\s+week)\b/gi, "")
-            .replace(/(\d{1,2}):(\d{2})\s*(am|pm)/gi, "")
-            .replace(/(\d{1,2})\s*(am|pm)/gi, "")
-            .replace(/at\s+(\d{1,2}):(\d{2})\s*(am|pm)/gi, "")
-            .replace(/at\s+(\d{1,2})\s*(am|pm)/gi, "")
-            .replace(/@\s*(\d{1,2}):(\d{2})\s*(am|pm)/gi, "")
-            .replace(/@\s*(\d{1,2})\s*(am|pm)/gi, "")
-            .replace(/\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/g, "")
-            .replace(/\b(\d{1,2})\/(\d{1,2})\b/g, "")
-            .replace(
-                /\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})\b/gi,
-                ""
-            )
-            .replace(new RegExp(`\\b(for|with)\\s+(${getPersonNames().join('|')})\\b`, 'gi'), "")
-            .replace(/\s+/g, " ")
-            .trim();
-
-        return {
-            title: eventTitle || "New Event",
-            startTime: eventTime,
-            date: formatDateString(eventDate),
-            person: eventPerson,
-            color: getPersonColor(eventPerson),
-        };
-    };
-
     const formatDate = (date: Date) => {
         return date.toLocaleDateString("en-US", {
             month: "long",
@@ -577,7 +382,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
 
     const navigateDate = (direction: "prev" | "next") => {
         setIsNavigating(true);
-        const newDate = new Date(currentDate);
+        const newDate = new Date(currentDate ?? new Date());
 
         switch (view) {
             case "Day":
@@ -597,7 +402,13 @@ const CustomCalendar: React.FC<CalendarProps> = ({
         }
 
         setTimeout(() => {
-            setCurrentDate(newDate);
+            if (setCurrentDate) {
+                setCurrentDate(newDate ?? new Date());
+            }
+            // Notify parent component about date change
+            if (onDateChange) {
+                onDateChange(newDate);
+            }
             setIsNavigating(false);
         }, 150);
     };
@@ -610,30 +421,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({
     const getMealsForDate = (date: Date) => {
         const dateStr = formatDateString(date);
         return finalData.meals.filter((meal) => meal.date === dateStr);
-    };
-
-    const handleAddEvent = () => {
-        if (newEventText.trim()) {
-            const parsedEvent = parseEventText(newEventText);
-
-            // Check if the parsed date is in the past
-            if (isPastDate(parsedEvent.date)) {
-                alert("Cannot schedule events in the past. Please select a future date.");
-                return;
-            }
-
-            const newEvent = {
-                ...parsedEvent,
-                id: Date.now().toString(),
-            };
-
-            setAllEvents(prev => [...(prev ?? []), newEvent]);
-
-            if (onAddEvent) {
-                onAddEvent(parsedEvent);
-            }
-            setNewEventText("");
-        }
     };
 
     const handleTimeSlotClick = (date: string, time: string) => {
@@ -667,7 +454,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({
             description: ''
         });
 
-        setSelectedSlot({ date, time });
         setEditingEvent(null);
         setIsModalVisible(true);
     };
@@ -719,16 +505,10 @@ const CustomCalendar: React.FC<CalendarProps> = ({
         return `${newHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
     };
 
-    const convertTo12Hour = (time24h: string): string => {
-        const [hours, minutes] = time24h.split(':').map(Number);
-        const modifier = hours >= 12 ? 'PM' : 'AM';
-        const hours12 = hours % 12 || 12;
-        return `${hours12}:${minutes.toString().padStart(2, '0')} ${modifier}`;
-    };
-
     const getConnectedAccount = (userName: string): ConnectedAccount | null => {
         return connectedAccounts.find(account => account.userName === userName) || null;
     };
+
 
 
     const handleModalSave = () => {
@@ -748,24 +528,32 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     description,
                 } = values;
 
-                const payload = isAllDay
-                    ? {
-                        is_all_day: true,
-                        title,
-                        start_date: startDate.format("YYYY-MM-DD"),
-                        end_date: endDate.format("YYYY-MM-DD"),
-                        location,
-                        description,
-                    }
-                    : {
-                        is_all_day: false,
-                        title,
-                        date: date.format("YYYY-MM-DD"),
-                        start_time: startTime.format("h:mm A"),
-                        end_time: endTime.format("h:mm A"),
-                        location,
-                        description,
-                    };
+                const payload =
+                    isAllDay
+                        ? {
+                            is_all_day: true,
+                            title,
+                            start_date: startDate.format("YYYY-MM-DD"),
+                            end_date: endDate.format("YYYY-MM-DD"),
+                            location,
+                            description,
+                            person,
+                        }
+                        : {
+                            is_all_day: false,
+                            title,
+                            date: date.format("YYYY-MM-DD"),
+                            start_time: startTime.format("h:mm A"),
+                            end_time: endTime.format("h:mm A"),
+                            location,
+                            description,
+                            person,
+                        };
+
+                // 👇 Add ID for editing case only
+                if (editingEvent) {
+                    (payload as any).id = editingEvent.id;
+                }
 
                 try {
                     const res = await addEvent(payload);
@@ -773,7 +561,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
 
                     if (status === 1) {
                         showNotification("Success", message, "success");
-                        if (fetchEvents) fetchEvents();
+                        if (fetchEvents) fetchEvents(); // refresh calendar
                     } else {
                         showNotification("Error", message, "error");
                     }
@@ -792,6 +580,39 @@ const CustomCalendar: React.FC<CalendarProps> = ({
             .catch(() => {
                 setLoading(false);
             });
+    };
+
+    const onEditEvent = (event: any) => {
+
+        const isAllDay =
+            event.start_time === "12:00 AM" && event.end_time === "11:59 PM";
+
+        setEditingEvent(event);
+        setIsAllDay(isAllDay);
+
+        const convertToDayjsTime = (time: string) => {
+            const parsed = dayjs(time, ["h:mm A", "hh:mm A", "H:mm"]);
+            return parsed.isValid() ? parsed : null;
+        };
+
+        form.setFieldsValue({
+            title: event.title || "",
+            location: event.location || "",
+            description: event.description || "",
+            person: event.person || "",
+            ...(isAllDay
+                ? {
+                    startDate: dayjs(event.date),
+                    endDate: dayjs(event.end_date || event.date),
+                }
+                : {
+                    date: dayjs(event.date),
+                    startTime: convertToDayjsTime(event.start_time || event.startTime),
+                    endTime: convertToDayjsTime(event.end_time || event.endTime),
+                }),
+        });
+
+        setIsModalVisible(true);
     };
 
     const parseTimeToMinutes = (timeStr: string) => {
@@ -1120,7 +941,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
     };
 
     const renderWeekView = () => {
-        const weekDays = getWeekDays(currentDate);
+        const weekDays = getWeekDays(currentDate ?? new Date());
         const hours = Array.from({ length: 24 }, (_, i) => i);
 
         return (
@@ -1402,8 +1223,8 @@ const CustomCalendar: React.FC<CalendarProps> = ({
     };
 
     const renderMonthView = () => {
-        const monthDays = getMonthDays(currentDate);
-        const currentMonth = currentDate.getMonth();
+        const monthDays = getMonthDays(currentDate ?? new Date());
+        const currentMonth = (currentDate ?? new Date()).getMonth();
 
         return (
             <div
@@ -1495,10 +1316,10 @@ const CustomCalendar: React.FC<CalendarProps> = ({
     };
 
     const renderDayView = () => {
-        const dayEvents = getEventsForDate(currentDate);
-        const dayMeals = getMealsForDate(currentDate);
-        const dayGoals = getGoalsForDate(currentDate);
-        const dayTodos = getTodosForDate(currentDate);
+        const dayEvents = getEventsForDate(currentDate ?? new Date());
+        // const dayMeals = getMealsForDate(currentDate);
+        // const dayGoals = getGoalsForDate(currentDate);
+        // const dayTodos = getTodosForDate(currentDate);
 
         return (
             <div
@@ -1534,7 +1355,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                         }}
                     >
                         <CalendarIcon size={32} />
-                        {currentDate.toLocaleDateString("en-US", {
+                        {(currentDate ?? new Date()).toLocaleDateString("en-US", {
                             weekday: "long",
                             month: "long",
                             day: "numeric",
@@ -1543,10 +1364,9 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     </div>
                 </div>
 
-                <div
-                    style={{ display: "flex", gap: "20px", flex: 1, overflow: "hidden" }}
-                >
-                    <div style={{ flex: 2 }}>
+                <div style={{ display: "flex", gap: "20px", flex: 1, overflow: "hidden" }}>
+                    {/* Events Section */}
+                    <div style={{ flex: 1 }}>
                         <div
                             style={{
                                 background: "linear-gradient(135deg, #ffffff, #f8fafc)",
@@ -1634,7 +1454,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
     };
 
     const renderYearView = () => {
-        const currentYear = currentDate.getFullYear();
+        const currentYear = (currentDate ?? new Date()).getFullYear();
         const months = [];
 
         for (let i = 0; i < 12; i++) {
@@ -1968,6 +1788,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
     };
 
     // New Preview Modal Component
+
     const EventPreviewModal = () => {
         if (!isPreviewVisible || !previewingEvent) return null;
 
@@ -2030,12 +1851,24 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             fontSize: "16px"
                         }}>
                             <Clock size={18} />
-                            {previewingEvent.startTime}
-                            {previewingEvent.endTime && ` - ${previewingEvent.endTime}`}
+                            {previewingEvent.is_all_day
+                                ? `${new Date(previewingEvent.start_date ?? previewingEvent.date).toLocaleDateString("en-US", {
+                                    weekday: "long",
+                                    month: "long",
+                                    day: "numeric",
+                                    year: "numeric"
+                                })} - ${new Date(previewingEvent.end_date ?? previewingEvent.date).toLocaleDateString("en-US", {
+                                    weekday: "long",
+                                    month: "long",
+                                    day: "numeric",
+                                    year: "numeric"
+                                })}`
+                                : `${previewingEvent.startTime} - ${previewingEvent.endTime}`}
                         </div>
                     </div>
 
                     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                        {/* Person Info */}
                         <div style={{
                             display: "flex",
                             alignItems: "center",
@@ -2069,6 +1902,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             </div>
                         </div>
 
+                        {/* Date Info */}
                         <div style={{
                             display: "flex",
                             alignItems: "center",
@@ -2081,16 +1915,29 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             <CalendarIcon size={20} color="#6b7280" />
                             <div>
                                 <div style={{ fontWeight: "600", color: "#1f2937" }}>
-                                    {new Date(previewingEvent.date).toLocaleDateString("en-US", {
-                                        weekday: "long",
-                                        month: "long",
-                                        day: "numeric",
-                                        year: "numeric",
-                                    })}
+                                    {previewingEvent.is_all_day
+                                        ? `${new Date(previewingEvent.start_date ?? previewingEvent.date).toLocaleDateString("en-US", {
+                                            weekday: "long",
+                                            month: "long",
+                                            day: "numeric",
+                                            year: "numeric"
+                                        })} - ${new Date(previewingEvent.end_date ?? previewingEvent.date).toLocaleDateString("en-US", {
+                                            weekday: "long",
+                                            month: "long",
+                                            day: "numeric",
+                                            year: "numeric"
+                                        })}`
+                                        : new Date(previewingEvent.date).toLocaleDateString("en-US", {
+                                            weekday: "long",
+                                            month: "long",
+                                            day: "numeric",
+                                            year: "numeric"
+                                        })}
                                 </div>
                             </div>
                         </div>
 
+                        {/* Location */}
                         {previewingEvent.location && (
                             <div style={{
                                 display: "flex",
@@ -2110,6 +1957,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             </div>
                         )}
 
+                        {/* Description */}
                         {previewingEvent.description && (
                             <div style={{
                                 padding: "16px",
@@ -2126,6 +1974,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             </div>
                         )}
 
+                        {/* Edit Button */}
                         <div style={{
                             display: "flex",
                             justifyContent: "center",
@@ -2135,7 +1984,10 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             borderTop: "1px solid #e2e8f0"
                         }}>
                             <button
-                                onClick={handleEditFromPreview}
+                                onClick={() => {
+                                    onEditEvent(previewingEvent);
+                                    setIsPreviewVisible(false);
+                                }}
                                 style={{
                                     padding: "12px 24px",
                                     background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
@@ -2321,7 +2173,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
             >
                 <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
                     <button
-                        onClick={() => setCurrentDate(new Date())}
+                        onClick={() => { if (setCurrentDate) setCurrentDate(new Date()); }}
                         style={{
                             padding: "12px 20px",
                             background: "linear-gradient(135deg, #ffffff, #f8fafc)",
@@ -2410,15 +2262,21 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     }}>
                         <CalendarIcon size={28} />
                         {view === "Year"
-                            ? currentDate.getFullYear()
-                            : formatDate(currentDate)}
+                            ? (currentDate ?? new Date()).getFullYear()
+                            : formatDate(currentDate ?? new Date())}
                     </h3>
                 </div>
                 <div style={{ display: "flex", gap: "6px" }}>
 
                     <Select
                         value={view}
-                        onChange={(value) => setView(value)}
+                        onChange={(value) => {
+                            setView(value);
+                            // Notify parent component about view change
+                            if (onViewChange) {
+                                onViewChange(value);
+                            }
+                        }}
                         style={{
                             width: 180,
                             borderRadius: 12,
@@ -2460,7 +2318,8 @@ const CustomCalendar: React.FC<CalendarProps> = ({
 
             {/* Enhanced Quick Add Event */}
             <div style={{ marginTop: '24px' }}>
-                <SmartInputBox source={source} allowMentions={allowMentions} enableHashMentions={enabledHashmentions} familyMembers={familyMembers} personColors={personColors} />
+                <SmartInputBox source={source} allowMentions={allowMentions} enableHashMentions={enabledHashmentions} familyMembers={familyMembers} personColors={personColors}
+                    setBackup={setBackup} backup={backup} />
             </div>
 
             {/* Enhanced Calendar Views */}
@@ -2486,6 +2345,13 @@ const CustomCalendar: React.FC<CalendarProps> = ({
             <Card style={{ marginTop: 16 }}>
                 <Space wrap>
                     <Text strong>Connected Accounts:</Text>
+                    <Tag style={{ cursor: 'pointer', padding: '4px 12px', border: `1px solid ${PRIMARY_COLOR}`, borderRadius: '12px' }}
+                    ><Avatar
+                        size="small"
+                        style={{ backgroundColor: PRIMARY_COLOR, marginRight: 8 }}
+                    >
+                            D
+                        </Avatar> {user.email}</Tag>
                     {Object.entries(personColors).map(([userName, personData]) => {
                         const account = getConnectedAccount(userName);
                         return (
@@ -2531,6 +2397,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             </Popover>
                         );
                     })}
+
                 </Space>
             </Card>
 

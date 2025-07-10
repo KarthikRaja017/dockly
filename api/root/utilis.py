@@ -7,7 +7,10 @@ import uuid
 from flask import request, session
 from datetime import datetime, timedelta
 import requests
+from root.config import CLIENT_ID, CLIENT_SECRET, SCOPE, uri
 from root.db.dbHelper import DBHelper
+from googleapiclient.discovery import build
+from google.oauth2.credentials import Credentials
 
 
 def numGenerator(size=6, chars=string.digits):
@@ -116,3 +119,93 @@ def uniqueId(digit=4, isNum=False, ref={}, prefix=None, suffix=None):
         ref.pop("uid", None)
         DBHelper.insert("uuid", return_column="uid", uid=_id, **ref)
         return _id
+
+
+def create_calendar_event(user_id, title, start_dt, end_dt=None, attendees=None):
+    user_cred = DBHelper.find_one(
+        "connected_accounts",
+        filters={"user_id": user_id},
+        select_fields=["access_token", "refresh_token", "email"],
+    )
+    if not user_cred:
+        raise Exception("No connected Google account found.")
+
+    creds = Credentials(
+        token=user_cred["access_token"],
+        refresh_token=user_cred["refresh_token"],
+        token_uri=uri,
+        client_id=CLIENT_ID,
+        client_secret=CLIENT_SECRET,
+        scopes=SCOPE.split(),
+    )
+
+    service = build("calendar", "v3", credentials=creds)
+
+    if end_dt is None:
+        end_dt = start_dt + timedelta(hours=1)
+
+    event = {
+        "summary": title,
+        "start": {"dateTime": start_dt.isoformat(), "timeZone": "Asia/Kolkata"},
+        "end": {"dateTime": end_dt.isoformat(), "timeZone": "Asia/Kolkata"},
+        "attendees": attendees or [],
+        "guestsCanModify": True,
+        "guestsCanInviteOthers": True,
+        "guestsCanSeeOtherGuests": True,
+    }
+
+    created_event = service.events().insert(calendarId="primary", body=event).execute()
+
+    return created_event.get("id")  # ✅ return only the Google event ID
+
+
+def update_calendar_event(
+    user_id, calendar_event_id, title, start_dt, end_dt=None, attendees=None
+):
+    user_cred = DBHelper.find_one(
+        "connected_accounts",
+        filters={"user_id": user_id},
+        select_fields=["access_token", "refresh_token", "email"],
+    )
+    if not user_cred:
+        raise Exception("No connected Google account found.")
+
+    creds = Credentials(
+        token=user_cred["access_token"],
+        refresh_token=user_cred["refresh_token"],
+        token_uri=uri,
+        client_id=CLIENT_ID,
+        client_secret=CLIENT_SECRET,
+        scopes=SCOPE.split(),
+    )
+
+    service = build("calendar", "v3", credentials=creds)
+
+    if end_dt is None:
+        end_dt = start_dt + timedelta(hours=1)
+
+    # First: Get the existing event from Google
+    existing_event = (
+        service.events().get(calendarId="primary", eventId=calendar_event_id).execute()
+    )
+
+    # Update fields
+    existing_event["summary"] = title
+    existing_event["start"] = {
+        "dateTime": start_dt.isoformat(),
+        "timeZone": "Asia/Kolkata",
+    }
+    existing_event["end"] = {"dateTime": end_dt.isoformat(), "timeZone": "Asia/Kolkata"}
+    existing_event["attendees"] = attendees or []
+    existing_event["guestsCanModify"] = True
+    existing_event["guestsCanInviteOthers"] = True
+    existing_event["guestsCanSeeOtherGuests"] = True
+
+    # Update on Google Calendar
+    updated_event = (
+        service.events()
+        .update(calendarId="primary", eventId=calendar_event_id, body=existing_event)
+        .execute()
+    )
+
+    return updated_event.get("id")  # Optional return

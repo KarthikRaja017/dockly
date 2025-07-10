@@ -689,7 +689,7 @@
 #         return {"status": 1, "message": "Note Deleted Successfully", "payload": {}}
 
 
-from datetime import timedelta, datetime
+from datetime import date, timedelta, datetime
 from email.message import EmailMessage
 import smtplib
 from flask import request
@@ -712,7 +712,6 @@ from root.config import (
 )
 from googleapiclient.discovery import build
 from google.auth.exceptions import GoogleAuthError
-import dateparser
 from datetime import datetime
 from root.google.models import extract_datetime
 
@@ -722,6 +721,8 @@ class AddWeeklyGoals(Resource):
     def post(self, uid, user):
         data = request.get_json(silent=True)
         id = uniqueId(digit=15, isNum=True)
+        backup = data.get("backup", [])
+
         goal = {
             "id": id,
             "user_id": uid,
@@ -733,13 +734,18 @@ class AddWeeklyGoals(Resource):
             "status": Status.ACTIVE.value,
         }
         DBHelper.insert("weekly_goals", return_column="id", **goal)
+
         try:
             start_dt = datetime.strptime(
                 f"{data.get('date', '')} {data.get('time', '')}", "%Y-%m-%d %I:%M %p"
             )
         except ValueError:
             return {"status": 0, "message": "Invalid date/time format", "payload": {}}
-        create_calendar_event(uid, data.get("goal", ""), start_dt)
+
+        # ✅ Only call create_calendar_event if backup is not empty
+        if backup:
+            create_calendar_event(uid, data.get("goal", ""), start_dt)
+
         return {
             "status": 1,
             "message": "Weekly Goal Added Successfully",
@@ -753,6 +759,7 @@ class AddEvents(Resource):
         inputData = request.get_json(silent=True)
         id = inputData.get("id", None)
         unid = uniqueId(digit=15, isNum=True)
+        backup = inputData.get("backup", [])
 
         title = inputData.get("title", "")
         date = inputData.get("date", "")
@@ -783,7 +790,8 @@ class AddEvents(Resource):
             start_dt = datetime.strptime(f"{date} {time}", "%Y-%m-%d %I:%M %p")
         except ValueError:
             return {"status": 0, "message": "Invalid date/time format", "payload": {}}
-        create_calendar_event(uid, title, start_dt)
+        if backup:
+            create_calendar_event(uid, title, start_dt)
         # try:
         #     create_calendar_event(uid, title, start_dt)
         # except GoogleAuthError as e:
@@ -822,6 +830,7 @@ class AddWeeklyTodos(Resource):
     def post(self, uid, user):
         data = request.get_json(silent=True)
         id = uniqueId(digit=15, isNum=True)
+        backup = data.get("backup", [])
 
         todo = {
             "id": id,
@@ -839,7 +848,10 @@ class AddWeeklyTodos(Resource):
             )
         except ValueError:
             return {"status": 0, "message": "Invalid date/time format", "payload": {}}
-        create_calendar_event(uid, data.get("text", ""), start_dt)
+
+        if backup:
+            create_calendar_event(uid, data.get("text", ""), start_dt)
+
         return {
             "status": 1,
             "message": "Weekly todo Added Successfully",
@@ -866,7 +878,11 @@ def create_calendar_event(user_id, title, start_dt, end_dt=None, attendees=None)
         select_fields=["access_token", "refresh_token", "email"],
     )
     if not user_cred:
-        raise Exception("No connected Google account found.")
+        return {
+            "status": 0,
+            "message": "No connected account found for user",
+            "payload": {},
+        }
 
     creds = Credentials(
         token=user_cred["access_token"],
@@ -1061,7 +1077,6 @@ class AddWeeklyFocus(Resource):
     @auth_required(isOptional=True)
     def post(self, uid, user):
         data = request.get_json(silent=True)
-        print(f"==>> data: {data}")
         id = uniqueId(digit=15, isNum=True)
 
         focus = {
@@ -1087,3 +1102,142 @@ class GetWeeklyFocus(Resource):
             select_fields=["id", "focus"],
         )
         return {"status": 1, "payload": focus}
+
+
+class GetPlanner(Resource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        data = DBHelper.find_multi(
+            {
+                "weekly_todos": {
+                    "filters": {"user_id": uid},
+                    "select_fields": [
+                        "id",
+                        "text",
+                        "date",
+                        "time",
+                        "completed",
+                        "priority",
+                    ],
+                },
+                "weekly_goals": {
+                    "filters": {"user_id": uid},
+                    "select_fields": [
+                        "id",
+                        "goal",
+                        "date",
+                        "time",
+                        "priority",
+                        "goal_status",
+                        "status",
+                    ],
+                },
+                "events": {
+                    "filters": {"user_id": uid},
+                    "select_fields": [
+                        "id",
+                        "title",
+                        "date",
+                        "end_date",
+                        "start_time",
+                        "end_time",
+                        "description",
+                        "location",
+                        # "attendees",
+                    ],
+                },
+            }
+        )
+        allEvents = []
+        # Todos
+        todos = data.get("weekly_todos", [])
+        for todo in todos:
+            allEvents.append(
+                {
+                    "id": todo.get("id"),
+                    "summary": todo.get("text"),
+                    "date": (
+                        todo.get("date").isoformat()
+                        if isinstance(todo.get("date"), (datetime, date))
+                        else todo.get("date")
+                    ),
+                    "startTime": todo.get("time"),
+                    "endTime": (
+                        (
+                            datetime.strptime(todo.get("time"), "%I:%M %p")
+                            + timedelta(hours=1)
+                        ).strftime("%I:%M %p")
+                        if todo.get("time")
+                        else "N/A"
+                    ),
+                    "description": None,
+                    "location": None,
+                    "attendees": user.get("email") if user else None,
+                    "person": user.get("email") if user else None,
+                }
+            )
+
+        # Goals
+        goals = data.get("weekly_goals", [])
+        for goal in goals:
+            allEvents.append(
+                {
+                    "id": goal.get("id"),
+                    "summary": goal.get("goal"),
+                    "date": (
+                        goal.get("date").isoformat()
+                        if isinstance(goal.get("date"), (datetime, date))
+                        else goal.get("date")
+                    ),
+                    "startTime": goal.get("time"),
+                    "endTime": (
+                        (
+                            datetime.strptime(goal.get("time"), "%I:%M %p")
+                            + timedelta(hours=1)
+                        ).strftime("%I:%M %p")
+                        if goal.get("time")
+                        else "N/A"
+                    ),
+                    "description": None,
+                    "location": None,
+                    "attendees": user.get("email") if user else None,
+                    "person": user.get("email") if user else None,
+                }
+            )
+
+        # Events
+        existingEvents = data.get("events", [])
+        for event in existingEvents:
+            allEvents.append(
+                {
+                    "id": event.get("id"),
+                    "summary": event.get("title"),
+                    "date": (
+                        event.get("date").isoformat()
+                        if isinstance(event.get("date"), (datetime, date))
+                        else event.get("date")
+                    ),
+                    "startTime": event.get("start_time"),
+                    "endTime": (
+                        (
+                            datetime.strptime(event.get("end_time"), "%I:%M %p")
+                            + timedelta(hours=1)
+                        ).strftime("%I:%M %p")
+                        if event.get("end_time")
+                        else "N/A"
+                    ),
+                    "description": event.get("description"),
+                    "location": event.get("location"),
+                    "attendees": event.get("attendees") or user.get("email"),
+                    "person": user.get("email") if user else None,
+                }
+            )
+        return {
+            "status": 1,
+            "message": "Planner data fetched successfully",
+            "payload": {
+                "todos": todos,
+                "goals": goals,
+                "events": allEvents,
+            },
+        }

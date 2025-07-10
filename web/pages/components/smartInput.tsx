@@ -2,16 +2,19 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Input, Button, Tag, message, Checkbox } from 'antd';
-import { ArrowRightOutlined } from '@ant-design/icons';
+import { Input, Button, Tag, message, Checkbox, Typography } from 'antd';
+import { ArrowRightOutlined, ChromeOutlined, EditOutlined } from '@ant-design/icons';
 import { addSmartNotes, fetchNoteSuggestions } from '../../services/planner';
-
+import { PRIMARY_COLOR } from '../../app/comman';
+const { Text } = Typography;
 interface SmartInputBoxProps {
     allowMentions?: boolean;
     enableHashMentions?: boolean;
     source?: string;
     familyMembers?: { name: string; email?: string }[];
     personColors?: PersonColors;
+    setBackup?: (data: any) => void;
+    backup?: any;
 }
 
 interface PersonData {
@@ -30,7 +33,9 @@ const SmartInputBox: React.FC<SmartInputBoxProps> = ({
     enableHashMentions = false,
     source = 'planner',
     personColors = {},
-    familyMembers
+    setBackup,
+    familyMembers,
+    backup
 }) => {
     const [newEventText, setNewEventText] = useState('');
     const [showMentions, setShowMentions] = useState(false);
@@ -161,6 +166,18 @@ const SmartInputBox: React.FC<SmartInputBoxProps> = ({
         member.toLowerCase().startsWith(mentionQuery.toLowerCase())
     );
 
+    const handleCheckboxChange = (email: string, checked: boolean) => {
+        if (checked) {
+            if (setBackup) {
+                setBackup((prev: any) => Array.isArray(prev) ? [...prev, email] : [email]);
+            }
+        } else {
+            if (setBackup) {
+                setBackup((prev: any) => Array.isArray(prev) ? prev.filter((e) => e !== email) : []);
+            }
+        }
+    };
+
     return (
         <div style={{ marginBottom: '16px' }}>
             {/* Try Suggestions */}
@@ -262,52 +279,54 @@ const SmartInputBox: React.FC<SmartInputBoxProps> = ({
             </div>
 
             {/* Connected Account Section */}
-            <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {Object.entries(personColors).map(([name, { color, email }]) => (
-                    <div
-                        key={email}
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            backgroundColor: `${color}1A`, // Light background (10% opacity)
-                            padding: '6px 10px',
-                            borderRadius: '20px',
-                            border: `1px solid ${color}`,
-                            fontSize: 13,
-                            fontWeight: 500,
-                            color: color,
-                            width: "270px"
-                        }}
-                    >
-                        <Checkbox
-                            style={{ marginRight: 8 }}
-                            defaultChecked
-                            onChange={(e) => {
-                                const isChecked = e.target.checked;
-                                message.info(
-                                    `${email} ${isChecked ? 'selected' : 'deselected'} for event creation`
-                                );
-                            }}
-                        />
+            <div style={{ marginTop: '12px', display: 'flex', gap: '10px' }}>
+                <Text type="secondary" style={{ fontSize: 12, marginTop: 8 }}>
+                    Backup Account :
+                </Text>
+                {Object.entries(personColors).map(([name, { color, email }]) => {
+                    const isChecked = backup?.includes(email);
+                    return (
                         <div
+                            key={email}
                             style={{
-                                width: 22,
-                                height: 22,
-                                backgroundColor: color,
-                                color: 'white',
-                                borderRadius: '50%',
-                                textAlign: 'center',
-                                lineHeight: '22px',
-                                fontWeight: 600,
-                                marginRight: 8,
-                                flexShrink: 0,
+                                display: 'flex',
+                                alignItems: 'center',
+                                backgroundColor: `${color}1A`,
+                                padding: '6px 10px',
+                                borderRadius: '20px',
+                                border: `1px solid ${color}`,
+                                fontSize: 13,
+                                fontWeight: 500,
+                                color: color,
                             }}
                         >
-                            {name[0]}
+                            <Checkbox
+                                style={{ marginRight: 8 }}
+                                checked={isChecked}
+                                // defaultChecked
+                                onChange={(e) => handleCheckboxChange(email ?? '', e.target.checked)}
+                            />
+                            <div
+                                style={{
+                                    width: 22,
+                                    height: 22,
+                                    backgroundColor: color,
+                                    color: 'white',
+                                    borderRadius: '50%',
+                                    textAlign: 'center',
+                                    lineHeight: '22px',
+                                    fontWeight: 600,
+                                    marginRight: 8,
+                                    flexShrink: 0,
+                                }}
+                            >
+                                {name[0]}
+                            </div>
+                            {email}
+                            <EditOutlined style={{ marginLeft: 4, color: color, cursor: 'pointer' }} />
                         </div>
-                        {email}
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         </div>
     );

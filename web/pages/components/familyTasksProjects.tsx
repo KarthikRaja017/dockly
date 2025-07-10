@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -91,29 +92,57 @@ const FamilyTasksComponent: React.FC<Props> = ({
     const [editingTask, setEditingTask] = useState<{
         projectId: string;
         task: Task | null;
-    }>({
-        projectId: '',
-        task: null,
-    });
+    }>({ projectId: '', task: null });
+
+    const filledProjects = projects.filter(p => p.title.trim());
+    const showTemplateProjects = filledProjects.length < 3;
+
+    // Template projects with empty tasks
+    const templateProjects = Array.from({ length: 3 - filledProjects.length }, (_, i) => ({
+        project_id: `template-${i + 1}`,
+        title: '',
+        description: '',
+        due_date: '',
+        progress: 0,
+        tasks: [],
+    }));
+
+    // Template tasks for empty projects
+    const getTemplateTasks = (projectId: string): Task[] => {
+        return [
+            {
+                id: 1,
+                title: '',
+                assignee: 'all',
+                type: 'default',
+                completed: false,
+                due: '',
+            },
+            {
+                id: 2,
+                title: '',
+                assignee: 'all',
+                type: 'default',
+                completed: false,
+                due: '',
+            },
+            {
+                id: 3,
+                title: '',
+                assignee: 'all',
+                type: 'default',
+                completed: false,
+                due: '',
+            }
+        ];
+    };
+
+    const displayedProjects = [...filledProjects, ...(showTemplateProjects ? templateProjects : [])];
 
     return (
         <Card style={{ padding: 24, borderRadius: 12 }}>
-            <div
-                style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    marginBottom: 24,
-                }}
-            >
-                <h2
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        fontSize: 20,
-                        fontWeight: 600,
-                    }}
-                >
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
+                <h2 style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 20, fontWeight: 600 }}>
                     <CheckSquareOutlined /> {title}
                 </h2>
                 <Button
@@ -126,229 +155,135 @@ const FamilyTasksComponent: React.FC<Props> = ({
                 </Button>
             </div>
 
-            <div
-                style={{
-                    display: 'grid',
-                    gridTemplateColumns:
-                        'repeat(auto-fit, minmax(300px, 1fr))',
-                    gap: 24,
-                }}
-            >
-                {Array.isArray(projects) && projects.length > 0 ? (
-                    projects.map((proj) => (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24 }}>
+                {displayedProjects.map((proj) => {
+                    // Use template tasks for empty projects, otherwise use the project's tasks
+                    const tasksToDisplay = proj.title ?
+                        proj.tasks :
+                        getTemplateTasks(proj.project_id);
+
+                    return (
                         <Card
                             key={proj.project_id}
-                            title={
-                                <div
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 8,
-                                    }}
-                                >
-                                    <div
-                                        style={{
-                                            width: 8,
-                                            height: 8,
-                                            borderRadius: '50%',
-                                            background: '#667eea',
-                                        }}
-                                    />
-                                    <span>{proj.title}</span>
-                                </div>
-                            }
+                            title={<span>{proj.title || 'Add Project'}</span>}
                             style={{
                                 borderRadius: 12,
+                                border: '1px solid rgb(226, 232, 240)',
+                                background: '#fff',
                                 minHeight: 360,
                                 display: 'flex',
                                 flexDirection: 'column',
-                                justifyContent: 'space-between',
-                                border: '1px solid #e2e8f0',
-                                background: '#fff',
+                                justifyContent: 'space-between'
                             }}
-                            styles={{ body: { padding: 20 } }}
+                            bodyStyle={{ padding: 20, flex: 1, display: 'flex', flexDirection: 'column' }}
                         >
-                            <div
-                                style={{
+                            <div style={{ flex: 1 }}>
+                                {/* Description box - shows empty state for template projects */}
+                                <div style={{
                                     fontSize: 13,
-                                    color: '#64748b',
+                                    color: proj.description ? '#64748b' : '#cbd5e1',
                                     marginBottom: 8,
-                                }}
-                            >
-                                {proj.description}
-                            </div>
-                            <Tag color="blue">
-                                Due: {dayjs(proj.due_date).format('MMM D, YYYY')}
-                            </Tag>
-                            <div>
-                                <div
-                                    style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                    }}
-                                >
-                                    <span
-                                        style={{
-                                            fontSize: 12,
-                                            color: '#64748b',
-                                        }}
-                                    >
-                                        Progress
-                                    </span>
-                                    <span
-                                        style={{
-                                            fontSize: 12,
-                                            fontWeight: 600,
-                                        }}
-                                    >
-                                        {proj.progress}%
-                                    </span>
+                                    minHeight: 20,
+                                    fontStyle: proj.description ? 'normal' : 'italic'
+                                }}>
+                                    {proj.description || 'Project description...'}
                                 </div>
-                                <Progress
-                                    percent={proj.progress}
-                                    showInfo={false}
-                                    strokeColor="#667eea"
-                                />
-                            </div>
 
-                            <div
-                                style={{
-                                    maxHeight: 160,
-                                    overflowY: 'auto',
-                                    marginTop: 12,
-                                }}
-                            >
-                                {proj.tasks.map((task) => (
-                                    <div
-                                        key={task.id}
-                                        style={{
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center',
-                                            padding: '10px 12px',
-                                            background: task.completed
-                                                ? '#f0fdf4'
-                                                : '#f8fafc',
-                                            borderRadius: 8,
-                                            marginBottom: 8,
-                                            border: `1px solid ${task.completed
-                                                ? '#dcfce7'
-                                                : '#e2e8f0'
-                                                }`,
-                                        }}
-                                    >
+                                {/* Due date tag - only shown for real projects */}
+                                {proj.due_date && (
+                                    <Tag color="blue">
+                                        Due: {proj.due_date ? dayjs(proj.due_date).format('MMM D, YYYY') : ''}
+                                    </Tag>
+                                )}
+
+                                {/* Progress bar - only shown for real projects with progress */}
+                                {proj.progress > 0 && (
+                                    <>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
+                                            <span style={{ fontSize: 12, color: '#64748b' }}>Progress</span>
+                                            <span style={{ fontSize: 12, fontWeight: 600 }}>{proj.progress}%</span>
+                                        </div>
+                                        <Progress percent={proj.progress} showInfo={false} strokeColor="#667eea" />
+                                    </>
+                                )}
+
+                                {/* Tasks list */}
+                                <div style={{ maxHeight: 160, overflowY: 'auto', marginTop: 12 }}>
+                                    {tasksToDisplay.map((task) => (
                                         <div
+                                            key={task.id}
                                             style={{
                                                 display: 'flex',
+                                                justifyContent: 'space-between',
                                                 alignItems: 'center',
-                                                gap: 10,
-                                                flex: 1,
+                                                padding: '10px 12px',
+                                                background: task.completed ? '#f0fdf4' : '#f8fafc',
+                                                borderRadius: 8,
+                                                marginBottom: 8,
+                                                border: `1px solid ${task.completed ? '#dcfce7' : '#e2e8f0'}`,
                                             }}
                                         >
-                                            <Checkbox
-                                                checked={task.completed}
-                                                onChange={() =>
-                                                    onToggleTask?.(
-                                                        proj.project_id,
-                                                        task.id
-                                                    )
-                                                }
-                                                style={{ transform: 'scale(0.9)' }}
-                                            />
-                                            <div style={{ flex: 1 }}>
-                                                <div
-                                                    style={{
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, cursor: "pointer" }} onClick={() => proj.title ? onAddTask?.(proj.project_id) : setModalVisible(true)}>
+                                                <Checkbox
+                                                    checked={task.completed}
+                                                    onChange={() => proj.title && onToggleTask?.(proj.project_id, task.id)}
+                                                    style={{ transform: 'scale(0.9)' }}
+                                                />
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{
                                                         fontSize: 13,
                                                         fontWeight: 500,
-                                                        textDecoration: task.completed
-                                                            ? 'line-through'
-                                                            : 'none',
-                                                        color: task.completed
-                                                            ? '#6b7280'
-                                                            : '#1e293b',
-                                                        marginBottom: 2,
-                                                    }}
-                                                >
-                                                    {task.title}
-                                                </div>
-                                                <div
-                                                    style={{
-                                                        fontSize: 11,
-                                                        color: '#94a3b8',
-                                                        display: 'flex',
-                                                        gap: 6,
-                                                    }}
-                                                >
-                                                    <div
-                                                        style={{
-                                                            width: 4,
-                                                            height: 4,
-                                                            borderRadius: '50%',
-                                                            backgroundColor:
-                                                                priorityColor[task.type] ||
-                                                                priorityColor.default,
-                                                        }}
-                                                    />
-                                                    {task.due}
+                                                        color: !task.title ? '#cbd5e1' : '#1e293b',
+                                                        fontStyle: !task.title ? 'italic' : 'normal'
+                                                    }}>
+                                                        {task.title || 'New task'}
+                                                    </div>
+                                                    {task.due && (
+                                                        <div style={{ fontSize: 11, color: '#94a3b8' }}>
+                                                            {task.due}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
-                                        </div>
-                                        <div
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: 8,
-                                            }}
-                                        >
-                                            {showAvatarInTask && (
-                                                <Avatar
-                                                    size={24}
-                                                    style={{
-                                                        background:
-                                                            priorityColor[task.type],
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                {showAvatarInTask && (
+                                                    <Avatar
+                                                        size={24}
+                                                        style={{
+                                                            background: priorityColor[task.type],
+                                                            color: '#fff',
+                                                            fontSize: 12
+                                                        }}
+                                                    >
+                                                        {task.assignee ? task.assignee[0].toUpperCase() : '?'}
+                                                    </Avatar>
+                                                )}
+                                                <EditOutlined
+                                                    onClick={() => {
+                                                        setEditingTask({ projectId: proj.project_id, task });
+                                                        setEditTaskModal(true);
                                                     }}
-                                                >
-                                                    {task.assignee[0]}
-                                                </Avatar>
-                                            )}
-                                            <EditOutlined
-                                                onClick={() => {
-                                                    setEditingTask({
-                                                        projectId: proj.project_id,
-                                                        task,
-                                                    });
-                                                    setEditTaskModal(true);
-                                                }}
-                                                style={{
-                                                    fontSize: 14,
-                                                    cursor: 'pointer',
-                                                    color: '#94a3b8',
-                                                }}
-                                            />
+                                                    style={{ fontSize: 14, cursor: 'pointer', color: '#94a3b8' }}
+                                                />
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
                             </div>
 
                             <div style={{ textAlign: 'right' }}>
                                 <Button
                                     type="link"
                                     size="small"
-                                    onClick={() =>
-                                        onAddTask?.(proj.project_id)
-                                    }
+                                    onClick={() => proj.title ? onAddTask?.(proj.project_id) : setModalVisible(true)}
                                     style={{ fontWeight: 500 }}
                                 >
-                                    + Add task
+                                    + {proj.title ? 'Add task' : 'Add project'}
                                 </Button>
                             </div>
                         </Card>
-                    ))
-                ) : (
-                    <div style={{ color: '#999', textAlign: 'center' }}>
-                        No projects available.
-                    </div>
-                )}
+                    );
+                })}
             </div>
 
             {/* Add Project Modal */}
@@ -359,11 +294,7 @@ const FamilyTasksComponent: React.FC<Props> = ({
                     if (newProject.title && onAddProject) {
                         onAddProject(newProject);
                         setModalVisible(false);
-                        setNewProject({
-                            title: '',
-                            description: '',
-                            due_date: '',
-                        });
+                        setNewProject({ title: '', description: '', due_date: '' });
                     }
                 }}
                 okText="Add Project"
@@ -373,43 +304,22 @@ const FamilyTasksComponent: React.FC<Props> = ({
                     <Input
                         placeholder="Project Name"
                         value={newProject.title}
-                        onChange={(e) =>
-                            setNewProject({
-                                ...newProject,
-                                title: e.target.value,
-                            })
-                        }
+                        onChange={(e) => setNewProject({ ...newProject, title: e.target.value })}
                     />
                     <Input.TextArea
                         placeholder="Description"
                         rows={4}
                         value={newProject.description}
-                        onChange={(e) =>
-                            setNewProject({
-                                ...newProject,
-                                description: e.target.value,
-                            })
-                        }
+                        onChange={(e) => setNewProject({ ...newProject, description: e.target.value })}
                     />
                     <DatePicker
                         placeholder="Due Date"
                         style={{ width: '100%' }}
-                        value={
-                            newProject.due_date
-                                ? dayjs(newProject.due_date)
-                                : null
-                        }
-                        disabledDate={(current) =>
-                            current && current < dayjs().startOf('day')
-                        }
+                        value={newProject.due_date ? dayjs(newProject.due_date) : null}
+                        disabledDate={(current) => current && current < dayjs().startOf('day')}
                         onChange={(_, dateString) => {
-                            const dateStr = Array.isArray(dateString)
-                                ? dateString[0] ?? ''
-                                : dateString;
-                            setNewProject({
-                                ...newProject,
-                                due_date: dateStr,
-                            });
+                            const dateStr = Array.isArray(dateString) ? dateString[0] ?? '' : dateString;
+                            setNewProject({ ...newProject, due_date: dateStr });
                         }}
                     />
                 </Space>
@@ -435,41 +345,24 @@ const FamilyTasksComponent: React.FC<Props> = ({
                         onChange={(e) =>
                             setEditingTask((prev) => ({
                                 ...prev,
-                                task:
-                                    prev.task && {
-                                        ...prev.task,
-                                        title: e.target.value,
-                                    },
+                                task: prev.task && { ...prev.task, title: e.target.value },
                             }))
                         }
                     />
                     <DatePicker
                         placeholder="Due Date"
                         style={{ width: '100%' }}
-                        value={
-                            editingTask.task?.dueDate
-                                ? dayjs(editingTask.task.dueDate)
-                                : null
-                        }
-                        disabledDate={(current) =>
-                            current && current < dayjs().startOf('day')
-                        }
+                        value={editingTask.task?.dueDate ? dayjs(editingTask.task.dueDate) : null}
+                        disabledDate={(current) => current && current < dayjs().startOf('day')}
                         onChange={(_, dateString) => {
-                            const dateStr = Array.isArray(dateString)
-                                ? dateString[0] ?? ''
-                                : dateString;
+                            const dateStr = Array.isArray(dateString) ? dateString[0] ?? '' : dateString;
                             setEditingTask((prev) => ({
                                 ...prev,
-                                task:
-                                    prev.task && {
-                                        ...prev.task,
-                                        dueDate: dateStr,
-                                        due: dateStr
-                                            ? `Due ${dayjs(dateStr).format(
-                                                'MMM D'
-                                            )}`
-                                            : prev.task.due,
-                                    },
+                                task: prev.task && {
+                                    ...prev.task,
+                                    dueDate: dateStr,
+                                    due: dateStr ? `Due ${dayjs(dateStr).format('MMM D')}` : '',
+                                },
                             }));
                         }}
                     />
@@ -480,12 +373,7 @@ const FamilyTasksComponent: React.FC<Props> = ({
                             onChange={(val) =>
                                 setEditingTask((prev) => ({
                                     ...prev,
-                                    task:
-                                        prev.task && {
-                                            ...prev.task,
-                                            assignee: val,
-                                            type: val,
-                                        },
+                                    task: prev.task && { ...prev.task, assignee: val, type: val },
                                 }))
                             }
                             options={assignees}

@@ -323,3 +323,62 @@ class DBHelper:
                 cur.close()
             if conn:
                 postgres.release_connection(conn)
+
+    @staticmethod
+    def find_multi(table_queries: dict, retry=False):
+        """
+        Fetch data from multiple tables in a single function call.
+
+        table_queries = {
+            "table_name1": {"filters": {...}, "select_fields": [...]},
+            "table_name2": {"filters": {...}, "select_fields": [...]}
+        }
+        """
+        conn = None
+        cur = None
+        results = {}
+        try:
+            conn = postgres.get_connection()
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+
+            for table_name, query_data in table_queries.items():
+                filters = query_data.get("filters")
+                select_fields = query_data.get("select_fields")
+
+                if select_fields:
+                    columns_sql = sql.SQL(", ").join(map(sql.Identifier, select_fields))
+                else:
+                    columns_sql = sql.SQL("*")
+
+                if filters:
+                    where_clause = sql.SQL(" AND ").join(
+                        sql.Composed(
+                            [sql.Identifier(k), sql.SQL(" = "), sql.Placeholder()]
+                        )
+                        for k in filters.keys()
+                    )
+                    query = sql.SQL(
+                        "SELECT {fields} FROM {table} WHERE {where}"
+                    ).format(
+                        fields=columns_sql,
+                        table=sql.Identifier(table_name),
+                        where=where_clause,
+                    )
+                    cur.execute(query, list(filters.values()))
+                else:
+                    query = sql.SQL("SELECT {fields} FROM {table}").format(
+                        fields=columns_sql,
+                        table=sql.Identifier(table_name),
+                    )
+                    cur.execute(query)
+
+                results[table_name] = cur.fetchall()
+
+            return results
+        except Exception as e:
+            raise e
+        finally:
+            if cur:
+                cur.close()
+            if conn:
+                postgres.release_connection(conn)

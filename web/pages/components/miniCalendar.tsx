@@ -16,6 +16,7 @@ interface MiniCalendarProps {
     onDateSelect: (date: Date) => void;
     events?: Event[];
     view: 'Day' | 'Week' | 'Month' | 'Year';
+    onMonthChange?: (date: Date) => void;
 }
 
 const MiniCalendar: React.FC<MiniCalendarProps> = ({
@@ -23,21 +24,21 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
     onDateSelect,
     events = [],
     view,
+    onMonthChange,
 }) => {
     const [displayDate, setDisplayDate] = useState<Date>(new Date(currentDate));
 
     useEffect(() => {
-        if (currentDate) setDisplayDate(new Date(currentDate));
+        setDisplayDate(new Date(currentDate));
     }, [currentDate]);
 
     const formatDateString = (date: Date): string => {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
+        return `${date.getFullYear()}-${(date.getMonth() + 1)
+            .toString()
+            .padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
     };
 
-    const getMonthDays = (date: Date) => {
+    const getMonthDays = (date: Date): Date[] => {
         const year = date.getFullYear();
         const month = date.getMonth();
         const firstDay = new Date(year, month, 1);
@@ -48,25 +49,27 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
         const days: Date[] = [];
         const current = new Date(startDate);
 
-        while (current <= lastDay || current.getDay() !== 0) {
+        while (current <= lastDay || current.getDay() !== 0 || days.length < 35) {
             days.push(new Date(current));
             current.setDate(current.getDate() + 1);
-            if (days.length >= 42) break;
         }
 
         return days;
     };
 
+    const monthDays = getMonthDays(displayDate);
+    const totalRows = Math.ceil(monthDays.length / 7); // number of weeks in the month
+    const cellHeight = Math.floor((350 - 100) / totalRows); // 60px reserved for header + weekdays
+
     const navigateMonth = (direction: 'prev' | 'next') => {
         const newDate = new Date(displayDate);
         newDate.setMonth(newDate.getMonth() + (direction === 'next' ? 1 : -1));
         setDisplayDate(newDate);
+        onMonthChange?.(newDate);
     };
 
-    const getEventsForDate = (date: Date): Event[] => {
-        const dateStr = formatDateString(date);
-        return events?.filter(event => event.date === dateStr) ?? [];
-    };
+    const getEventsForDate = (date: Date) =>
+        events.filter(event => event.date === formatDateString(date));
 
     const isCurrentMonth = (date: Date) => date.getMonth() === displayDate.getMonth();
     const isToday = (date: Date) => date.toDateString() === new Date().toDateString();
@@ -74,29 +77,45 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
         currentDate && date.toDateString() === currentDate.toDateString();
     const isPastDate = (date: Date) => date < new Date() && !isToday(date);
 
-    const monthDays = getMonthDays(displayDate);
-
     return (
-        <div style={{
-            background: '#fff',
-            borderRadius: '12px',
-            padding: '20px',
-            border: '1px solid #e5e7eb',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
-        }}>
+        <div
+            style={{
+                background: 'white',
+                borderRadius: '14px',
+                padding: '12px',
+                border: '1px solid rgba(229, 231, 235, 0.5)',
+                backdropFilter: 'blur(10px)',
+                maxWidth: '450px',
+                height: '350px',
+                display: 'flex',
+                flexDirection: 'column',
+                boxSizing: 'border-box',
+            }}
+        >
             {/* Header */}
             <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                marginBottom: '8px'
+                marginBottom: '8px',
             }}>
-                <button onClick={() => navigateMonth('prev')} style={btnStyle}><ChevronLeft size={14} /></button>
-                <div style={{ fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <button onClick={() => navigateMonth('prev')} style={navBtnStyle}>
+                    <ChevronLeft size={14} />
+                </button>
+                <div style={{
+                    fontSize: '14px',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    color: '#1f2937'
+                }}>
                     <Calendar size={14} />
-                    {displayDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                    {displayDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                 </div>
-                <button onClick={() => navigateMonth('next')} style={btnStyle}><ChevronRight size={14} /></button>
+                <button onClick={() => navigateMonth('next')} style={navBtnStyle}>
+                    <ChevronRight size={14} />
+                </button>
             </div>
 
             {/* Weekdays */}
@@ -105,10 +124,12 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
                 gridTemplateColumns: 'repeat(7, 1fr)',
                 fontSize: '11px',
                 color: '#6b7280',
-                marginBottom: '4px'
+                marginBottom: '4px',
+                textAlign: 'center',
+                fontWeight: 600,
             }}>
-                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => (
-                    <div key={d} style={{ textAlign: 'center' }}>{d}</div>
+                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+                    <div key={`${d}-${i}`} style={{ color: i === 0 || i === 6 ? '#ef4444' : undefined }}>{d}</div>
                 ))}
             </div>
 
@@ -116,75 +137,87 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
             <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(7, 1fr)',
-                gap: '1px'
+                gap: '4px',
+                flexGrow: 1,
             }}>
                 {monthDays.map((date, idx) => {
-                    const dayEvents = getEventsForDate(date);
+                    const eventsToday = getEventsForDate(date);
                     const isCurrent = isCurrentMonth(date);
-                    const today = isToday(date);
                     const selected = isSelected(date);
+                    const today = isToday(date);
                     const past = isPastDate(date);
 
                     return (
                         <div
                             key={idx}
-                            onClick={() => (isCurrent && !past) && onDateSelect(date)}
+                            onClick={() => isCurrent && !past && onDateSelect(date)}
                             style={{
                                 position: 'relative',
-                                height: '45px',
+                                height: `${cellHeight}px`,
                                 fontSize: '11px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                borderRadius: '4px',
-                                fontWeight: today ? 600 : 400,
-                                cursor: (isCurrent && !past) ? 'pointer' : 'default',
+                                borderRadius: '8px',
+                                fontWeight: today ? 700 : 500,
+                                cursor: isCurrent && !past ? 'pointer' : 'default',
                                 background: selected
-                                    ? '#3b82f6'
+                                    ? 'linear-gradient(135deg, #3b82f6, #60a5fa)'
                                     : today
-                                        ? '#eff6ff'
+                                        ? '#dbeafe'
                                         : 'transparent',
                                 color: selected
                                     ? '#fff'
                                     : today
-                                        ? '#2563eb'
+                                        ? '#1e3a8a'
                                         : past
                                             ? '#9ca3af'
                                             : isCurrent
                                                 ? '#111827'
                                                 : '#d1d5db',
-                                opacity: isCurrent ? 1 : 0.5,
-                                border: today && !selected ? '1px solid #3b82f6' : 'none'
+                                border: today && !selected ? '1px solid #3b82f6' : 'none',
+                                transition: 'all 0.2s ease-in-out',
+                            }}
+                            onMouseEnter={(e) => {
+                                if (isCurrent && !past && !selected) {
+                                    (e.currentTarget as HTMLDivElement).style.background = '#f3f4f6';
+                                }
+                            }}
+                            onMouseLeave={(e) => {
+                                if (isCurrent && !past && !selected) {
+                                    (e.currentTarget as HTMLDivElement).style.background = 'transparent';
+                                }
                             }}
                         >
                             {date.getDate()}
-                            {dayEvents.length > 0 && (
+                            {eventsToday.length > 0 && (
                                 <div style={{
                                     position: 'absolute',
-                                    bottom: '2px',
+                                    bottom: '4px',
                                     left: '50%',
                                     transform: 'translateX(-50%)',
                                     display: 'flex',
                                     gap: '1px',
-                                    maxWidth: '25px',
+                                    maxWidth: '24px',
                                     flexWrap: 'wrap',
                                     justifyContent: 'center'
                                 }}>
-                                    {dayEvents.slice(0, 2).map((event, i) => (
+                                    {eventsToday.slice(0, 2).map((event, i) => (
                                         <div key={i} style={{
-                                            width: '3px',
-                                            height: '3px',
+                                            width: '4px',
+                                            height: '4px',
                                             borderRadius: '50%',
-                                            backgroundColor: selected ? 'white' : event.color,
+                                            backgroundColor: selected ? '#fff' : event.color,
+                                            boxShadow: `0 0 4px ${event.color}`,
                                             opacity: 0.9
                                         }} />
                                     ))}
-                                    {dayEvents.length > 2 && (
+                                    {eventsToday.length > 2 && (
                                         <div style={{
-                                            width: '3px',
-                                            height: '3px',
+                                            width: '4px',
+                                            height: '4px',
                                             borderRadius: '50%',
-                                            backgroundColor: selected ? 'white' : '#6b7280',
+                                            backgroundColor: selected ? '#fff' : '#6b7280',
                                             opacity: 0.5
                                         }} />
                                     )}
@@ -198,15 +231,18 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
     );
 };
 
-const btnStyle: React.CSSProperties = {
-    padding: '4px',
-    background: '#f1f5f9',
-    border: '1px solid #e5e7eb',
-    borderRadius: '6px',
+const navBtnStyle: React.CSSProperties = {
+    padding: '7px 8px',
+    background: '#e0f2fe',
+    border: 'none',
+    borderRadius: '8px',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    transition: 'background 0.3s ease-in-out',
+    color: '#0284c7',
+    boxShadow: '0 1px 4px rgba(0,0,0,0.1)'
 };
 
 export default MiniCalendar;

@@ -49,6 +49,10 @@ export async function getWeeklyGoals(params: {}) {
   return api.get('/get/weekly-goals', { params });
 }
 
+export async function getPlanner(params: {}) {
+  return api.get('/get/planner', { params });
+}
+
 export async function addWeeklyTodo(params: WeeklyTodo) {
   return api.post('/add/weekly-todos', params);
 }

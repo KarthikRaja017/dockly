@@ -35,6 +35,18 @@ WEB_URL = os.getenv("WEB_URL", "http://localhost:3000")
 print(f"WEB_URL: {WEB_URL}")
 uri = "https://oauth2.googleapis.com/token"
 
+SCOPE = (
+    "email profile "
+    "https://www.googleapis.com/auth/calendar "
+    "https://www.googleapis.com/auth/drive "
+    "https://www.googleapis.com/auth/fitness.activity.read "
+    "https://www.googleapis.com/auth/fitness.body.read "
+    "https://www.googleapis.com/auth/fitness.location.read "
+    "https://www.googleapis.com/auth/fitness.sleep.read "
+    "https://www.googleapis.com/auth/userinfo.email "
+    "https://www.googleapis.com/auth/userinfo.profile"
+)
+
 
 # firebase_cred_path = os.getenv("FIREBASE_CRED_PATH")
 # cred = credentials.Certificate(firebase_cred_path)

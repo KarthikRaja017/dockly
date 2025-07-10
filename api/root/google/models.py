@@ -6,9 +6,9 @@ from flask import make_response, redirect, request, session
 from flask_jwt_extended import create_access_token
 from flask_restful import Resource
 import pytz
-from root.utilis import uniqueId
+from root.utilis import create_calendar_event, uniqueId, update_calendar_event
 from root.db.dbHelper import DBHelper
-from root.config import API_URL, CLIENT_ID, CLIENT_SECRET, WEB_URL, uri
+from root.config import API_URL, CLIENT_ID, CLIENT_SECRET, WEB_URL, uri, SCOPE
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from urllib.parse import quote
@@ -26,17 +26,6 @@ from root.auth.auth import auth_required
 
 
 REDIRECT_URI = f"{API_URL}/auth/callback/google"
-SCOPE = (
-    "email profile "
-    "https://www.googleapis.com/auth/calendar "
-    "https://www.googleapis.com/auth/drive "
-    "https://www.googleapis.com/auth/fitness.activity.read "
-    "https://www.googleapis.com/auth/fitness.body.read "
-    "https://www.googleapis.com/auth/fitness.location.read "
-    "https://www.googleapis.com/auth/fitness.sleep.read "
-    "https://www.googleapis.com/auth/userinfo.email "
-    "https://www.googleapis.com/auth/userinfo.profile"
-)
 
 
 # Define a list of distinct light pastel colors
@@ -551,130 +540,127 @@ class AddEvent(Resource):
 
         title = inputData.get("title", "").strip()
         is_all_day = inputData.get("is_all_day", False)
+        event_id = inputData.get("id", "").strip()
 
-        if is_all_day:
-            start_date = inputData.get("start_date", "").strip()
-            end_date = inputData.get("end_date", "").strip()
+        insert_data = {
+            "user_id": uid,
+            "title": title,
+            "location": inputData.get("location", "").strip(),
+            "description": inputData.get("description", "").strip(),
+            "is_active": 1,
+            # "is_all_day": is_all_day,
+            # "person": inputData.get("person", "").strip()
+        }
 
-            if not (title and start_date and end_date):
-                return {
-                    "status": 0,
-                    "message": "Required fields missing for all-day event",
-                    "payload": {},
-                }
-
-            insert_data = {
-                "id": uniqueId(digit=6),
-                "user_id": uid,
-                "title": title,
-                "start_time": "12:00 AM",
-                "end_time": "11:59 PM",
-                "date": start_date,
-                "end_date": end_date,
-                "location": inputData.get("location", "").strip(),
-                "description": inputData.get("description", "").strip(),
-                "is_active": 1,
-            }
-
-            # Google event start and end as "date" for all-day
-            google_event = {
-                "summary": title,
-                "start": {"date": start_date, "timeZone": "America/Detroit"},
-                "end": {"date": end_date, "timeZone": "America/Detroit"},
-            }
-
-        else:
-            date = inputData.get("date", "").strip()
-            start_time = inputData.get("start_time", "").strip()
-            end_time = inputData.get("end_time", "").strip()
-
-            if not (title and date and start_time and end_time):
-                return {
-                    "status": 0,
-                    "message": "Required fields missing for timed event",
-                    "payload": {},
-                }
-
-            insert_data = {
-                "id": uniqueId(digit=6),
-                "user_id": uid,
-                "title": title,
-                "start_time": start_time,
-                "end_time": end_time,
-                "date": date,
-                "end_date": date,
-                "location": inputData.get("location", "").strip(),
-                "description": inputData.get("description", "").strip(),
-                "is_active": 1,
-            }
-
-            # Format start and end datetime in RFC3339
-            start_dt = datetime.strptime(f"{date} {start_time}", "%Y-%m-%d %I:%M %p")
-            end_dt = datetime.strptime(f"{date} {end_time}", "%Y-%m-%d %I:%M %p")
-            tz = pytz.timezone("America/Detroit")
-
-            google_event = {
-                "summary": title,
-                "start": {
-                    "dateTime": tz.localize(start_dt).isoformat(),
-                    "timeZone": "America/Detroit",
-                },
-                "end": {
-                    "dateTime": tz.localize(end_dt).isoformat(),
-                    "timeZone": "America/Detroit",
-                },
-            }
-
-        # Save to your own DB
-        DBHelper.insert("events", **insert_data)
-
-        # Try adding to Google Calendar
         try:
-            user_cred = DBHelper.find_one(
-                "connected_accounts",
-                filters={"uid": uid},
-                select_fields=["access_token", "refresh_token", "email"],
-            )
+            # ───── Parse dates ─────
+            if is_all_day:
+                start_date = inputData.get("start_date", "").strip()
+                end_date = inputData.get("end_date", "").strip()
+                if not (title and start_date and end_date):
+                    return {
+                        "status": 0,
+                        "message": "Missing required fields",
+                        "payload": {},
+                    }
 
-            if user_cred:
-                creds = Credentials(
-                    token=user_cred["access_token"],
-                    refresh_token=user_cred["refresh_token"],
-                    token_uri=uri,
-                    client_id=CLIENT_ID,
-                    client_secret=CLIENT_SECRET,
-                    scopes=SCOPE.split(),
-                )
-
-                service = build("calendar", "v3", credentials=creds)
-
-                # Optional extras
-                google_event.update(
+                insert_data.update(
                     {
-                        "description": insert_data.get("description", ""),
-                        "location": insert_data.get("location", ""),
-                        "guestsCanModify": True,
-                        "guestsCanInviteOthers": True,
-                        "guestsCanSeeOtherGuests": True,
+                        "start_time": "12:00 AM",
+                        "end_time": "11:59 PM",
+                        "date": start_date,
+                        "end_date": end_date,
                     }
                 )
 
-                created_event = (
-                    service.events()
-                    .insert(calendarId="primary", body=google_event)
-                    .execute()
+                start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+                end_dt = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+
+            else:
+                date = inputData.get("date", "").strip()
+                start_time = inputData.get("start_time", "").strip()
+                end_time = inputData.get("end_time", "").strip()
+                if not (title and date and start_time and end_time):
+                    return {
+                        "status": 0,
+                        "message": "Missing required fields",
+                        "payload": {},
+                    }
+
+                insert_data.update(
+                    {
+                        "start_time": start_time,
+                        "end_time": end_time,
+                        "date": date,
+                        "end_date": date,
+                    }
                 )
 
-                insert_data["google_event_id"] = created_event.get("id")
+                start_dt = datetime.strptime(
+                    f"{date} {start_time}", "%Y-%m-%d %I:%M %p"
+                )
+                end_dt = datetime.strptime(f"{date} {end_time}", "%Y-%m-%d %I:%M %p")
+
+            # ───── Handle update or new event ─────
+            if event_id:
+                # Find existing event from DB
+                existing_event = DBHelper.find_one(
+                    "events", filters={"calendar_event_id": event_id}
+                )
+
+                if existing_event:
+                    calendar_event_id = existing_event.get("calendar_event_id")
+
+                    if calendar_event_id:
+                        # Update Google Calendar event
+                        update_calendar_event(
+                            user_id=uid,
+                            calendar_event_id=calendar_event_id,
+                            title=title,
+                            start_dt=start_dt,
+                            end_dt=end_dt,
+                        )
+                        insert_data["calendar_event_id"] = calendar_event_id
+                    else:
+                        # Create new on calendar if no ID
+                        calendar_event_id = create_calendar_event(
+                            user_id=uid, title=title, start_dt=start_dt, end_dt=end_dt
+                        )
+                        insert_data["calendar_event_id"] = calendar_event_id
+
+                    DBHelper.update_one(
+                        "events",
+                        filters={"id": existing_event["id"]},
+                        updates=insert_data,
+                    )
+                    insert_data["id"] = event_id
+                    insert_data["end_date"] = insert_data.get(
+                        "end_date", existing_event.get("end_date")
+                    )
+                else:
+                    return {"status": 0, "message": "Event not found", "payload": {}}
+            else:
+                # New event
+                calendar_event_id = create_calendar_event(
+                    user_id=uid, title=title, start_dt=start_dt, end_dt=end_dt
+                )
+                insert_data["calendar_event_id"] = calendar_event_id
+                insert_data["id"] = uniqueId(digit=6)
+                DBHelper.insert("events", **insert_data)
+
+            return {
+                "status": 1,
+                "message": (
+                    "Event updated successfully."
+                    if event_id
+                    else "Event added successfully."
+                ),
+                "payload": insert_data,
+            }
 
         except Exception as e:
-            print("Google Calendar Error:", str(e))  # Optionally log it
-
-        return {
-            "status": 1,
-            "message": "Event added successfully.",
-            "payload": insert_data,
-        }
+            print("Google Calendar Error:", str(e))
+            # traceback.print_exc()
 
 
 class AddGoogleCalendarEvent(Resource):

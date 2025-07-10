@@ -1,0 +1,1256 @@
+"use client";
+import React, { useState } from "react";
+import {
+    DatePicker,
+    Form,
+    Modal,
+    Select,
+    TimePicker,
+    Input,
+    Button,
+    Checkbox,
+    Typography,
+    Card,
+    Row,
+    Col,
+    Tag,
+    message,
+} from "antd";
+import { EditOutlined, MailOutlined, PlusOutlined } from "@ant-design/icons";
+import { useEffect } from "react";
+import { addProject, addTask, getProjects, getTasks, updateTask } from "../../services/family";
+import dayjs from "dayjs";
+import { addEvents, addWeeklyGoal, addWeeklyTodo, getPlanner } from "../../services/planner";
+import { getCalendarEvents } from "../../services/google";
+import DocklyLoader from "../../utils/docklyLoader";
+import { Calendar } from "lucide-react";
+import { showNotification } from "../../utils/notification";
+
+import MiniCalendar from "../../pages/components/miniCalendar";
+import CustomCalendar from "../../pages/components/customCalendar";
+import FamilyTasksComponent from "../../pages/components/familyTasksProjects";
+import { useCurrentUser } from "../../app/userContext";
+import { PRIMARY_COLOR } from "../../app/comman";
+
+const { Title, Text } = Typography;
+
+type Task = {
+    id: number;
+    title: string;
+    assignee: string;
+    type: string;
+    completed: boolean;
+    due: string;
+    dueDate?: string;
+};
+type Project = {
+    color?: string;
+    project_id: string;
+    title: string;
+    description: string;
+    due_date: string;
+    progress: number;
+    tasks: Task[];
+};
+
+const PlannerTitle: React.FC = () => {
+    return (
+        <div
+            style={{
+                display: 'flex',
+                alignItems: 'center',
+                marginBottom: '24px',
+            }}
+        >
+            <div
+                style={{
+                    width: '48px',
+                    height: '48px',
+                    backgroundColor: '#ecfdf5',
+                    color: '#10b981',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: '6px',
+                }}
+            >
+                <Calendar size={24} />
+            </div>
+            <h1
+                style={{
+                    fontSize: '24px',
+                    fontWeight: 600,
+                    color: '#111827',
+                    margin: 0,
+                }}
+            >
+                Planner
+            </h1>
+        </div>
+    );
+};
+
+const Planner = () => {
+    const [goals, setGoals] = useState<
+        {
+            id: string;
+            text: string;
+            completed: boolean;
+            date: string;
+            time: string;
+        }[]
+    >([]);
+    const [todos, setTodos] = useState<
+        {
+            id: string;
+            text: string;
+            completed: boolean;
+            priority: "high" | "medium" | "low";
+            date: string;
+            time: string;
+        }[]
+    >([]);
+    const [projects, setProjects] = useState<Project[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [backup, setBackup] = useState(null);
+    const [isGoalModalVisible, setIsGoalModalVisible] = useState(false);
+    const [isEventModalVisible, setIsEventModalVisible] = useState(false);
+    const [isTodoModalVisible, setIsTodoModalVisible] = useState(false);
+    const [isProjectModalVisible, setIsProjectModalVisible] = useState(false);
+    const [calendarEvents, setCalendarEvents] = useState<
+        {
+            id: string;
+            title: string;
+            startTime: string;
+            date: string;
+            person: string;
+            color: string;
+        }[]
+    >([]);
+
+    const [personColors, setPersonColors] = useState<{ [person: string]: { color: string; email: string } }>({});
+
+    // New state for mini calendar integration
+    const [currentDate, setCurrentDate] = useState(new Date());
+    const [view, setView] = useState<"Day" | "Week" | "Month" | "Year">("Week");
+    const [eventForm] = Form.useForm();
+    const [goalForm] = Form.useForm();
+    const [todoForm] = Form.useForm();
+    const [projectForm] = Form.useForm();
+    const user = useCurrentUser();
+
+    const getPriorityColor = (priority: string) => {
+        switch (priority) {
+            case "high":
+                return "error";
+            case "medium":
+                return "warning";
+            case "low":
+                return "default";
+            default:
+                return "default";
+        }
+    };
+
+    // Helper function to format date consistently
+    const formatDateString = (date: Date): string => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    // Helper function to get start and end dates based on view
+    const getDateRange = (date: Date, viewType: string) => {
+        const start = new Date(date);
+        const end = new Date(date);
+
+        switch (viewType) {
+            case "Day":
+                // Same day
+                break;
+            case "Week":
+                // Start of week (Sunday) to end of week (Saturday)
+                const dayOfWeek = start.getDay();
+                start.setDate(start.getDate() - dayOfWeek);
+                end.setDate(start.getDate() + 6);
+                break;
+            case "Month":
+                // Start of month to end of month
+                start.setDate(1);
+                end.setMonth(end.getMonth() + 1);
+                end.setDate(0);
+                break;
+            case "Year":
+                // Start of year to end of year
+                start.setMonth(0, 1);
+                end.setMonth(11, 31);
+                break;
+        }
+
+        return { start, end };
+    };
+
+    // Filter goals based on current view and date
+    const getFilteredGoals = () => {
+        const { start, end } = getDateRange(currentDate, view);
+        const startStr = formatDateString(start);
+        const endStr = formatDateString(end);
+
+        return goals.filter(goal => {
+            return goal.date >= startStr && goal.date <= endStr;
+        });
+    };
+
+    // Filter todos based on current view and date
+    const getFilteredTodos = () => {
+        const { start, end } = getDateRange(currentDate, view);
+        const startStr = formatDateString(start);
+        const endStr = formatDateString(end);
+
+        return todos.filter(todo => {
+            return todo.date >= startStr && todo.date <= endStr;
+        });
+    };
+
+    // Get view title for goals and todos sections
+    const getViewTitle = (type: 'Goals' | 'Tasks') => {
+        switch (view) {
+            case "Day":
+                return `Daily ${type}`;
+            case "Week":
+                return `Weekly ${type}`;
+            case "Month":
+                return `Monthly ${type}`;
+            // case "Year":
+            //     return `Yearly ${type}`;
+            default:
+                return `Weekly ${type}`;
+        }
+    };
+
+    const handleAddEvent = () => {
+        setLoading(true);
+        eventForm.validateFields().then(async (values) => {
+            try {
+                values.date = values.date.format("YYYY-MM-DD");
+                values.time = values.time.format("h:mm A");
+
+                const response = await addEvents({ ...values });
+                const { message, status } = response.data;
+
+                if (status) {
+                    showNotification("Success", message, "success");
+                } else {
+                    showNotification("Error", message, "error");
+                }
+
+                setIsEventModalVisible(false);
+                fetchEvents();
+                eventForm.resetFields();
+            } catch (err) {
+                showNotification("Error", "Something went wrong", "error");
+            } finally {
+                setLoading(false);
+            }
+        }).catch(() => {
+            setLoading(false);
+        });
+    };
+
+    const handleAddProjects = async (project: {
+        title: string;
+        description: string;
+        due_date: string;
+    }) => {
+        setLoading(true);
+        try {
+            await addProject({ ...project, source: 'planner' });
+            // message.success('Project added');
+            fetchProjects();
+        } catch {
+            // message.error('Failed to add project');
+        }
+        setLoading(false);
+    };
+
+    const handleAddTask = async (projectId: string) => {
+        setLoading(true);
+        try {
+            await addTask({
+                project_id: projectId,
+                title: 'New Task',
+                assignee: 'All',
+                type: 'low',
+                due_date: dayjs().format('YYYY-MM-DD'),
+                completed: false,
+                // source: 'planner',
+            });
+            fetchProjects();
+        } catch {
+            message.error('Failed to add task');
+        }
+        setLoading(false);
+    };
+
+    const handleToggleTask = async (projectId: string, taskId: number) => {
+        setLoading(true);
+        const project = projects.find((p) => p.project_id === projectId);
+        const task = project?.tasks.find((t) => t.id === taskId);
+        if (!task) return;
+
+        try {
+            await updateTask({ task_id: taskId, completed: !task.completed });
+            fetchProjects();
+        } catch {
+            message.error('Failed to toggle task');
+        }
+        setLoading(false);
+    };
+
+    const handleUpdateTask = (task: Task): void => {
+        setLoading(true);
+        updateTask({
+            task_id: task.id,
+            title: task.title,
+            due_date: task.dueDate,
+            assignee: task.assignee,
+            type: task.type,
+            // source: 'planner',
+        })
+            .then(() => {
+                message.success('Task updated');
+                fetchProjects();
+            })
+            .catch(() => {
+                message.error('Failed to update task');
+            });
+        setLoading(false);
+    };
+
+    const fetchProjects = async () => {
+        setLoading(true);
+        try {
+            const projRes = await getProjects({ source: 'planner' });
+            const rawProjects = projRes.data.payload.projects || [];
+
+            const projectsWithTasks = await Promise.all(
+                rawProjects.map(async (proj: any) => {
+                    const taskRes = await getTasks({ project_id: proj.project_id });
+                    const rawTasks = taskRes.data.payload.tasks || [];
+
+                    const tasks = rawTasks.map((task: any, i: number): Task => ({
+                        id: typeof task.task_id === 'number' ? task.task_id : parseInt(task.task_id) || i + 1,
+                        title: task.title,
+                        assignee: task.assignee,
+                        type: task.type,
+                        completed: task.completed,
+                        due: task.completed ? 'Completed' : `Due ${dayjs(task.due_date).format('MMM D')}`,
+                        dueDate: task.due_date ? String(task.due_date) : '', // Always a string
+                    }));
+
+                    return {
+                        project_id: proj.project_id,
+                        title: proj.title,
+                        description: proj.description,
+                        due_date: proj.due_date,
+                        color: proj.color || '#667eea',
+                        progress: tasks.length
+                            ? Math.round((tasks.filter((t: Task) => t.completed).length / tasks.length) * 100)
+                            : 0,
+                        tasks,
+                    };
+                })
+            );
+
+            setProjects(projectsWithTasks);
+        } catch (err) {
+            // message.error('Failed to load planner projects');
+        }
+        setLoading(false);
+    };
+
+    const handleAddGoal = async () => {
+        setLoading(true);
+        goalForm.validateFields().then(async (values) => {
+            try {
+                values.date = values.date.format("YYYY-MM-DD");
+                values.time = values.time.format("h:mm A");
+
+                const response = await addWeeklyGoal({ ...values, backup: backup });
+                const { message, status } = response.data;
+
+                if (status) {
+                    showNotification("Success", message, "success");
+                } else {
+                    showNotification("Error", message, "error");
+                }
+
+                getUserPlanner();
+                setIsGoalModalVisible(false);
+                fetchEvents();
+                goalForm.resetFields();
+            } catch (error) {
+                showNotification("Error", "Something went wrong", "error");
+            } finally {
+                setLoading(false);
+            }
+        }).catch(() => {
+            setLoading(false);
+        });
+    };
+
+    const getUserPlanner = async () => {
+        setLoading(true);
+        try {
+            const response = await getPlanner({});
+
+            const rawGoals = response.data.payload.goals;
+            const rawTodos = response.data.payload.todos;
+            const rawEvents = response.data.payload.events;
+
+            setCalendarEvents(prev => [
+                ...(prev),
+                ...transformEvents(rawEvents), // add new transformed events
+            ]);
+            const s = transformEvents(rawEvents)
+            console.log("🚀 ~ getUserPlanner ~ s :", s)
+            setPersonColors(prev => ({
+                ...prev,
+                [user.user_name]: {
+                    color: rawEvents[0].account_color,
+                    email: user.email,
+                },
+            }));
+
+            const formattedGoals = rawGoals.map((item: any) => ({
+                id: item.id,
+                text: item.goal,
+                completed: item.goal_status === 1,
+                date: dayjs(item.date).format("YYYY-MM-DD"),
+                time: dayjs(item.time, ["h:mm A", "HH:mm"]).format("h:mm A"),
+            }));
+
+
+            const formattedTodos = rawTodos.map((item: any) => ({
+                id: item.id,
+                text: item.text,
+                completed: item.todo_status,
+                priority: item.priority || "medium",
+                date: dayjs(item.date).format("YYYY-MM-DD"),
+                time: dayjs(item.time, ["h:mm A", "HH:mm"]).format("h:mm A"),
+            }));
+
+            setGoals(formattedGoals);
+            setTodos(formattedTodos);
+        } catch (error) {
+            console.error("Error fetching goals:", error);
+        }
+        setLoading(false);
+    };
+
+    const handleAddTodo = () => {
+        setLoading(true);
+        todoForm.validateFields().then(async (values) => {
+            try {
+                values.date = values.date.format("YYYY-MM-DD");
+                values.time = values.time.format("h:mm A");
+
+                const response = await addWeeklyTodo({ ...values, backup: backup });
+                const { message, status } = response.data;
+
+                if (status) {
+                    showNotification("Success", message, "success");
+                } else {
+                    showNotification("Error", message, "error");
+                }
+
+                getUserPlanner();
+                setIsTodoModalVisible(false);
+                fetchEvents();
+                todoForm.resetFields();
+            } catch (error) {
+                showNotification("Error", "Something went wrong", "error");
+            } finally {
+                setLoading(false);
+            }
+        }).catch(() => {
+            setLoading(false);
+        });
+    };
+
+    const fetchEvents = async () => {
+        try {
+            setLoading(true);
+            const response = await getCalendarEvents({});
+            const rawEvents = response?.data?.payload?.events;
+            const connectedAccounts = response?.data?.payload?.connected_accounts || [];
+            if (rawEvents) {
+                setPersonColors(prev => ({
+                    ...prev,
+                    [connectedAccounts[0].userName]: {
+                        color: rawEvents[0].account_color,
+                        email: connectedAccounts[0].email,
+                    },
+                }));
+                setBackup(connectedAccounts[0].email);
+                setCalendarEvents(prev => [
+                    ...(prev), // preserve previous events
+                    ...transformEvents(rawEvents), // add new transformed events
+                ]);
+            }
+        } catch (error) {
+            console.error('Error fetching events:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const transformEvents = (rawEvents: any[]): any[] => {
+        return rawEvents.map((event, index) => {
+            const isGoogleEvent = !!event.start?.date || !!event.start?.dateTime;
+
+            let start: dayjs.Dayjs | null = null;
+            let end: dayjs.Dayjs | null = null;
+            let date = 'N/A';
+            let startTime = 'N/A';
+            let endTime = 'N/A';
+            let person = 'Unknown';
+
+            if (isGoogleEvent) {
+                const startDateTime = event.start?.dateTime || event.start?.date;
+                const endDateTime = event.end?.dateTime || event.end?.date;
+
+                start = startDateTime ? dayjs(startDateTime) : null;
+                end = endDateTime ? dayjs(endDateTime) : (start ? start.add(1, 'hour') : null);
+
+                date = start ? start.format('YYYY-MM-DD') : 'N/A';
+                startTime = start ? start.format('hh:mm A') : 'N/A';
+                endTime = end ? end.format('hh:mm A') : 'N/A';
+
+                const email =
+                    event.creator?.email ||
+                    event.organizer?.email ||
+                    event.source_email ||
+                    'Unknown';
+                person = typeof email === 'string' ? email.split('@')[0] : 'Unknown';
+            } else {
+                // Dockly event
+                date = event.date || 'N/A';
+                startTime = event.startTime || 'N/A';
+                endTime = event.endTime || 'N/A';
+
+                const startParsed = dayjs(`${event.date} ${event.startTime}`, 'YYYY-MM-DD hh:mm A');
+                start = startParsed.isValid() ? startParsed : null;
+
+                const endParsed = dayjs(`${event.date} ${event.endTime}`, 'YYYY-MM-DD hh:mm A');
+                end = endParsed.isValid() ? endParsed : (start ? start.add(1, 'hour') : null);
+
+                person = typeof event.person === 'string'
+                    ? event.person.split('@')[0]
+                    : 'Unknown';
+            }
+
+            return {
+                id: event.id || index.toString(),
+                title: event.summary || event.title || 'No Title',
+                date,
+                startTime,
+                endTime,
+                person,
+                color: event.account_color || PRIMARY_COLOR, // or PRIMARY_COLOR if defined
+            };
+        });
+    };
+
+    useEffect(() => {
+        fetchEvents();
+        getUserPlanner();
+        fetchProjects();
+    }, []);
+
+    const handleAddProject = () => {
+        projectForm.validateFields().then((values) => {
+            setProjects([
+                ...projects,
+                {
+                    project_id: Date.now().toString(),
+                    title: values.title,
+                    description: values.category, // or values.description if you have it
+                    due_date: values.dueDate.format("YYYY-MM-DD"),
+                    color: "#667eea",
+                    progress: 0,
+                    tasks: [],
+                },
+            ]);
+            projectForm.resetFields();
+            setIsProjectModalVisible(false);
+        });
+    };
+
+    const handleCancelEvent = () => {
+        eventForm.resetFields();
+        setIsEventModalVisible(false);
+    };
+
+    const handleCancelGoal = () => {
+        goalForm.resetFields();
+        setIsGoalModalVisible(false);
+    };
+
+    const handleCancelTodo = () => {
+        todoForm.resetFields();
+        setIsTodoModalVisible(false);
+    };
+
+    const handleCancelProject = () => {
+        projectForm.resetFields();
+        setIsProjectModalVisible(false);
+    };
+
+    const handleToggleTodo = (id: string) => {
+        setTodos(
+            todos.map((todo) =>
+                todo.id === id ? { ...todo, completed: !todo.completed } : todo
+            )
+        );
+    };
+
+    // Handler for mini calendar date selection
+    const handleDateSelect = (date: Date) => {
+        setCurrentDate(date);
+    };
+
+    // Handler for mini calendar month change
+    const handleMiniCalendarMonthChange = (date: Date) => {
+        setCurrentDate(date);
+    };
+
+    // Handler for main calendar date change
+    const handleMainCalendarDateChange = (date: Date) => {
+        setCurrentDate(date);
+    };
+
+    // Handler for main calendar view change
+    const handleMainCalendarViewChange = (newView: "Day" | "Week" | "Month" | "Year") => {
+        setView(newView);
+    };
+    if (loading) {
+        return <DocklyLoader />;
+    }
+
+    // Get filtered data based on current view
+    const filteredGoals = getFilteredGoals();
+    const filteredTodos = getFilteredTodos();
+
+    return (
+        <div
+            style={{
+                minHeight: "100vh",
+                backgroundColor: "#f7f8fa",
+                marginLeft: "50px",
+                marginTop: "60px",
+            }}
+        >
+            <div
+                style={{
+                    padding: "16px",
+                    backgroundColor: "#f7f8fa",
+                    minHeight: "100vh",
+                }}
+            >
+                <div
+                    style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: 8,
+                    }}
+                >
+                    <PlannerTitle />
+                </div>
+                <Row gutter={[8, 8]} style={{ marginBottom: 8 }}>
+                    <Col span={16}>
+                        <div
+                            style={{
+                                overflowY: "auto",
+                                height: "100%",
+                            }}
+                        >
+                            <CustomCalendar
+                                data={{ events: calendarEvents, meals: [] }}
+                                personColors={personColors}
+                                source="planner"
+                                allowMentions={false}
+                                fetchEvents={fetchEvents}
+                                goals={filteredGoals}
+                                todos={filteredTodos}
+                                onToggleTodo={handleToggleTodo}
+                                onAddGoal={() => setIsGoalModalVisible(true)}
+                                onAddTodo={() => setIsTodoModalVisible(true)}
+                                enabledHashmentions={false}
+                                currentDate={currentDate}
+                                onDateChange={handleMainCalendarDateChange}
+                                onViewChange={handleMainCalendarViewChange}
+                                setCurrentDate={setCurrentDate}
+                                setBackup={setBackup}
+                                backup={backup}
+                            />
+                        </div>
+                    </Col>
+                    <Col span={8}>
+                        <div
+                            style={{
+                                padding: "12px 2px",
+                                marginTop: "-13px",
+                            }}
+                        >
+                            <MiniCalendar
+                                currentDate={currentDate}
+                                onDateSelect={handleDateSelect}
+                                onMonthChange={handleMiniCalendarMonthChange}
+                                events={calendarEvents}
+                                view={view}
+                            />
+                        </div>
+
+                        <Card
+                            title={getViewTitle("Goals")}
+                            extra={
+                                <Button
+                                    type="primary"
+                                    icon={<PlusOutlined />}
+                                    onClick={() => setIsGoalModalVisible(true)}
+                                />
+                            }
+                            style={{
+                                borderRadius: 12,
+                                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                                backgroundColor: "white",
+                                border: "1px solid #e5e7eb",
+                                height: "330px",
+                                marginBottom: 8,
+                                display: "flex",
+                                flexDirection: "column",
+                                marginTop: "-5px",
+                            }}
+                        >
+                            <div
+                                style={{
+                                    overflowY: "auto",
+                                    height: "220px",
+                                    paddingBottom: 24,
+                                }}
+                            >
+                                {[
+                                    ...filteredGoals,
+                                    ...Array(Math.max(3, filteredGoals.length + 1) - filteredGoals.length).fill(
+                                        {}
+                                    ),
+                                ].map((goal, index) => (
+                                    <div
+                                        key={goal.id || `empty-goal-${index}`}
+                                        style={{
+                                            display: "flex",
+                                            alignItems: "flex-start",
+                                            padding: 8,
+                                            backgroundColor: goal?.id ? "white" : "#f5f5f5",
+                                            borderRadius: 8,
+                                            borderLeft: goal?.id
+                                                ? "3px solid #10b981"
+                                                : "1px dashed #d1d5db",
+                                            marginBottom: 8,
+                                        }}
+                                    >
+                                        <div
+                                            style={{
+                                                width: 24,
+                                                height: 24,
+                                                backgroundColor: goal?.id ? "#10b981" : "#d1d5db",
+                                                color: goal?.id ? "white" : "#6b7280",
+                                                borderRadius: "50%",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                fontSize: 12,
+                                                fontWeight: 600,
+                                                marginRight: 12,
+                                            }}
+                                        >
+                                            {index + 1}
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            {goal?.id ? (
+                                                <>
+                                                    <Input
+                                                        value={goal.text}
+                                                        onChange={(e) =>
+                                                            setGoals(
+                                                                goals.map((g) =>
+                                                                    g.id === goal.id
+                                                                        ? { ...g, text: e.target.value }
+                                                                        : g
+                                                                )
+                                                            )
+                                                        }
+                                                        style={{
+                                                            border: "none",
+                                                            backgroundColor: "transparent",
+                                                            fontSize: 14,
+                                                            padding: "2px 6px",
+                                                        }}
+                                                    />
+                                                    <Text style={{ fontSize: 12, color: "#6b7280" }}>
+                                                        {goal.date} {goal.time}
+                                                    </Text>
+                                                </>
+                                            ) : (
+                                                <Text
+                                                    style={{
+                                                        color: "#9ca3af",
+                                                        fontStyle: "italic",
+                                                        paddingLeft: 6,
+                                                        cursor: "pointer",
+                                                        marginTop: 4
+                                                    }}
+                                                    onClick={() => setIsTodoModalVisible(true)}
+                                                >
+                                                    Add goal {index + 1}
+                                                </Text>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </Card>
+                        <Card
+                            title={getViewTitle("Tasks")}
+                            extra={
+                                <Button
+                                    type="primary"
+                                    icon={<PlusOutlined />}
+                                    onClick={() => setIsTodoModalVisible(true)}
+                                />
+                            }
+                            style={{
+                                borderRadius: 12,
+                                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                                backgroundColor: "white",
+                                border: "1px solid #e5e7eb",
+                                height: "320px",
+                                display: "flex",
+                                flexDirection: "column",
+                            }}
+                        >
+                            <div
+                                style={{
+                                    // padding: "12px 16px",
+                                    overflowY: "auto",
+                                    height: "220px",
+                                    paddingBottom: 24,
+                                }}
+                            >
+                                {[
+                                    ...filteredTodos,
+                                    ...Array(Math.max(3, filteredTodos.length + 1) - filteredTodos.length).fill(
+                                        {}
+                                    ),
+                                ].map((todo, index) => (
+                                    <div
+                                        key={todo.id || `empty-todo-${index}`}
+                                        style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            padding: "8px 0",
+                                            borderBottom: "1px solid #f3f4f6",
+                                            backgroundColor: todo?.id ? "white" : "#f5f5f5",
+                                            paddingLeft: 8,
+                                            borderRadius: 6,
+                                            marginBottom: 4,
+                                        }}
+                                    >
+                                        {todo?.id ? (
+                                            <>
+                                                <Checkbox
+                                                    checked={todo.completed}
+                                                    onChange={() => handleToggleTodo(todo.id)}
+                                                    style={{ marginRight: 12 }}
+                                                />
+                                                <div style={{ flex: 1 }}>
+                                                    <Text
+                                                        style={{
+                                                            fontSize: 14,
+                                                            color: "#374151",
+                                                            textDecoration: todo.completed
+                                                                ? "line-through"
+                                                                : "none",
+                                                            opacity: todo.completed ? 0.6 : 1,
+                                                            padding: "2px 6px",
+                                                        }}
+                                                    >
+                                                        {todo.text}
+                                                    </Text>
+                                                    <div>
+                                                        <Text style={{ fontSize: 12, color: "#6b7280" }}>
+                                                            {todo.date} {todo.time}
+                                                        </Text>
+                                                    </div>
+                                                </div>
+                                                <Tag color={getPriorityColor(todo.priority)}>
+                                                    {todo.priority}
+                                                </Tag>
+                                            </>
+                                        ) : (
+                                            <Text
+                                                style={{
+                                                    color: "#9ca3af",
+                                                    fontStyle: "italic",
+                                                    fontSize: 14,
+                                                    paddingLeft: 6,
+                                                    cursor: "pointer",
+                                                    marginTop: 4
+                                                }}
+                                                onClick={() => setIsTodoModalVisible(true)}
+                                            >
+                                                Add To-do {index + 1}
+                                            </Text>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </Card>
+                    </Col>
+                </Row>
+                <Row gutter={[8, 8]}>
+                    <Col span={24}>
+                        <FamilyTasksComponent
+                            title="Projects"
+                            projects={projects}
+                            onAddProject={handleAddProjects}
+                            onAddTask={handleAddTask}
+                            onToggleTask={handleToggleTask}
+                            onUpdateTask={handleUpdateTask}
+                            showAssigneeInputInEdit={false}
+                            showAvatarInTask={false}
+                        />
+                    </Col>
+                </Row>
+
+                <Modal
+                    title="Add New Event"
+                    open={isEventModalVisible}
+                    onCancel={handleCancelEvent}
+                    maskClosable={!loading}
+                    closable={!loading}
+                    footer={[
+                        <Button key="cancel" onClick={handleCancelEvent} disabled={loading}>
+                            Cancel
+                        </Button>,
+                        <Button
+                            key="submit"
+                            type="primary"
+                            loading={loading}
+                            onClick={handleAddEvent}
+                            disabled={loading}
+                        >
+                            Add Event
+                        </Button>,
+                    ]}
+                >
+                    <Form form={eventForm} layout="vertical">
+                        <Form.Item
+                            name="title"
+                            label="Event Title"
+                            rules={[
+                                { required: true, message: "Please enter the event title" },
+                            ]}
+                        >
+                            <Input placeholder="Event title" />
+                        </Form.Item>
+                        <Form.Item
+                            name="date"
+                            label="Date"
+                            rules={[{ required: true, message: "Please select a date" }]}
+                            initialValue={dayjs()}
+                        >
+                            <DatePicker
+                                style={{ width: "100%" }}
+                                disabledDate={(current) => current && current < dayjs().startOf("day")}
+                            />
+                        </Form.Item>
+                        <Form.Item
+                            name="time"
+                            label="Time"
+                            rules={[{ required: true, message: "Please select a time" }]}
+                            initialValue={dayjs().add(10, "minute").startOf("minute")}
+                        >
+                            <TimePicker
+                                use12Hours
+                                format="h:mm A"
+                                minuteStep={10}
+                                showSecond={false}
+                                style={{ width: "100%" }}
+                                disabledTime={() => {
+                                    const selectedDate = eventForm.getFieldValue("date");
+                                    const now = dayjs();
+
+                                    if (selectedDate && dayjs(selectedDate).isSame(now, 'day')) {
+                                        const currentHour = now.hour();
+                                        const currentMinute = now.minute();
+
+                                        return {
+                                            disabledHours: () =>
+                                                Array.from({ length: 24 }, (_, i) => i).filter((h) => h < currentHour),
+                                            disabledMinutes: (selectedHour: number) => {
+                                                if (selectedHour === currentHour) {
+                                                    return Array.from({ length: 60 }, (_, i) => i).filter((m) => m < currentMinute);
+                                                }
+                                                return [];
+                                            },
+                                        };
+                                    }
+
+                                    return {
+                                        disabledHours: () => [],
+                                        disabledMinutes: () => [],
+                                    };
+                                }}
+                            />
+                        </Form.Item>
+                    </Form>
+                </Modal>
+
+                <Modal
+                    title="Add Weekly Goal"
+                    open={isGoalModalVisible}
+                    onCancel={handleCancelGoal}
+                    maskClosable={!loading}
+                    closable={!loading}
+                    footer={[
+                        <Button key="cancel" onClick={handleCancelGoal} disabled={loading}>
+                            Cancel
+                        </Button>,
+                        <Button
+                            key="submit"
+                            type="primary"
+                            loading={loading}
+                            onClick={handleAddGoal}
+                            disabled={loading}
+                        >
+                            Add Goal
+                        </Button>,
+                    ]}
+                >
+                    <Form form={goalForm} layout="vertical">
+                        <Form.Item
+                            name="goal"
+                            label="Goal"
+                            rules={[
+                                { required: true, message: "Please enter your weekly goal" },
+                            ]}
+                        >
+                            <Input placeholder="Enter your weekly goal..." />
+                        </Form.Item>
+                        <Form.Item
+                            name="date"
+                            label="Date"
+                            rules={[{ required: true, message: "Please select a date" }]}
+                            initialValue={dayjs()}
+                        >
+                            <DatePicker
+                                style={{ width: "100%" }}
+                                disabledDate={(current) => current && current < dayjs().startOf("day")}
+                            />
+                        </Form.Item>
+                        <Form.Item
+                            name="time"
+                            label="Time"
+                            rules={[{ required: true, message: "Please select a time" }]}
+                            initialValue={dayjs().add(10, "minute").startOf("minute")}
+                        >
+                            <TimePicker
+                                use12Hours
+                                format="h:mm A"
+                                minuteStep={10}
+                                showSecond={false}
+                                style={{ width: "100%" }}
+                                disabledTime={() => {
+                                    const selectedDate = eventForm.getFieldValue("date");
+                                    const now = dayjs();
+
+                                    if (selectedDate && dayjs(selectedDate).isSame(now, 'day')) {
+                                        const currentHour = now.hour();
+                                        const currentMinute = now.minute();
+
+                                        return {
+                                            disabledHours: () =>
+                                                Array.from({ length: 24 }, (_, i) => i).filter((h) => h < currentHour),
+                                            disabledMinutes: (selectedHour: number) => {
+                                                if (selectedHour === currentHour) {
+                                                    return Array.from({ length: 60 }, (_, i) => i).filter((m) => m < currentMinute);
+                                                }
+                                                return [];
+                                            },
+                                        };
+                                    }
+
+                                    return {
+                                        disabledHours: () => [],
+                                        disabledMinutes: () => [],
+                                    };
+                                }}
+                            />
+                        </Form.Item>
+                    </Form>
+                </Modal>
+
+                <Modal
+                    title="Add New To-Do"
+                    open={isTodoModalVisible}
+                    onCancel={handleCancelTodo}
+                    maskClosable={!loading}
+                    closable={!loading}
+                    footer={[
+                        <Button key="cancel" onClick={handleCancelTodo} disabled={loading}>
+                            Cancel
+                        </Button>,
+                        <Button
+                            key="submit"
+                            type="primary"
+                            loading={loading}
+                            onClick={handleAddTodo}
+                            disabled={loading}
+                        >
+                            Add Task
+                        </Button>,
+                    ]}
+                >
+                    <Form form={todoForm} layout="vertical">
+                        <Form.Item
+                            name="text"
+                            label="Task"
+                            rules={[{ required: true, message: "Please enter the task" }]}
+                        >
+                            <Input placeholder="Task title" />
+                        </Form.Item>
+                        <Form.Item
+                            name="priority"
+                            label="Priority"
+                            rules={[{ required: true, message: "Please select a priority" }]}
+                            initialValue="medium"
+                        >
+                            <Select>
+                                <Select.Option value="low">Low</Select.Option>
+                                <Select.Option value="medium">Medium</Select.Option>
+                                <Select.Option value="high">High</Select.Option>
+                            </Select>
+                        </Form.Item>
+                        <Form.Item
+                            name="date"
+                            label="Date"
+                            rules={[{ required: true, message: "Please select a date" }]}
+                            initialValue={dayjs()}
+                        >
+                            <DatePicker
+                                style={{ width: "100%" }}
+                                disabledDate={(current) => current && current < dayjs().startOf("day")}
+                            />
+                        </Form.Item>
+                        <Form.Item
+                            name="time"
+                            label="Time"
+                            rules={[{ required: true, message: "Please select a time" }]}
+                            initialValue={dayjs().add(10, "minute").startOf("minute")}
+                        >
+                            <TimePicker
+                                use12Hours
+                                format="h:mm A"
+                                minuteStep={10}
+                                showSecond={false}
+                                style={{ width: "100%" }}
+                                disabledTime={() => {
+                                    const selectedDate = eventForm.getFieldValue("date");
+                                    const now = dayjs();
+
+                                    if (selectedDate && dayjs(selectedDate).isSame(now, 'day')) {
+                                        const currentHour = now.hour();
+                                        const currentMinute = now.minute();
+
+                                        return {
+                                            disabledHours: () =>
+                                                Array.from({ length: 24 }, (_, i) => i).filter((h) => h < currentHour),
+                                            disabledMinutes: (selectedHour: number) => {
+                                                if (selectedHour === currentHour) {
+                                                    return Array.from({ length: 60 }, (_, i) => i).filter((m) => m < currentMinute);
+                                                }
+                                                return [];
+                                            },
+                                        };
+                                    }
+
+                                    return {
+                                        disabledHours: () => [],
+                                        disabledMinutes: () => [],
+                                    };
+                                }}
+                            />
+                        </Form.Item>
+                    </Form>
+                </Modal>
+
+                <Modal
+                    title="Add New Project"
+                    open={isProjectModalVisible}
+                    onCancel={handleCancelProject}
+                    footer={[
+                        <Button key="cancel" onClick={handleCancelProject}>
+                            Cancel
+                        </Button>,
+                        <Button
+                            key="submit"
+                            type="primary"
+                            loading={loading}
+                            onClick={handleAddProject}
+                            disabled={loading}
+                        >
+                            Add Project
+                        </Button>,
+                    ]}
+                >
+                    <Form form={projectForm} layout="vertical">
+                        <Form.Item
+                            name="title"
+                            label="Project Title"
+                            rules={[
+                                { required: true, message: "Please enter the project title" },
+                            ]}
+                        >
+                            <Input placeholder="Project title" />
+                        </Form.Item>
+                        <Form.Item
+                            name="category"
+                            label="Category"
+                            rules={[{ required: true, message: "Please enter the category" }]}
+                        >
+                            <Input placeholder="Category (e.g., Work, Personal)" />
+                        </Form.Item>
+                        <Form.Item
+                            name="dueDate"
+                            label="Due Date"
+                            rules={[{ required: true, message: "Please select a due date" }]}
+                            initialValue={dayjs()}
+                        >
+                            <DatePicker
+                                style={{ width: "100%" }}
+                                disabledDate={(current) => current && current < dayjs().startOf("day")}
+                            />
+                        </Form.Item>
+                    </Form>
+                </Modal>
+            </div>
+        </div>
+    );
+};
+
+export default Planner;

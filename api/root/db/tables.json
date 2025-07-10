@@ -392,6 +392,7 @@
         "is_active INT",
         "location VARCHAR(255) NOT NULL",
         "description TEXT NOT NULL",
+        "calendar_event_id VARCHAR(255)",
         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
         "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
       ]
