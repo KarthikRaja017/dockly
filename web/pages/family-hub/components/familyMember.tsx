@@ -1,32 +1,27 @@
+
 'use client';
 import { useEffect, useState } from 'react';
-import { Users, Heart } from 'lucide-react';
+import { Card, Avatar, Button, Tag, Space, Row, Col, Badge, message } from 'antd';
+import { TeamOutlined, PlusOutlined } from '@ant-design/icons';
+import { Heart } from 'lucide-react';
 import { useCurrentUser } from '../../../app/userContext';
-import { getUsersFamilyMembers } from '../../../services/family';
+import { getPets, getUsersFamilyMembers } from '../../../services/family';
 import FamilyInviteForm from '../FamilyInviteForm';
-import FamilyHubMemberDetails from './profile';
 import { capitalizeEachWord, PRIMARY_COLOR } from '../../../app/comman';
-import DocklyLoader from '../../../utils/docklyLoader';
+import PetInviteForm from '../PetsInviteForm';
 
-interface FamilyMember {
-    id: number;
-    name: string;
-    role: string;
-    type: 'family' | 'pets';
-    color: string;
-    initials: string;
-    status?: 'pending' | 'accepted';
-}
 interface FamilyMembersProps {
     profileVisible: boolean;
     setProfileVisible: React.Dispatch<React.SetStateAction<boolean>>;
+    setFamilyMembers: React.Dispatch<React.SetStateAction<any[]>>;
+    familyMembers?: any[];
 }
 
-const FamilyMembers: React.FC<FamilyMembersProps> = ({ profileVisible, setProfileVisible }: any) => {
+const FamilyMembers: React.FC<FamilyMembersProps> = ({ profileVisible, setProfileVisible, setFamilyMembers, familyMembers }) => {
     const [activeFilter, setActiveFilter] = useState<'all' | 'family' | 'pets'>('all');
     const [isFamilyModalVisible, setIsFamilyModalVisible] = useState(false);
-    const [isPetModalVisible, setIsPetModalVisible] = useState(false);
-    const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
+    const [isPetModalVisible, setIsPetModalVisible] = useState(false)
+    // const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
 
     const currentUser = useCurrentUser();
@@ -34,22 +29,39 @@ const FamilyMembers: React.FC<FamilyMembersProps> = ({ profileVisible, setProfil
 
     const getRandomColor = () => {
         const colors = [
-            '#FF6B6B', // red
-            '#6BCB77', // green
-            '#FFD93D', // yellow
-            '#845EC2', // purple
-            '#FF9671', // orange
-            '#FFC75F', // light orange
-            '#F9F871', // pastel yellow
-            '#D65DB1', // pinkish purple
-            '#FFB085', // peach
-            '#B0C926'  // lime green
+            '#FF6B6B', '#6BCB77', '#FFD93D', '#845EC2', '#FF9671',
+            '#FFC75F', '#F9F871', '#D65DB1', '#FFB085', '#B0C926'
         ];
-
-        // Ensure primary color is not in the list
         const filteredColors = colors.filter(color => color.toLowerCase() !== PRIMARY_COLOR.toLowerCase());
-
         return filteredColors[Math.floor(Math.random() * filteredColors.length)];
+    };
+
+    const getPetsData = async () => {
+        try {
+            const response = await getPets();
+            const { status, payload } = response.data;
+            if (status === 1) {
+                const formattedPets = payload.pets.map((pet: any, index: number) => ({
+                    id: Math.max(...(familyMembers ?? []).map(m => m.id), 0) + index + 1,
+                    name: pet.name,
+                    role: `${pet.species} - ${pet.breed}`,
+                    type: 'pets',
+                    color: '#fbbf24',
+                    initials: pet.species === 'Dog' ? '🐕' :
+                        pet.species === 'Cat' ? '🐈' :
+                            pet.species === 'Bird' ? '🐦' :
+                                pet.species === 'Fish' ? '🐠' :
+                                    pet.species === 'Rabbit' ? '🐇' : '🐾',
+                }));
+                return formattedPets;
+            } else {
+                message.error('Failed to fetch pets');
+                return [];
+            }
+        } catch (error) {
+            message.error('Failed to fetch pets');
+            return [];
+        }
     };
 
     const getMembers = async () => {
@@ -71,6 +83,7 @@ const FamilyMembers: React.FC<FamilyMembersProps> = ({ profileVisible, setProfil
 
                     const role = member.relationship?.replace(/[^a-zA-Z\s]/g, '') || "Unknown";
                     const color = role.toLowerCase() === 'me' ? PRIMARY_COLOR : getRandomColor();
+
                     return {
                         id,
                         name,
@@ -82,12 +95,17 @@ const FamilyMembers: React.FC<FamilyMembersProps> = ({ profileVisible, setProfil
                     };
                 });
 
-                setFamilyMembers(transformedMembers);
+                const pets = await getPetsData();
+                setFamilyMembers([...transformedMembers, ...pets]);
             }
         }
     };
 
-    const filteredMembers = familyMembers.filter(member =>
+    useEffect(() => {
+        getMembers();
+    }, []);
+
+    const filteredMembers = (familyMembers ?? []).filter(member =>
         activeFilter === 'all' ? true : member.type === activeFilter
     );
 
@@ -97,7 +115,7 @@ const FamilyMembers: React.FC<FamilyMembersProps> = ({ profileVisible, setProfil
 
     const handleFamilyFormSubmit = async (formData: any) => {
         setLoading(true);
-        const newId = Math.max(...familyMembers.map(m => m.id)) + 1;
+        const newId = Math.max(...(familyMembers ?? []).map(m => m.id), 0) + 1;
         const newColor = '#34d399';
         const initials = formData.name
             .split(' ')
@@ -123,188 +141,136 @@ const FamilyMembers: React.FC<FamilyMembersProps> = ({ profileVisible, setProfil
         setLoading(false);
     };
 
-    useEffect(() => {
-        getMembers();
-    }, []);
-
     const handleFamilyCancel = () => setIsFamilyModalVisible(false);
-    const handlePetCancel = () => setIsPetModalVisible(false); // Placeholder for pets
-    if (loading) {
-        return <DocklyLoader />
-    }
+    const handlePetCancel = () => setIsPetModalVisible(false);
+
+
+
     return (
-        <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
-            padding: '24px',
-            marginBottom: '24px',
-        }}>
-            <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '20px',
-            }}>
-                <h3 style={{
-                    fontSize: '18px',
-                    fontWeight: 600,
-                    color: '#111827',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    margin: 0,
-                }}>
-                    <Users size={20} style={{ opacity: 0.8 }} />
+        <Card style={{ padding: '24px', marginBottom: '24px' }}>
+            <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h2 style={{ display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+                    <TeamOutlined />
                     Family Members & Pets
-                </h3>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                    {['all', 'family', 'pets'].map(filter => (
-                        <button
+                    <Badge count={filteredMembers.length} style={{ backgroundColor: '#667eea', marginLeft: 8 }} />
+                </h2>
+
+                <Space size="small">
+                    {(['all', 'family', 'pets'] as const).map((filter) => (
+                        <Button
                             key={filter}
-                            onClick={() => setActiveFilter(filter as 'all' | 'family' | 'pets')}
+                            onClick={() => setActiveFilter(filter)}
                             style={{
-                                padding: '6px 16px',
-                                border: '1px solid #e5e7eb',
-                                backgroundColor: activeFilter === filter ? '#3355ff' : 'white',
+                                backgroundColor: activeFilter === filter ? '#667eea' : 'white',
                                 color: activeFilter === filter ? 'white' : '#374151',
-                                borderColor: activeFilter === filter ? '#3355ff' : '#e5e7eb',
-                                borderRadius: '6px',
-                                fontSize: '13px',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s ease',
+                                border: activeFilter === filter ? 'none' : '1px solid #cbd5e0',
+                                borderRadius: '8px',
+                                fontWeight: 600,
                                 textTransform: 'capitalize',
+                                padding: '4px 16px'
                             }}
                         >
                             {filter}
-                        </button>
+                        </Button>
                     ))}
-                </div>
+                </Space>
             </div>
 
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-                gap: '16px',
-                marginBottom: '20px',
-            }}>
-                {filteredMembers.map((member, idx) => {
-                    const isPending = member.status === 'pending';
-                    return (
-                        <div
-                            key={member.id ?? idx}
+            <Row gutter={[20, 20]} style={{ marginBottom: 32 }}>
+                {filteredMembers.map((member) => (
+                    <Col xs={12} sm={8} md={6} lg={4} key={member.id}>
+                        <Card
+                            size="small"
+                            hoverable
+                            onClick={() => setProfileVisible(true)}
                             style={{
-                                backgroundColor: '#f0f4f8',
-                                borderRadius: '8px',
-                                padding: '16px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                cursor: 'pointer',
+                                textAlign: 'center',
+                                height: '160px',
+                                borderRadius: '12px',
+                                border: '1px solid #e2e8f0',
                                 transition: 'all 0.3s ease',
-                                border: isPending ? '1px dashed #f59e0b' : '1px solid #e5e7eb',
-                                opacity: isPending ? 0.7 : 1,
+                                background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+                                opacity: member.status === 'pending' ? 0.6 : 1,
                                 position: 'relative',
+                                marginBottom: '10px'
                             }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.transform = 'translateY(-2px)';
-                                e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.1)';
-                                e.currentTarget.style.borderColor = isPending ? '#f59e0b' : '#3355ff';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.transform = 'translateY(0)';
-                                e.currentTarget.style.boxShadow = 'none';
-                                e.currentTarget.style.borderColor = isPending ? '#f59e0b' : '#e5e7eb';
-                            }}
-                            onClick={() => { setProfileVisible(true); }}
+                            styles={{ body: { padding: '20px 16px' } }}
                         >
-                            {isPending && (
+                            {member.status === 'pending' && (
                                 <span style={{
                                     position: 'absolute',
-                                    top: '8px',
-                                    right: '8px',
+                                    top: 8,
+                                    right: 8,
                                     backgroundColor: '#f59e0b',
                                     color: 'white',
                                     fontSize: '10px',
                                     padding: '2px 6px',
                                     borderRadius: '12px',
                                     fontWeight: 500,
-                                    textTransform: 'uppercase',
+                                    textTransform: 'uppercase'
                                 }}>
                                     Waiting
                                 </span>
                             )}
-                            <div style={{
-                                width: '64px',
-                                height: '64px',
-                                borderRadius: '32px',
-                                backgroundColor: member.color,
-                                color: 'white',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: member.type === 'pets' ? '24px' : '24px',
-                                fontWeight: 600,
-                                marginBottom: '12px',
-                            }}>
+
+                            <Avatar
+                                size={56}
+                                style={{
+                                    background: `linear-gradient(135deg, ${member.color} 0%, ${member.color}dd 100%)`,
+                                    border: '3px solid white',
+                                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                                    fontSize: '20px',
+                                    fontWeight: 600,
+                                    marginBottom: 12
+                                }}
+                            >
                                 {member.initials}
+                            </Avatar>
+
+                            <div style={{ fontSize: '15px', fontWeight: 600, marginBottom: 4, color: '#1e293b' }}>
+                                {capitalizeEachWord(member.name)}
                             </div>
-                            <div style={{
-                                fontSize: '16px',
-                                fontWeight: 500,
-                                marginBottom: '4px',
-                                textAlign: 'center',
-                                color: '#374151',
-                            }}>
-                                {capitalizeEachWord(member?.name)}
-                            </div>
-                            <div style={{
-                                fontSize: '13px',
-                                color: '#6b7280',
-                                textAlign: 'center',
-                            }}>
+                            <Tag
+                                color={member.type === 'family' ? 'blue' : 'orange'}
+                                style={{
+                                    borderRadius: '6px',
+                                    fontSize: '11px',
+                                    fontWeight: 500,
+                                    border: 'none'
+                                }}
+                            >
                                 {member.role}
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
+                            </Tag>
+                        </Card>
+                    </Col>
+                ))}
+            </Row>
 
             {dUser === 1 && (
-                <div style={{ display: 'flex', gap: '12px' }}>
-                    <button
+                <Space size="middle">
+                    <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
                         onClick={() => handleAddMember('family')}
                         style={{
-                            padding: '8px 16px',
-                            backgroundColor: 'white',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '6px',
-                            fontSize: '14px',
-                            fontWeight: 500,
-                            color: '#374151',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            transition: 'all 0.2s ease',
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#f0f4f8';
-                            e.currentTarget.style.borderColor = '#3355ff';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'white';
-                            e.currentTarget.style.borderColor = '#e5e7eb';
+                            backgroundColor: '#667eea',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontWeight: 600,
+                            padding: '8px 20px',
+                            height: '44px'
                         }}
                     >
                         Add Family Member
-                    </button>
+                    </Button>
                     <FamilyInviteForm
                         visible={isFamilyModalVisible}
                         onCancel={handleFamilyCancel}
                         isEditMode={false}
                         onSubmit={handleFamilyFormSubmit}
                     />
+
 
                     <button
                         onClick={() => handleAddMember('pets')}
@@ -334,11 +300,17 @@ const FamilyMembers: React.FC<FamilyMembersProps> = ({ profileVisible, setProfil
                         <Heart style={{ fontSize: '16px', opacity: 0.7 }} />
                         Add Pet
                     </button>
-
-                    {/* PetInviteForm can go here if needed */}
-                </div>
+                    <PetInviteForm
+                        visible={isPetModalVisible}
+                        onCancel={handlePetCancel}
+                        onSubmit={(formData) => {
+                            // TODO: handle pet form submission
+                            setIsPetModalVisible(false);
+                        }}
+                    />
+                </Space>
             )}
-        </div>
+        </Card>
     );
 };
 

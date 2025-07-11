@@ -167,7 +167,7 @@ const VerifyEmailPage: React.FC = () => {
           ))}
         </div>
 
-        <Button
+        {/* <Button
           type="primary"
           block
           size="large"
@@ -176,7 +176,7 @@ const VerifyEmailPage: React.FC = () => {
           style={{ marginTop: 32, backgroundColor: "#0047FF" }}
         >
           Continue
-        </Button>
+        </Button> */}
 
         <div style={{ textAlign: "center", marginTop: 16 }}>
           <Text>Didn't receive a code? </Text>

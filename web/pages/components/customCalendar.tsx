@@ -21,6 +21,9 @@ interface Event {
     endTime?: string;
     description?: string;
     location?: string;
+    end_date?: string;
+    start_date?: string;
+    is_all_day?: boolean;
 }
 
 interface Meal {
@@ -459,10 +462,18 @@ const CustomCalendar: React.FC<CalendarProps> = ({
     };
 
     // Modified to show preview instead of edit form
+
     const handleEventClick = (event: Event) => {
-        setPreviewingEvent(event);
+        setPreviewingEvent({
+            ...event,
+            is_all_day: event.is_all_day,
+            start_date: event.start_date,
+            end_date: event.end_date,
+        });
+
         setIsPreviewVisible(true);
     };
+
 
     // New function to handle edit from preview
     const handleEditFromPreview = () => {
@@ -511,6 +522,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
 
 
 
+
     const handleModalSave = () => {
         setLoading(true);
 
@@ -526,6 +538,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     person,
                     location,
                     description,
+                    invitee,
                 } = values;
 
                 const payload =
@@ -538,6 +551,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             location,
                             description,
                             person,
+                            invitee,
                         }
                         : {
                             is_all_day: false,
@@ -548,6 +562,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             location,
                             description,
                             person,
+                            invitee,
                         };
 
                 // 👇 Add ID for editing case only
@@ -583,6 +598,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
     };
 
     const onEditEvent = (event: any) => {
+        console.log("Editing event:", event);
 
         const isAllDay =
             event.start_time === "12:00 AM" && event.end_time === "11:59 PM";
@@ -614,6 +630,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
 
         setIsModalVisible(true);
     };
+
 
     const parseTimeToMinutes = (timeStr: string) => {
         const [time, period] = timeStr.split(' ');
@@ -943,6 +960,12 @@ const CustomCalendar: React.FC<CalendarProps> = ({
     const renderWeekView = () => {
         const weekDays = getWeekDays(currentDate ?? new Date());
         const hours = Array.from({ length: 24 }, (_, i) => i);
+        const allDayEventsForWeek = finalData.events.filter(event => {
+            if (!event.is_all_day) return false;
+            const eventStart = new Date(event.start_date || event.date);
+            const eventEnd = new Date(event.end_date || event.date);
+            return eventStart <= weekDays[6] && eventEnd >= weekDays[0]; // spans current week
+        });
 
         return (
             <div
@@ -1052,6 +1075,64 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     })}
                 </div>
 
+                {/* All Day Events Row */}
+                <div
+                    style={{
+                        display: "grid",
+                        gridTemplateColumns: "80px repeat(7, 1fr)",
+                        backgroundColor: "#fff",
+                        borderBottom: "1px solid #e2e8f0",
+                        padding: "6px 0",
+                    }}
+                >
+                    <div style={{
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        textAlign: "center",
+                        color: "#6b7280"
+                    }}>
+                        All Day
+                    </div>
+
+                    {weekDays.map((day, index) => {
+                        const eventsForDay = allDayEventsForWeek.filter(event => {
+                            const start = new Date(event.start_date || event.date);
+                            const end = new Date(event.end_date || event.date);
+                            return start <= day && end >= day;
+                        });
+
+                        return (
+                            <div key={index} style={{ position: "relative", padding: "2px 4px", height: "36px" }}>
+                                {eventsForDay.map((event, i) => (
+                                    <div
+                                        key={`${event.id}-${i}`}
+                                        onClick={() => handleEventClick(event)}
+                                        style={{
+                                            position: "absolute",
+                                            left: 0,
+                                            right: 0,
+                                            top: `${i * 22}px`,
+                                            backgroundColor: event.color,
+                                            color: "#fff",
+                                            fontSize: "11px",
+                                            padding: "2px 6px",
+                                            borderRadius: "6px",
+                                            fontWeight: 600,
+                                            whiteSpace: "nowrap",
+                                            overflow: "hidden",
+                                            textOverflow: "ellipsis",
+                                            cursor: "pointer",
+                                            zIndex: 5
+                                        }}
+                                    >
+                                        {event.title}
+                                    </div>
+                                ))}
+                            </div>
+                        );
+                    })}
+                </div>
+
                 {/* Time Grid */}
                 <div
                     style={{
@@ -1096,7 +1177,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
 
                         {/* Day Columns */}
                         {weekDays.map((day, dayIndex) => {
-                            const dayEvents = getEventsForDate(day);
+                            const dayEvents = getEventsForDate(day).filter(e => !e.is_all_day);
                             const isToday = day.toDateString() === new Date().toDateString();
                             const isPast = isPastDate(formatDateString(day));
                             return (
@@ -1851,19 +1932,8 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             fontSize: "16px"
                         }}>
                             <Clock size={18} />
-                            {previewingEvent.is_all_day
-                                ? `${new Date(previewingEvent.start_date ?? previewingEvent.date).toLocaleDateString("en-US", {
-                                    weekday: "long",
-                                    month: "long",
-                                    day: "numeric",
-                                    year: "numeric"
-                                })} - ${new Date(previewingEvent.end_date ?? previewingEvent.date).toLocaleDateString("en-US", {
-                                    weekday: "long",
-                                    month: "long",
-                                    day: "numeric",
-                                    year: "numeric"
-                                })}`
-                                : `${previewingEvent.startTime} - ${previewingEvent.endTime}`}
+                            {previewingEvent.startTime} - {previewingEvent.endTime}
+
                         </div>
                     </div>
 
@@ -1913,6 +1983,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             border: "1px solid #e2e8f0"
                         }}>
                             <CalendarIcon size={20} color="#6b7280" />
+
                             <div>
                                 <div style={{ fontWeight: "600", color: "#1f2937" }}>
                                     {previewingEvent.is_all_day
@@ -1921,7 +1992,11 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                             month: "long",
                                             day: "numeric",
                                             year: "numeric"
-                                        })} - ${new Date(previewingEvent.end_date ?? previewingEvent.date).toLocaleDateString("en-US", {
+                                        })} - ${new Date(
+                                            new Date(previewingEvent.end_date ?? previewingEvent.date).setDate(
+                                                new Date(previewingEvent.end_date ?? previewingEvent.date).getDate() - 1
+                                            )
+                                        ).toLocaleDateString("en-US", {
                                             weekday: "long",
                                             month: "long",
                                             day: "numeric",
@@ -2345,13 +2420,13 @@ const CustomCalendar: React.FC<CalendarProps> = ({
             <Card style={{ marginTop: 16 }}>
                 <Space wrap>
                     <Text strong>Connected Accounts:</Text>
-                    <Tag style={{ cursor: 'pointer', padding: '4px 12px', border: `1px solid ${PRIMARY_COLOR}`, borderRadius: '12px' }}
+                    {/* <Tag style={{ cursor: 'pointer', padding: '4px 12px', border: `1px solid ${PRIMARY_COLOR}`, borderRadius: '12px' }}
                     ><Avatar
                         size="small"
                         style={{ backgroundColor: PRIMARY_COLOR, marginRight: 8 }}
                     >
                             D
-                        </Avatar> {user.email}</Tag>
+                        </Avatar> {user.email}</Tag> */}
                     {Object.entries(personColors).map(([userName, personData]) => {
                         const account = getConnectedAccount(userName);
                         return (
@@ -2405,6 +2480,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
             <EventPreviewModal />
 
             {/* Enhanced Event Form Modal */}
+
 
             <Modal
                 title={
@@ -2499,27 +2575,38 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                         </Checkbox>
                     </Form.Item>
 
-                    <Form.Item
-                        name="person"
-                        label="Assigned to"
-                        rules={[{ required: true, message: 'Please select person' }]}
-                    >
-                        <Select placeholder="Select person">
-                            {Object.keys(personColors).map(userName => {
-                                const account = getConnectedAccount(userName);
-                                return (
-                                    <Option key={userName} value={userName}>
-                                        <Space>
-                                            <Avatar size="small" style={{ backgroundColor: getPersonData(userName).color }}>
-                                                {(account?.displayName || userName).charAt(0).toUpperCase()}
-                                            </Avatar>
-                                            {account?.displayName || userName}
-                                        </Space>
-                                    </Option>
-                                );
-                            })}
-                        </Select>
-                    </Form.Item>
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item
+                                name="person"
+                                label="Assigned to"
+                                rules={[{ required: true, message: 'Please select person' }]}
+                            >
+                                <Select placeholder="Select person">
+                                    {Object.keys(personColors).map(userName => {
+                                        const account = getConnectedAccount(userName);
+                                        return (
+                                            <Option key={userName} value={userName}>
+                                                <Space>
+                                                    <Avatar size="small" style={{ backgroundColor: getPersonData(userName).color }}>
+                                                        {(account?.displayName || userName).charAt(0).toUpperCase()}
+                                                    </Avatar>
+                                                    {account?.displayName || userName}
+                                                </Space>
+                                            </Option>
+                                        );
+                                    })}
+                                </Select>
+                            </Form.Item>
+                        </Col>
+
+                        <Col span={12}>
+                            <Form.Item name="invitee" label="Invite">
+                                <Input placeholder="Add email" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+
 
                     <Form.Item
                         name="location"
@@ -2533,6 +2620,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     </Form.Item>
                 </Form>
             </Modal>
+
         </Card>
     );
 };

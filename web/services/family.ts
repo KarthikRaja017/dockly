@@ -15,6 +15,22 @@ if (typeof window !== 'undefined') {
   );
 }
 
+function toSnakeCase(obj: any): any {
+  if (Array.isArray(obj)) {
+    return obj.map((v) => toSnakeCase(v));
+  } else if (obj !== null && typeof obj === 'object') {
+    return Object.keys(obj).reduce((acc, key) => {
+      const snakeKey = key.replace(
+        /[A-Z]/g,
+        (letter) => `_${letter.toLowerCase()}`
+      );
+      acc[snakeKey] = toSnakeCase(obj[key]);
+      return acc;
+    }, {} as any);
+  }
+  return obj;
+}
+
 interface ScheduleData {
   school_church: {
     name: string;
@@ -420,6 +436,42 @@ export async function getSchoolInfo(params: { userId: string }): Promise<any> {
     return response.data;
   } catch (error) {
     console.error('Error fetching school info:', error);
+    throw error;
+  }
+}
+
+export async function addPet(params: PetData): Promise<any> {
+  try {
+    const response = await api.post('/add/pet', toSnakeCase(params));
+    return response.data;
+  } catch (error) {
+    console.error('Error adding pet:', error);
+    throw error;
+  }
+}
+
+export async function getUserPets(
+  params: { user_id?: string } = {}
+): Promise<any> {
+  try {
+    const response = await api.get('/get/pets', {
+      params: toSnakeCase(params),
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching pets:', error);
+    throw error;
+  }
+}
+
+export async function getUpcomingActivities(userId: string): Promise<any> {
+  try {
+    const response = await api.get('/get/upcoming-events', {
+      params: { user_id: userId },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching upcoming activities:', error);
     throw error;
   }
 }

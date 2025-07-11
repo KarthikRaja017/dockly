@@ -181,7 +181,7 @@ const SmartInputBox: React.FC<SmartInputBoxProps> = ({
     return (
         <div style={{ marginBottom: '16px' }}>
             {/* Try Suggestions */}
-            <div
+            {/* <div
                 style={{
                     display: 'flex',
                     flexWrap: 'wrap',
@@ -206,7 +206,7 @@ const SmartInputBox: React.FC<SmartInputBoxProps> = ({
                         "{example}"
                     </Tag>
                 ))}
-            </div>
+            </div> */}
 
             {/* Input + Button */}
             <div

@@ -3,7 +3,7 @@ import axios from 'axios';
 // export const API_URL = 'http://192.168.1.8:5000/server/api';
 // export const API_URL = 'https://dockly.onrender.com/server/api'; //DEPLOYMENT
 export const API_URL =
-  process.env.REACT_APP_API_URL || 'https://dockly.onrender.com/server/api';
+  process.env.REACT_APP_API_URL || 'https://dockly.onrender.com//server/api';
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -63,6 +63,10 @@ export async function getSmartBookmarks(uid: string) {
   return api.get('/bookmarks/get', {
     params: { uid },
   });
+}
+
+export async function getLoansAndMortgages(params: any) {
+  return api.post('/get/loans_and_mortgages', params).then((res) => res.data);
 }
 
 export async function getCurrentUser(params: string) {

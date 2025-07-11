@@ -1,100 +1,74 @@
-"use client";
-import { ArrowRightCircle, Plus, Users } from "lucide-react";
-import React, { useEffect, useState } from "react";
-import {
-    DeleteOutlined,
-    EditOutlined,
-    ExportOutlined,
-    EyeOutlined,
-    PhoneOutlined,
-    PlusOutlined,
-    SafetyOutlined,
-} from "@ant-design/icons";
-import {
-    Input as AntInput,
-    Button,
-    Col,
-    Form,
-    Input,
-    message,
-    Modal,
-    Popconfirm,
-    Row,
-    Select,
-    Space,
-} from "antd";
+'use client'
+import { ArrowLeft, ArrowRightCircle, BoxSelect, Heart, LayoutPanelLeft, Plus, Search, Share, Users } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import DocklyLoader from '../../utils/docklyLoader';
 
-import {
-    addContacts,
-    addGuardians,
-    addNote,
-    addProject,
-    addTask,
-    getAllNotes,
-    getGuardians,
-    getProjects,
-    getTasks,
-    getUserContacts,
-    updateTask,
-} from "../../services/family";
+interface FamilyMember {
+    id: number;
+    name: string;
+    role: string;
+    type: 'family' | 'pets';
+    color: string;
+    initials: string;
+    status?: 'pending' | 'accepted';
+}
 
 const FamilyHubPage: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [profileVisible, setProfileVisible] = useState(false);
+    const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
 
     if (loading) {
-        return <DocklyLoader />;
+        return <DocklyLoader />
     }
     return (
         <div
             style={{
-                display: "flex",
-                height: "100vh",
-                fontFamily:
-                    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                display: 'flex',
+                height: '100vh',
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
                 lineHeight: 1.5,
-                color: "#374151",
-                backgroundColor: "#f9fafb",
+                color: '#374151',
+                backgroundColor: '#f9fafb',
                 marginLeft: 40,
-                marginTop: 50,
+                marginTop: 50
             }}
         >
-            {profileVisible && <FamilyHubMemberDetails />}
+            {profileVisible && (
+                <FamilyHubMemberDetails />
+            )}
             {!profileVisible && (
                 <div
                     style={{
                         flex: 1,
-                        overflowY: "auto",
-                        padding: "20px 30px",
+                        overflowY: 'auto',
+                        padding: '20px 30px',
                     }}
                 >
                     <BoardTitle />
-                    <FamilyMembers
-                        profileVisible={profileVisible}
-                        setProfileVisible={setProfileVisible}
-                    />
+                    <FamilyMembers profileVisible={profileVisible} setProfileVisible={setProfileVisible} setFamilyMembers={setFamilyMembers} familyMembers={familyMembers} />
                     <div
                         style={{
-                            display: "grid",
-                            gridTemplateColumns: "1fr 400px",
-                            gap: "24px",
-                            marginBottom: "24px",
+                            display: 'grid',
+                            gridTemplateColumns: '1fr 400px',
+                            gap: '24px',
+                            marginBottom: '24px',
                         }}
                     >
-                        <CustomCalendar data={sampleCalendarData} />
+                        <CustomCalendar data={sampleCalendarData} source="familyhub" allowMentions={true} enabledHashmentions={true} familyMembers={(familyMembers ?? []).filter(m => m.type === 'family')} />
                         <UpcomingActivities />
                     </div>
 
                     <FamilyNotes />
 
-                    <FamilyTasks isPlanner={false} />
+                    <FamilyTasks />
 
                     <div
                         style={{
-                            display: "grid",
-                            gridTemplateColumns: "1fr 1fr",
-                            gap: "24px",
-                            marginBottom: "24px",
+                            display: 'grid',
+                            gridTemplateColumns: '1fr 1fr',
+                            gap: '24px',
+                            marginBottom: '24px',
                         }}
                     >
                         <GuardiansEmergencyInfo />
@@ -107,6 +81,13 @@ const FamilyHubPage: React.FC = () => {
 };
 
 export default FamilyHubPage;
+
+import { DeleteOutlined, EditOutlined, ExportOutlined, EyeInvisibleOutlined, EyeOutlined, PhoneOutlined, PlusOutlined, SafetyOutlined } from '@ant-design/icons';
+import { Input as AntInput, Avatar, Button, Col, Form, Input, message, Modal, Popconfirm, Row, Select, Space } from 'antd';
+
+import { addContacts, addGuardians, addNote, addProject, addTask, getAllNotes, getGuardians, getPets, getProjects, getTasks, getUserContacts, updateTask } from '../../services/family'; // Adjust import based on your setup
+
+const { TextArea } = AntInput;
 
 // Define GuardianItem and GuardianSection types for Guardians
 interface GuardianItem {
@@ -137,38 +118,24 @@ interface ContactSection {
     title: string;
     type: string;
     items: ContactItem[];
-} // page.tsx (Update GuardiansEmergencyInfo)
+}// page.tsx (Update GuardiansEmergencyInfo)
+
 const GuardiansEmergencyInfo: React.FC = () => {
     const [guardianInfo, setGuardianInfo] = useState<GuardianSection[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [modalType, setModalType] = useState<
-        "guardian" | "section-edit" | "new-section"
-    >("guardian");
-    const [currentSectionIndex, setCurrentSectionIndex] = useState<number | null>(
-        null
-    );
+    const [modalType, setModalType] = useState<'guardian' | 'section-edit' | 'new-section'>('guardian');
+    const [currentSectionIndex, setCurrentSectionIndex] = useState<number | null>(null);
     const [currentItemIndex, setCurrentItemIndex] = useState<number | null>(null);
     const [form] = Form.useForm();
     const [sectionItems, setSectionItems] = useState<GuardianItem[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [expandedSections, setExpandedSections] = useState<{ [key: number]: boolean }>({});
 
     const guardianRelations = [
-        "Grandmother",
-        "Grandfather",
-        "Uncle",
-        "Aunt",
-        "Family Friend",
-        "Sibling",
-        "Cousin",
-        "Neighbor",
-        "Other Family Member",
-        "Policy ",
-        "Family Doctor",
-        "Insurance ",
-        "Specialist",
-        "health",
-        "provider",
+        'Grandmother', 'Grandfather', 'Uncle', 'Aunt', 'Family Friend',
+        'Sibling', 'Cousin', 'Neighbor', 'Other Family Member', 'Policy ',
+        'Family Doctor', 'Insurance ', 'Specialist', 'health', 'provider',
     ];
 
     const getGuardian = async () => {
@@ -180,58 +147,35 @@ const GuardiansEmergencyInfo: React.FC = () => {
             if (status) {
                 const groupedByType: Record<string, GuardianItem[]> = {
                     guardian: [],
-                    insurance: [], // Life Insurance
-                    medical: [], // Medical Information
-                    // Emergency Guardians
+                    insurance: [],
+                    medical: [],
                 };
 
                 payload.emergencyInfo.forEach((info: GuardianItem) => {
                     const relLower = info.relationship.toLowerCase();
-                    if (
-                        relLower.includes("policy") ||
-                        relLower.includes("insurance") ||
-                        relLower.includes("provider")
-                    ) {
-                        groupedByType["insurance"].push(info);
-                    } else if (
-                        relLower.includes("doctor") ||
-                        relLower.includes("health") ||
-                        relLower.includes("pediatrician") ||
-                        relLower.includes("specialist")
-                    ) {
-                        groupedByType["medical"].push(info);
+                    if (relLower.includes('policy') || relLower.includes('insurance') || relLower.includes('provider')) {
+                        groupedByType['insurance'].push(info);
+                    } else if (relLower.includes('doctor') || relLower.includes('health') || relLower.includes('pediatrician') || relLower.includes('specialist')) {
+                        groupedByType['medical'].push(info);
                     } else {
-                        groupedByType["guardian"].push(info); // Default to Emergency Guardians
+                        groupedByType['guardian'].push(info);
                     }
                 });
 
-                // Define all sections with potential empty arrays
                 const formattedSections: GuardianSection[] = [
-                    {
-                        title: "Emergency Guardians",
-                        type: "guardian",
-                        items: groupedByType["guardian"],
-                    },
-                    {
-                        title: "Life Insurance",
-                        type: "insurance",
-                        items: groupedByType["insurance"],
-                    },
-                    {
-                        title: "Medical Information",
-                        type: "medical",
-                        items: groupedByType["medical"],
-                    },
+                    { title: 'Emergency Guardians', type: 'guardian', items: groupedByType['guardian'] },
+                    { title: 'Life Insurance', type: 'insurance', items: groupedByType['insurance'] },
+                    { title: 'Medical Information', type: 'medical', items: groupedByType['medical'] },
                 ];
 
                 setGuardianInfo(formattedSections);
             } else {
-                setError("Failed to fetch guardian info");
-                message.error("Failed to fetch guardian info");
+                setError('Failed to fetch guardian info');
+                message.error('Failed to fetch guardian info');
             }
         } catch (err) {
-            setError("Error fetching guardian info");
-            message.error("Error fetching guardian info");
+            setError('Error fetching guardian info');
+            message.error('Error fetching guardian info');
         } finally {
             setLoading(false);
         }
@@ -242,7 +186,7 @@ const GuardiansEmergencyInfo: React.FC = () => {
     }, []);
 
     const showModal = (
-        type: "guardian" | "section-edit" | "new-section",
+        type: 'guardian' | 'section-edit' | 'new-section',
         sectionIndex: number | null = null,
         itemIndex: number | null = null
     ) => {
@@ -250,13 +194,9 @@ const GuardiansEmergencyInfo: React.FC = () => {
         setCurrentSectionIndex(sectionIndex);
         setCurrentItemIndex(itemIndex);
 
-        if (type === "section-edit" && sectionIndex !== null) {
+        if (type === 'section-edit' && sectionIndex !== null) {
             setSectionItems(guardianInfo[sectionIndex].items);
-        } else if (
-            type === "guardian" &&
-            sectionIndex !== null &&
-            itemIndex !== null
-        ) {
+        } else if (type === 'guardian' && sectionIndex !== null && itemIndex !== null) {
             form.setFieldsValue(guardianInfo[sectionIndex].items[itemIndex]);
         } else {
             form.resetFields();
@@ -269,24 +209,24 @@ const GuardiansEmergencyInfo: React.FC = () => {
             await form.validateFields();
             const values = form.getFieldsValue();
 
-            if (modalType === "new-section") {
+            if (modalType === 'new-section') {
                 const newSection: GuardianSection = {
                     title: values.sectionName,
-                    type: "other",
+                    type: 'other',
                     items: [],
                 };
                 setGuardianInfo([...guardianInfo, newSection]);
-                message.success("New section created!");
+                message.success('New section created!');
                 setIsModalOpen(false);
                 form.resetFields();
-            } else if (modalType === "guardian" && currentSectionIndex !== null) {
+            } else if (modalType === 'guardian' && currentSectionIndex !== null) {
                 setLoading(true);
                 const payload = {
                     name: values.name,
                     relationship: values.relation,
                     phone: values.phone,
-                    details: values.details || "",
-                    addedBy: localStorage.getItem("userId") || "current_user",
+                    details: values.details || '',
+                    addedBy: localStorage.getItem('userId') || 'current_user',
                 };
 
                 const response = await addGuardians(payload);
@@ -300,24 +240,23 @@ const GuardiansEmergencyInfo: React.FC = () => {
                     };
 
                     if (currentItemIndex !== null) {
-                        updatedGuardianInfo[currentSectionIndex].items[currentItemIndex] =
-                            newItem;
-                        message.success("Guardian info updated!");
+                        updatedGuardianInfo[currentSectionIndex].items[currentItemIndex] = newItem;
+                        message.success('Guardian info updated!');
                     } else {
                         updatedGuardianInfo[currentSectionIndex].items.push(newItem);
-                        message.success("Guardian info added!");
+                        message.success('Guardian info added!');
                     }
 
                     setGuardianInfo(updatedGuardianInfo);
                     setIsModalOpen(false);
                     form.resetFields();
                 } else {
-                    message.error("Failed to save guardian info");
+                    message.error('Failed to save guardian info');
                 }
             }
         } catch (error) {
-            console.error("Error in handleOk:", error);
-            message.error("Failed to save guardian info. Please try again.");
+            console.error('Error in handleOk:', error);
+            message.error('Failed to save guardian info. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -328,7 +267,7 @@ const GuardiansEmergencyInfo: React.FC = () => {
         updatedGuardianInfo[sectionIndex].items.splice(itemIndex, 1);
         setGuardianInfo(updatedGuardianInfo);
         setSectionItems(updatedGuardianInfo[sectionIndex].items);
-        message.success("Item deleted successfully!");
+        message.success('Item deleted successfully!');
     };
 
     const handleCancel = () => {
@@ -336,23 +275,27 @@ const GuardiansEmergencyInfo: React.FC = () => {
         form.resetFields();
     };
 
+    const toggleSectionExpand = (index: number) => {
+        setExpandedSections((prev) => ({
+            ...prev,
+            [index]: !prev[index],
+        }));
+    };
+
     const renderFormFields = () => {
         switch (modalType) {
-            case "new-section":
+            case 'new-section':
                 return (
                     <Form.Item
                         name="sectionName"
                         label="Section Name"
-                        rules={[{ required: true, message: "Please enter section name!" }]}
+                        rules={[{ required: true, message: 'Please enter section name!' }]}
                     >
-                        <Input
-                            placeholder="Enter section name (e.g., 'Family Friends')"
-                            style={{ width: "100%" }}
-                        />
+                        <Input placeholder="Enter section name (e.g., 'Family Friends')" style={{ width: '100%' }} />
                     </Form.Item>
                 );
 
-            case "guardian":
+            case 'guardian':
                 return (
                     <>
                         <Row gutter={16}>
@@ -360,94 +303,55 @@ const GuardiansEmergencyInfo: React.FC = () => {
                                 <Form.Item
                                     name="name"
                                     label="Full Name"
-                                    rules={[
-                                        { required: true, message: "Please input the name!" },
-                                    ]}
+                                    rules={[{ required: true, message: 'Please input the name!' }]}
                                 >
-                                    <Input
-                                        placeholder="Enter full name"
-                                        style={{ width: "100%" }}
-                                    />
+                                    <Input placeholder="Enter full name" />
                                 </Form.Item>
                             </Col>
                             <Col span={12}>
                                 <Form.Item
                                     name="relation"
                                     label="Relationship/Role"
-                                    rules={[
-                                        {
-                                            required: true,
-                                            message: "Please select or input the relationship!",
-                                        },
-                                    ]}
+                                    rules={[{ required: true, message: 'Please select or input the relationship!' }]}
                                 >
                                     <Select
                                         placeholder="Select or type relationship"
                                         showSearch
                                         allowClear
-                                        options={guardianRelations.map((rel) => ({
-                                            label: rel,
-                                            value: rel,
-                                        }))}
-                                        style={{ width: "100%" }}
+                                        options={guardianRelations.map((rel) => ({ label: rel, value: rel }))}
                                     />
                                 </Form.Item>
                             </Col>
                         </Row>
-
                         <Form.Item
                             name="phone"
                             label="Phone Number"
-                            rules={[
-                                { required: true, message: "Please input the phone number!" },
-                            ]}
+                            rules={[{ required: true, message: 'Please input the phone number!' }]}
                         >
-                            <Input
-                                placeholder="Enter phone number (e.g., (555) 123-4567)"
-                                style={{ width: "100%" }}
-                            />
+                            <Input placeholder="Enter phone number" />
                         </Form.Item>
-
                         <Form.Item name="details" label="Additional Details">
-                            <Input.TextArea
-                                placeholder="Enter additional details (e.g., address, notes)"
-                                rows={3}
-                                style={{ width: "100%" }}
-                            />
+                            <Input.TextArea placeholder="Enter additional details" rows={3} />
                         </Form.Item>
                     </>
                 );
 
-            case "section-edit":
+            case 'section-edit':
                 return (
-                    <div
-                        style={{
-                            maxHeight: "500px",
-                            overflowY: "auto",
-                            padding: "16px",
-                        }}
-                    >
+                    <div style={{ maxHeight: '500px', overflowY: 'auto', padding: '16px' }}>
                         {sectionItems.map((item, index) => (
                             <div
                                 key={index}
                                 style={{
-                                    marginBottom: "16px",
-                                    padding: "16px",
-                                    backgroundColor: "#f8fafc",
-                                    borderRadius: "8px",
-                                    border: "1px solid #e2e8f0",
-                                    position: "relative",
+                                    marginBottom: '16px',
+                                    padding: '16px',
+                                    backgroundColor: '#f8fafc',
+                                    borderRadius: '8px',
+                                    border: '1px solid #e2e8f0',
+                                    position: 'relative',
                                 }}
                             >
-                                <div
-                                    style={{
-                                        position: "absolute",
-                                        top: "12px",
-                                        right: "12px",
-                                        display: "flex",
-                                        gap: "8px",
-                                    }}
-                                >
+                                <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', gap: '8px' }}>
                                     <Button
                                         type="text"
                                         size="small"
@@ -455,60 +359,35 @@ const GuardiansEmergencyInfo: React.FC = () => {
                                         onClick={() => {
                                             setIsModalOpen(false);
                                             setTimeout(() => {
-                                                showModal("guardian", currentSectionIndex, index);
+                                                showModal('guardian', currentSectionIndex, index);
                                             }, 100);
                                         }}
-                                        style={{ color: "#3b82f6" }}
+                                        style={{ color: '#3b82f6' }}
                                     />
                                     <Popconfirm
                                         title="Are you sure to delete this item?"
-                                        onConfirm={() =>
-                                            handleItemDelete(currentSectionIndex!, index)
-                                        }
+                                        onConfirm={() => handleItemDelete(currentSectionIndex!, index)}
                                         okText="Yes"
                                         cancelText="No"
                                     >
-                                        <Button
-                                            type="text"
-                                            size="small"
-                                            icon={<DeleteOutlined />}
-                                            style={{ color: "#dc2626" }}
-                                        />
+                                        <Button type="text" size="small" icon={<DeleteOutlined />} style={{ color: '#dc2626' }} />
                                     </Popconfirm>
                                 </div>
-
-                                <div
-                                    style={{
-                                        fontWeight: 600,
-                                        fontSize: "14px",
-                                        marginBottom: "4px",
-                                        paddingRight: "80px",
-                                    }}
-                                >
+                                <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px', paddingRight: '80px' }}>
                                     {item.name}
                                 </div>
-                                <div
-                                    style={{
-                                        color: "#6b7280",
-                                        fontSize: "12px",
-                                        marginBottom: "4px",
-                                    }}
-                                >
+                                <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: '4px' }}>
                                     {item.relationship} • {item.phone}
                                 </div>
-                                {item.details && (
-                                    <div style={{ color: "#9ca3af", fontSize: "11px" }}>
-                                        {item.details}
-                                    </div>
-                                )}
+                                {item.details && <div style={{ color: '#9ca3af', fontSize: '11px' }}>{item.details}</div>}
                             </div>
                         ))}
                         <Button
                             type="dashed"
                             size="small"
                             icon={<PlusOutlined />}
-                            onClick={() => showModal("guardian", currentSectionIndex, null)}
-                            style={{ width: "100%", marginTop: "16px", borderRadius: "6px" }}
+                            onClick={() => showModal('guardian', currentSectionIndex, null)}
+                            style={{ width: '100%', marginTop: '16px', borderRadius: '6px' }}
                         >
                             Add
                         </Button>
@@ -521,214 +400,239 @@ const GuardiansEmergencyInfo: React.FC = () => {
     };
 
     return (
-        <div
-            style={{
-                backgroundColor: "white",
-                borderRadius: "16px",
-                boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-                padding: "24px",
-                border: "1px solid #e5e7eb",
-            }}
-        >
-            <div
-                style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "24px",
-                    paddingBottom: "16px",
-                    borderBottom: "2px solid #f3f4f6",
-                }}
-            >
-                <h3
-                    style={{
-                        fontSize: "20px",
-                        fontWeight: 700,
-                        color: "#111827",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "10px",
-                        margin: 0,
-                    }}
-                >
-                    <SafetyOutlined style={{ color: "#3b82f6", fontSize: "24px" }} />
+        <Card className="modern-card fade-in" style={{ height: '100%', padding: '24px' }}>
+            <div className="modern-card-header">
+                <h2 className="modern-card-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <SafetyOutlined style={{ color: '#dc2626' }} />
                     Guardians & Emergency Info
-                </h3>
+                </h2>
             </div>
 
             {loading ? (
                 <div>Loading...</div>
             ) : error ? (
-                <div style={{ color: "#dc2626" }}>{error}</div>
+                <div style={{ color: '#dc2626' }}>{error}</div>
             ) : guardianInfo.length === 0 ? (
-                <div
-                    style={{
-                        textAlign: "center",
-                        color: "#9ca3af",
-                        fontSize: "14px",
-                        padding: "20px 0",
-                    }}
-                >
-                    No guardian info available. Click 'Add' to get started.
+                <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: '14px', padding: '20px 0' }}>
+                    No guardian info available.
                 </div>
             ) : (
-                guardianInfo.map((section, sectionIndex) => (
-                    <div key={sectionIndex} style={{ marginBottom: "28px" }}>
-                        <div
-                            style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                marginBottom: "12px",
-                                padding: "8px 0",
-                            }}
-                        >
-                            <h4
+                guardianInfo.map((section, sectionIndex) => {
+                    const isExpanded = expandedSections[sectionIndex];
+                    const itemsToShow = isExpanded ? section.items : section.items.slice(0, 2);
+                    const bgColor =
+                        section.type === 'guardian' ? '#fef2f2' : section.type === 'insurance' ? '#eff6ff' : '#fefce8';
+                    const borderColor =
+                        section.type === 'guardian' ? '#fecaca' : section.type === 'insurance' ? '#bfdbfe' : '#fde68a';
+                    const headerColor =
+                        section.type === 'guardian' ? '#dc2626' : section.type === 'insurance' ? '#2563eb' : '#ca8a04';
+
+                    return (
+                        <div key={sectionIndex} style={{ marginBottom: 32 }}>
+                            <div
                                 style={{
-                                    fontSize: "14px",
-                                    fontWeight: 600,
-                                    color: "#374151",
-                                    textTransform: "uppercase",
-                                    letterSpacing: "0.5px",
-                                    margin: 0,
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    marginBottom: 16,
+                                    padding: '12px 16px',
+                                    background: `linear-gradient(135deg, ${bgColor} 0%, ${bgColor} 100%)`,
+                                    borderRadius: '8px',
+                                    border: `1px solid ${borderColor}`,
                                 }}
                             >
-                                {section.title}
-                            </h4>
-                            <div style={{ display: "flex", gap: "8px" }}>
+                                <h4
+                                    style={{
+                                        margin: 0,
+                                        fontSize: '13px',
+                                        fontWeight: 700,
+                                        color: headerColor,
+                                        letterSpacing: '0.5px',
+                                        textTransform: 'uppercase',
+                                    }}
+                                >
+                                    {section.title}
+                                </h4>
                                 <Button
                                     type="text"
                                     size="small"
-                                    icon={<ArrowRightCircle size={16} />}
-                                    onClick={() => showModal("section-edit", sectionIndex, null)}
-                                    style={{ color: "#3b82f6" }}
+                                    icon={<Plus size={16} />}
+                                    onClick={() => showModal('section-edit', sectionIndex, null)}
+                                    style={{ color: headerColor }}
                                 />
                             </div>
-                        </div>
 
-                        <div
-                            style={{
-                                backgroundColor: "#f8fafc",
-                                borderRadius: "12px",
-                                padding: "16px",
-                                border: "1px solid #e2e8f0",
-                            }}
-                        >
-                            {section.items.length === 0 ? (
-                                <div
-                                    style={{
-                                        textAlign: "center",
-                                        color: "#9ca3af",
-                                        fontSize: "14px",
-                                        padding: "20px 0",
-                                    }}
-                                >
-                                    No {section.title.toLowerCase()} available. Click 'Add' to get
-                                    started.
-                                </div>
-                            ) : (
-                                <>
-                                    {section.items.slice(0, 2).map((item, itemIndex) => (
-                                        <div
-                                            key={itemIndex}
-                                            style={{
-                                                display: "flex",
-                                                alignItems: "flex-start",
-                                                padding: "12px 0",
-                                                borderBottom:
-                                                    itemIndex < Math.min(section.items.length, 2) - 1
-                                                        ? "1px solid #e5e7eb"
-                                                        : "none",
-                                            }}
-                                        >
-                                            <div style={{ flex: 1 }}>
-                                                <div
-                                                    style={{
-                                                        fontWeight: 600,
-                                                        color: "#111827",
-                                                        fontSize: "14px",
-                                                        marginBottom: "4px",
-                                                    }}
-                                                >
-                                                    {item.name}
-                                                </div>
-                                                <div
-                                                    style={{
-                                                        color: "#6b7280",
-                                                        fontSize: "13px",
-                                                        marginBottom: "2px",
-                                                    }}
-                                                >
-                                                    {item.relationship} • {item.phone}
-                                                </div>
-                                                {item.details && (
-                                                    <div style={{ color: "#9ca3af", fontSize: "12px" }}>
-                                                        {item.details}
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div style={{ display: "flex", gap: "8px" }}>
-                                                {/*  */}
-                                            </div>
-                                        </div>
-                                    ))}
-                                    {section.items.length > 2 && (
-                                        <div style={{ textAlign: "center", marginTop: "12px" }}>
+                            <List
+                                size="small"
+                                dataSource={itemsToShow}
+                                renderItem={(item) => (
+                                    <List.Item
+                                        style={{
+                                            padding: '12px 16px',
+                                            background: 'white',
+                                            borderRadius: '8px',
+                                            marginBottom: '8px',
+                                            border: '1px solid #f1f5f9',
+                                        }}
+                                        actions={[
                                             <Button
-                                                type="link"
-                                                icon={<EyeOutlined />}
-                                                onClick={() =>
-                                                    showModal("section-edit", sectionIndex, null)
-                                                }
-                                                style={{ color: "#6b7280" }}
-                                            >
-                                                View All ({section.items.length} items)
-                                            </Button>
-                                        </div>
-                                    )}
-                                </>
+                                                type="text"
+                                                icon={<PhoneOutlined />}
+                                                size="small"
+                                                style={{ color: '#10b981', borderRadius: '6px' }}
+                                            />,
+                                        ]}
+                                    >
+                                        <List.Item.Meta
+                                            avatar={
+                                                <Avatar
+                                                    style={{
+                                                        background:
+                                                            section.type === 'insurance'
+                                                                ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
+                                                                : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                                                        fontWeight: 600,
+                                                    }}
+                                                >
+                                                    {item.name?.charAt(0) || 'G'}
+                                                </Avatar>
+                                            }
+                                            title={
+                                                <span style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>
+                                                    {item.name}
+                                                </span>
+                                            }
+                                            description={
+                                                <div style={{ fontSize: '12px' }}>
+                                                    <div style={{ color: '#64748b', fontWeight: 500 }}>
+                                                        {item.relationship} • {item.phone}
+                                                    </div>
+                                                    {item.details && (
+                                                        <div style={{ color: '#94a3b8', marginTop: 2 }}>{item.details}</div>
+                                                    )}
+                                                </div>
+                                            }
+                                        />
+                                    </List.Item>
+                                )}
+                            />
+                            {section.items.length > 2 && (
+                                <div style={{ textAlign: 'center', marginTop: '4px' }}>
+                                    <Button
+                                        type="link"
+                                        size="small"
+                                        icon={isExpanded ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+                                        onClick={() => toggleSectionExpand(sectionIndex)}
+                                        style={{ color: headerColor, fontWeight: 500 }}
+                                    >
+                                        {isExpanded ? 'Show Less' : `View All (${section.items.length})`}
+                                    </Button>
+                                </div>
                             )}
                         </div>
-                    </div>
-                ))
+                    );
+                })
             )}
 
             <Modal
-                title={
-                    modalType === "new-section"
-                        ? "Add New Guardian Section"
-                        : modalType === "guardian"
-                            ? currentItemIndex !== null
-                                ? "Edit Guardian Info"
-                                : "Add New Guardian"
-                            : "Manage Guardian Section"
-                }
                 open={isModalOpen}
-                onOk={
-                    modalType !== "section-edit" ? handleOk : () => setIsModalOpen(false)
-                }
+                onOk={modalType !== 'section-edit' ? handleOk : () => setIsModalOpen(false)}
                 onCancel={handleCancel}
-                okText={
-                    modalType === "section-edit"
-                        ? "Close"
-                        : currentItemIndex !== null
-                            ? "Update"
-                            : modalType === "new-section"
-                                ? "Create Section"
-                                : "Add"
-                }
-                cancelText={modalType === "section-edit" ? null : "Cancel"}
-                width={modalType === "section-edit" ? 700 : 700}
-                style={{ top: 20 }}
+                footer={null}
+                width={700}
+                closable={false}
+                style={{ borderRadius: 12, overflow: 'hidden', top: 20 }}
                 confirmLoading={loading}
             >
-                <Form form={form} layout="vertical" style={{ marginTop: "16px" }}>
-                    {renderFormFields()}
-                </Form>
+                {/* Modal Header */}
+                <div
+                    style={{
+                        background: 'linear-gradient(90deg, #3b82f6, #6366f1)',
+                        padding: '18px 24px',
+                        color: 'white',
+                        fontSize: '18px',
+                        fontWeight: 600,
+                    }}
+                >
+                    {modalType === 'new-section'
+                        ? 'Add New Guardian Section'
+                        : modalType === 'guardian'
+                            ? currentItemIndex !== null
+                                ? 'Edit Guardian Info'
+                                : 'Add New Guardian'
+                            : 'Manage Guardian Section'}
+                </div>
+
+                {/* Modal Body */}
+                <div style={{ backgroundColor: '#fff', padding: '24px' }}>
+                    <Form
+                        form={form}
+                        layout="vertical"
+                        style={{
+                            marginTop: '0px',
+                            paddingBottom: modalType === 'section-edit' ? 0 : 24,
+                        }}
+                    >
+                        {renderFormFields()}
+                    </Form>
+
+                    {/* Footer Buttons */}
+                    {modalType !== 'section-edit' && (
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 20 }}>
+                            <Button
+                                onClick={handleCancel}
+                                style={{ borderRadius: 8, padding: '6px 20px' }}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="primary"
+                                onClick={handleOk}
+                                loading={loading}
+                                style={{
+                                    borderRadius: 8,
+                                    padding: '6px 20px',
+                                    background: 'linear-gradient(90deg, #3b82f6, #6366f1)',
+                                    border: 'none',
+                                    fontWeight: 500,
+                                }}
+                            >
+                                {currentItemIndex !== null
+                                    ? 'Update'
+                                    : modalType === 'new-section'
+                                        ? 'Create Section'
+                                        : 'Add'}
+                            </Button>
+                        </div>
+                    )}
+
+                    {modalType === 'section-edit' && (
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
+                            <Button
+                                type="primary"
+                                onClick={() => setIsModalOpen(false)}
+                                style={{
+                                    borderRadius: 8,
+                                    padding: '6px 20px',
+                                    background: 'linear-gradient(90deg, #3b82f6, #6366f1)',
+                                    border: 'none',
+                                    fontWeight: 500,
+                                }}
+                            >
+                                Close
+                            </Button>
+                        </div>
+                    )}
+                </div>
             </Modal>
-        </div>
+
+        </Card>
     );
 };
+
+
+
+
 
 // page.tsx (Update ImportantContacts)
 // Define ContactItem and ContactSection types
@@ -750,12 +654,8 @@ interface ContactSection {
 const ImportantContacts: React.FC = () => {
     const [contacts, setContacts] = useState<ContactSection[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [modalType, setModalType] = useState<
-        "contact" | "section-edit" | "new-section"
-    >("contact");
-    const [currentSectionIndex, setCurrentSectionIndex] = useState<number | null>(
-        null
-    );
+    const [modalType, setModalType] = useState<'contact' | 'section-edit' | 'new-section'>('contact');
+    const [currentSectionIndex, setCurrentSectionIndex] = useState<number | null>(null);
     const [currentItemIndex, setCurrentItemIndex] = useState<number | null>(null);
     const [form] = Form.useForm();
     const [sectionItems, setSectionItems] = useState<ContactItem[]>([]);
@@ -763,32 +663,13 @@ const ImportantContacts: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
 
     const contactRoles: { [key: string]: string[] } = {
-        important: [
-            "Emergency Response",
-            "Hospital",
-            "Fire Department",
-            "Police",
-            "Emergency Care",
-        ],
-        school: [
-            "Elementary School",
-            "Middle School",
-            "High School",
-            "Principal",
-            "Teacher",
-        ],
-        professional: [
-            "Doctor",
-            "Dentist",
-            "Lawyer",
-            "Financial Advisor",
-            "Therapist",
-            "Pediatrician",
-        ],
-        activity: ["Coach", "Instructor", "Tutor", "Activity Leader"],
-        other: ["Custom Role"],
+        important: ['Emergency Response', 'Hospital', 'Fire Department', 'Police', 'Emergency Care'],
+        school: ['Elementary School', 'Middle School', 'High School', 'Principal', 'Teacher'],
+        professional: ['Doctor', 'Dentist', 'Lawyer', 'Financial Advisor', 'Therapist', 'Pediatrician'],
+        activity: ['Coach', 'Instructor', 'Tutor', 'Activity Leader'],
+        other: ['Custom Role'],
     };
-
+    const [showAllSections, setShowAllSections] = useState<{ [key: number]: boolean }>({});
     const getContacts = async () => {
         setLoading(true);
         setError(null);
@@ -806,53 +687,41 @@ const ImportantContacts: React.FC = () => {
                 payload.contacts.forEach((section: any) => {
                     section.items.forEach((item: any) => {
                         const roleLower = item.role.toLowerCase();
-                        if (
-                            contactRoles.important.some((r) =>
-                                roleLower.includes(r.toLowerCase())
-                            )
-                        ) {
-                            groupedByType["important"].push({
-                                icon: "🚨",
+                        if (contactRoles.important.some(r => roleLower.includes(r.toLowerCase()))) {
+                            groupedByType['important'].push({
+                                icon: '🚨',
                                 name: item.name,
                                 role: item.role,
                                 phone: item.phone,
-                                bgColor: "#fee2e2",
-                                textColor: "#dc2626",
+                                bgColor: '#fee2e2',
+                                textColor: '#dc2626',
                             });
-                        } else if (
-                            contactRoles.school.some((r) =>
-                                roleLower.includes(r.toLowerCase())
-                            )
-                        ) {
-                            groupedByType["school"].push({
-                                icon: "🏫",
+                        } else if (contactRoles.school.some(r => roleLower.includes(r.toLowerCase()))) {
+                            groupedByType['school'].push({
+                                icon: '🏫',
                                 name: item.name,
                                 role: item.role,
                                 phone: item.phone,
-                                bgColor: "#dcfce7",
-                                textColor: "#16a34a",
+                                bgColor: '#dcfce7',
+                                textColor: '#16a34a',
                             });
-                        } else if (
-                            contactRoles.professional.some((r) =>
-                                roleLower.includes(r.toLowerCase())
-                            )
-                        ) {
-                            groupedByType["professional"].push({
-                                icon: "👨‍⚕",
+                        } else if (contactRoles.professional.some(r => roleLower.includes(r.toLowerCase()))) {
+                            groupedByType['professional'].push({
+                                icon: '👨‍⚕',
                                 name: item.name,
                                 role: item.role,
                                 phone: item.phone,
-                                bgColor: "#f0f4f8",
-                                textColor: "#374151",
+                                bgColor: '#f0f4f8',
+                                textColor: '#374151',
                             });
                         } else {
-                            groupedByType["other"].push({
-                                icon: "👤",
+                            groupedByType['other'].push({
+                                icon: '👤',
                                 name: item.name,
                                 role: item.role,
                                 phone: item.phone,
-                                bgColor: "#f0f4f8",
-                                textColor: "#374151",
+                                bgColor: '#f0f4f8',
+                                textColor: '#374151',
                             });
                         }
                     });
@@ -860,33 +729,21 @@ const ImportantContacts: React.FC = () => {
 
                 // Define all sections with potential empty arrays
                 const formattedSections: ContactSection[] = [
-                    {
-                        title: "Important Contacts",
-                        type: "important",
-                        items: groupedByType["important"],
-                    },
-                    { title: "Schools", type: "school", items: groupedByType["school"] },
-                    {
-                        title: "Professional Services",
-                        type: "professional",
-                        items: groupedByType["professional"],
-                    },
-                    {
-                        title: "Other Contacts",
-                        type: "other",
-                        items: groupedByType["other"],
-                    },
+                    { title: 'Important Contacts', type: 'important', items: groupedByType['important'] },
+                    { title: 'Schools', type: 'school', items: groupedByType['school'] },
+                    { title: 'Professional Services', type: 'professional', items: groupedByType['professional'] },
+                    { title: 'Other Contacts', type: 'other', items: groupedByType['other'] },
                 ];
 
                 setContacts(formattedSections);
             } else {
-                setError("Failed to fetch contacts");
-                message.error("Failed to fetch contacts");
+                setError('Failed to fetch contacts');
+                message.error('Failed to fetch contacts');
             }
         } catch (error) {
-            console.error("Failed to fetch contacts:", error);
-            setError("Error fetching contacts");
-            message.error("Error fetching contacts");
+            console.error('Failed to fetch contacts:', error);
+            setError('Error fetching contacts');
+            message.error('Error fetching contacts');
         } finally {
             setLoading(false);
         }
@@ -897,7 +754,7 @@ const ImportantContacts: React.FC = () => {
     }, []);
 
     const showModal = (
-        type: "contact" | "section-edit" | "new-section",
+        type: 'contact' | 'section-edit' | 'new-section',
         sectionIndex: number | null = null,
         itemIndex: number | null = null
     ) => {
@@ -905,21 +762,17 @@ const ImportantContacts: React.FC = () => {
         setCurrentSectionIndex(sectionIndex);
         setCurrentItemIndex(itemIndex);
 
-        if (type === "section-edit" && sectionIndex !== null) {
+        if (type === 'section-edit' && sectionIndex !== null) {
             setSectionItems(contacts[sectionIndex].items);
-        } else if (
-            type === "contact" &&
-            sectionIndex !== null &&
-            itemIndex !== null
-        ) {
+        } else if (type === 'contact' && sectionIndex !== null && itemIndex !== null) {
             form.setFieldsValue(contacts[sectionIndex].items[itemIndex]);
         } else {
             form.resetFields();
-            if (type === "contact") {
+            if (type === 'contact') {
                 form.setFieldsValue({
-                    bgColor: "#f0f4f8",
-                    textColor: "#374151",
-                    icon: "👤",
+                    bgColor: '#f0f4f8',
+                    textColor: '#374151',
+                    icon: '👤',
                 });
             }
         }
@@ -931,9 +784,9 @@ const ImportantContacts: React.FC = () => {
             await form.validateFields();
             const formValues = form.getFieldsValue();
 
-            if (modalType === "contact" && currentSectionIndex !== null) {
+            if (modalType === 'contact' && currentSectionIndex !== null) {
                 setLoading(true);
-                const addedBy = localStorage.getItem("userId") || "current_user";
+                const addedBy = localStorage.getItem('userId') || 'current_user';
                 const payload = {
                     contacts: {
                         name: formValues.name,
@@ -956,33 +809,32 @@ const ImportantContacts: React.FC = () => {
                     };
 
                     if (currentItemIndex !== null) {
-                        updatedContacts[currentSectionIndex].items[currentItemIndex] =
-                            newContact;
+                        updatedContacts[currentSectionIndex].items[currentItemIndex] = newContact;
                     } else {
                         updatedContacts[currentSectionIndex].items.push(newContact);
                     }
 
                     setContacts(updatedContacts);
-                    message.success("Contact added successfully!");
+                    message.success('Contact added successfully!');
                     setIsModalOpen(false);
                     form.resetFields();
                 } else {
-                    message.error("Failed to save contact");
+                    message.error('Failed to save contact');
                 }
-            } else if (modalType === "new-section") {
+            } else if (modalType === 'new-section') {
                 const newSection: ContactSection = {
                     title: formValues.sectionName,
-                    type: "other",
+                    type: 'other',
                     items: [],
                 };
                 setContacts([...contacts, newSection]);
-                message.success("Section created successfully!");
+                message.success('Section created successfully!');
                 setIsModalOpen(false);
                 form.resetFields();
             }
         } catch (error) {
-            console.error("Error in handleOk:", error);
-            message.error("Failed to save contact. Please try again.");
+            console.error('Error in handleOk:', error);
+            message.error('Failed to save contact. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -993,7 +845,7 @@ const ImportantContacts: React.FC = () => {
         updatedContacts[sectionIndex].items.splice(itemIndex, 1);
         setContacts(updatedContacts);
         setSectionItems(updatedContacts[sectionIndex].items);
-        message.success("Item deleted successfully!");
+        message.success('Item deleted successfully!');
     };
 
     const handleCancel = () => {
@@ -1003,24 +855,23 @@ const ImportantContacts: React.FC = () => {
 
     const renderFormFields = () => {
         switch (modalType) {
-            case "new-section":
+            case 'new-section':
                 return (
                     <Form.Item
                         name="sectionName"
                         label="Section Name"
-                        rules={[{ required: true, message: "Please enter section name!" }]}
+                        rules={[{ required: true, message: 'Please enter section name!' }]}
                     >
                         <Input
                             placeholder="Enter section name (e.g., 'Tutors')"
-                            style={{ width: "100%" }}
+                            style={{ width: '100%' }}
                         />
                     </Form.Item>
                 );
 
-            case "contact":
+            case 'contact':
                 const currentSection = contacts[currentSectionIndex || 0];
-                const availableRoles =
-                    contactRoles[currentSection?.type] || contactRoles.other;
+                const availableRoles = contactRoles[currentSection?.type] || contactRoles.other;
 
                 return (
                     <>
@@ -1029,26 +880,18 @@ const ImportantContacts: React.FC = () => {
                                 <Form.Item
                                     name="icon"
                                     label="Icon"
-                                    rules={[{ required: true, message: "Please input an icon!" }]}
+                                    rules={[{ required: true, message: 'Please input an icon!' }]}
                                 >
-                                    <Input
-                                        placeholder="Enter emoji (e.g., 🚨)"
-                                        style={{ width: "100%" }}
-                                    />
+                                    <Input placeholder="Enter emoji (e.g., 🚨)" style={{ width: '100%' }} />
                                 </Form.Item>
                             </Col>
                             <Col span={16}>
                                 <Form.Item
                                     name="name"
                                     label="Name/Organization"
-                                    rules={[
-                                        { required: true, message: "Please input the name!" },
-                                    ]}
+                                    rules={[{ required: true, message: 'Please input the name!' }]}
                                 >
-                                    <Input
-                                        placeholder="Enter name or organization"
-                                        style={{ width: "100%" }}
-                                    />
+                                    <Input placeholder="Enter name or organization" style={{ width: '100%' }} />
                                 </Form.Item>
                             </Col>
                         </Row>
@@ -1058,19 +901,14 @@ const ImportantContacts: React.FC = () => {
                                 <Form.Item
                                     name="role"
                                     label="Role/Position"
-                                    rules={[
-                                        { required: true, message: "Please input the role!" },
-                                    ]}
+                                    rules={[{ required: true, message: 'Please input the role!' }]}
                                 >
                                     <Select
                                         placeholder="Select or type role"
                                         showSearch
                                         allowClear
-                                        options={availableRoles.map((role: any) => ({
-                                            label: role,
-                                            value: role,
-                                        }))}
-                                        style={{ width: "100%" }}
+                                        options={availableRoles.map((role: any) => ({ label: role, value: role }))}
+                                        style={{ width: '100%' }}
                                     />
                                 </Form.Item>
                             </Col>
@@ -1078,51 +916,43 @@ const ImportantContacts: React.FC = () => {
                                 <Form.Item
                                     name="phone"
                                     label="Phone Number"
-                                    rules={[
-                                        {
-                                            required: true,
-                                            message: "Please input the phone number!",
-                                        },
-                                    ]}
+                                    rules={[{ required: true, message: 'Please input the phone number!' }]}
                                 >
-                                    <Input
-                                        placeholder="Enter phone number"
-                                        style={{ width: "100%" }}
-                                    />
+                                    <Input placeholder="Enter phone number" style={{ width: '100%' }} />
                                 </Form.Item>
                             </Col>
                         </Row>
                     </>
                 );
 
-            case "section-edit":
+            case 'section-edit':
                 return (
                     <div
                         style={{
-                            maxHeight: "500px",
-                            overflowY: "auto",
-                            padding: "16px",
+                            maxHeight: '500px',
+                            overflowY: 'auto',
+                            padding: '16px',
                         }}
                     >
                         {sectionItems.map((item, index) => (
                             <div
                                 key={index}
                                 style={{
-                                    marginBottom: "16px",
-                                    padding: "16px",
-                                    backgroundColor: "#f8fafc",
-                                    borderRadius: "8px",
-                                    border: "1px solid #e2e8f0",
-                                    position: "relative",
+                                    marginBottom: '16px',
+                                    padding: '16px',
+                                    backgroundColor: '#f8fafc',
+                                    borderRadius: '8px',
+                                    border: '1px solid #e2e8f0',
+                                    position: 'relative',
                                 }}
                             >
                                 <div
                                     style={{
-                                        position: "absolute",
-                                        top: "12px",
-                                        right: "12px",
-                                        display: "flex",
-                                        gap: "8px",
+                                        position: 'absolute',
+                                        top: '12px',
+                                        right: '12px',
+                                        display: 'flex',
+                                        gap: '8px',
                                     }}
                                 >
                                     <Button
@@ -1132,16 +962,14 @@ const ImportantContacts: React.FC = () => {
                                         onClick={() => {
                                             setIsModalOpen(false);
                                             setTimeout(() => {
-                                                showModal("contact", currentSectionIndex, index);
+                                                showModal('contact', currentSectionIndex, index);
                                             }, 100);
                                         }}
-                                        style={{ color: "#3b82f6" }}
+                                        style={{ color: '#3b82f6' }}
                                     />
                                     <Popconfirm
                                         title="Are you sure to delete this contact?"
-                                        onConfirm={() =>
-                                            handleItemDelete(currentSectionIndex!, index)
-                                        }
+                                        onConfirm={() => handleItemDelete(currentSectionIndex!, index)}
                                         okText="Yes"
                                         cancelText="No"
                                     >
@@ -1149,54 +977,55 @@ const ImportantContacts: React.FC = () => {
                                             type="text"
                                             size="small"
                                             icon={<DeleteOutlined />}
-                                            style={{ color: "#dc2626" }}
+                                            style={{ color: '#dc2626' }}
                                         />
                                     </Popconfirm>
                                 </div>
 
                                 <div
                                     style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: "12px",
-                                        paddingRight: "80px",
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '12px',
+                                        paddingRight: '80px',
                                     }}
                                 >
                                     <div
                                         style={{
-                                            width: "32px",
-                                            height: "32px",
+                                            width: '32px',
+                                            height: '32px',
                                             backgroundColor: item.bgColor,
-                                            borderRadius: "8px",
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
+                                            borderRadius: '8px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
                                             color: item.textColor,
-                                            fontSize: "16px",
+                                            fontSize: '16px',
                                         }}
                                     >
                                         {item.icon}
                                     </div>
                                     <div>
-                                        <div style={{ fontWeight: 600, fontSize: "14px" }}>
-                                            {item.name}
-                                        </div>
-                                        <div style={{ color: "#6b7280", fontSize: "12px" }}>
+                                        <div style={{ fontWeight: 600, fontSize: '14px' }}>{item.name}</div>
+                                        <div style={{ color: '#6b7280', fontSize: '12px' }}>
                                             {item.role} • {item.phone}
                                         </div>
                                     </div>
                                 </div>
+
+
                             </div>
                         ))}
                         <Button
                             type="dashed"
                             size="small"
                             icon={<PlusOutlined />}
-                            onClick={() => showModal("contact", currentSectionIndex, null)}
-                            style={{ width: "100%", marginTop: "16px", borderRadius: "6px" }}
+                            onClick={() => showModal('contact', currentSectionIndex, null)}
+                            style={{ width: '100%', marginTop: '16px', borderRadius: '6px' }}
                         >
                             Add
                         </Button>
+
                     </div>
                 );
 
@@ -1206,224 +1035,258 @@ const ImportantContacts: React.FC = () => {
     };
 
     return (
-        <div
-            style={{
-                backgroundColor: "white",
-                borderRadius: "16px",
-                boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-                padding: "24px",
-                border: "1px solid #e5e7eb",
-            }}
-        >
-            <div
-                style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "24px",
-                    paddingBottom: "16px",
-                    borderBottom: "2px solid #f3f4f6",
-                }}
-            >
-                <h3
-                    style={{
-                        fontSize: "20px",
-                        fontWeight: 700,
-                        color: "#111827",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "10px",
-                        margin: 0,
-                    }}
+        <Card className="modern-card fade-in" style={{ height: '100%', padding: '24px' }}>
+            <div className="modern-card-header">
+                <h2
+                    className="modern-card-title"
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '20px', fontWeight: 700, color: '#111827' }}
                 >
-                    <PhoneOutlined style={{ color: "#10b981", fontSize: "24px" }} />
+                    <PhoneOutlined style={{ color: '#10b981' }} />
                     Important Contacts
-                </h3>
+                </h2>
             </div>
+
 
             {loading ? (
                 <div>Loading...</div>
             ) : error ? (
-                <div style={{ color: "#dc2626" }}>{error}</div>
+                <div style={{ color: '#dc2626' }}>{error}</div>
             ) : contacts.length === 0 ? (
                 <div
                     style={{
-                        textAlign: "center",
-                        color: "#9ca3af",
-                        fontSize: "14px",
-                        padding: "20px 0",
+                        textAlign: 'center',
+                        color: '#9ca3af',
+                        fontSize: '14px',
+                        padding: '20px 0',
                     }}
                 >
                     No contacts available. Click 'Add' to get started.
                 </div>
             ) : (
-                contacts.map((section, sectionIndex) => (
-                    <div key={sectionIndex} style={{ marginBottom: "28px" }}>
-                        <div
-                            style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                marginBottom: "12px",
-                                padding: "8px 0",
-                            }}
-                        >
-                            <h4
+                contacts.map((section, sectionIndex) => {
+                    type SectionType = 'important' | 'school' | 'professional' | 'other';
+                    const categoryColors: Record<SectionType, { bg: string; border: string; text: string }> = {
+                        important: { bg: '#fef2f2', border: '#fecaca', text: '#dc2626' },
+                        school: { bg: '#f0fdf4', border: '#bbf7d0', text: '#16a34a' },
+                        professional: { bg: '#eff6ff', border: '#bfdbfe', text: '#2563eb' },
+                        other: { bg: '#f8fafc', border: '#e2e8f0', text: '#64748b' },
+                    };
+                    const colors = categoryColors[(section.type as SectionType)] || categoryColors.other;
+
+                    return (
+                        <div key={sectionIndex} style={{ marginBottom: '28px' }}>
+                            <div
                                 style={{
-                                    fontSize: "14px",
-                                    fontWeight: 600,
-                                    color: "#374151",
-                                    textTransform: "uppercase",
-                                    letterSpacing: "0.5px",
-                                    margin: 0,
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    padding: '12px 16px',
+                                    background: colors.bg,
+                                    borderRadius: '8px',
+                                    border: `1px solid ${colors.border}`,
+                                    marginBottom: '12px',
                                 }}
                             >
-                                {section.title}
-                            </h4>
-                            <div style={{ display: "flex", gap: "8px" }}>
+                                <h4
+                                    style={{
+                                        margin: 0,
+                                        fontSize: '13px',
+                                        fontWeight: 700,
+                                        color: colors.text,
+                                        letterSpacing: '0.5px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                    }}
+                                >
+                                    {section.items[0]?.icon || '👤'} {section.title.toUpperCase()}
+                                </h4>
                                 <Button
                                     type="text"
                                     size="small"
-                                    icon={<ArrowRightCircle size={16} />}
-                                    onClick={() => showModal("section-edit", sectionIndex, null)}
-                                    style={{ color: "#3b82f6" }}
+                                    icon={<Plus size={16} />}
+                                    onClick={() => showModal('section-edit', sectionIndex, null)}
+                                    style={{ color: colors.text }}
                                 />
                             </div>
-                        </div>
 
-                        <div
-                            style={{
-                                backgroundColor: "#f8fafc",
-                                borderRadius: "12px",
-                                padding: "16px",
-                                border: "1px solid #e2e8f0",
-                            }}
-                        >
-                            {section.items.length === 0 ? (
-                                <div
-                                    style={{
-                                        textAlign: "center",
-                                        color: "#9ca3af",
-                                        fontSize: "14px",
-                                        padding: "20px 0",
-                                    }}
-                                >
-                                    No {section.title.toLowerCase()} available. Click 'Add' to get
-                                    started.
-                                </div>
-                            ) : (
-                                <>
-                                    {section.items.slice(0, 2).map((contact, contactIndex) => (
-                                        <div
-                                            key={contactIndex}
-                                            style={{
-                                                display: "flex",
-                                                alignItems: "center",
-                                                padding: "12px 0",
-                                                borderBottom:
-                                                    contactIndex < Math.min(section.items.length, 2) - 1
-                                                        ? "1px solid #e5e7eb"
-                                                        : "none",
-                                            }}
-                                        >
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                {section.items.length === 0 ? (
+                                    <div
+                                        style={{
+                                            textAlign: 'center',
+                                            padding: '32px 0',
+                                            color: '#9ca3af',
+                                            fontSize: '14px',
+                                        }}
+                                    >
+                                        <div>No data</div>
+                                    </div>
+                                ) : (
+                                    (showAllSections[sectionIndex] ? section.items : section.items.slice(0, 2)).map(
+                                        (contact, contactIndex) => (
                                             <div
+                                                key={contactIndex}
                                                 style={{
-                                                    width: "40px",
-                                                    height: "40px",
-                                                    backgroundColor: contact.bgColor,
-                                                    borderRadius: "10px",
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    justifyContent: "center",
-                                                    marginRight: "12px",
-                                                    color: contact.textColor,
-                                                    fontSize: "18px",
-                                                    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    border: '1px solid #f3f4f6',
+                                                    borderRadius: '12px',
+                                                    padding: '12px 16px',
+                                                    backgroundColor: '#fff',
+                                                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
                                                 }}
                                             >
-                                                {contact.icon}
-                                            </div>
-                                            <div style={{ flex: 1 }}>
                                                 <div
                                                     style={{
+                                                        width: '40px',
+                                                        height: '40px',
+                                                        backgroundColor: contact.bgColor || '#e5e7eb',
+                                                        borderRadius: '50%',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        color: contact.textColor || '#1f2937',
                                                         fontWeight: 600,
-                                                        color: "#111827",
-                                                        fontSize: "14px",
-                                                        marginBottom: "2px",
+                                                        fontSize: '16px',
+                                                        marginRight: '16px',
+                                                        textTransform: 'capitalize',
                                                     }}
                                                 >
-                                                    {contact.name}
+                                                    {contact.icon}
                                                 </div>
-                                                <div style={{ color: "#6b7280", fontSize: "13px" }}>
-                                                    {contact.role} • {contact.phone}
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{ fontWeight: 600, fontSize: '14px', color: '#1e293b' }}>
+                                                        {contact.name}
+                                                    </div>
+                                                    <div style={{ fontSize: '13px', color: '#64748b' }}>
+                                                        {contact.role} • {contact.phone}
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div style={{ display: "flex", gap: "8px" }}>
-                                                {/*  */}
-                                            </div>
-                                        </div>
-                                    ))}
-                                    {section.items.length > 2 && (
-                                        <div style={{ textAlign: "center", marginTop: "12px" }}>
-                                            <Button
-                                                type="link"
-                                                icon={<EyeOutlined />}
-                                                onClick={() =>
-                                                    showModal("section-edit", sectionIndex, null)
-                                                }
-                                                style={{ color: "#6b7280" }}
-                                            >
-                                                View All ({section.items.length} items)
-                                            </Button>
-                                        </div>
-                                    )}
-                                </>
-                            )}
-                        </div>
-                    </div>
-                ))
-            )}
+                                        )
+                                    )
+                                )}
 
+                                {section.items.length > 2 && (
+                                    <div style={{ textAlign: 'center', marginTop: '12px' }}>
+                                        <Button
+                                            type="link"
+                                            size="small"
+                                            icon={
+                                                showAllSections[sectionIndex] ? <EyeInvisibleOutlined /> : <EyeOutlined />
+                                            }
+                                            onClick={() =>
+                                                setShowAllSections((prev) => ({
+                                                    ...prev,
+                                                    [sectionIndex]: !prev[sectionIndex],
+                                                }))
+                                            }
+                                            style={{ color: '#6b7280', fontWeight: 500 }}
+                                        >
+                                            {showAllSections[sectionIndex]
+                                                ? 'Show Less'
+                                                : `View All (${section.items.length})`}
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })
+            )}
             <Modal
-                title={
-                    modalType === "new-section"
-                        ? "Add New Contact Section"
-                        : modalType === "contact"
-                            ? currentItemIndex !== null
-                                ? "Edit Contact Info"
-                                : "Add New Contact"
-                            : "Manage Contact Section"
-                }
                 open={isModalOpen}
-                onOk={
-                    modalType !== "section-edit" ? handleOk : () => setIsModalOpen(false)
-                }
+                onOk={modalType !== 'section-edit' ? handleOk : () => setIsModalOpen(false)}
                 onCancel={handleCancel}
-                okText={
-                    modalType === "section-edit"
-                        ? "Close"
-                        : currentItemIndex !== null
-                            ? "Update"
-                            : modalType === "new-section"
-                                ? "Create Section"
-                                : "Add"
-                }
-                cancelText={modalType === "section-edit" ? null : "Cancel"}
-                width={modalType === "section-edit" ? 700 : 700}
-                style={{ top: 20 }}
+                footer={null}
+                width={700}
+                closable={false}
+                style={{ top: 20, borderRadius: 12, overflow: 'hidden' }}
                 confirmLoading={loading}
             >
-                <Form form={form} layout="vertical" style={{ marginTop: "16px" }}>
-                    {renderFormFields()}
-                </Form>
+                {/* Gradient Header */}
+                <div
+                    style={{
+                        background: 'linear-gradient(90deg, #3b82f6, #6366f1)',
+                        padding: '18px 24px',
+                        color: 'white',
+                        fontSize: '18px',
+                        fontWeight: 600,
+                    }}
+                >
+                    {modalType === 'new-section'
+                        ? 'Add New Contact Section'
+                        : modalType === 'contact'
+                            ? currentItemIndex !== null
+                                ? 'Edit Contact Info'
+                                : 'Add New Contact'
+                            : 'Manage Contact Section'}
+                </div>
+
+                {/* Form Content */}
+                <div style={{ backgroundColor: '#fff', padding: '24px' }}>
+                    <Form form={form} layout="vertical" style={{ marginTop: 0 }}>
+                        {renderFormFields()}
+                    </Form>
+
+                    {/* Footer */}
+                    {modalType !== 'section-edit' && (
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24, gap: 12 }}>
+                            <Button onClick={handleCancel} style={{ borderRadius: 8, padding: '6px 20px' }}>
+                                Cancel
+                            </Button>
+                            <Button
+                                type="primary"
+                                onClick={handleOk}
+                                loading={loading}
+                                style={{
+                                    borderRadius: 8,
+                                    padding: '6px 20px',
+                                    background: 'linear-gradient(90deg, #3b82f6, #6366f1)',
+                                    border: 'none',
+                                    fontWeight: 500,
+                                }}
+                            >
+                                {currentItemIndex !== null
+                                    ? 'Update'
+                                    : modalType === 'new-section'
+                                        ? 'Create Section'
+                                        : 'Add'}
+                            </Button>
+                        </div>
+                    )}
+
+                    {modalType === 'section-edit' && (
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
+                            <Button
+                                type="primary"
+                                onClick={() => setIsModalOpen(false)}
+                                style={{
+                                    borderRadius: 8,
+                                    padding: '6px 20px',
+                                    background: 'linear-gradient(90deg, #3b82f6, #6366f1)',
+                                    border: 'none',
+                                    fontWeight: 500,
+                                }}
+                            >
+                                Close
+                            </Button>
+                        </div>
+                    )}
+                </div>
             </Modal>
-        </div>
+
+        </Card>
     );
+
+
 };
 
-import { DatePicker } from "antd";
-import { CheckSquare, Edit } from "lucide-react";
-import dayjs from "dayjs";
+
+
+
+import dayjs from 'dayjs';
 
 type Task = {
     id: number;
@@ -1436,84 +1299,41 @@ type Task = {
 };
 
 type Project = {
+    color?: string;
     project_id: string;
     title: string;
     description: string;
     due_date: string;
-    meta: [];
     progress: number;
     tasks: Task[];
 };
 
-
-
-type Note = {
-    title: string;
-    description: string;
-};
-type FamilyTasksProps = {
-    isPlanner: boolean;
-};
-
-export const FamilyTasks: React.FC<FamilyTasksProps> = (props: any) => {
-    const { isPlanner } = props;
-    const [uid, setUid] = useState<string | null>(null);
+const FamilyTasks: React.FC = () => {
     const [projects, setProjects] = useState<Project[]>([]);
-    const [modalVisible, setModalVisible] = useState(false);
-    const [newProjectName, setNewProjectName] = useState("");
-    const [newProjectDescription, setNewProjectDescription] = useState("");
-    const [newProjectMeta, setNewProjectMeta] = useState<string>("");
-    const [editTaskModal, setEditTaskModal] = useState(false);
-    const [editingTask, setEditingTask] = useState<{
-        projectId: string;
-        task: Task | null;
-    }>({
-        projectId: "",
-        task: null,
-    });
-    const [loading, setLoading] = useState(false);
-
-    let assignees = [
-        { label: "John", value: "john" },
-        { label: "Sarah", value: "sarah" },
-        { label: "Emma", value: "emma" },
-        { label: "Liam", value: "liam" },
-        { label: "All", value: "all" },
-    ];
-
-    if (isPlanner) {
-        assignees = [
-            { label: "Personal", value: "personal" },
-            { label: "Work", value: "work" },
-        ];
-    }
-    useEffect(() => {
-        const stored = localStorage.getItem("userId");
-        if (stored) setUid(stored);
-    }, []);
 
     useEffect(() => {
         fetchProjects();
     }, []);
 
     const fetchProjects = async () => {
-        setLoading(true);
         try {
-            const res = await getProjects();
-            const rawProjects = res.data.payload.projects || [];
+            const projRes = await getProjects({ source: 'familyhub' }); // ✅ pass source
+            const rawProjects = projRes.data.payload.projects || [];
 
             const projectsWithTasks = await Promise.all(
                 rawProjects.map(async (proj: any) => {
                     const taskRes = await getTasks({ project_id: proj.project_id });
                     const rawTasks = taskRes.data.payload.tasks || [];
 
-                    const tasks = rawTasks.map((task: any, index: number) => ({
-                        id: task.task_id || index + 1,
+                    const tasks = rawTasks.map((task: any, i: number) => ({
+                        id: task.task_id || i + 1,
                         title: task.title,
                         assignee: task.assignee,
                         type: task.type,
                         completed: task.completed,
-                        due: task.completed ? "Completed" : "Due today",
+                        due: task.completed
+                            ? 'Completed'
+                            : `Due ${dayjs(task.due_date).format('MMM D')}`,
                         dueDate: task.due_date,
                     }));
 
@@ -1521,13 +1341,11 @@ export const FamilyTasks: React.FC<FamilyTasksProps> = (props: any) => {
                         project_id: proj.project_id,
                         title: proj.title,
                         description: proj.description,
-                        meta: Object.values(proj.meta || {}),
                         due_date: proj.due_date,
+                        color: proj.color || '#667eea',
                         progress: tasks.length
                             ? Math.round(
-                                (tasks.filter((t: any) => t.completed).length /
-                                    tasks.length) *
-                                100
+                                (tasks.filter((t: Task) => t.completed).length / tasks.length) * 100
                             )
                             : 0,
                         tasks,
@@ -1537,456 +1355,92 @@ export const FamilyTasks: React.FC<FamilyTasksProps> = (props: any) => {
 
             setProjects(projectsWithTasks);
         } catch (err) {
-            console.error(err);
-            message.error("Failed to load projects");
+            message.error('Failed to load family hub projects');
         }
-        setLoading(false);
     };
 
-    const handleAddProject = async () => {
-        setLoading(true);
-        if (!newProjectName.trim()) return;
+    const handleAddProject = async (project: {
+        title: string;
+        description: string;
+        due_date: string;
+    }) => {
         try {
             await addProject({
-                uid,
-                title: newProjectName,
-                description: newProjectDescription,
-                due_date: newProjectMeta,
+                ...project,
+                source: 'familyhub',
             });
-            message.success("Project added");
-            setModalVisible(false);
-            setNewProjectName("");
-            setNewProjectDescription("");
-            setNewProjectMeta("");
+            message.success('Project added');
             fetchProjects();
-        } catch (error) {
-            console.error(error);
-            message.error("Failed to add project");
+        } catch {
+            message.error('Failed to add project');
         }
-        setLoading(false);
     };
 
-    const addTaskToBackend = async (projectId: string) => {
-        setLoading(true);
-        if (!uid) return;
-        const project = projects.find((p) => p.project_id === projectId);
-        if (!project) return;
-
-        const newTask = {
-            uid,
-            project_id: projectId,
-            title: "New task",
-            assignee: "All",
-            type: "all",
-            due_date: dayjs().format("YYYY-MM-DD"),
-            completed: false,
-        };
-
+    const handleAddTask = async (projectId: string) => {
         try {
-            await addTask(newTask);
-
-            const newTaskObj: Task = {
-                id: Math.max(...project.tasks.map((t) => t.id), 0) + 1,
-                title: "New task",
-                assignee: "All",
-                type: "all",
+            await addTask({
+                project_id: projectId,
+                title: 'New Task',
+                assignee: 'All',
+                type: 'low',
+                due_date: dayjs().format('YYYY-MM-DD'),
                 completed: false,
-                due: "Due today",
-                dueDate: newTask.due_date,
-            };
-
-            setProjects((prev) =>
-                prev.map((p) =>
-                    p.project_id === projectId
-                        ? { ...p, tasks: [...p.tasks, newTaskObj] }
-                        : p
-                )
-            );
-        } catch (err) {
-            console.error(err);
-            message.error("Failed to add task");
+            });
+            fetchProjects();
+        } catch {
+            message.error('Failed to add task');
         }
-        setLoading(false);
     };
 
-    const toggleTask = async (projectId: string, taskId: number) => {
+    const handleToggleTask = async (projectId: string, taskId: number) => {
         const project = projects.find((p) => p.project_id === projectId);
-        if (!project) return;
-
-        const task = project.tasks.find((t) => t.id === taskId);
+        const task = project?.tasks.find((t) => t.id === taskId);
         if (!task) return;
 
-        const updatedStatus = !task.completed;
+        try {
+            await updateTask({ task_id: taskId, completed: !task.completed });
+            fetchProjects();
+        } catch {
+            message.error('Failed to toggle task');
+        }
+    };
 
+    const handleUpdateTask = async (task: Task) => {
         try {
             await updateTask({
                 task_id: task.id,
-                completed: updatedStatus,
+                title: task.title,
+                due_date: task.dueDate,
+                assignee: task.assignee,
+                type: task.type,
             });
-
-            setProjects((prev) =>
-                prev.map((project) => {
-                    if (project.project_id === projectId) {
-                        const updatedTasks = project.tasks.map((t) =>
-                            t.id === taskId
-                                ? {
-                                    ...t,
-                                    completed: updatedStatus,
-                                    due: updatedStatus ? "Completed" : "Due today",
-                                }
-                                : t
-                        );
-                        const progress = Math.round(
-                            (updatedTasks.filter((t) => t.completed).length /
-                                updatedTasks.length) *
-                            100
-                        );
-                        return { ...project, tasks: updatedTasks, progress };
-                    }
-                    return project;
-                })
-            );
-        } catch (err) {
-            console.error(err);
-            message.error("Failed to update task status");
+            message.success('Task updated');
+            fetchProjects();
+        } catch {
+            message.error('Failed to update task');
         }
     };
-
-    const updateEditedTask = async () => {
-        if (!editingTask.task) return;
-
-        try {
-            await updateTask({
-                task_id: editingTask.task.id,
-                title: editingTask.task.title,
-                due_date: editingTask.task.dueDate,
-                assignee: editingTask.task.assignee,
-                type: editingTask.task.type,
-            });
-
-            setProjects((prev) =>
-                prev.map((project) => {
-                    if (project.project_id === editingTask.projectId) {
-                        const updatedTasks = project.tasks.map((task) =>
-                            task.id === editingTask.task!.id ? editingTask.task! : task
-                        );
-                        return { ...project, tasks: updatedTasks };
-                    }
-                    return project;
-                })
-            );
-
-            message.success("Task updated");
-            setEditTaskModal(false);
-        } catch (err) {
-            console.error(err);
-            message.error("Failed to update task");
-        }
-    };
-
-    const getAssigneeStyle = (type: string) => {
-        const base = {
-            fontSize: "12px",
-            padding: "2px 8px",
-            borderRadius: "12px",
-            fontWeight: 500,
-        };
-        const colors: any = {
-            john: { bg: "rgba(51, 85, 255, 0.1)", color: "#3355ff" },
-            sarah: { bg: "rgba(99, 102, 241, 0.1)", color: "#6366f1" },
-            emma: { bg: "rgba(139, 92, 246, 0.1)", color: "#8b5cf6" },
-            liam: { bg: "rgba(236, 72, 153, 0.1)", color: "#ec4899" },
-            all: { bg: "#eef1ff", color: "#3355ff" },
-        };
-        return {
-            ...base,
-            backgroundColor: colors[type]?.bg || "#eee",
-            color: colors[type]?.color || "#333",
-        };
-    };
-
-    if (loading) {
-        return <DocklyLoader />;
-    }
 
     return (
-        <div
-            style={{
-                backgroundColor: "white",
-                borderRadius: "12px",
-                padding: "24px",
-                marginBottom: "20px",
-            }}
-        >
-            <div
-                style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    marginBottom: "20px",
-                }}
-            >
-                <h2
-                    style={{
-                        fontSize: "20px",
-                        fontWeight: 600,
-                        margin: 0,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                    }}
-                >
-                    <CheckSquare size={20} /> Family Tasks & Projects
-                </h2>
-                <button
-                    onClick={() => setModalVisible(true)}
-                    style={{
-                        padding: "8px 16px",
-                        border: "1px solid rgb(238, 240, 244)",
-                        borderRadius: "6px",
-                    }}
-                >
-                    <Plus size={16} /> New Project
-                </button>
-            </div>
-
-            {projects.length === 0 ? (
-                <div
-                    style={{
-                        textAlign: "center",
-                        padding: "20px 0px",
-                        border: "2px dashed #e5e7eb",
-                        borderRadius: "12px",
-                        background: "#fafbff",
-                        marginTop: 10,
-                    }}
-                >
-                    <img
-                        src="https://cdn-icons-png.flaticon.com/512/4076/4076549.png"
-                        alt="No Projects"
-                        style={{ width: "120px", marginBottom: "20px", opacity: 0.6 }}
-                    />
-                    <h3 style={{ fontSize: "20px", color: "#333", marginBottom: "10px" }}>
-                        No Projects Yet
-                    </h3>
-                    <p style={{ color: "#777", fontSize: "14px", marginBottom: "20px" }}>
-                        Start organizing your tasks by creating your first project.
-                    </p>
-                    <button
-                        onClick={() => setModalVisible(true)}
-                        style={{
-                            background: "#3355ff",
-                            color: "white",
-                            border: "none",
-                            borderRadius: "6px",
-                            padding: "10px 20px",
-                            fontWeight: 500,
-                            cursor: "pointer",
-                            fontSize: "14px",
-                            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-                            transition: "background 0.3s",
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = "#1d40e0")}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = "#3355ff")}
-                    >
-                        <Plus size={14} style={{ marginRight: 6 }} /> Create Project
-                    </button>
-                </div>
-            ) : (
-                <div
-                    style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-                        gap: "20px",
-                    }}
-                >
-                    {projects.map((project) => (
-                        <div
-                            key={project.project_id}
-                            style={{
-                                border: "1px solid #e5e7eb",
-                                padding: "16px",
-                                borderRadius: "8px",
-                            }}
-                        >
-                            <h3>{project.title}</h3>
-                            {project.description && (
-                                <p style={{ fontSize: 12 }}>{project.description}</p>
-                            )}
-                            {project.due_date && (
-                                <p style={{ fontSize: 12, color: "#9ca3af" }}>
-                                    Due Date: {dayjs(project.due_date).format("MMM D, YYYY")}
-                                </p>
-                            )}
-                            <div style={{ marginBottom: 10, color: "#6b7280", fontSize: 12 }}>
-                                {project.meta?.map((m, i) => (
-                                    <span key={i}>
-                                        {m} {i < project.meta.length - 1 && "• "}{" "}
-                                    </span>
-                                ))}
-                            </div>
-
-                            <div style={{ marginBottom: 16 }}>
-                                {project.tasks.map((task) => (
-                                    <div
-                                        key={task.id}
-                                        style={{
-                                            backgroundColor: "#fff",
-                                            border: "1px solid #e5e7eb",
-                                            borderRadius: "6px",
-                                            padding: "12px",
-                                            marginBottom: "8px",
-                                        }}
-                                    >
-                                        <div
-                                            style={{
-                                                display: "flex",
-                                                alignItems: "center",
-                                                gap: "8px",
-                                                marginBottom: 4,
-                                            }}
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={task.completed}
-                                                onChange={() => toggleTask(project.project_id, task.id)}
-                                            />
-                                            <div style={{ flex: 1 }}>{task.title}</div>
-                                            <div style={getAssigneeStyle(task.type)}>
-                                                {task.assignee}
-                                            </div>
-                                            <Edit
-                                                size={14}
-                                                style={{ cursor: "pointer", opacity: 0.6 }}
-                                                onClick={() => {
-                                                    setEditingTask({
-                                                        projectId: project.project_id,
-                                                        task,
-                                                    });
-                                                    setEditTaskModal(true);
-                                                }}
-                                            />
-                                        </div>
-                                        <div style={{ fontSize: 11, color: "#6b7280" }}>
-                                            {task.due}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            <button
-                                onClick={() => addTaskToBackend(project.project_id)}
-                                style={{
-                                    width: "100%",
-                                    padding: "8px",
-                                    border: "2px dashed #e5e7eb",
-                                    backgroundColor: "transparent",
-                                    borderRadius: "6px",
-                                    color: "#6b7280",
-                                }}
-                            >
-                                + Add task
-                            </button>
-                        </div>
-                    ))}
-                </div>
-            )}
-
-            <Modal
-                open={modalVisible}
-                title="Add New Project"
-                onCancel={() => setModalVisible(false)}
-                onOk={handleAddProject}
-                okText="Add"
-            >
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    <Input
-                        value={newProjectName}
-                        onChange={(e) => setNewProjectName(e.target.value)}
-                        placeholder="Project Name"
-                    />
-                    <Input.TextArea
-                        rows={3}
-                        value={newProjectDescription}
-                        onChange={(e) => setNewProjectDescription(e.target.value)}
-                        placeholder="Description"
-                    />
-                    <DatePicker
-                        value={newProjectMeta ? dayjs(newProjectMeta) : null}
-                        onChange={(_, dateString) =>
-                            setNewProjectMeta(
-                                Array.isArray(dateString) ? dateString[0] || "" : dateString
-                            )
-                        }
-                        placeholder="Due Date"
-                        style={{ width: "100%" }}
-                        disabledDate={(current) =>
-                            current && current < dayjs().startOf("day")
-                        }
-                    />
-                </div>
-            </Modal>
-
-            <Modal
-                open={editTaskModal}
-                title="Edit Task"
-                okText="Save"
-                onCancel={() => setEditTaskModal(false)}
-                onOk={updateEditedTask}
-            >
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    <Input
-                        value={editingTask.task?.title}
-                        onChange={(e) =>
-                            setEditingTask((prev) => ({
-                                ...prev,
-                                task: { ...prev.task!, title: e.target.value },
-                            }))
-                        }
-                        placeholder="Task Name"
-                    />
-                    <DatePicker
-                        value={
-                            editingTask.task?.dueDate ? dayjs(editingTask.task.dueDate) : null
-                        }
-                        onChange={(_, dateString) => {
-                            if (typeof dateString === "string") {
-                                setEditingTask((prev) => ({
-                                    ...prev,
-                                    task: {
-                                        ...prev.task!,
-                                        due: `Due ${dayjs(dateString).format("MMM D")}`,
-                                        dueDate: dateString,
-                                    },
-                                }));
-                            }
-                        }}
-                        placeholder="Due Date"
-                        style={{ width: "100%" }}
-                        disabledDate={(current) =>
-                            current && current < dayjs().startOf("day")
-                        }
-                    />
-                    <Select
-                        value={editingTask.task?.type}
-                        onChange={(value) => {
-                            setEditingTask((prev) => ({
-                                ...prev,
-                                task: {
-                                    ...prev.task!,
-                                    type: value,
-                                    assignee:
-                                        assignees.find((a) => a.value === value)?.label || "All",
-                                },
-                            }));
-                        }}
-                        options={assignees}
-                        placeholder="Select Assignee"
-                    />
-                </div>
-            </Modal>
+        <div style={{ padding: '24px' }}>
+            <FamilyTasksComponent
+                title="Family Projects & Tasks"
+                projects={projects}
+                onAddProject={handleAddProject}
+                onAddTask={handleAddTask}
+                onToggleTask={handleToggleTask}
+                onUpdateTask={handleUpdateTask}
+            />
         </div>
     );
 };
+
+
+
+import { FileTextOutlined } from '@ant-design/icons';
+import { Badge } from 'antd';
+
+const PRIMARY_COLOR = '#3355ff';
 
 type Category = {
     title: string;
@@ -1994,26 +1448,34 @@ type Category = {
     items: { title: string; description: string }[];
 };
 
+const categoryColorMap: { [key: string]: string } = {
+    'Important Notes': '#ef4444',
+    'Emergency Contacts': '#f59e0b',
+    'House Rules & Routines': '#10b981',
+    'Shopping Lists': '#3b82f6',
+    'Birthday & Gift Ideas': '#ec4899',
+    'Meal Ideas & Recipes': '#8b5cf6',
+};
+
 const defaultCategories: Category[] = [
-    { title: "Important Notes", icon: "📝", items: [] },
-    { title: "Emergency Contacts", icon: "🚨", items: [] },
-    { title: "House Rules & Routines", icon: "🏠", items: [] },
-    { title: "Shopping Lists", icon: "🛒", items: [] },
-    { title: "Birthday & Gift Ideas", icon: "🎁", items: [] },
-    { title: "Meal Ideas & Recipes", icon: "🍽", items: [] },
+    { title: 'Important Notes', icon: '📌', items: [] },
+    { title: 'Emergency Contacts', icon: '🚨', items: [] },
+    { title: 'House Rules & Routines', icon: '🏠', items: [] },
+    { title: 'Shopping Lists', icon: '🛍️', items: [] },
+    { title: 'Birthday & Gift Ideas', icon: '🎁', items: [] },
+    { title: 'Meal Ideas & Recipes', icon: '🍽️', items: [] },
 ];
 
 const categoryIdMap: { [key: string]: number } = {
-    "Important Notes": 1,
-    "Emergency Contacts": 2,
-    "House Rules & Routines": 3,
-    "Shopping Lists": 4,
-    "Birthday & Gift Ideas": 5,
-    "Meal Ideas & Recipes": 6,
+    'Important Notes': 1,
+    'Emergency Contacts': 2,
+    'House Rules & Routines': 3,
+    'Shopping Lists': 4,
+    'Birthday & Gift Ideas': 5,
+    'Meal Ideas & Recipes': 6,
 };
-const categoryIdMapReverse: { [key: number]: string } = Object.entries(
-    categoryIdMap
-).reduce((acc, [title, id]) => {
+
+const categoryIdMapReverse: { [key: number]: string } = Object.entries(categoryIdMap).reduce((acc, [title, id]) => {
     acc[id] = title;
     return acc;
 }, {} as { [key: number]: string });
@@ -2021,13 +1483,11 @@ const categoryIdMapReverse: { [key: number]: string } = Object.entries(
 const FamilyNotes: React.FC = () => {
     const [categories, setCategories] = useState(defaultCategories);
     const [modalOpen, setModalOpen] = useState(false);
-    const [activeCategoryIndex, setActiveCategoryIndex] = useState<number | null>(
-        null
-    );
-    const [newNote, setNewNote] = useState({ title: "", description: "" });
+    const [activeCategoryIndex, setActiveCategoryIndex] = useState<number | null>(null);
+    const [newNote, setNewNote] = useState({ title: '', description: '' });
     const [editingNoteIndex, setEditingNoteIndex] = useState<number | null>(null);
     const [newCategoryModal, setNewCategoryModal] = useState(false);
-    const [newCategoryName, setNewCategoryName] = useState("");
+    const [newCategoryName, setNewCategoryName] = useState('');
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -2040,37 +1500,26 @@ const FamilyNotes: React.FC = () => {
             const response = await getAllNotes();
             const rawNotes = response.data.payload;
 
-            // Group notes by valid category_id only
-            // Define Note type if not already defined
-            type Note = {
-                title: string;
-                description: string;
-            };
-            const grouped: Record<number, Note[]> = {};
-
+            const grouped: Record<number, { title: string; description: string }[]> = {};
             rawNotes.forEach((note: any) => {
                 const catId = note.category_id;
-                if (!catId || !categoryIdMapReverse[catId]) return; // Skip if not a valid category
+                if (!catId || !categoryIdMapReverse[catId]) return;
                 if (!grouped[catId]) grouped[catId] = [];
-                grouped[catId].push({
-                    title: note.title,
-                    description: note.description,
-                });
+                grouped[catId].push({ title: note.title, description: note.description });
             });
 
-            // Merge default categories with fetched notes
-            const updatedCategories: Category[] = defaultCategories.map((cat) => {
+            const updatedCategories = defaultCategories.map((cat) => {
                 const catId = categoryIdMap[cat.title];
                 return {
                     ...cat,
-                    items: grouped[catId] || [], // fallback to empty list
+                    items: grouped[catId] || [],
                 };
             });
 
             setCategories(updatedCategories);
         } catch (error) {
-            console.error("Error fetching notes:", error);
-            message.error("Failed to load notes");
+            console.error('Error fetching notes:', error);
+            message.error('Failed to load notes');
         }
         setLoading(false);
     };
@@ -2078,33 +1527,26 @@ const FamilyNotes: React.FC = () => {
     const openModal = (index: number) => {
         setActiveCategoryIndex(index);
         setEditingNoteIndex(null);
-        setNewNote({ title: "", description: "" });
+        setNewNote({ title: '', description: '' });
         setModalOpen(true);
     };
 
     const handleAddNote = async () => {
         setLoading(true);
-        if (
-            !newNote.title.trim() ||
-            !newNote.description.trim() ||
-            activeCategoryIndex === null
-        ) {
-            message.error("Please fill in all fields");
+        if (!newNote.title.trim() || !newNote.description.trim() || activeCategoryIndex === null) {
+            message.error('Please fill in all fields');
             return;
         }
 
         const categoryTitle = categories[activeCategoryIndex].title;
         const category_id = categoryIdMap[categoryTitle];
         if (!category_id) {
-            message.error("Category ID not found");
+            message.error('Category ID not found');
             return;
         }
 
         try {
-            const user_id =
-                typeof window !== "undefined"
-                    ? localStorage.getItem("userId") || ""
-                    : "";
+            const user_id = typeof window !== 'undefined' ? localStorage.getItem('userId') || '' : '';
             const response = await addNote({
                 title: newNote.title,
                 description: newNote.description,
@@ -2115,15 +1557,15 @@ const FamilyNotes: React.FC = () => {
             const data = response.data;
             if (data.status === 1) {
                 await getNotes();
-                setNewNote({ title: "", description: "" });
+                setNewNote({ title: '', description: '' });
                 setModalOpen(false);
-                message.success("Note added successfully");
+                message.success('Note added successfully');
             } else {
-                message.error(data.message || "Failed to add note");
+                message.error(data.message || 'Failed to add note');
             }
         } catch (error) {
-            console.error("Error adding note:", error);
-            message.error("Something went wrong");
+            console.error('Error adding note:', error);
+            message.error('Something went wrong');
         }
         setLoading(false);
     };
@@ -2144,536 +1586,874 @@ const FamilyNotes: React.FC = () => {
         const name = newCategoryName.trim();
         if (!name) return;
         if (categories.some((c) => c.title === name)) {
-            message.error("Category already exists");
+            message.error('Category already exists');
             return;
         }
-        setCategories([...categories, { title: name, icon: "📁", items: [] }]);
+        setCategories([...categories, { title: name, icon: '📁', items: [] }]);
         setNewCategoryModal(false);
-        setNewCategoryName("");
+        setNewCategoryName('');
     };
-    if (loading) {
-        return <DocklyLoader />;
-    }
+
+    if (loading) return <DocklyLoader />;
+
     return (
-        <div
-            style={{
-                background: "#fff",
-                borderRadius: 12,
-                padding: 24,
-                marginBottom: 24,
-            }}
-        >
-            <div
-                style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    marginBottom: 20,
-                }}
-            >
-                <h2 style={{ fontSize: 20, fontWeight: 600 }}>Family Notes & Lists</h2>
-                <button
-                    style={{
-                        padding: "8px 11px",
-                        backgroundColor: "#eef1ff",
-                        color: "#3355ff",
-                        border: "none",
-                        borderRadius: "6px",
-                        fontSize: "14px",
-                        fontWeight: 500,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        transition: "all 0.2s ease",
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = "#3355ff";
-                        e.currentTarget.style.color = "white";
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = "#eef1ff";
-                        e.currentTarget.style.color = "#3355ff";
-                    }}
+        <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
+                <h2 style={{ fontSize: 20, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <FileTextOutlined /> Family Notes & Lists
+                </h2>
+                <Button
                     onClick={() => setNewCategoryModal(true)}
+                    icon={<PlusOutlined />}
+                    style={{
+                        height: '40px',
+                        backgroundColor: '#eef1ff',
+                        color: '#3355ff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '0 16px',
+                        fontSize: '14px',
+                        fontWeight: 500,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                    }}
                 >
-                    <PlusOutlined /> New Category
-                </button>
+                    New Category
+                </Button>
             </div>
 
-            <div
-                style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-                    gap: "20px",
-                }}
-            >
+            <Row gutter={[20, 20]}>
                 {categories.map((category, index) => (
-                    <div
-                        key={index}
-                        style={{
-                            backgroundColor: "#f9fafb",
-                            borderRadius: "8px",
-                            padding: "16px",
-                            border: "1px solid #e5e7eb",
-                        }}
-                    >
-                        <div
+                    <Col xs={24} sm={12} lg={8} key={index}>
+                        <Card
+                            size="small"
+                            hoverable
                             style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                marginBottom: "12px",
+                                height: '200px',
+                                borderRadius: '12px',
+                                border: '1px solid #e2e8f0',
+                                background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+                                position: 'relative',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                padding: 0,
                             }}
+                            styles={{
+                                body: { padding: '16px 16px 12px 16px', display: 'flex', flexDirection: 'column', height: '100%' }
+                            }
+                            }
                         >
-                            <h3
-                                style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 8,
-                                    margin: 0,
-                                }}
-                            >
-                                <span>{category.icon}</span> {category.title}
-                            </h3>
-                            <Space>
-                                <span
-                                    style={{
-                                        fontSize: "12px",
-                                        background: "#e5e7eb",
-                                        padding: "2px 8px",
-                                        borderRadius: "12px",
-                                    }}
-                                >
-                                    {category.items.length}
-                                </span>
-                                <PlusOutlined
-                                    style={{
-                                        cursor: "pointer",
-                                        fontSize: 16,
-                                        color: PRIMARY_COLOR,
-                                    }}
-                                    onClick={() => openModal(index)}
-                                    onMouseEnter={(e) =>
-                                        (e.currentTarget.style.color = "#3355ff")
-                                    }
-                                    onMouseLeave={(e) => (e.currentTarget.style.color = "#555")}
-                                />
-                                {/* <BoxSelect /> */}
-                            </Space>
-                        </div>
-                        <div style={{ maxHeight: "200px", overflowY: "auto" }}>
-                            {category.items.length === 0 ? (
-                                <div
-                                    style={{
-                                        textAlign: "center",
-                                        padding: "04px 10px",
-                                        border: "2px dashed #e5e7eb",
-                                        borderRadius: "12px",
-                                        background: "#fafbff",
-                                        marginTop: 20,
-                                    }}
-                                >
-                                    {/* <img
-                    src="https://cdn-icons-png.flaticon.com/512/6561/6561337.png"
-                    alt="No Tasks"
-                    style={{ width: '100px', marginBottom: '16px', opacity: 0.6 }}
-                  /> */}
-                                    <h3
-                                        style={{
-                                            fontSize: "18px",
-                                            color: "#333",
-                                            marginBottom: "8px",
-                                        }}
-                                    >
-                                        No Tasks Available
-                                    </h3>
-                                    <p
-                                        style={{
-                                            color: "#777",
-                                            fontSize: "14px",
-                                            marginBottom: "16px",
-                                        }}
-                                    >
-                                        Add a new note to get started on this category.
-                                    </p>
-                                    <button
-                                        onClick={() => openModal(index)}
-                                        style={{
-                                            background: "#3355ff",
-                                            color: "white",
-                                            border: "none",
-                                            borderRadius: "6px",
-                                            padding: "8px 16px",
-                                            fontWeight: 500,
-                                            cursor: "pointer",
-                                            fontSize: "13px",
-                                            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-                                            transition: "background 0.3s",
-                                        }}
-                                        onMouseEnter={(e) =>
-                                            (e.currentTarget.style.background = "#1d40e0")
-                                        }
-                                        onMouseLeave={(e) =>
-                                            (e.currentTarget.style.background = "#3355ff")
-                                        }
-                                    >
-                                        <Plus size={13} style={{ marginRight: 6 }} /> Add Note
-                                    </button>
-                                </div>
-                            ) : (
-                                category.items.map((note: any, i: any) => (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                     <div
-                                        key={i}
                                         style={{
-                                            fontSize: 14,
-                                            padding: "6px 0",
-                                            borderBottom:
-                                                i < category.items.length - 1
-                                                    ? "1px solid #e5e7eb"
-                                                    : "none",
+                                            width: 40,
+                                            height: 40,
+                                            borderRadius: 10,
+                                            background: `${categoryColorMap[category.title] || '#ccc'}20`,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            fontSize: 18,
                                         }}
                                     >
-                                        {note.title} - {note.description}
+                                        {category.icon}
                                     </div>
-                                ))
-                            )}
-                        </div>
-                    </div>
-                ))}
-            </div>
+                                    <div>
+                                        <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4, color: '#1e293b' }}>{category.title}</div>
+                                        <Badge count={category.items.length} style={{ backgroundColor: categoryColorMap[category.title] }} />
+                                    </div>
+                                </div>
 
-            {/* Notes Modal */}
+                                <Button
+                                    icon={<PlusOutlined />}
+                                    type="text"
+                                    size="small"
+                                    onClick={() => openModal(index)}
+                                    style={{
+                                        color: categoryColorMap[category.title],
+                                        border: 'none',
+                                        boxShadow: 'none',
+                                        padding: 0,
+                                        marginTop: 4,
+                                    }}
+                                />
+                            </div>
+
+                            <div style={{ flex: 1, overflowY: 'auto', paddingRight: 4 }}>
+                                {category.items.length ? (
+                                    category.items.map((item, i) => (
+                                        <div
+                                            key={i}
+                                            style={{
+                                                fontSize: 12,
+                                                background: '#f1f5f9',
+                                                padding: '6px 10px',
+                                                borderRadius: '6px',
+                                                marginBottom: 6,
+                                                border: '1px solid #e2e8f0',
+                                                whiteSpace: 'nowrap',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                            }}
+                                            title={`${item.title} - ${item.description}`}
+                                        >
+                                            {item.title} - {item.description}
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, paddingTop: 20 }}>
+                                        No notes yet
+                                        <div style={{ fontSize: 11, color: '#cbd5e1' }}>Click to add your first note</div>
+                                    </div>
+                                )}
+                            </div>
+                        </Card>
+                    </Col>
+                ))}
+            </Row>
+
+            {/* Add/Edit Note Modal */}
             <Modal
                 open={modalOpen}
-                title={
-                    activeCategoryIndex !== null
-                        ? categories[activeCategoryIndex].title
-                        : ""
-                }
-                onCancel={() => setModalOpen(false)}
                 footer={null}
+                onCancel={() => setModalOpen(false)}
+                centered
+                width={550}
+                closable={false}
+                style={{ borderRadius: 12, overflow: 'hidden' }}
+            // bodyStyle={{ padding: 0 }}
             >
-                {activeCategoryIndex !== null &&
-                    (categories[activeCategoryIndex].items.length === 0 ? (
-                        <div
-                            style={{
-                                textAlign: "center",
-                                padding: "20px 0",
-                                color: "#999",
-                                fontStyle: "italic",
-                            }}
-                        >
-                            No notes yet. Click "Add Note" to get started.
-                        </div>
-                    ) : (
-                        categories[activeCategoryIndex].items.map((note: any, idx: any) => (
+                {/* Header */}
+                <div
+                    style={{
+                        background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)',
+                        padding: '20px 24px',
+                        color: 'white',
+                        fontSize: 18,
+                        fontWeight: 600,
+                    }}
+                >
+                    {activeCategoryIndex !== null ? categories[activeCategoryIndex].title : ''}
+                </div>
+
+                {/* Body */}
+                <div style={{ padding: '24px', backgroundColor: '#fff' }}>
+                    {activeCategoryIndex !== null &&
+                        (categories[activeCategoryIndex].items.length === 0 ? (
                             <div
-                                key={idx}
                                 style={{
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    alignItems: "center",
-                                    padding: "8px 0",
-                                    borderBottom: "1px solid #eee",
+                                    textAlign: 'center',
+                                    padding: '20px 0',
+                                    color: '#999',
+                                    fontStyle: 'italic',
                                 }}
                             >
-                                <div>
-                                    {note.title} - {note.description}
-                                </div>
-                                <Space>
-                                    <Button
-                                        icon={<EditOutlined />}
-                                        onClick={() => handleEditNote(note, idx)}
-                                        size="small"
-                                    />
-                                    <Button
-                                        icon={<DeleteOutlined />}
-                                        danger
-                                        onClick={() => handleDeleteNote(idx)}
-                                        size="small"
-                                    />
-                                </Space>
+                                No notes yet. Click "Add Note" to get started.
                             </div>
-                        ))
-                    ))}
+                        ) : (
+                            categories[activeCategoryIndex].items.map((note, idx) => (
+                                <div
+                                    key={idx}
+                                    style={{
+                                        backgroundColor: '#f9f9f9',
+                                        border: '1px solid #f0f0f0',
+                                        borderRadius: 8,
+                                        padding: '12px 16px',
+                                        marginBottom: 12,
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                    }}
+                                >
+                                    <div style={{ fontSize: 14, color: '#333' }}>
+                                        <strong>{note.title}</strong> – {note.description}
+                                    </div>
+                                    <Space>
+                                        <Button
+                                            icon={<EditOutlined />}
+                                            onClick={() => handleEditNote(note, idx)}
+                                            size="small"
+                                            type="default"
+                                        />
+                                        <Button
+                                            icon={<DeleteOutlined />}
+                                            danger
+                                            onClick={() => handleDeleteNote(idx)}
+                                            size="small"
+                                        />
+                                    </Space>
+                                </div>
+                            ))
+                        ))}
 
-                <Input
-                    placeholder="Note Title"
-                    value={newNote.title}
-                    onChange={(e) => setNewNote({ ...newNote, title: e.target.value })}
-                    style={{ marginTop: 12 }}
-                />
-                <Input
-                    placeholder="Note Description"
-                    value={newNote.description}
-                    onChange={(e) =>
-                        setNewNote({ ...newNote, description: e.target.value })
-                    }
-                    style={{ marginTop: 8, marginBottom: 12 }}
-                />
-                <Button type="primary" icon={<PlusOutlined />} onClick={handleAddNote}>
-                    {editingNoteIndex !== null ? "Update Note" : "Add Note"}
-                </Button>
+                    {/* Input Fields */}
+                    <Input
+                        placeholder="Note Title"
+                        value={newNote.title}
+                        onChange={(e) => setNewNote({ ...newNote, title: e.target.value })}
+                        size="large"
+                        style={{ marginTop: 12, borderRadius: 8 }}
+                    />
+                    <Input
+                        placeholder="Note Description"
+                        value={newNote.description}
+                        onChange={(e) => setNewNote({ ...newNote, description: e.target.value })}
+                        size="large"
+                        style={{ marginTop: 12, marginBottom: 20, borderRadius: 8 }}
+                    />
+
+                    {/* Add/Update Button */}
+                    <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={handleAddNote}
+                        block
+                        size="large"
+                        style={{
+                            borderRadius: 8,
+                            background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)',
+                            border: 'none',
+                            fontWeight: 500,
+                        }}
+                    >
+                        {editingNoteIndex !== null ? 'Update Note' : 'Add Note'}
+                    </Button>
+                </div>
             </Modal>
 
-            {/* New Category Modal */}
+
             <Modal
                 open={newCategoryModal}
-                title="Add New Category"
+                footer={null}
                 onCancel={() => setNewCategoryModal(false)}
-                onOk={handleAddCategory}
-                okText="Add"
+                centered
+                width={450}
+                closable={false}
+                style={{ borderRadius: 12, overflow: 'hidden' }}
+                styles={{ body: { padding: 0 } }}
             >
+                {/* Gradient Header */}
+                <div
+                    style={{
+                        background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)',
+                        padding: '16px 24px',
+                        color: 'white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                    }}
+                >
+                    <PlusOutlined />
+                    <h3 style={{ color: 'white', margin: 0 }}>Add New Category</h3>
+                </div>
+
+                {/* Content */}
+                <div style={{ padding: '24px', backgroundColor: '#fff' }}>
+                    <Input
+                        placeholder="Enter category name"
+                        value={newCategoryName}
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                        size="large"
+                        style={{ borderRadius: 8, marginBottom: 24 }}
+                    />
+
+                    {/* Footer */}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                        <Button
+                            onClick={() => setNewCategoryModal(false)}
+                            style={{
+                                borderRadius: 8,
+                                padding: '6px 24px',
+                            }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="primary"
+                            onClick={handleAddCategory}
+                            style={{
+                                borderRadius: 8,
+                                padding: '6px 24px',
+                                background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)',
+                                border: 'none',
+                                fontWeight: 500,
+                            }}
+                        >
+                            Add
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+            <Modal>
                 <Input
                     placeholder="Category Name"
                     value={newCategoryName}
                     onChange={(e) => setNewCategoryName(e.target.value)}
                 />
             </Modal>
-        </div>
+
+        </>
     );
 };
 
-import { Calendar } from "lucide-react";
-import DocklyLoader from "../../utils/docklyLoader";
-import FamilyHubMemberDetails from "./components/profile";
-import FamilyMembers from "./components/familyMember";
-import CustomCalendar, {
-    sampleCalendarData,
-} from "../components/customCalendar";
-import { PRIMARY_COLOR } from "../../app/comman";
+
+
+import { Calendar } from 'lucide-react';
+
+import { CalendarOutlined, ClockCircleOutlined, EnvironmentOutlined } from '@ant-design/icons';
+import { Card, List, Tag, Divider } from 'antd';
+import { getUpcomingActivities } from '../../services/family';
+
+interface Activity {
+    id: string;
+    title: string;
+    date: string;
+    time: string;
+    user_id: string;
+    name: string;
+}
 
 const UpcomingActivities: React.FC = () => {
-    const activities = [
-        {
-            day: "23",
-            month: "Jun",
-            title: "Emma's Science Fair",
-            details: "4:00 PM - 7:00 PM • Springfield High School",
-            badge: { text: "Emma", type: "emma" },
-        },
-        {
-            day: "25",
-            month: "Jun",
-            title: "Liam's Dentist Appointment",
-            details: "2:30 PM • Dr. Wilson Pediatric Dentistry",
-            badge: { text: "Liam", type: "liam" },
-        },
-        {
-            day: "27",
-            month: "Jun",
-            title: "Family Picnic",
-            details: "11:00 AM • Riverside Park",
-            badge: { text: "Family", type: "family" },
-        },
-        {
-            day: "03",
-            month: "Jul",
-            title: "Anniversary Dinner",
-            details: "7:00 PM • The Vineyard Restaurant",
-            badges: [
-                { text: "John", type: "john" },
-                { text: "Sarah", type: "sarah" },
-            ],
-        },
-        {
-            day: "15",
-            month: "Jul",
-            title: "Max's Vet Checkup",
-            details: "10:00 AM • Happy Paws Veterinary",
-            badge: { text: "Pet", type: "family" },
-        },
-    ];
+    const [activities, setActivities] = useState<Activity[]>([]);
+
+    const fetchActivities = async () => {
+        try {
+            const res = await getUpcomingActivities('');
+            if (res.status === 1) {
+                setActivities(res.payload.events);
+            } else {
+                message.error(res.message);
+            }
+        } catch (error) {
+            console.error(error);
+            message.error("Failed to fetch upcoming activities.");
+        }
+    };
+
+    useEffect(() => {
+        fetchActivities();
+    }, []);
 
     const getBadgeStyle = (type: string) => {
         const baseStyle = {
-            fontSize: "12px",
-            padding: "2px 8px",
-            borderRadius: "12px",
-            fontWeight: 500,
-            marginLeft: "8px",
+            fontSize: '10px',
+            padding: '2px 8px',
+            borderRadius: '6px',
+            fontWeight: 600,
+            marginLeft: '8px',
+            border: 'none',
+        };
+
+        const colors: Record<string, string> = {
+            john: '#3355ff',
+            sarah: '#6366f1',
+            emma: '#ec4899',
+            liam: '#f59e0b',
+            family: '#10b981',
+            pet: '#6b7280'
+        };
+        const getDynamicColor = (name: string) => {
+            const palette = ['#10b981', '#6366f1', '#f59e0b', '#ec4899', '#22d3ee', '#f43f5e'];
+            let hash = 0;
+            for (let i = 0; i < name.length; i++) {
+                hash = name.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const index = Math.abs(hash % palette.length);
+            return palette[index];
+        };
+        const backgroundColor = colors[type] || getDynamicColor(type);
+        return { ...baseStyle, backgroundColor, color: 'white' };
+    };
+
+    return (
+        <Card className="modern-card fade-in" style={{ padding: '24px', height: '100%' }}>
+            <div className="modern-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h2 className="modern-card-title" style={{ fontSize: '16px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <CalendarOutlined />
+                    Upcoming Activities
+                </h2>
+                <Button
+                    type="text"
+                    icon={<PlusOutlined />}
+                    style={{ borderRadius: '8px', width: '36px', height: '36px' }}
+                />
+            </div>
+
+            <div style={{ height: 'calc(100% - 80px)', overflowY: 'auto', paddingRight: '4px' }}>
+                <List
+                    dataSource={activities}
+                    renderItem={(activity, index) => {
+                        const dateObj = dayjs(activity.date);
+                        const day = dateObj.format('DD');
+                        const month = dateObj.format('MMM');
+                        return (
+                            <List.Item
+                                key={activity.id}
+                                style={{
+                                    padding: '16px 0',
+                                    borderBottom: index === activities.length - 1 ? 'none' : '1px solid #f1f5f9',
+                                    transition: 'all 0.3s ease'
+                                }}
+                                className="slide-up"
+                            >
+                                <div style={{ width: '100%' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                                                <div style={{ fontWeight: 600, fontSize: '15px', color: '#1e293b', lineHeight: 1.4 }}>
+                                                    {activity.title}
+                                                </div>
+                                                <Tag style={getBadgeStyle(activity.name.toLowerCase())}>{activity.name}</Tag>
+                                            </div>
+
+                                            <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                    <ClockCircleOutlined style={{ fontSize: '12px', color: '#94a3b8' }} />
+                                                    <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>
+                                                        {activity.time}
+                                                    </span>
+                                                </div>
+                                            </Space>
+                                        </div>
+
+                                        <div style={{ textAlign: 'right', marginLeft: 12 }}>
+                                            <div style={{ fontSize: '18px', fontWeight: 700, color: '#1e293b', lineHeight: 1 }}>
+                                                {day}
+                                            </div>
+                                            <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 500 }}>
+                                                {month}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </List.Item>
+                        );
+                    }}
+                />
+            </div>
+
+            <Divider style={{ margin: '20px 0' }} />
+        </Card>
+    );
+};
+
+
+// export default UpcomingActivities;
+
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import CalendarWithMeals, { sampleCalendarData } from '../../pages/components/customCalendar';
+import CustomCalendar from '../../pages/components/customCalendar';
+import FamilyMembers from '../../pages/family-hub/components/familyMember';
+import FamilyHubMemberDetails from '../../pages/family-hub/components/profile';
+import FamilyTasksComponent from '../components/familyTasksProjects';
+// import { PRIMARY_COLOR } from '../../comman';
+
+const FamilyCalendar: React.FC = () => {
+    const [activeView, setActiveView] = useState('week');
+
+    const familyColors = {
+        john: '#3355ff',
+        sarah: '#6366f1',
+        emma: '#8b5cf6',
+        liam: '#ec4899',
+        family: 'linear-gradient(135deg, #3355ff, #ec4899)',
+    };
+
+    const weekDays = [
+        {
+            name: 'SUN',
+            date: '8',
+            events: [
+                { time: '10:00 AM', title: 'Family Brunch', type: 'family' },
+                { time: '2:00 PM', title: 'Emma - Soccer Practice', type: 'emma' },
+            ],
+            meals: ['🍳 Pancakes & Eggs', '🍕 Pizza Night'],
+        },
+        {
+            name: 'MON',
+            date: '9',
+            events: [
+                { time: '9:00 AM', title: 'John - Team Meeting', type: 'john' },
+                { time: '3:30 PM', title: 'Liam - Piano Lesson', type: 'liam' },
+                { time: '7:00 PM', title: 'Sarah - Book Club', type: 'sarah' },
+            ],
+            meals: ['🍝 Spaghetti Bolognese'],
+        },
+        {
+            name: 'TUE',
+            date: '10',
+            events: [
+                { time: '2:00 PM', title: 'Liam - Dentist', type: 'liam' },
+                { time: '4:00 PM', title: 'Emma - Math Tutoring', type: 'emma' },
+            ],
+            meals: ['🌮 Taco Tuesday'],
+        },
+        {
+            name: 'WED',
+            date: '11',
+            events: [
+                { time: '6:30 PM', title: 'Family Game Night', type: 'family' },
+            ],
+            meals: ['🍗 Grilled Chicken', '🥗 Caesar Salad'],
+        },
+        {
+            name: 'THU',
+            date: '12',
+            events: [
+                { time: '10:00 AM', title: 'Sarah - Doctor Appt', type: 'sarah' },
+                { time: '7:00 PM', title: 'Emma - School Play', type: 'emma' },
+            ],
+            meals: ['🍲 Slow Cooker Stew'],
+        },
+        {
+            name: 'FRI',
+            date: '13',
+            events: [
+                { time: '2:00 PM', title: 'John - Presentation', type: 'john' },
+                { time: '7:00 PM', title: 'Movie Night', type: 'family' },
+            ],
+            meals: ['🍕 Pizza Friday'],
+        },
+        {
+            name: 'SAT',
+            date: '14',
+            events: [
+                { time: '9:00 AM', title: 'Farmers Market', type: 'family' },
+                { time: '11:00 AM', title: 'Liam - Soccer Game', type: 'liam' },
+                { time: '6:00 PM', title: 'BBQ with Neighbors', type: 'family' },
+            ],
+            meals: ['🍔 BBQ Burgers'],
+        },
+    ];
+
+    const getEventStyle = (type: string) => {
+        const baseStyle = {
+            padding: '6px 8px',
+            marginBottom: '4px',
+            borderRadius: '6px',
+            fontSize: '12px',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            borderLeft: '3px solid',
         };
 
         switch (type) {
-            case "john":
-                return {
-                    ...baseStyle,
-                    backgroundColor: "rgba(51, 85, 255, 0.1)",
-                    color: "#3355ff",
-                };
-            case "sarah":
-                return {
-                    ...baseStyle,
-                    backgroundColor: "rgba(99, 102, 241, 0.1)",
-                    color: "#6366f1",
-                };
-            case "emma":
-                return {
-                    ...baseStyle,
-                    backgroundColor: "rgba(139, 92, 246, 0.1)",
-                    color: "#8b5cf6",
-                };
-            case "liam":
-                return {
-                    ...baseStyle,
-                    backgroundColor: "rgba(236, 72, 153, 0.1)",
-                    color: "#ec4899",
-                };
-            case "family":
-                return { ...baseStyle, backgroundColor: "#eef1ff", color: "#3355ff" };
+            case 'john':
+                return { ...baseStyle, backgroundColor: 'rgba(51, 85, 255, 0.1)', borderLeftColor: familyColors.john, color: '#1e40af' };
+            case 'sarah':
+                return { ...baseStyle, backgroundColor: 'rgba(99, 102, 241, 0.1)', borderLeftColor: familyColors.sarah, color: '#4338ca' };
+            case 'emma':
+                return { ...baseStyle, backgroundColor: 'rgba(139, 92, 246, 0.1)', borderLeftColor: familyColors.emma, color: '#6d28d9' };
+            case 'liam':
+                return { ...baseStyle, backgroundColor: 'rgba(236, 72, 153, 0.1)', borderLeftColor: familyColors.liam, color: '#be185d' };
+            case 'family':
+                return { ...baseStyle, background: 'linear-gradient(135deg, rgba(51, 85, 255, 0.1), rgba(236, 72, 153, 0.1))', borderLeftColor: familyColors.john, color: '#374151' };
             default:
                 return baseStyle;
+        }
+    };
+
+    const handleAddEvent = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            const input = e.currentTarget.value;
+            if (input.trim()) {
+                alert(`Event added: ${input}`);
+                e.currentTarget.value = '';
+            }
         }
     };
 
     return (
         <div
             style={{
-                backgroundColor: "white",
-                borderRadius: "12px",
-                boxShadow: "0 2px 4px rgba(0, 0, 0, 0.05)",
-                padding: "20px",
-                height: "700px",
-                display: "flex",
-                flexDirection: "column",
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+                height: '700px',
+                display: 'flex',
+                flexDirection: 'column',
             }}
         >
             <div
                 style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "16px",
+                    padding: '20px',
+                    borderBottom: '1px solid #e5e7eb',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
                 }}
             >
-                <h3
-                    style={{
-                        fontSize: "18px",
-                        fontWeight: 600,
-                        color: "#111827",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        margin: 0,
-                    }}
-                >
-                    <Calendar size={20} style={{ opacity: 0.8 }} />
-                    Upcoming Activities
-                </h3>
-                <button
-                    style={{
-                        width: "28px",
-                        height: "28px",
-                        border: "none",
-                        backgroundColor: "#eef1ff",
-                        color: "#3355ff",
-                        borderRadius: "6px",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        transition: "all 0.2s ease",
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = "#3355ff";
-                        e.currentTarget.style.color = "white";
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = "#eef1ff";
-                        e.currentTarget.style.color = "#3355ff";
-                    }}
-                >
-                    <Plus size={16} />
-                </button>
+                <h2 style={{ fontSize: '20px', fontWeight: 600, margin: 0 }}>June 2025</h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div
+                        style={{
+                            display: 'flex',
+                            gap: '4px',
+                            backgroundColor: '#f0f4f8',
+                            padding: '4px',
+                            borderRadius: '8px',
+                        }}
+                    >
+                        {['Day', 'Week', 'Month', 'Year'].map((view) => (
+                            <button
+                                key={view}
+                                onClick={() => setActiveView(view.toLowerCase())}
+                                style={{
+                                    padding: '6px 12px',
+                                    border: 'none',
+                                    background: activeView === view.toLowerCase() ? 'white' : 'none',
+                                    cursor: 'pointer',
+                                    borderRadius: '6px',
+                                    fontSize: '13px',
+                                    fontWeight: 500,
+                                    color: activeView === view.toLowerCase() ? '#374151' : '#6b7280',
+                                    transition: 'all 0.2s ease',
+                                    boxShadow: activeView === view.toLowerCase() ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                                }}
+                            >
+                                {view}
+                            </button>
+                        ))}
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                            style={{
+                                width: '32px',
+                                height: '32px',
+                                border: '1px solid #e5e7eb',
+                                backgroundColor: 'white',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                transition: 'all 0.2s ease',
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = '#f0f4f8';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'white';
+                            }}
+                        >
+                            <ChevronLeft size={16} />
+                        </button>
+                        <button
+                            style={{
+                                width: '32px',
+                                height: '32px',
+                                border: '1px solid #e5e7eb',
+                                backgroundColor: 'white',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                transition: 'all 0.2s ease',
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = '#f0f4f8';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'white';
+                            }}
+                        >
+                            <ChevronRight size={16} />
+                        </button>
+                    </div>
+                </div>
             </div>
 
-            <div style={{ flex: 1, overflowY: "auto" }}>
-                {activities.map((activity, index) => (
+            <div style={{ padding: '0 20px' }}>
+                <input
+                    type="text"
+                    placeholder="Add event: 'Soccer practice for Emma tomorrow at 4pm' or 'Family dinner on Sunday @6pm'"
+                    onKeyPress={handleAddEvent}
+                    style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        border: '2px solid #e5e7eb',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        backgroundColor: 'white',
+                        marginBottom: '20px',
+                        transition: 'border-color 0.2s ease',
+                        outline: 'none',
+                    }}
+                    onFocus={(e) => {
+                        e.target.style.borderColor = '#3355ff';
+                    }}
+                    onBlur={(e) => {
+                        e.target.style.borderColor = '#e5e7eb';
+                    }}
+                />
+            </div>
+
+            <div
+                style={{
+                    flex: 1,
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(7, 1fr)',
+                    overflow: 'hidden',
+                }}
+            >
+                {weekDays.map((day, index) => (
                     <div
                         key={index}
                         style={{
-                            display: "flex",
-                            padding: "12px 0",
-                            borderBottom:
-                                index < activities.length - 1 ? "1px solid #e5e7eb" : "none",
-                            transition: "all 0.2s ease",
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = "#f8fafc";
-                            e.currentTarget.style.marginLeft = "8px";
-                            e.currentTarget.style.marginRight = "-8px";
-                            e.currentTarget.style.borderRadius = "8px";
-                            e.currentTarget.style.paddingLeft = "12px";
-                            e.currentTarget.style.paddingRight = "12px";
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = "transparent";
-                            e.currentTarget.style.marginLeft = "0";
-                            e.currentTarget.style.marginRight = "0";
-                            e.currentTarget.style.borderRadius = "0";
-                            e.currentTarget.style.paddingLeft = "0";
-                            e.currentTarget.style.paddingRight = "0";
+                            borderRight: index < 6 ? '1px solid #e5e7eb' : 'none',
+                            display: 'flex',
+                            flexDirection: 'column',
                         }}
                     >
                         <div
                             style={{
-                                width: "45px",
-                                textAlign: "center",
-                                marginRight: "12px",
+                                padding: '12px 8px',
+                                borderBottom: '1px solid #e5e7eb',
+                                textAlign: 'center',
+                                backgroundColor: '#f9fafb',
                             }}
                         >
                             <div
                                 style={{
-                                    fontSize: "16px",
+                                    fontSize: '12px',
                                     fontWeight: 600,
-                                    color: "#374151",
+                                    color: '#6b7280',
+                                    textTransform: 'uppercase',
                                 }}
                             >
-                                {activity.day}
+                                {day.name}
                             </div>
                             <div
                                 style={{
-                                    fontSize: "12px",
-                                    color: "#6b7280",
+                                    fontSize: '18px',
+                                    fontWeight: 600,
+                                    color: '#374151',
+                                    marginTop: '4px',
                                 }}
                             >
-                                {activity.month}
+                                {day.date}
                             </div>
                         </div>
 
-                        <div style={{ flex: 1 }}>
-                            <div
-                                style={{
-                                    fontSize: "14px",
-                                    fontWeight: 500,
-                                    marginBottom: "2px",
-                                    color: "#374151",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    flexWrap: "wrap",
-                                }}
-                            >
-                                {activity.title}
-                                {activity.badge && (
-                                    <span style={getBadgeStyle(activity.badge.type)}>
-                                        {activity.badge.text}
-                                    </span>
-                                )}
-                                {activity.badges &&
-                                    activity.badges.map((badge, badgeIndex) => (
-                                        <span key={badgeIndex} style={getBadgeStyle(badge.type)}>
-                                            {badge.text}
-                                        </span>
-                                    ))}
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                            <div style={{ flex: 1, padding: '8px', overflowY: 'auto' }}>
+                                {day.events.map((event, eventIndex) => (
+                                    <div
+                                        key={eventIndex}
+                                        style={getEventStyle(event.type)}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.transform = 'translateX(2px)';
+                                            e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.transform = 'translateX(0)';
+                                            e.currentTarget.style.boxShadow = 'none';
+                                        }}
+                                    >
+                                        <div
+                                            style={{
+                                                fontSize: '11px',
+                                                fontWeight: 600,
+                                                marginBottom: '2px',
+                                            }}
+                                        >
+                                            {event.time}
+                                        </div>
+                                        <div
+                                            style={{
+                                                fontWeight: 500,
+                                                lineHeight: 1.2,
+                                            }}
+                                        >
+                                            {event.title}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
+
                             <div
                                 style={{
-                                    fontSize: "12px",
-                                    color: "#6b7280",
+                                    backgroundColor: '#f0fdf4',
+                                    borderTop: '1px solid #bbf7d0',
+                                    padding: '8px',
+                                    minHeight: '80px',
                                 }}
                             >
-                                {activity.details}
+                                <div
+                                    style={{
+                                        fontSize: '10px',
+                                        fontWeight: 600,
+                                        color: '#047857',
+                                        textTransform: 'uppercase',
+                                        marginBottom: '4px',
+                                    }}
+                                >
+                                    Meals
+                                </div>
+                                {day.meals.map((meal, mealIndex) => (
+                                    <div
+                                        key={mealIndex}
+                                        style={{
+                                            fontSize: '11px',
+                                            color: '#065f46',
+                                            cursor: 'pointer',
+                                            marginBottom: '2px',
+                                            transition: 'all 0.2s ease',
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.textDecoration = 'underline';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.textDecoration = 'none';
+                                        }}
+                                    >
+                                        {meal}
+                                    </div>
+                                ))}
                             </div>
                         </div>
+                    </div>
+                ))}
+            </div>
+
+            <div
+                style={{
+                    display: 'flex',
+                    gap: '16px',
+                    padding: '12px 20px',
+                    backgroundColor: '#f0f4f8',
+                    borderTop: '1px solid #e5e7eb',
+                }}
+            >
+                {[
+                    { name: 'John', color: familyColors.john },
+                    { name: 'Sarah', color: familyColors.sarah },
+                    { name: 'Emma', color: familyColors.emma },
+                    { name: 'Liam', color: familyColors.liam },
+                    { name: 'Family', color: familyColors.john },
+                ].map((legend, index) => (
+                    <div
+                        key={index}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            fontSize: '12px',
+                            color: '#6b7280',
+                        }}
+                    >
+                        <div
+                            style={{
+                                width: '12px',
+                                height: '12px',
+                                borderRadius: '3px',
+                                backgroundColor: legend.color,
+                            }}
+                        />
+                        <span>{legend.name}</span>
                     </div>
                 ))}
             </div>
@@ -2685,31 +2465,31 @@ const BoardTitle: React.FC = () => {
     return (
         <div
             style={{
-                display: "flex",
-                alignItems: "center",
-                marginBottom: "24px",
+                display: 'flex',
+                alignItems: 'center',
+                marginBottom: '24px',
             }}
         >
             <div
                 style={{
-                    width: "48px",
-                    height: "48px",
-                    backgroundColor: "#eef1ff",
-                    color: "#3355ff",
-                    borderRadius: "12px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginRight: "16px",
+                    width: '48px',
+                    height: '48px',
+                    backgroundColor: '#eef1ff',
+                    color: '#3355ff',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: '16px',
                 }}
             >
                 <Users size={24} />
             </div>
             <h1
                 style={{
-                    fontSize: "24px",
+                    fontSize: '24px',
                     fontWeight: 600,
-                    color: "#111827",
+                    color: '#111827',
                     margin: 0,
                 }}
             >

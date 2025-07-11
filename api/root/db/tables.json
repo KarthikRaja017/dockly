@@ -533,6 +533,7 @@
         "priority VARCHAR(50) CHECK (priority IN ('high', 'medium', 'low'))",
         "date TEXT NOT NULL",
         "time TEXT",
+        "goal_id VARCHAR(255)",
         "completed BOOLEAN DEFAULT FALSE",
         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
       ]
@@ -600,6 +601,67 @@
         "id VARCHAR(255) PRIMARY KEY",
         "user_id VARCHAR(255) REFERENCES users(uid) ON DELETE CASCADE",
         "focus VARCHAR(255) NOT NULL",
+        "is_active INT DEFAULT 1",
+        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+      ]
+    },
+
+    {
+      "table_name": "property_information",
+      "columns": [
+        "pid VARCHAR(255) PRIMARY KEY",
+        "user_id VARCHAR REFERENCES users(uid)",
+        "address VARCHAR(500)",
+        "purchase_date DATE",
+        "purchase_price NUMERIC",
+        "square_footage VARCHAR(50)",
+        "lot_size VARCHAR(50)",
+        "property_tax_id VARCHAR(200)",
+        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        "is_active INT "
+      ]
+    },
+
+    {
+      "table_name": "home_maintenance",
+      "columns": [
+        "id SERIAL PRIMARY KEY",
+        "user_id VARCHAR REFERENCES users(uid) ON DELETE CASCADE",
+        "name VARCHAR(255) NOT NULL",
+        "date DATE NOT NULL",
+        "completed BOOLEAN DEFAULT FALSE",
+        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+      ]
+    },
+
+    {
+      "table_name": "utility",
+      "columns": [
+        "utid SERIAL PRIMARY KEY",
+        "user_id VARCHAR(255) REFERENCES users(uid) ON DELETE CASCADE",
+        "type VARCHAR(100) NOT NULL",
+        "account_number VARCHAR(100) NOT NULL",
+        "monthly_cost NUMERIC NOT NULL",
+        "provider_url VARCHAR(255) NOT NULL",
+        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        "is_active INT DEFAULT 1"
+      ]
+    },
+    {
+      "table_name": "insurance",
+      "columns": [
+        "id VARCHAR(255) PRIMARY KEY",
+        "user_id VARCHAR(255) REFERENCES users(uid) ON DELETE CASCADE",
+        "name VARCHAR(255) NOT NULL",
+        "meta VARCHAR(255) NOT NULL",
+        "type VARCHAR(50) NOT NULL",
+        "years INTEGER NOT NULL",
+        "payment FLOAT NOT NULL",
+        "renewal_date DATE",
         "is_active INT DEFAULT 1",
         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
         "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"

@@ -2,10 +2,12 @@ import calendar
 from datetime import datetime, time, timedelta
 import json
 import re
+import traceback
 from flask import make_response, redirect, request, session
 from flask_jwt_extended import create_access_token
 from flask_restful import Resource
 import pytz
+from root.family.models import send_invitation_email
 from root.utilis import create_calendar_event, uniqueId, update_calendar_event
 from root.db.dbHelper import DBHelper
 from root.config import API_URL, CLIENT_ID, CLIENT_SECRET, WEB_URL, uri, SCOPE
@@ -537,6 +539,7 @@ class AddEvent(Resource):
     @auth_required(isOptional=True)
     def post(self, uid, user):
         inputData = request.get_json(silent=True)
+        print("Received event inputData:", inputData)
 
         title = inputData.get("title", "").strip()
         is_all_day = inputData.get("is_all_day", False)
@@ -548,8 +551,6 @@ class AddEvent(Resource):
             "location": inputData.get("location", "").strip(),
             "description": inputData.get("description", "").strip(),
             "is_active": 1,
-            # "is_all_day": is_all_day,
-            # "person": inputData.get("person", "").strip()
         }
 
         try:
@@ -603,7 +604,6 @@ class AddEvent(Resource):
 
             # ───── Handle update or new event ─────
             if event_id:
-                # Find existing event from DB
                 existing_event = DBHelper.find_one(
                     "events", filters={"calendar_event_id": event_id}
                 )
@@ -612,7 +612,6 @@ class AddEvent(Resource):
                     calendar_event_id = existing_event.get("calendar_event_id")
 
                     if calendar_event_id:
-                        # Update Google Calendar event
                         update_calendar_event(
                             user_id=uid,
                             calendar_event_id=calendar_event_id,
@@ -622,7 +621,6 @@ class AddEvent(Resource):
                         )
                         insert_data["calendar_event_id"] = calendar_event_id
                     else:
-                        # Create new on calendar if no ID
                         calendar_event_id = create_calendar_event(
                             user_id=uid, title=title, start_dt=start_dt, end_dt=end_dt
                         )
@@ -640,13 +638,57 @@ class AddEvent(Resource):
                 else:
                     return {"status": 0, "message": "Event not found", "payload": {}}
             else:
-                # New event
                 calendar_event_id = create_calendar_event(
                     user_id=uid, title=title, start_dt=start_dt, end_dt=end_dt
                 )
                 insert_data["calendar_event_id"] = calendar_event_id
                 insert_data["id"] = uniqueId(digit=6)
                 DBHelper.insert("events", **insert_data)
+
+            # ───── Send Invite Email if applicable ─────
+            # ───── Send Invite Email if applicable ─────
+            invitee_email = inputData.get("invitee", "").strip()
+            if invitee_email:
+                invitee_name = invitee_email.split("@")[0]
+                sender_name = user.get("user_name", "A Dockly user")
+
+                location = insert_data.get("location", "")
+                description = insert_data.get("description", "")
+
+                # ✅ Build optional fields conditionally
+                location_html = (
+                    f"<p><strong>Location:</strong> {location}</p>" if location else ""
+                )
+                description_html = (
+                    f"<p><strong>Description:</strong><br>{description}</p>"
+                    if description
+                    else ""
+                )
+
+                email_subject = f"You were mentioned in an event - {title}"
+
+                email_html = f"""
+                <html>
+                <body style="font-family: sans-serif; padding: 20px;">
+                    <h2>You’ve been mentioned in an event</h2>
+                    <p><strong>{sender_name}</strong> has added you to the event:</p>
+                    <p style="font-size: 18px; color: #3b82f6;"><strong>{title}</strong></p>
+                    {location_html}
+                    {description_html}
+                    <br>
+                    <a href="{WEB_URL}/calendar" style="display: inline-block; margin-top: 16px; padding: 10px 20px; background-color: #3b82f6; color: white; text-decoration: none; border-radius: 4px;">
+                        View Event in Dockly
+                    </a>
+                </body>
+                </html>
+                """
+
+                send_invitation_email(
+                    invitee_email,
+                    invitee_name,
+                    email_html,
+                    invite_subject=email_subject,
+                )
 
             return {
                 "status": 1,
@@ -660,7 +702,8 @@ class AddEvent(Resource):
 
         except Exception as e:
             print("Google Calendar Error:", str(e))
-            # traceback.print_exc()
+            traceback.print_exc()
+            return {"status": 0, "message": "Something went wrong.", "payload": {}}
 
 
 class AddGoogleCalendarEvent(Resource):

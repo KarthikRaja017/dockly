@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useState } from "react";
 import {
@@ -20,7 +21,7 @@ import { EditOutlined, MailOutlined, PlusOutlined } from "@ant-design/icons";
 import { useEffect } from "react";
 import { addProject, addTask, getProjects, getTasks, updateTask } from "../../services/family";
 import dayjs from "dayjs";
-import { addEvents, addWeeklyGoal, addWeeklyTodo, getPlanner } from "../../services/planner";
+import { addEvents, addWeeklyGoal, addWeeklyTodo, getPlanner, updateWeeklyGoal, updateWeeklyTodo } from "../../services/planner";
 import { getCalendarEvents } from "../../services/google";
 import DocklyLoader from "../../utils/docklyLoader";
 import { Calendar } from "lucide-react";
@@ -109,6 +110,7 @@ const Planner = () => {
             priority: "high" | "medium" | "low";
             date: string;
             time: string;
+            goal_id?: string;
         }[]
     >([]);
     const [projects, setProjects] = useState<Project[]>([]);
@@ -118,16 +120,46 @@ const Planner = () => {
     const [isEventModalVisible, setIsEventModalVisible] = useState(false);
     const [isTodoModalVisible, setIsTodoModalVisible] = useState(false);
     const [isProjectModalVisible, setIsProjectModalVisible] = useState(false);
+    const [editingGoal, setEditingGoal] = useState<
+        | ({
+            id: string;
+            text: string;
+            completed: boolean;
+            priority: "high" | "medium" | "low";
+            date: string;
+            time: string;
+            goal_id?: string;
+        })
+        | null
+    >(null);
+    const [editingTodo, setEditingTodo] = useState<
+        | ({
+            id: string;
+            text: string;
+            completed: boolean;
+            priority: "high" | "medium" | "low";
+            date: string;
+            time: string;
+            goal_id?: string;
+        })
+        | null
+    >(null);
     const [calendarEvents, setCalendarEvents] = useState<
         {
             id: string;
             title: string;
             startTime: string;
+            endTime: string;
             date: string;
             person: string;
             color: string;
+            is_all_day?: boolean;
+            start_date?: string;
+            end_date?: string;
         }[]
     >([]);
+
+
 
     const [personColors, setPersonColors] = useState<{ [person: string]: { color: string; email: string } }>({});
 
@@ -214,6 +246,11 @@ const Planner = () => {
         });
     };
 
+    // Get available goals for todo selection based on current view
+    const getAvailableGoals = () => {
+        return getFilteredGoals();
+    };
+
     // Get view title for goals and todos sections
     const getViewTitle = (type: 'Goals' | 'Tasks') => {
         switch (view) {
@@ -223,8 +260,6 @@ const Planner = () => {
                 return `Weekly ${type}`;
             case "Month":
                 return `Monthly ${type}`;
-            // case "Year":
-            //     return `Yearly ${type}`;
             default:
                 return `Weekly ${type}`;
         }
@@ -267,10 +302,9 @@ const Planner = () => {
         setLoading(true);
         try {
             await addProject({ ...project, source: 'planner' });
-            // message.success('Project added');
             fetchProjects();
         } catch {
-            // message.error('Failed to add project');
+            // Handle error
         }
         setLoading(false);
     };
@@ -285,7 +319,6 @@ const Planner = () => {
                 type: 'low',
                 due_date: dayjs().format('YYYY-MM-DD'),
                 completed: false,
-                // source: 'planner',
             });
             fetchProjects();
         } catch {
@@ -317,7 +350,6 @@ const Planner = () => {
             due_date: task.dueDate,
             assignee: task.assignee,
             type: task.type,
-            // source: 'planner',
         })
             .then(() => {
                 message.success('Task updated');
@@ -347,7 +379,7 @@ const Planner = () => {
                         type: task.type,
                         completed: task.completed,
                         due: task.completed ? 'Completed' : `Due ${dayjs(task.due_date).format('MMM D')}`,
-                        dueDate: task.due_date ? String(task.due_date) : '', // Always a string
+                        dueDate: task.due_date ? String(task.due_date) : '',
                     }));
 
                     return {
@@ -366,7 +398,7 @@ const Planner = () => {
 
             setProjects(projectsWithTasks);
         } catch (err) {
-            // message.error('Failed to load planner projects');
+            // Handle error
         }
         setLoading(false);
     };
@@ -378,17 +410,35 @@ const Planner = () => {
                 values.date = values.date.format("YYYY-MM-DD");
                 values.time = values.time.format("h:mm A");
 
-                const response = await addWeeklyGoal({ ...values, backup: backup });
-                const { message, status } = response.data;
+                if (editingGoal) {
+                    // Update existing goal
+                    const response = await updateWeeklyGoal({
+                        id: editingGoal.id,
+                        ...values,
+                        backup: backup
+                    });
+                    const { message, status } = response.data;
 
-                if (status) {
-                    showNotification("Success", message, "success");
+                    if (status) {
+                        showNotification("Success", message, "success");
+                    } else {
+                        showNotification("Error", message, "error");
+                    }
                 } else {
-                    showNotification("Error", message, "error");
+                    // Add new goal
+                    const response = await addWeeklyGoal({ ...values, backup: backup });
+                    const { message, status } = response.data;
+
+                    if (status) {
+                        showNotification("Success", message, "success");
+                    } else {
+                        showNotification("Error", message, "error");
+                    }
                 }
 
                 getUserPlanner();
                 setIsGoalModalVisible(false);
+                setEditingGoal(null);
                 fetchEvents();
                 goalForm.resetFields();
             } catch (error) {
@@ -412,14 +462,14 @@ const Planner = () => {
 
             setCalendarEvents(prev => [
                 ...(prev),
-                ...transformEvents(rawEvents), // add new transformed events
+                ...transformEvents(rawEvents),
             ]);
             const s = transformEvents(rawEvents)
             console.log("🚀 ~ getUserPlanner ~ s :", s)
             setPersonColors(prev => ({
                 ...prev,
                 [user.user_name]: {
-                    color: rawEvents[0].account_color,
+                    // color: rawEvents[0].account_color,
                     email: user.email,
                 },
             }));
@@ -432,7 +482,6 @@ const Planner = () => {
                 time: dayjs(item.time, ["h:mm A", "HH:mm"]).format("h:mm A"),
             }));
 
-
             const formattedTodos = rawTodos.map((item: any) => ({
                 id: item.id,
                 text: item.text,
@@ -440,6 +489,7 @@ const Planner = () => {
                 priority: item.priority || "medium",
                 date: dayjs(item.date).format("YYYY-MM-DD"),
                 time: dayjs(item.time, ["h:mm A", "HH:mm"]).format("h:mm A"),
+                goal_id: item.goal_id,
             }));
 
             setGoals(formattedGoals);
@@ -457,17 +507,35 @@ const Planner = () => {
                 values.date = values.date.format("YYYY-MM-DD");
                 values.time = values.time.format("h:mm A");
 
-                const response = await addWeeklyTodo({ ...values, backup: backup });
-                const { message, status } = response.data;
+                if (editingTodo) {
+                    // Update existing todo
+                    const response = await updateWeeklyTodo({
+                        id: editingTodo.id,
+                        ...values,
+                        backup: backup
+                    });
+                    const { message, status } = response.data;
 
-                if (status) {
-                    showNotification("Success", message, "success");
+                    if (status) {
+                        showNotification("Success", message, "success");
+                    } else {
+                        showNotification("Error", message, "error");
+                    }
                 } else {
-                    showNotification("Error", message, "error");
+                    // Add new todo
+                    const response = await addWeeklyTodo({ ...values, backup: backup });
+                    const { message, status } = response.data;
+
+                    if (status) {
+                        showNotification("Success", message, "success");
+                    } else {
+                        showNotification("Error", message, "error");
+                    }
                 }
 
                 getUserPlanner();
                 setIsTodoModalVisible(false);
+                setEditingTodo(null);
                 fetchEvents();
                 todoForm.resetFields();
             } catch (error) {
@@ -490,14 +558,14 @@ const Planner = () => {
                 setPersonColors(prev => ({
                     ...prev,
                     [connectedAccounts[0].userName]: {
-                        color: rawEvents[0].account_color,
+                        // color: rawEvents[0].account_color,
                         email: connectedAccounts[0].email,
                     },
                 }));
                 setBackup(connectedAccounts[0].email);
                 setCalendarEvents(prev => [
-                    ...(prev), // preserve previous events
-                    ...transformEvents(rawEvents), // add new transformed events
+                    ...(prev),
+                    ...transformEvents(rawEvents),
                 ]);
             }
         } catch (error) {
@@ -507,62 +575,57 @@ const Planner = () => {
         }
     };
 
+
     const transformEvents = (rawEvents: any[]): any[] => {
         return rawEvents.map((event, index) => {
-            const isGoogleEvent = !!event.start?.date || !!event.start?.dateTime;
+            const startDateTime = event.start?.dateTime ?? null;
+            const endDateTime = event.end?.dateTime ?? null;
+            const startDate = event.start?.date ?? null;
+            const endDate = event.end?.date ?? null;
+            const creatorEmail = event.creator?.email || "Unknown";
 
-            let start: dayjs.Dayjs | null = null;
+            const isGoogleEvent = event.kind === "calendar#event";
+
+            const start = startDateTime
+                ? dayjs(startDateTime)
+                : startDate
+                    ? dayjs(startDate)
+                    : null;
+
             let end: dayjs.Dayjs | null = null;
-            let date = 'N/A';
-            let startTime = 'N/A';
-            let endTime = 'N/A';
-            let person = 'Unknown';
 
-            if (isGoogleEvent) {
-                const startDateTime = event.start?.dateTime || event.start?.date;
-                const endDateTime = event.end?.dateTime || event.end?.date;
-
-                start = startDateTime ? dayjs(startDateTime) : null;
-                end = endDateTime ? dayjs(endDateTime) : (start ? start.add(1, 'hour') : null);
-
-                date = start ? start.format('YYYY-MM-DD') : 'N/A';
-                startTime = start ? start.format('hh:mm A') : 'N/A';
-                endTime = end ? end.format('hh:mm A') : 'N/A';
-
-                const email =
-                    event.creator?.email ||
-                    event.organizer?.email ||
-                    event.source_email ||
-                    'Unknown';
-                person = typeof email === 'string' ? email.split('@')[0] : 'Unknown';
-            } else {
-                // Dockly event
-                date = event.date || 'N/A';
-                startTime = event.startTime || 'N/A';
-                endTime = event.endTime || 'N/A';
-
-                const startParsed = dayjs(`${event.date} ${event.startTime}`, 'YYYY-MM-DD hh:mm A');
-                start = startParsed.isValid() ? startParsed : null;
-
-                const endParsed = dayjs(`${event.date} ${event.endTime}`, 'YYYY-MM-DD hh:mm A');
-                end = endParsed.isValid() ? endParsed : (start ? start.add(1, 'hour') : null);
-
-                person = typeof event.person === 'string'
-                    ? event.person.split('@')[0]
-                    : 'Unknown';
+            if (endDateTime) {
+                end = dayjs(endDateTime);
+            } else if (endDate) {
+                end = isGoogleEvent
+                    ? dayjs(endDate).subtract(1, "day")  // fix Google exclusive end.date
+                    : dayjs(endDate);
+            } else if (start) {
+                end = start.add(1, "hour");
             }
+
+            const formattedStart = start?.format("YYYY-MM-DD") ?? "";
+            const formattedEnd = end?.format("YYYY-MM-DD") ?? "";
+
+            const isAllDay = formattedStart !== formattedEnd;
 
             return {
                 id: event.id || index.toString(),
-                title: event.summary || event.title || 'No Title',
-                date,
-                startTime,
-                endTime,
-                person,
-                color: event.account_color || PRIMARY_COLOR, // or PRIMARY_COLOR if defined
+                title: event.summary || event.title || "Untitled Event",
+                startTime: isAllDay ? "12:00 AM" : start?.format("hh:mm A") ?? "12:00 AM",
+                endTime: isAllDay ? "11:59 PM" : end?.format("hh:mm A") ?? "11:59 PM",
+                date: formattedStart || "N/A",
+                person: creatorEmail.split("@")[0],
+                color: event.account_color || event.color || "#10B981",
+
+                is_all_day: isAllDay,
+                start_date: formattedStart,
+                end_date: formattedEnd,
             };
         });
     };
+
+
 
     useEffect(() => {
         fetchEvents();
@@ -577,7 +640,7 @@ const Planner = () => {
                 {
                     project_id: Date.now().toString(),
                     title: values.title,
-                    description: values.category, // or values.description if you have it
+                    description: values.category,
                     due_date: values.dueDate.format("YYYY-MM-DD"),
                     color: "#667eea",
                     progress: 0,
@@ -597,11 +660,13 @@ const Planner = () => {
     const handleCancelGoal = () => {
         goalForm.resetFields();
         setIsGoalModalVisible(false);
+        setEditingGoal(null);
     };
 
     const handleCancelTodo = () => {
         todoForm.resetFields();
         setIsTodoModalVisible(false);
+        setEditingTodo(null);
     };
 
     const handleCancelProject = () => {
@@ -615,6 +680,28 @@ const Planner = () => {
                 todo.id === id ? { ...todo, completed: !todo.completed } : todo
             )
         );
+    };
+
+    const handleEditGoal = (goal: any) => {
+        setEditingGoal(goal);
+        goalForm.setFieldsValue({
+            goal: goal.text,
+            date: dayjs(goal.date),
+            time: dayjs(goal.time, "h:mm A"),
+        });
+        setIsGoalModalVisible(true);
+    };
+
+    const handleEditTodo = (todo: any) => {
+        setEditingTodo(todo);
+        todoForm.setFieldsValue({
+            text: todo.text,
+            priority: todo.priority,
+            date: dayjs(todo.date),
+            time: dayjs(todo.time, "h:mm A"),
+            goal_id: todo.goal_id,
+        });
+        setIsTodoModalVisible(true);
     };
 
     // Handler for mini calendar date selection
@@ -636,6 +723,7 @@ const Planner = () => {
     const handleMainCalendarViewChange = (newView: "Day" | "Week" | "Month" | "Year") => {
         setView(newView);
     };
+
     if (loading) {
         return <DocklyLoader />;
     }
@@ -801,9 +889,18 @@ const Planner = () => {
                                                             padding: "2px 6px",
                                                         }}
                                                     />
-                                                    <Text style={{ fontSize: 12, color: "#6b7280" }}>
-                                                        {goal.date} {goal.time}
-                                                    </Text>
+                                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                                        <Text style={{ fontSize: 12, color: "#6b7280" }}>
+                                                            {goal.date} {goal.time}
+                                                        </Text>
+                                                        <Button
+                                                            type="text"
+                                                            size="small"
+                                                            icon={<EditOutlined />}
+                                                            onClick={() => handleEditGoal(goal)}
+                                                            style={{ fontSize: 10 }}
+                                                        />
+                                                    </div>
                                                 </>
                                             ) : (
                                                 <Text
@@ -814,9 +911,9 @@ const Planner = () => {
                                                         cursor: "pointer",
                                                         marginTop: 4
                                                     }}
-                                                    onClick={() => setIsTodoModalVisible(true)}
+                                                    onClick={() => setIsGoalModalVisible(true)}
                                                 >
-                                                    Add goal {index + 1}
+                                                    Add Goal {index + 1}
                                                 </Text>
                                             )}
                                         </div>
@@ -845,7 +942,6 @@ const Planner = () => {
                         >
                             <div
                                 style={{
-                                    // padding: "12px 16px",
                                     overflowY: "auto",
                                     height: "220px",
                                     paddingBottom: 24,
@@ -891,10 +987,17 @@ const Planner = () => {
                                                     >
                                                         {todo.text}
                                                     </Text>
-                                                    <div>
+                                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                                                         <Text style={{ fontSize: 12, color: "#6b7280" }}>
                                                             {todo.date} {todo.time}
                                                         </Text>
+                                                        <Button
+                                                            type="text"
+                                                            size="small"
+                                                            icon={<EditOutlined />}
+                                                            onClick={() => handleEditTodo(todo)}
+                                                            style={{ fontSize: 10 }}
+                                                        />
                                                     </div>
                                                 </div>
                                                 <Tag color={getPriorityColor(todo.priority)}>
@@ -913,7 +1016,7 @@ const Planner = () => {
                                                 }}
                                                 onClick={() => setIsTodoModalVisible(true)}
                                             >
-                                                Add To-do {index + 1}
+                                                Add Task {index + 1}
                                             </Text>
                                         )}
                                     </div>
@@ -1022,7 +1125,7 @@ const Planner = () => {
                 </Modal>
 
                 <Modal
-                    title="Add Weekly Goal"
+                    title={editingGoal ? "Edit Goal" : "Add New Goal"}
                     open={isGoalModalVisible}
                     onCancel={handleCancelGoal}
                     maskClosable={!loading}
@@ -1038,19 +1141,19 @@ const Planner = () => {
                             onClick={handleAddGoal}
                             disabled={loading}
                         >
-                            Add Goal
+                            {editingGoal ? "Update Goal" : "Add Goal"}
                         </Button>,
                     ]}
                 >
                     <Form form={goalForm} layout="vertical">
                         <Form.Item
                             name="goal"
-                            label="Goal"
+                            label="goal"
                             rules={[
-                                { required: true, message: "Please enter your weekly goal" },
+                                { required: true, message: "Please enter your goal" },
                             ]}
                         >
-                            <Input placeholder="Enter your weekly goal..." />
+                            <Input placeholder="Enter your Goal.." />
                         </Form.Item>
                         <Form.Item
                             name="date"
@@ -1106,7 +1209,7 @@ const Planner = () => {
                 </Modal>
 
                 <Modal
-                    title="Add New To-Do"
+                    title={editingTodo ? "Edit Task" : "Add New Task"}
                     open={isTodoModalVisible}
                     onCancel={handleCancelTodo}
                     maskClosable={!loading}
@@ -1122,7 +1225,7 @@ const Planner = () => {
                             onClick={handleAddTodo}
                             disabled={loading}
                         >
-                            Add Task
+                            {editingTodo ? "Update Task" : "Add Task"}
                         </Button>,
                     ]}
                 >
@@ -1133,6 +1236,19 @@ const Planner = () => {
                             rules={[{ required: true, message: "Please enter the task" }]}
                         >
                             <Input placeholder="Task title" />
+                        </Form.Item>
+                        <Form.Item
+                            name="Goal_Id"
+                            label="Goal_Id"
+                            rules={[{ required: false, message: "Please select a goal" }]}
+                        >
+                            <Select placeholder="Select a goal (optional)" allowClear>
+                                {getAvailableGoals().map((goal) => (
+                                    <Select.Option key={goal.id} value={goal.id}>
+                                        {goal.text}
+                                    </Select.Option>
+                                ))}
+                            </Select>
                         </Form.Item>
                         <Form.Item
                             name="priority"

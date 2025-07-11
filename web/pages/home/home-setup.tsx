@@ -50,8 +50,8 @@ const HomeIntroBoard: React.FC = () => {
     setIsModalVisible(false);
   };
   const handlesubmit = () => {
-    localStorage.setItem("home", "1");
-    router.push(`/${username}/home`);
+    localStorage.setItem("home-hub", "1");
+    router.push(`/${username}/home-hub`);
   }
 
   return (

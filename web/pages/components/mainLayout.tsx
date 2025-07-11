@@ -15,6 +15,8 @@ interface MainLayoutProps {
     activeTextColor?: string;
     sidebarBg?: string;
   };
+  // activeTab: string;
+  // onTabClick: (tab: string) => void;
 }
 
 export default function MainLayout({ children, colors }: MainLayoutProps) {
