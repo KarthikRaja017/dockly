@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useState } from "react";
 import {
@@ -16,12 +15,15 @@ import {
     Col,
     Tag,
     message,
+    Avatar,
+    Switch,
+    Space,
 } from "antd";
-import { EditOutlined, MailOutlined, PlusOutlined } from "@ant-design/icons";
+import { CalendarOutlined, DeleteOutlined, EditOutlined, EyeOutlined, FilterOutlined, GoogleOutlined, MailOutlined, PlusOutlined, SettingOutlined } from "@ant-design/icons";
 import { useEffect } from "react";
 import { addProject, addTask, getProjects, getTasks, updateTask } from "../../services/family";
 import dayjs from "dayjs";
-import { addEvents, addWeeklyGoal, addWeeklyTodo, getPlanner, updateWeeklyGoal, updateWeeklyTodo } from "../../services/planner";
+import { addEvents, addPlannerNotes, addWeeklyGoal, addWeeklyTodo, deletePlannerNote, getPlanner, getPlannerNotes, updatePlannerNote, updateWeeklyGoal, updateWeeklyTodo } from "../../services/planner";
 import { getCalendarEvents } from "../../services/google";
 import DocklyLoader from "../../utils/docklyLoader";
 import { Calendar } from "lucide-react";
@@ -30,8 +32,12 @@ import { showNotification } from "../../utils/notification";
 import MiniCalendar from "../../pages/components/miniCalendar";
 import CustomCalendar from "../../pages/components/customCalendar";
 import FamilyTasksComponent from "../../pages/components/familyTasksProjects";
+// import CalendarAccountFilter from "../components/CalendarAccountFilter";
+// import ConnectAccountModal from "../components/ConnectAccountModal";
 import { useCurrentUser } from "../../app/userContext";
 import { PRIMARY_COLOR } from "../../app/comman";
+import { API_URL } from "../../services/apiConfig";
+import { useParams, useRouter } from "next/navigation";
 
 const { Title, Text } = Typography;
 
@@ -120,6 +126,7 @@ const Planner = () => {
     const [isEventModalVisible, setIsEventModalVisible] = useState(false);
     const [isTodoModalVisible, setIsTodoModalVisible] = useState(false);
     const [isProjectModalVisible, setIsProjectModalVisible] = useState(false);
+    const [isConnectAccountModalVisible, setIsConnectAccountModalVisible] = useState(false);
     const [editingGoal, setEditingGoal] = useState<
         | ({
             id: string;
@@ -156,11 +163,23 @@ const Planner = () => {
             is_all_day?: boolean;
             start_date?: string;
             end_date?: string;
+            source_email?: string;
+            provider?: string;
         }[]
     >([]);
 
+    const [connectedAccounts, setConnectedAccounts] = useState<
+        {
+            userName: string;
+            email: string;
+            displayName: string;
+            accountType: string;
+            provider: string;
+            color: string;
+        }[]
+    >([]);
 
-
+    const [filteredAccountEmails, setFilteredAccountEmails] = useState<string[]>([]);
     const [personColors, setPersonColors] = useState<{ [person: string]: { color: string; email: string } }>({});
 
     // New state for mini calendar integration
@@ -171,6 +190,37 @@ const Planner = () => {
     const [todoForm] = Form.useForm();
     const [projectForm] = Form.useForm();
     const user = useCurrentUser();
+    const router = useRouter();
+    const [notes, setNotes] = useState<
+        { id: string; title: string; description: string; created_at: string }[]
+    >([]);
+    const [showAllNotes, setShowAllNotes] = useState(false);
+    const [editingNote, setEditingNote] = useState<{ id: string; title: string; description: string } | null>(null);
+    // Handle edit
+    const handleEditNote = (note: { id: string; title: string; description: string }) => {
+        noteForm.setFieldsValue({ title: note.title, description: note.description });
+        setEditingNote(note);
+        setIsNoteModalVisible(true);
+    };
+
+    // Handle delete
+    const handleDeleteNote = async (id: string) => {
+        try {
+            await deletePlannerNote(id); // assumes you have this API
+            message.success("Note deleted");
+            fetchNotes(); // refresh
+        } catch (err) {
+            message.error("Failed to delete note");
+        }
+    };
+    const params = useParams();
+    const username = params?.username;
+    // Filter notes to show
+    const visibleNotes = showAllNotes ? notes : notes.slice(0, 3);
+
+    const [isNoteModalVisible, setIsNoteModalVisible] = useState(false);
+    const [noteForm] = Form.useForm();
+
 
     const getPriorityColor = (priority: string) => {
         switch (priority) {
@@ -246,6 +296,22 @@ const Planner = () => {
         });
     };
 
+    const fetchNotes = async () => {
+        try {
+            const res = await getPlannerNotes();
+            if (res.data.status === 1) {
+                setNotes(res.data.payload || []);
+            } else {
+                setNotes([]); // fallback
+                message.error("Failed to fetch notes");
+            }
+        } catch (err) {
+            console.error(err);
+            setNotes([]); // fallback
+            message.error("Something went wrong");
+        }
+    };
+
     // Get available goals for todo selection based on current view
     const getAvailableGoals = () => {
         return getFilteredGoals();
@@ -263,6 +329,25 @@ const Planner = () => {
             default:
                 return `Weekly ${type}`;
         }
+    };
+
+    // Filter calendar events based on selected accounts
+    const getFilteredCalendarEvents = () => {
+        if (filteredAccountEmails.length === 0) {
+            return calendarEvents;
+        }
+        return calendarEvents.filter(event =>
+            filteredAccountEmails.includes(event.source_email || '')
+        );
+    };
+
+    const handleAccountFilterChange = (filteredEmails: string[]) => {
+        setFilteredAccountEmails(filteredEmails);
+    };
+
+    const handleConnectAccount = () => {
+        // Redirect to Google OAuth
+        window.location.href = `${API_URL}/add-googleCalendar?username=${user?.user_name}&userId=${user?.uid}`;
     };
 
     const handleAddEvent = () => {
@@ -403,38 +488,51 @@ const Planner = () => {
         setLoading(false);
     };
 
+
+    const getDueDateByView = (activeView: string, activeDate: Date) => {
+        const getWeekEndDate = () => {
+            const day = activeDate.getDay();
+            const diff = 6 - day;
+            const weekend = new Date(activeDate);
+            weekend.setDate(activeDate.getDate() + diff);
+            return dayjs(weekend).format("YYYY-MM-DD");
+        };
+
+        const getMonthEndDate = () => {
+            const year = activeDate.getFullYear();
+            const month = activeDate.getMonth();
+            const lastDay = new Date(year, month + 1, 0);
+            return dayjs(lastDay).format("YYYY-MM-DD");
+        };
+
+        return activeView === "Month" ? getMonthEndDate() : getWeekEndDate();
+    };
+
+
+
     const handleAddGoal = async () => {
         setLoading(true);
         goalForm.validateFields().then(async (values) => {
             try {
-                values.date = values.date.format("YYYY-MM-DD");
-                values.time = values.time.format("h:mm A");
+                const date = getDueDateByView(view, currentDate);  // 👈 pass explicitly
+                const time = dayjs().format("h:mm A");
 
+                const goalPayload = {
+                    ...values,
+                    date,
+                    time,
+                    backup: backup,
+                };
+
+                let response;
                 if (editingGoal) {
-                    // Update existing goal
-                    const response = await updateWeeklyGoal({
-                        id: editingGoal.id,
-                        ...values,
-                        backup: backup
-                    });
-                    const { message, status } = response.data;
-
-                    if (status) {
-                        showNotification("Success", message, "success");
-                    } else {
-                        showNotification("Error", message, "error");
-                    }
+                    response = await updateWeeklyGoal({ id: editingGoal.id, ...goalPayload });
                 } else {
-                    // Add new goal
-                    const response = await addWeeklyGoal({ ...values, backup: backup });
-                    const { message, status } = response.data;
-
-                    if (status) {
-                        showNotification("Success", message, "success");
-                    } else {
-                        showNotification("Error", message, "error");
-                    }
+                    response = await addWeeklyGoal(goalPayload);
                 }
+
+                const { message: msg, status } = response.data;
+                showNotification(status ? "Success" : "Error", msg, status ? "success" : "error");
 
                 getUserPlanner();
                 setIsGoalModalVisible(false);
@@ -446,11 +544,8 @@ const Planner = () => {
             } finally {
                 setLoading(false);
             }
-        }).catch(() => {
-            setLoading(false);
-        });
+        }).catch(() => setLoading(false));
     };
-
     const getUserPlanner = async () => {
         setLoading(true);
         try {
@@ -460,19 +555,17 @@ const Planner = () => {
             const rawTodos = response.data.payload.todos;
             const rawEvents = response.data.payload.events;
 
-            setCalendarEvents(prev => [
-                ...(prev),
-                ...transformEvents(rawEvents),
-            ]);
-            const s = transformEvents(rawEvents)
-            console.log("🚀 ~ getUserPlanner ~ s :", s)
-            setPersonColors(prev => ({
-                ...prev,
-                [user.user_name]: {
-                    // color: rawEvents[0].account_color,
-                    email: user.email,
-                },
-            }));
+            // setCalendarEvents(prev => [
+            //     ...(prev),
+            //     ...transformEvents(rawEvents),
+            // ]);
+
+            // setPersonColors(prev => ({
+            //     ...prev,
+            //     [user.user_name]: {
+            //         email: user.email,
+            //     },
+            // }));
 
             const formattedGoals = rawGoals.map((item: any) => ({
                 id: item.id,
@@ -504,34 +597,25 @@ const Planner = () => {
         setLoading(true);
         todoForm.validateFields().then(async (values) => {
             try {
-                values.date = values.date.format("YYYY-MM-DD");
-                values.time = values.time.format("h:mm A");
+                const date = getDueDateByView(view, currentDate); // Week or month end
+                const time = dayjs().format("h:mm A");
 
+                const todoPayload = {
+                    ...values,
+                    date,
+                    time,
+                    backup: backup,
+                };
+
+                let response;
                 if (editingTodo) {
-                    // Update existing todo
-                    const response = await updateWeeklyTodo({
-                        id: editingTodo.id,
-                        ...values,
-                        backup: backup
-                    });
-                    const { message, status } = response.data;
-
-                    if (status) {
-                        showNotification("Success", message, "success");
-                    } else {
-                        showNotification("Error", message, "error");
-                    }
+                    response = await updateWeeklyTodo({ id: editingTodo.id, ...todoPayload });
                 } else {
-                    // Add new todo
-                    const response = await addWeeklyTodo({ ...values, backup: backup });
-                    const { message, status } = response.data;
-
-                    if (status) {
-                        showNotification("Success", message, "success");
-                    } else {
-                        showNotification("Error", message, "error");
-                    }
+                    response = await addWeeklyTodo(todoPayload);
                 }
+
+                const { message: msg, status } = response.data;
+                showNotification(status ? "Success" : "Error", msg, status ? "success" : "error");
 
                 getUserPlanner();
                 setIsTodoModalVisible(false);
@@ -543,38 +627,68 @@ const Planner = () => {
             } finally {
                 setLoading(false);
             }
-        }).catch(() => {
-            setLoading(false);
-        });
+        }).catch(() => setLoading(false));
     };
 
     const fetchEvents = async () => {
         try {
             setLoading(true);
             const response = await getCalendarEvents({});
-            const rawEvents = response?.data?.payload?.events;
-            const connectedAccounts = response?.data?.payload?.connected_accounts || [];
-            if (rawEvents) {
-                setPersonColors(prev => ({
-                    ...prev,
-                    [connectedAccounts[0].userName]: {
-                        // color: rawEvents[0].account_color,
-                        email: connectedAccounts[0].email,
-                    },
-                }));
-                setBackup(connectedAccounts[0].email);
+            const rawEvents = response?.data?.payload?.events || [];
+            const connectedAccountsData = response?.data?.payload?.connected_accounts || [];
+
+            console.log("🚀 ~ fetchEvents ~ response:", response);
+            console.log("🚀 ~ fetchEvents ~ connectedAccounts:", connectedAccountsData);
+
+            // Set connected accounts
+            setConnectedAccounts(connectedAccountsData);
+
+            // Initialize filtered emails with all accounts
+            if (filteredAccountEmails.length === 0) {
+                setFilteredAccountEmails(connectedAccountsData.map((acc: any) => acc.email));
+            }
+
+            // Update person colors for each connected account
+            const newPersonColors: { [key: string]: { color: string; email: string } } = {};
+            connectedAccountsData.forEach((account: any) => {
+                newPersonColors[account.userName] = {
+                    color: account.color,
+                    email: account.email,
+                };
+            });
+
+            setPersonColors(prev => ({
+                ...prev,
+                ...newPersonColors,
+            }));
+
+            // Set backup if we have connected accounts
+            if (connectedAccountsData.length > 0) {
+                setBackup(connectedAccountsData[0].email);
+            }
+
+            // Transform and set events
+            if (rawEvents.length > 0) {
+                const transformedEvents = transformEvents(rawEvents);
                 setCalendarEvents(prev => [
-                    ...(prev),
-                    ...transformEvents(rawEvents),
+                    // ...prev,
+                    ...transformedEvents,
                 ]);
             }
+
+            // Show connect account modal if no accounts connected
+            if (connectedAccountsData.length === 0) {
+                setIsConnectAccountModalVisible(true);
+            }
+
         } catch (error) {
             console.error('Error fetching events:', error);
+            // Show connect account modal on error (likely no accounts)
+            setIsConnectAccountModalVisible(true);
         } finally {
             setLoading(false);
         }
     };
-
 
     const transformEvents = (rawEvents: any[]): any[] => {
         return rawEvents.map((event, index) => {
@@ -582,7 +696,7 @@ const Planner = () => {
             const endDateTime = event.end?.dateTime ?? null;
             const startDate = event.start?.date ?? null;
             const endDate = event.end?.date ?? null;
-            const creatorEmail = event.creator?.email || "Unknown";
+            const creatorEmail = event.creator?.email || event.source_email || "Unknown";
 
             const isGoogleEvent = event.kind === "calendar#event";
 
@@ -598,7 +712,7 @@ const Planner = () => {
                 end = dayjs(endDateTime);
             } else if (endDate) {
                 end = isGoogleEvent
-                    ? dayjs(endDate).subtract(1, "day")  // fix Google exclusive end.date
+                    ? dayjs(endDate).subtract(1, "day")
                     : dayjs(endDate);
             } else if (start) {
                 end = start.add(1, "hour");
@@ -617,20 +731,20 @@ const Planner = () => {
                 date: formattedStart || "N/A",
                 person: creatorEmail.split("@")[0],
                 color: event.account_color || event.color || "#10B981",
-
                 is_all_day: isAllDay,
                 start_date: formattedStart,
                 end_date: formattedEnd,
+                source_email: event.source_email || creatorEmail,
+                provider: event.provider || "google",
             };
         });
     };
-
-
 
     useEffect(() => {
         fetchEvents();
         getUserPlanner();
         fetchProjects();
+        fetchNotes();
     }, []);
 
     const handleAddProject = () => {
@@ -722,7 +836,18 @@ const Planner = () => {
     // Handler for main calendar view change
     const handleMainCalendarViewChange = (newView: "Day" | "Week" | "Month" | "Year") => {
         setView(newView);
+
+        // 👇 Update currentDate context when switching view
+        const newDate = new Date(currentDate);
+        if (newView === "Month") {
+            newDate.setDate(1); // Start of month
+        } else if (newView === "Week") {
+            const day = newDate.getDay();
+            newDate.setDate(newDate.getDate() - day); // Start of week (Sunday)
+        }
+        setCurrentDate(newDate);
     };
+
 
     if (loading) {
         return <DocklyLoader />;
@@ -731,6 +856,7 @@ const Planner = () => {
     // Get filtered data based on current view
     const filteredGoals = getFilteredGoals();
     const filteredTodos = getFilteredTodos();
+    const filteredCalendarEvents = getFilteredCalendarEvents();
 
     return (
         <div
@@ -758,6 +884,14 @@ const Planner = () => {
                 >
                     <PlannerTitle />
                 </div>
+
+                {/* Account Filter Component */}
+                <CalendarAccountFilter
+                    connectedAccounts={connectedAccounts}
+                    onFilterChange={handleAccountFilterChange}
+                    onConnectAccount={handleConnectAccount}
+                />
+
                 <Row gutter={[8, 8]} style={{ marginBottom: 8 }}>
                     <Col span={16}>
                         <div
@@ -767,7 +901,7 @@ const Planner = () => {
                             }}
                         >
                             <CustomCalendar
-                                data={{ events: calendarEvents, meals: [] }}
+                                data={{ events: filteredCalendarEvents, meals: [] }}
                                 personColors={personColors}
                                 source="planner"
                                 allowMentions={false}
@@ -784,6 +918,7 @@ const Planner = () => {
                                 setCurrentDate={setCurrentDate}
                                 setBackup={setBackup}
                                 backup={backup}
+                                connectedAccounts={connectedAccounts || []}
                             />
                         </div>
                     </Col>
@@ -798,7 +933,7 @@ const Planner = () => {
                                 currentDate={currentDate}
                                 onDateSelect={handleDateSelect}
                                 onMonthChange={handleMiniCalendarMonthChange}
-                                events={calendarEvents}
+                                events={filteredCalendarEvents}
                                 view={view}
                             />
                         </div>
@@ -817,7 +952,7 @@ const Planner = () => {
                                 boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
                                 backgroundColor: "white",
                                 border: "1px solid #e5e7eb",
-                                height: "330px",
+                                height: "260px",
                                 marginBottom: 8,
                                 display: "flex",
                                 flexDirection: "column",
@@ -935,7 +1070,7 @@ const Planner = () => {
                                 boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
                                 backgroundColor: "white",
                                 border: "1px solid #e5e7eb",
-                                height: "320px",
+                                height: "260px",
                                 display: "flex",
                                 flexDirection: "column",
                             }}
@@ -1025,8 +1160,9 @@ const Planner = () => {
                         </Card>
                     </Col>
                 </Row>
+
                 <Row gutter={[8, 8]}>
-                    <Col span={24}>
+                    <Col span={16}>
                         <FamilyTasksComponent
                             title="Projects"
                             projects={projects}
@@ -1038,8 +1174,153 @@ const Planner = () => {
                             showAvatarInTask={false}
                         />
                     </Col>
+                    <Col span={8}>
+                        <Card
+                            title="Notes"
+                            extra={
+                                <Button
+                                    type="primary"
+                                    icon={<PlusOutlined />}
+                                    onClick={() => {
+                                        setEditingNote(null); // clear editing state
+                                        setIsNoteModalVisible(true);
+                                    }}
+                                />
+                            }
+                            style={{
+                                borderRadius: 12,
+                                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                                backgroundColor: "white",
+                                border: "1px solid #e5e7eb",
+                                height: showAllNotes ? "auto" : "430px", // dynamic height if expanded
+                                display: "flex",
+                                flexDirection: "column",
+                            }}
+                        >
+                            <div
+                                style={{
+                                    overflowY: "auto",
+                                    maxHeight: showAllNotes ? "none" : "320px",
+                                    paddingBottom: 24,
+                                }}
+                            >
+                                {[...notes]
+                                    .sort(
+                                        (a, b) =>
+                                            new Date(b.created_at || "").getTime() -
+                                            new Date(a.created_at || "").getTime()
+                                    )
+                                    .slice(0, 3)
+                                    .concat(Array(Math.max(0, 3 - notes.length)).fill({}))
+                                    .map((note, index) => (
+                                        <div
+                                            key={note.id || `empty-note-${index}`}
+                                            style={{
+                                                display: "flex",
+                                                alignItems: "flex-start",
+                                                padding: 8,
+                                                backgroundColor: note?.id ? "white" : "#f5f5f5",
+                                                borderRadius: 8,
+                                                borderLeft: note?.id
+                                                    ? "3px solid #10b981"
+                                                    : "1px dashed #d1d5db",
+                                                marginBottom: 8,
+                                            }}
+                                        >
+                                            <div
+                                                style={{
+                                                    width: 24,
+                                                    height: 24,
+                                                    backgroundColor: note?.id ? "#10b981" : "#d1d5db",
+                                                    color: note?.id ? "white" : "#6b7280",
+                                                    borderRadius: "50%",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                    fontSize: 12,
+                                                    fontWeight: 600,
+                                                    marginRight: 12,
+                                                }}
+                                            >
+                                                {index + 1}
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                {note?.id ? (
+                                                    <>
+                                                        <Text
+                                                            style={{
+                                                                fontSize: 14,
+                                                                color: "#374151",
+                                                                fontWeight: 500,
+                                                            }}
+                                                        >
+                                                            {note.title}
+                                                        </Text>
+                                                        <Text
+                                                            style={{
+                                                                fontSize: 12,
+                                                                color: "#6b7280",
+                                                                display: "block",
+                                                            }}
+                                                        >
+                                                            {note.description}
+                                                        </Text>
+                                                    </>
+                                                ) : (
+                                                    <Text
+                                                        style={{
+                                                            color: "#9ca3af",
+                                                            fontStyle: "italic",
+                                                            paddingLeft: 6,
+                                                        }}
+                                                    >
+                                                        Add Note {index + 1}
+                                                    </Text>
+                                                )}
+                                            </div>
+                                            {/* {note?.id && (
+                        <div style={{ marginLeft: 8, display: "flex", gap: 8 }}>
+                            <EditOutlined
+                            onClick={() => handleEditNote(note)}
+                            style={{ color: "#1890ff", cursor: "pointer" }}
+                            />
+                            <DeleteOutlined
+                            onClick={() => handleDeleteNote(note.id)}
+                            style={{ color: "#f5222d", cursor: "pointer" }}
+                            />
+                        </div>
+                        )} */}
+                                        </div>
+                                    ))}
+                            </div>
+
+
+                            {/* View More / View Less toggle */}
+                            {notes.length > 0 && (
+                                <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
+                                    <Button
+                                        type="link"
+                                        icon={<EyeOutlined />}
+                                        onClick={() => router.push(`/${username}/notes?category=PLANNER`)}
+                                        style={{ fontWeight: 500 }}
+                                    >
+                                        View More
+                                    </Button>
+                                </div>
+                            )}
+                        </Card>
+                    </Col>
                 </Row>
 
+
+                {/* Connect Account Modal */}
+                <ConnectAccountModal
+                    isVisible={isConnectAccountModalVisible}
+                    onClose={() => setIsConnectAccountModalVisible(false)}
+                    onConnect={handleConnectAccount}
+                />
+
+                {/* Existing modals remain the same */}
                 <Modal
                     title="Add New Event"
                     open={isEventModalVisible}
@@ -1125,6 +1406,131 @@ const Planner = () => {
                 </Modal>
 
                 <Modal
+                    title="Add New Note"
+                    open={isNoteModalVisible}
+                    onCancel={() => {
+                        noteForm.resetFields();
+                        setIsNoteModalVisible(false);
+                    }}
+                    footer={[
+                        <Button
+                            key="cancel"
+                            onClick={() => {
+                                noteForm.resetFields();
+                                setIsNoteModalVisible(false);
+                            }}
+                        >
+                            Cancel
+                        </Button>,
+                        <Button
+                            key="submit"
+                            type="primary"
+                            onClick={() => {
+                                noteForm.validateFields().then(async (values) => {
+                                    if (editingNote) {
+                                        await updatePlannerNote({ id: editingNote.id, ...values });
+                                        message.success("Note updated");
+                                    } else {
+                                        await addPlannerNotes(values);
+                                        message.success("Note added");
+                                    }
+                                    fetchNotes();
+                                    noteForm.resetFields();
+                                    setEditingNote(null);
+                                    setIsNoteModalVisible(false);
+                                });
+                            }}
+
+                        >
+                            Add Note
+                        </Button>
+
+
+                    ]}
+                >
+                    <Form form={noteForm} layout="vertical">
+                        <Form.Item
+                            name="title"
+                            label="Note Title"
+                            rules={[{ required: true, message: "Please enter the note title" }]}
+                        >
+                            <Input placeholder="Note title" />
+                        </Form.Item>
+                        <Form.Item
+                            name="description"
+                            label="Description"
+                            rules={[
+                                { required: true, message: "Please enter the note description" },
+                            ]}
+                        >
+                            <Input.TextArea rows={3} placeholder="Note description" />
+                        </Form.Item>
+                    </Form>
+                </Modal>
+                <Modal
+                    open={showAllNotes}
+                    onCancel={() => setShowAllNotes(false)}
+                    footer={null}
+                    title="All Notes"
+                    width={600}
+                >
+                    <div style={{ maxHeight: "400px", overflowY: "auto" }}>
+                        {notes.map((note, index) => (
+                            <div
+                                key={note.id}
+                                style={{
+                                    display: "flex",
+                                    alignItems: "flex-start",
+                                    padding: 8,
+                                    backgroundColor: "white",
+                                    borderRadius: 8,
+                                    borderLeft: "3px solid #10b981",
+                                    marginBottom: 8,
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        width: 24,
+                                        height: 24,
+                                        backgroundColor: "#10b981",
+                                        color: "white",
+                                        borderRadius: "50%",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        fontSize: 12,
+                                        fontWeight: 600,
+                                        marginRight: 12,
+                                    }}
+                                >
+                                    {index + 1}
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <Text style={{ fontSize: 14, color: "#374151", fontWeight: 500 }}>
+                                        {note.title}
+                                    </Text>
+                                    <Text style={{ fontSize: 12, color: "#6b7280", display: "block" }}>
+                                        {note.description}
+                                    </Text>
+                                </div>
+                                <div style={{ marginLeft: 8, display: "flex", gap: 8 }}>
+                                    <EditOutlined
+                                        onClick={() => {
+                                            setShowAllNotes(false);
+                                            handleEditNote(note);
+                                        }}
+                                        style={{ color: "#1890ff", cursor: "pointer" }}
+                                    />
+                                    <DeleteOutlined
+                                        onClick={() => handleDeleteNote(note.id)}
+                                        style={{ color: "#f5222d", cursor: "pointer" }}
+                                    />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </Modal>
+                <Modal
                     title={editingGoal ? "Edit Goal" : "Add New Goal"}
                     open={isGoalModalVisible}
                     onCancel={handleCancelGoal}
@@ -1155,56 +1561,7 @@ const Planner = () => {
                         >
                             <Input placeholder="Enter your Goal.." />
                         </Form.Item>
-                        <Form.Item
-                            name="date"
-                            label="Date"
-                            rules={[{ required: true, message: "Please select a date" }]}
-                            initialValue={dayjs()}
-                        >
-                            <DatePicker
-                                style={{ width: "100%" }}
-                                disabledDate={(current) => current && current < dayjs().startOf("day")}
-                            />
-                        </Form.Item>
-                        <Form.Item
-                            name="time"
-                            label="Time"
-                            rules={[{ required: true, message: "Please select a time" }]}
-                            initialValue={dayjs().add(10, "minute").startOf("minute")}
-                        >
-                            <TimePicker
-                                use12Hours
-                                format="h:mm A"
-                                minuteStep={10}
-                                showSecond={false}
-                                style={{ width: "100%" }}
-                                disabledTime={() => {
-                                    const selectedDate = eventForm.getFieldValue("date");
-                                    const now = dayjs();
 
-                                    if (selectedDate && dayjs(selectedDate).isSame(now, 'day')) {
-                                        const currentHour = now.hour();
-                                        const currentMinute = now.minute();
-
-                                        return {
-                                            disabledHours: () =>
-                                                Array.from({ length: 24 }, (_, i) => i).filter((h) => h < currentHour),
-                                            disabledMinutes: (selectedHour: number) => {
-                                                if (selectedHour === currentHour) {
-                                                    return Array.from({ length: 60 }, (_, i) => i).filter((m) => m < currentMinute);
-                                                }
-                                                return [];
-                                            },
-                                        };
-                                    }
-
-                                    return {
-                                        disabledHours: () => [],
-                                        disabledMinutes: () => [],
-                                    };
-                                }}
-                            />
-                        </Form.Item>
                     </Form>
                 </Modal>
 
@@ -1262,56 +1619,7 @@ const Planner = () => {
                                 <Select.Option value="high">High</Select.Option>
                             </Select>
                         </Form.Item>
-                        <Form.Item
-                            name="date"
-                            label="Date"
-                            rules={[{ required: true, message: "Please select a date" }]}
-                            initialValue={dayjs()}
-                        >
-                            <DatePicker
-                                style={{ width: "100%" }}
-                                disabledDate={(current) => current && current < dayjs().startOf("day")}
-                            />
-                        </Form.Item>
-                        <Form.Item
-                            name="time"
-                            label="Time"
-                            rules={[{ required: true, message: "Please select a time" }]}
-                            initialValue={dayjs().add(10, "minute").startOf("minute")}
-                        >
-                            <TimePicker
-                                use12Hours
-                                format="h:mm A"
-                                minuteStep={10}
-                                showSecond={false}
-                                style={{ width: "100%" }}
-                                disabledTime={() => {
-                                    const selectedDate = eventForm.getFieldValue("date");
-                                    const now = dayjs();
 
-                                    if (selectedDate && dayjs(selectedDate).isSame(now, 'day')) {
-                                        const currentHour = now.hour();
-                                        const currentMinute = now.minute();
-
-                                        return {
-                                            disabledHours: () =>
-                                                Array.from({ length: 24 }, (_, i) => i).filter((h) => h < currentHour),
-                                            disabledMinutes: (selectedHour: number) => {
-                                                if (selectedHour === currentHour) {
-                                                    return Array.from({ length: 60 }, (_, i) => i).filter((m) => m < currentMinute);
-                                                }
-                                                return [];
-                                            },
-                                        };
-                                    }
-
-                                    return {
-                                        disabledHours: () => [],
-                                        disabledMinutes: () => [],
-                                    };
-                                }}
-                            />
-                        </Form.Item>
                     </Form>
                 </Modal>
 
@@ -1370,3 +1678,271 @@ const Planner = () => {
 };
 
 export default Planner;
+
+
+
+interface ConnectedAccount {
+    provider: string;
+    email: string;
+    color: string;
+    userName: string;
+}
+
+interface CalendarAccountFilterProps {
+    connectedAccounts: ConnectedAccount[];
+    onFilterChange: (filteredAccounts: string[]) => void;
+    onConnectAccount: () => void;
+}
+
+const CalendarAccountFilter: React.FC<CalendarAccountFilterProps> = ({
+    connectedAccounts,
+    onFilterChange,
+    onConnectAccount
+}) => {
+    const [activeFilters, setActiveFilters] = useState<string[]>(
+        connectedAccounts.map(acc => acc.email)
+    );
+    const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
+    const user = useCurrentUser();
+
+    const handleFilterToggle = (email: string) => {
+        const newFilters = activeFilters.includes(email)
+            ? activeFilters.filter(f => f !== email)
+            : [...activeFilters, email];
+
+        setActiveFilters(newFilters);
+        onFilterChange(newFilters);
+    };
+
+    const handleSelectAll = () => {
+        const allEmails = connectedAccounts.map(acc => acc.email);
+        setActiveFilters(allEmails);
+        onFilterChange(allEmails);
+    };
+
+    const handleDeselectAll = () => {
+        setActiveFilters([]);
+        onFilterChange([]);
+    };
+
+    const FilterModalContent = () => (
+        <div style={{ padding: '16px' }}>
+            <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between' }}>
+                <Button size="small" onClick={handleSelectAll}>Select All</Button>
+                <Button size="small" onClick={handleDeselectAll}>Deselect All</Button>
+            </div>
+
+            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                {connectedAccounts.map((account) => (
+                    <div
+                        key={account.email}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '12px',
+                            background: activeFilters.includes(account.email) ?
+                                `${account.color}10` : '#f8f9fa',
+                            borderRadius: '8px',
+                            border: `1px solid ${activeFilters.includes(account.email) ?
+                                account.color : '#e9ecef'}`,
+                            transition: 'all 0.3s ease'
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <Avatar
+                                size={32}
+                                style={{ backgroundColor: account.color }}
+                                icon={<GoogleOutlined />}
+                            >
+                                {account.email.charAt(0).toUpperCase()}
+                            </Avatar>
+                            <div>
+                                <Text strong>{account.email}</Text>
+                                <br />
+                                <Text type="secondary" style={{ fontSize: '12px' }}>
+                                    {account.provider.charAt(0).toUpperCase() + account.provider.slice(1)}
+                                </Text>
+                            </div>
+                        </div>
+                        <Switch
+                            checked={activeFilters.includes(account.email)}
+                            onChange={() => handleFilterToggle(account.email)}
+                            style={{
+                                backgroundColor: activeFilters.includes(account.email) ?
+                                    account.color : undefined
+                            }}
+                        />
+                    </div>
+                ))}
+            </Space>
+
+            <div style={{ marginTop: '16px', textAlign: 'center' }}>
+                <Button
+                    type="dashed"
+                    icon={<PlusOutlined />}
+                    onClick={onConnectAccount}
+                    style={{ width: '100%' }}
+                >
+                    Connect Another Account
+                </Button>
+            </div>
+        </div>
+    );
+
+    if (connectedAccounts.length === 0) {
+        return (
+            <Card style={{ marginBottom: '16px', textAlign: 'center' }}>
+                <GoogleOutlined style={{ fontSize: '48px', color: '#4285f4', marginBottom: '16px' }} />
+                <Text style={{ display: 'block', marginBottom: '8px' }}>No Google accounts connected</Text>
+                <Text type="secondary" style={{ display: 'block', marginBottom: '16px' }}>
+                    Connect your Google Calendar to see events
+                </Text>
+                <Button type="primary" icon={<GoogleOutlined />} onClick={onConnectAccount}>
+                    Connect Google Account
+                </Button>
+            </Card>
+        );
+    }
+
+    return (
+        <Card style={{ marginBottom: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <Text strong style={{ fontSize: '16px' }}>Connected Accounts</Text>
+                <Space>
+                    <Button
+                        size="small"
+                        icon={<FilterOutlined />}
+                        onClick={() => setIsFilterModalVisible(true)}
+                    >
+                        Filter ({activeFilters.length})
+                    </Button>
+                    <Button
+                        size="small"
+                        icon={<PlusOutlined />}
+                        onClick={onConnectAccount}
+                    >
+                        Add Account
+                    </Button>
+                </Space>
+            </div>
+
+            <Space wrap>
+                {connectedAccounts.map((account) => (
+                    <Tag
+                        key={account.email}
+                        style={{
+                            padding: '6px 12px',
+                            borderRadius: '20px',
+                            border: `2px solid ${account.color}`,
+                            backgroundColor: activeFilters.includes(account.email) ?
+                                `${account.color}15` : '#f8f9fa',
+                            opacity: activeFilters.includes(account.email) ? 1 : 0.5,
+                            cursor: 'pointer',
+                            transition: 'all 0.3s ease'
+                        }}
+                        onClick={() => handleFilterToggle(account.email)}
+                    >
+                        <Avatar
+                            size={20}
+                            style={{ backgroundColor: account.color, marginRight: '8px' }}
+                        >
+                            {account.email.charAt(0).toUpperCase()}
+                        </Avatar>
+                        <Text style={{ fontWeight: '500' }}>{account.email}</Text>
+                    </Tag>
+                ))}
+            </Space>
+
+            <Modal
+                title={
+                    <Space>
+                        <SettingOutlined />
+                        Account Filters
+                    </Space>
+                }
+                open={isFilterModalVisible}
+                onCancel={() => setIsFilterModalVisible(false)}
+                footer={null}
+                width={500}
+            >
+                <FilterModalContent />
+            </Modal>
+        </Card>
+    );
+};
+
+
+
+interface ConnectAccountModalProps {
+    isVisible: boolean;
+    onClose: () => void;
+    onConnect: () => void;
+}
+
+const ConnectAccountModal: React.FC<ConnectAccountModalProps> = ({
+    isVisible,
+    onClose,
+    onConnect
+}) => {
+    const user = useCurrentUser();
+
+    return (
+        <Modal
+            open={isVisible}
+            onCancel={onClose}
+            footer={null}
+            width={500}
+            centered
+        >
+            <div style={{ textAlign: 'center', padding: '24px' }}>
+                <CalendarOutlined style={{ fontSize: '64px', color: '#4285f4', marginBottom: '24px' }} />
+
+                <Title level={3} style={{ marginBottom: '16px' }}>
+                    Connect Your Google Calendar
+                </Title>
+
+                <Text style={{ display: 'block', marginBottom: '24px', color: '#666' }}>
+                    To view and manage your calendar events, please connect your Google account.
+                    You can connect multiple accounts to see all your events in one place.
+                </Text>
+
+                <div style={{
+                    background: '#f8f9fa',
+                    padding: '16px',
+                    borderRadius: '8px',
+                    marginBottom: '24px'
+                }}>
+                    <Text style={{ fontSize: '14px' }}>
+                        🔒 Your data is secure and we only access your calendar events
+                    </Text>
+                </div>
+
+                <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                    <Button
+                        type="primary"
+                        size="large"
+                        icon={<GoogleOutlined />}
+                        onClick={onConnect}
+                        style={{
+                            width: '100%',
+                            height: '48px',
+                            background: '#4285f4',
+                            borderColor: '#4285f4'
+                        }}
+                    >
+                        Connect Google Account
+                    </Button>
+
+                    <Button
+                        type="text"
+                        onClick={onClose}
+                        style={{ width: '100%' }}
+                    >
+                        Maybe Later
+                    </Button>
+                </Space>
+            </div>
+        </Modal>
+    );
+};

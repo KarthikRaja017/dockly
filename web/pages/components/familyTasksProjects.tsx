@@ -95,10 +95,10 @@ const FamilyTasksComponent: React.FC<Props> = ({
     }>({ projectId: '', task: null });
 
     const filledProjects = projects.filter(p => p.title.trim());
-    const showTemplateProjects = filledProjects.length < 3;
+    const showTemplateProjects = filledProjects.length < 2;
 
     // Template projects with empty tasks
-    const templateProjects = Array.from({ length: 3 - filledProjects.length }, (_, i) => ({
+    const templateProjects = Array.from({ length: 2 - filledProjects.length }, (_, i) => ({
         project_id: `template-${i + 1}`,
         title: '',
         description: '',
@@ -126,23 +126,23 @@ const FamilyTasksComponent: React.FC<Props> = ({
                 completed: false,
                 due: '',
             },
-            {
-                id: 3,
-                title: '',
-                assignee: 'all',
-                type: 'default',
-                completed: false,
-                due: '',
-            }
+            // {
+            //     id: 3,
+            //     title: '',
+            //     assignee: 'all',
+            //     type: 'default',
+            //     completed: false,
+            //     due: '',
+            // }
         ];
     };
 
     const displayedProjects = [...filledProjects, ...(showTemplateProjects ? templateProjects : [])];
 
     return (
-        <Card style={{ padding: 24, borderRadius: 12 }}>
+        <Card style={{ padding: 24, borderRadius: 12, height: 430, display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
-                <h2 style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 20, fontWeight: 600 }}>
+                <h2 style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 18, fontWeight: 600 }}>
                     <CheckSquareOutlined /> {title}
                 </h2>
                 <Button
@@ -170,12 +170,16 @@ const FamilyTasksComponent: React.FC<Props> = ({
                                 borderRadius: 12,
                                 border: '1px solid rgb(226, 232, 240)',
                                 background: '#fff',
-                                minHeight: 360,
+                                minHeight: 280,
                                 display: 'flex',
                                 flexDirection: 'column',
                                 justifyContent: 'space-between'
                             }}
-                            bodyStyle={{ padding: 20, flex: 1, display: 'flex', flexDirection: 'column' }}
+                            styles={{
+                                body: {
+                                    flex: 1, display: 'flex', flexDirection: 'column'
+                                }
+                            }}
                         >
                             <div style={{ flex: 1 }}>
                                 {/* Description box - shows empty state for template projects */}
@@ -223,7 +227,7 @@ const FamilyTasksComponent: React.FC<Props> = ({
                                                 border: `1px solid ${task.completed ? '#dcfce7' : '#e2e8f0'}`,
                                             }}
                                         >
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, cursor: "pointer" }} onClick={() => proj.title ? onAddTask?.(proj.project_id) : setModalVisible(true)}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
                                                 <Checkbox
                                                     checked={task.completed}
                                                     onChange={() => proj.title && onToggleTask?.(proj.project_id, task.id)}

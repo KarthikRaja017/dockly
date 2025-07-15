@@ -1,5 +1,5 @@
-"use client";
 
+"use client";
 import React, { useEffect, useState } from "react";
 import {
   Layout,
@@ -17,12 +17,13 @@ import dayjs, { Dayjs } from "dayjs";
 import MainLayout from "../../../pages/components/mainLayout";
 
 import PropertyInformation from "../../../pages/home/PropertyInformation";
-import MortgageLoans from "../../../pages/home/mortageloans";
+// import MortgageLoans from "../../../pages/home/mortgageloans";
 import Utilities from "../../../pages/home/utilities";
 import Insurance from "../../../pages/home/insurance";
 import Documents from "../../../pages/home/documents";
 import Maintenance from "../../../pages/home/maintainance";
 import Notes from "../../../pages/home/notes";
+import MortgageLoans from "../../../pages/home/mortageloans";
 
 const { Content, Header } = Layout;
 const { Title } = Typography;
@@ -78,7 +79,7 @@ const HomeManagementDashboard: React.FC = () => {
         <Maintenance uid={""} />
       </div>
       <div style={{ marginBottom: "0" }}>
-        <MortgageLoans />
+        <MortgageLoans uid={""} />
       </div>
       <div style={{ marginBottom: "0" }}>
         <Utilities />
@@ -89,7 +90,7 @@ const HomeManagementDashboard: React.FC = () => {
       <div style={{ marginBottom: "0" }}>
         <Documents isMobile={false} />
       </div>
-      <div style={{ gridColumn: "1 / -1", marginBottom: "0" }}>
+      <div style={{ gridColumn: "", marginBottom: "0" }}>
         <Notes />
       </div>
     </div>
@@ -148,14 +149,15 @@ const HomeManagementDashboard: React.FC = () => {
   );
 
   return (
-    <MainLayout>
+    <MainLayout >
       <Layout style={{ background: "#fff" }}>
         <Header
           style={{
             background: "#fff",
             padding: "24px",
             borderBottom: "1px solid #d9d9d9",
-            marginTop: "140px",
+            marginTop: "40px",
+            marginLeft: "24px",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -172,20 +174,21 @@ const HomeManagementDashboard: React.FC = () => {
             padding: "0 24px",
             background: "#fff",
             borderBottom: "1px solid #f0f0f0",
+            marginLeft: "27px",
           }}
           items={[
             { key: "Board", label: "Board View" },
             { key: "Table", label: "Table View" },
-            { key: "Calendar", label: "Calendar View" },
+            // { key: "Calendar", label: "Calendar View" },
             { key: "Activity", label: "Activity Log" },
           ]}
         />
 
-        <Content style={{ padding: "24px", background: "#fff" }}>
+        <Content style={{ padding: "24px", background: "#fff", marginLeft: "24px" }}>
           {activeTab === "Board" && renderBoardView()}
           {activeTab === "Table" && <Utilities />}
-          {activeTab === "Calendar" && renderCalendarView()}
-          {activeTab === "Activity" && <Notes />}
+          {/* {activeTab === "Calendar" && renderCalendarView()} */}
+          {activeTab === "Activity"}
         </Content>
       </Layout>
     </MainLayout>

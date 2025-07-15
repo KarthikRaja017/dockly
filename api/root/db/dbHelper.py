@@ -56,13 +56,11 @@ class DBHelper:
             conn = postgres.get_connection()
             cur = conn.cursor(cursor_factory=RealDictCursor)
 
-            # SELECT fields or *
             if select_fields:
                 columns_sql = sql.SQL(", ").join(map(sql.Identifier, select_fields))
             else:
                 columns_sql = sql.SQL("*")
 
-            # WHERE clause if filters provided
             if filters:
                 where_clause = sql.SQL(" AND ").join(
                     sql.Composed([sql.Identifier(k), sql.SQL(" = "), sql.Placeholder()])
@@ -99,7 +97,6 @@ class DBHelper:
             conn = postgres.get_connection()
             cur = conn.cursor(cursor_factory=RealDictCursor)
 
-            # Default: SELECT *
             if select_fields:
                 columns_sql = sql.SQL(", ").join(map(sql.Identifier, select_fields))
             else:
@@ -135,19 +132,16 @@ class DBHelper:
             conn = postgres.get_connection()
             cur = conn.cursor(cursor_factory=RealDictCursor)
 
-            # SET part: column = %s
             set_clause = sql.SQL(", ").join(
                 sql.Composed([sql.Identifier(k), sql.SQL(" = "), sql.Placeholder()])
                 for k in updates.keys()
             )
 
-            # WHERE part
             where_clause = sql.SQL(" AND ").join(
                 sql.Composed([sql.Identifier(k), sql.SQL(" = "), sql.Placeholder()])
                 for k in filters.keys()
             )
 
-            # Fields to return
             returning = (
                 sql.SQL(", ").join(map(sql.Identifier, return_fields))
                 if return_fields
@@ -178,6 +172,34 @@ class DBHelper:
                 postgres.release_connection(conn)
 
     @staticmethod
+    def update(table_name, filters: dict, update_fields: dict):
+        conn = None
+        cur = None
+        try:
+            conn = postgres.get_connection()
+            cur = conn.cursor()
+
+            set_clause = ", ".join([f"{key} = %s" for key in update_fields])
+            where_clause = " AND ".join([f"{key} = %s" for key in filters])
+            values = list(update_fields.values()) + list(filters.values())
+
+            query = f"""
+                UPDATE {table_name}
+                SET {set_clause}
+                WHERE {where_clause}
+            """
+
+            cur.execute(query, values)
+            conn.commit()
+        except Exception as e:
+            raise e
+        finally:
+            if cur:
+                cur.close()
+            if conn:
+                postgres.release_connection(conn)
+
+    @staticmethod
     def find_all(table_name, filters=None, select_fields=None, retry=False):
         conn = None
         cur = None
@@ -185,7 +207,6 @@ class DBHelper:
             conn = postgres.get_connection()
             cur = conn.cursor(cursor_factory=RealDictCursor)
 
-            # Default: SELECT *
             if select_fields:
                 columns_sql = sql.SQL(", ").join(map(sql.Identifier, select_fields))
             else:
@@ -212,7 +233,6 @@ class DBHelper:
 
         except psycopg2.OperationalError as e:
             if not retry:
-                # Retry once if it fails due to connection issues
                 return DBHelper.find_all(table_name, filters, select_fields, retry=True)
             raise Exception("Database connection failed after retry") from e
 
@@ -264,22 +284,19 @@ class DBHelper:
         conn = None
         cur = None
         try:
-            # Prepare column names and values
             columns = ", ".join(kwargs.keys())
             values = list(kwargs.values())
             placeholders = ", ".join(["%s"] * len(values))
 
-            # Create SQL: INSERT ... ON CONFLICT DO NOTHING
-            sql = f"""
+            sql_query = f"""
                 INSERT INTO {table_name} ({columns})
                 VALUES ({placeholders})
                 ON CONFLICT ({unique_key}) DO NOTHING
             """
 
-            # Get DB connection and execute
             conn = postgres.get_connection()
             cur = conn.cursor()
-            cur.execute(sql, values)
+            cur.execute(sql_query, values)
             conn.commit()
 
         except Exception as e:
@@ -326,14 +343,6 @@ class DBHelper:
 
     @staticmethod
     def find_multi(table_queries: dict, retry=False):
-        """
-        Fetch data from multiple tables in a single function call.
-
-        table_queries = {
-            "table_name1": {"filters": {...}, "select_fields": [...]},
-            "table_name2": {"filters": {...}, "select_fields": [...]}
-        }
-        """
         conn = None
         cur = None
         results = {}

@@ -103,7 +103,23 @@
         "scopes TEXT",
         "user_object TEXT",
         "connected_at TIMESTAMP",
+        "is_active INT",
         "updated_at TIMESTAMP"
+      ]
+    },
+    {
+      "table_name": "mortgages",
+      "columns": [
+        "id VARCHAR(255) PRIMARY KEY",
+        "user_id VARCHAR(255) REFERENCES users(uid) ON DELETE CASCADE",
+        "name VARCHAR(255) NOT NULL",
+        "meta VARCHAR(255) NOT NULL",
+        "amount NUMERIC NOT NULL",
+        "interest_rate NUMERIC NOT NULL",
+        "term INTEGER NOT NULL",
+        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        "is_active INT DEFAULT 1"
       ]
     },
     {

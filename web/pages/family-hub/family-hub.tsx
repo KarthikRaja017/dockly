@@ -56,7 +56,7 @@ const FamilyHubPage: React.FC = () => {
                         }}
                     >
                         <CustomCalendar data={sampleCalendarData} source="familyhub" allowMentions={true} enabledHashmentions={true} familyMembers={(familyMembers ?? []).filter(m => m.type === 'family')} />
-                        <UpcomingActivities />
+                        {/* <UpcomingActivities /> */}
                     </div>
 
                     <FamilyNotes />
@@ -85,7 +85,7 @@ export default FamilyHubPage;
 import { DeleteOutlined, EditOutlined, ExportOutlined, EyeInvisibleOutlined, EyeOutlined, PhoneOutlined, PlusOutlined, SafetyOutlined } from '@ant-design/icons';
 import { Input as AntInput, Avatar, Button, Col, Form, Input, message, Modal, Popconfirm, Row, Select, Space } from 'antd';
 
-import { addContacts, addGuardians, addNote, addProject, addTask, getAllNotes, getGuardians, getPets, getProjects, getTasks, getUserContacts, updateTask } from '../../services/family'; // Adjust import based on your setup
+import { addContacts, addGuardians, addNote, addProject, addTask, getAllNotes, getGuardians, getPets, getProjects, getTasks, getUserContacts, updateNote, updateTask } from '../../services/family'; // Adjust import based on your setup
 
 const { TextArea } = AntInput;
 
@@ -1437,10 +1437,9 @@ const FamilyTasks: React.FC = () => {
 
 
 
-import { FileTextOutlined } from '@ant-design/icons';
-import { Badge } from 'antd';
 
-const PRIMARY_COLOR = '#3355ff';
+import { FileTextOutlined } from "@ant-design/icons";
+import { Badge } from "antd";
 
 type Category = {
     title: string;
@@ -1449,33 +1448,35 @@ type Category = {
 };
 
 const categoryColorMap: { [key: string]: string } = {
-    'Important Notes': '#ef4444',
-    'Emergency Contacts': '#f59e0b',
-    'House Rules & Routines': '#10b981',
-    'Shopping Lists': '#3b82f6',
-    'Birthday & Gift Ideas': '#ec4899',
-    'Meal Ideas & Recipes': '#8b5cf6',
+    "Important Notes": "#ef4444",
+    "Emergency Contacts": "#f59e0b",
+    "House Rules & Routines": "#10b981",
+    "Shopping Lists": "#3b82f6",
+    "Birthday & Gift Ideas": "#ec4899",
+    "Meal Ideas & Recipes": "#8b5cf6",
 };
 
 const defaultCategories: Category[] = [
-    { title: 'Important Notes', icon: '📌', items: [] },
-    { title: 'Emergency Contacts', icon: '🚨', items: [] },
-    { title: 'House Rules & Routines', icon: '🏠', items: [] },
-    { title: 'Shopping Lists', icon: '🛍️', items: [] },
-    { title: 'Birthday & Gift Ideas', icon: '🎁', items: [] },
-    { title: 'Meal Ideas & Recipes', icon: '🍽️', items: [] },
+    { title: "Important Notes", icon: "📌", items: [] },
+    { title: "Emergency Contacts", icon: "🚨", items: [] },
+    { title: "House Rules & Routines", icon: "🏠", items: [] },
+    { title: "Shopping Lists", icon: "🛍", items: [] },
+    { title: "Birthday & Gift Ideas", icon: "🎁", items: [] },
+    { title: "Meal Ideas & Recipes", icon: "🍽", items: [] },
 ];
 
 const categoryIdMap: { [key: string]: number } = {
-    'Important Notes': 1,
-    'Emergency Contacts': 2,
-    'House Rules & Routines': 3,
-    'Shopping Lists': 4,
-    'Birthday & Gift Ideas': 5,
-    'Meal Ideas & Recipes': 6,
+    "Important Notes": 1,
+    "Emergency Contacts": 2,
+    "House Rules & Routines": 3,
+    "Shopping Lists": 4,
+    "Birthday & Gift Ideas": 5,
+    "Meal Ideas & Recipes": 6,
 };
 
-const categoryIdMapReverse: { [key: number]: string } = Object.entries(categoryIdMap).reduce((acc, [title, id]) => {
+const categoryIdMapReverse: { [key: number]: string } = Object.entries(
+    categoryIdMap
+).reduce((acc, [title, id]) => {
     acc[id] = title;
     return acc;
 }, {} as { [key: number]: string });
@@ -1483,11 +1484,13 @@ const categoryIdMapReverse: { [key: number]: string } = Object.entries(categoryI
 const FamilyNotes: React.FC = () => {
     const [categories, setCategories] = useState(defaultCategories);
     const [modalOpen, setModalOpen] = useState(false);
-    const [activeCategoryIndex, setActiveCategoryIndex] = useState<number | null>(null);
-    const [newNote, setNewNote] = useState({ title: '', description: '' });
+    const [activeCategoryIndex, setActiveCategoryIndex] = useState<number | null>(
+        null
+    );
+    const [newNote, setNewNote] = useState({ title: "", description: "" });
     const [editingNoteIndex, setEditingNoteIndex] = useState<number | null>(null);
     const [newCategoryModal, setNewCategoryModal] = useState(false);
-    const [newCategoryName, setNewCategoryName] = useState('');
+    const [newCategoryName, setNewCategoryName] = useState("");
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -1500,12 +1503,16 @@ const FamilyNotes: React.FC = () => {
             const response = await getAllNotes();
             const rawNotes = response.data.payload;
 
-            const grouped: Record<number, { title: string; description: string }[]> = {};
+            const grouped: Record<number, { title: string; description: string }[]> =
+                {};
             rawNotes.forEach((note: any) => {
                 const catId = note.category_id;
                 if (!catId || !categoryIdMapReverse[catId]) return;
                 if (!grouped[catId]) grouped[catId] = [];
-                grouped[catId].push({ title: note.title, description: note.description });
+                grouped[catId].push({
+                    title: note.title,
+                    description: note.description,
+                });
             });
 
             const updatedCategories = defaultCategories.map((cat) => {
@@ -1518,8 +1525,8 @@ const FamilyNotes: React.FC = () => {
 
             setCategories(updatedCategories);
         } catch (error) {
-            console.error('Error fetching notes:', error);
-            message.error('Failed to load notes');
+            console.error("Error fetching notes:", error);
+            message.error("Failed to load notes");
         }
         setLoading(false);
     };
@@ -1527,45 +1534,85 @@ const FamilyNotes: React.FC = () => {
     const openModal = (index: number) => {
         setActiveCategoryIndex(index);
         setEditingNoteIndex(null);
-        setNewNote({ title: '', description: '' });
+        setNewNote({ title: "", description: "" });
         setModalOpen(true);
     };
 
-    const handleAddNote = async () => {
+    const handleSaveNote = async () => {
         setLoading(true);
-        if (!newNote.title.trim() || !newNote.description.trim() || activeCategoryIndex === null) {
-            message.error('Please fill in all fields');
+        if (
+            !newNote.title.trim() ||
+            !newNote.description.trim() ||
+            activeCategoryIndex === null
+        ) {
+            message.error("Please fill in all fields");
+            setLoading(false);
             return;
         }
 
         const categoryTitle = categories[activeCategoryIndex].title;
         const category_id = categoryIdMap[categoryTitle];
-        if (!category_id) {
-            message.error('Category ID not found');
-            return;
-        }
 
         try {
-            const user_id = typeof window !== 'undefined' ? localStorage.getItem('userId') || '' : '';
-            const response = await addNote({
-                title: newNote.title,
-                description: newNote.description,
-                category_id,
-                user_id,
-            });
+            if (editingNoteIndex !== null) {
+                // Find the ID of the note being edited
+                const rawNotes = await getAllNotes();
+                const fullNote = rawNotes.data.payload.find(
+                    (note: any) =>
+                        note.title ===
+                        categories[activeCategoryIndex].items[editingNoteIndex].title &&
+                        note.description ===
+                        categories[activeCategoryIndex].items[editingNoteIndex]
+                            .description &&
+                        note.category_id === category_id
+                );
 
-            const data = response.data;
-            if (data.status === 1) {
-                await getNotes();
-                setNewNote({ title: '', description: '' });
-                setModalOpen(false);
-                message.success('Note added successfully');
+                if (!fullNote) {
+                    message.error("Original note not found for update");
+                    setLoading(false);
+                    return;
+                }
+
+                const res = await updateNote({
+                    id: fullNote.id,
+                    title: newNote.title,
+                    description: newNote.description,
+                    category_id,
+                });
+
+                if (res.data.status === 1) {
+                    message.success("Note updated");
+                    await getNotes();
+                    setModalOpen(false);
+                    setEditingNoteIndex(null);
+                    setNewNote({ title: "", description: "" });
+                } else {
+                    message.error(res.data.message || "Failed to update");
+                }
             } else {
-                message.error(data.message || 'Failed to add note');
+                const user_id =
+                    typeof window !== "undefined"
+                        ? localStorage.getItem("userId") || ""
+                        : "";
+                const res = await addNote({
+                    title: newNote.title,
+                    description: newNote.description,
+                    category_id,
+                    user_id,
+                });
+
+                if (res.data.status === 1) {
+                    message.success("Note added");
+                    await getNotes();
+                    setModalOpen(false);
+                    setNewNote({ title: "", description: "" });
+                } else {
+                    message.error(res.data.message || "Failed to add");
+                }
             }
-        } catch (error) {
-            console.error('Error adding note:', error);
-            message.error('Something went wrong');
+        } catch (err) {
+            console.error(err);
+            message.error("Something went wrong");
         }
         setLoading(false);
     };
@@ -1586,37 +1633,51 @@ const FamilyNotes: React.FC = () => {
         const name = newCategoryName.trim();
         if (!name) return;
         if (categories.some((c) => c.title === name)) {
-            message.error('Category already exists');
+            message.error("Category already exists");
             return;
         }
-        setCategories([...categories, { title: name, icon: '📁', items: [] }]);
+        setCategories([...categories, { title: name, icon: "📁", items: [] }]);
         setNewCategoryModal(false);
-        setNewCategoryName('');
+        setNewCategoryName("");
     };
 
     if (loading) return <DocklyLoader />;
 
     return (
         <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
-                <h2 style={{ fontSize: 20, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div
+                style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    marginBottom: 24,
+                }}
+            >
+                <h2
+                    style={{
+                        fontSize: 20,
+                        fontWeight: 600,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                    }}
+                >
                     <FileTextOutlined /> Family Notes & Lists
                 </h2>
                 <Button
                     onClick={() => setNewCategoryModal(true)}
                     icon={<PlusOutlined />}
                     style={{
-                        height: '40px',
-                        backgroundColor: '#eef1ff',
-                        color: '#3355ff',
-                        border: 'none',
-                        borderRadius: '8px',
-                        padding: '0 16px',
-                        fontSize: '14px',
+                        height: "40px",
+                        backgroundColor: "#eef1ff",
+                        color: "#3355ff",
+                        border: "none",
+                        borderRadius: "8px",
+                        padding: "0 16px",
+                        fontSize: "14px",
                         fontWeight: 500,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
                     }}
                 >
                     New Category
@@ -1630,39 +1691,65 @@ const FamilyNotes: React.FC = () => {
                             size="small"
                             hoverable
                             style={{
-                                height: '200px',
-                                borderRadius: '12px',
-                                border: '1px solid #e2e8f0',
-                                background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-                                position: 'relative',
-                                display: 'flex',
-                                flexDirection: 'column',
+                                height: "200px",
+                                borderRadius: "12px",
+                                border: "1px solid #e2e8f0",
+                                background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
+                                position: "relative",
+                                display: "flex",
+                                flexDirection: "column",
                                 padding: 0,
                             }}
                             styles={{
-                                body: { padding: '16px 16px 12px 16px', display: 'flex', flexDirection: 'column', height: '100%' }
-                            }
-                            }
+                                body: {
+                                    padding: "16px 16px 12px 16px",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    height: "100%",
+                                },
+                            }}
                         >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div
+                                style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    alignItems: "flex-start",
+                                    marginBottom: 12,
+                                }}
+                            >
+                                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                                     <div
                                         style={{
                                             width: 40,
                                             height: 40,
                                             borderRadius: 10,
-                                            background: `${categoryColorMap[category.title] || '#ccc'}20`,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
+                                            background: `${categoryColorMap[category.title] || "#ccc"
+                                                }20`,
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
                                             fontSize: 18,
                                         }}
                                     >
                                         {category.icon}
                                     </div>
                                     <div>
-                                        <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4, color: '#1e293b' }}>{category.title}</div>
-                                        <Badge count={category.items.length} style={{ backgroundColor: categoryColorMap[category.title] }} />
+                                        <div
+                                            style={{
+                                                fontWeight: 600,
+                                                fontSize: 15,
+                                                marginBottom: 4,
+                                                color: "#1e293b",
+                                            }}
+                                        >
+                                            {category.title}
+                                        </div>
+                                        <Badge
+                                            count={category.items.length}
+                                            style={{
+                                                backgroundColor: categoryColorMap[category.title],
+                                            }}
+                                        />
                                     </div>
                                 </div>
 
@@ -1673,29 +1760,29 @@ const FamilyNotes: React.FC = () => {
                                     onClick={() => openModal(index)}
                                     style={{
                                         color: categoryColorMap[category.title],
-                                        border: 'none',
-                                        boxShadow: 'none',
+                                        border: "none",
+                                        boxShadow: "none",
                                         padding: 0,
                                         marginTop: 4,
                                     }}
                                 />
                             </div>
 
-                            <div style={{ flex: 1, overflowY: 'auto', paddingRight: 4 }}>
+                            <div style={{ flex: 1, overflowY: "auto", paddingRight: 4 }}>
                                 {category.items.length ? (
                                     category.items.map((item, i) => (
                                         <div
                                             key={i}
                                             style={{
                                                 fontSize: 12,
-                                                background: '#f1f5f9',
-                                                padding: '6px 10px',
-                                                borderRadius: '6px',
+                                                background: "#f1f5f9",
+                                                padding: "6px 10px",
+                                                borderRadius: "6px",
                                                 marginBottom: 6,
-                                                border: '1px solid #e2e8f0',
-                                                whiteSpace: 'nowrap',
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
+                                                border: "1px solid #e2e8f0",
+                                                whiteSpace: "nowrap",
+                                                overflow: "hidden",
+                                                textOverflow: "ellipsis",
                                             }}
                                             title={`${item.title} - ${item.description}`}
                                         >
@@ -1703,9 +1790,18 @@ const FamilyNotes: React.FC = () => {
                                         </div>
                                     ))
                                 ) : (
-                                    <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, paddingTop: 20 }}>
+                                    <div
+                                        style={{
+                                            textAlign: "center",
+                                            color: "#94a3b8",
+                                            fontSize: 13,
+                                            paddingTop: 20,
+                                        }}
+                                    >
                                         No notes yet
-                                        <div style={{ fontSize: 11, color: '#cbd5e1' }}>Click to add your first note</div>
+                                        <div style={{ fontSize: 11, color: "#cbd5e1" }}>
+                                            Click to add your first note
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -1722,32 +1818,34 @@ const FamilyNotes: React.FC = () => {
                 centered
                 width={550}
                 closable={false}
-                style={{ borderRadius: 12, overflow: 'hidden' }}
+                style={{ borderRadius: 12, overflow: "hidden" }}
             // bodyStyle={{ padding: 0 }}
             >
                 {/* Header */}
                 <div
                     style={{
-                        background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)',
-                        padding: '20px 24px',
-                        color: 'white',
+                        background: "linear-gradient(90deg, #3b82f6, #8b5cf6)",
+                        padding: "20px 24px",
+                        color: "white",
                         fontSize: 18,
                         fontWeight: 600,
                     }}
                 >
-                    {activeCategoryIndex !== null ? categories[activeCategoryIndex].title : ''}
+                    {activeCategoryIndex !== null
+                        ? categories[activeCategoryIndex].title
+                        : ""}
                 </div>
 
                 {/* Body */}
-                <div style={{ padding: '24px', backgroundColor: '#fff' }}>
+                <div style={{ padding: "24px", backgroundColor: "#fff" }}>
                     {activeCategoryIndex !== null &&
                         (categories[activeCategoryIndex].items.length === 0 ? (
                             <div
                                 style={{
-                                    textAlign: 'center',
-                                    padding: '20px 0',
-                                    color: '#999',
-                                    fontStyle: 'italic',
+                                    textAlign: "center",
+                                    padding: "20px 0",
+                                    color: "#999",
+                                    fontStyle: "italic",
                                 }}
                             >
                                 No notes yet. Click "Add Note" to get started.
@@ -1757,17 +1855,17 @@ const FamilyNotes: React.FC = () => {
                                 <div
                                     key={idx}
                                     style={{
-                                        backgroundColor: '#f9f9f9',
-                                        border: '1px solid #f0f0f0',
+                                        backgroundColor: "#f9f9f9",
+                                        border: "1px solid #f0f0f0",
                                         borderRadius: 8,
-                                        padding: '12px 16px',
+                                        padding: "12px 16px",
                                         marginBottom: 12,
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
                                     }}
                                 >
-                                    <div style={{ fontSize: 14, color: '#333' }}>
+                                    <div style={{ fontSize: 14, color: "#333" }}>
                                         <strong>{note.title}</strong> – {note.description}
                                     </div>
                                     <Space>
@@ -1799,7 +1897,9 @@ const FamilyNotes: React.FC = () => {
                     <Input
                         placeholder="Note Description"
                         value={newNote.description}
-                        onChange={(e) => setNewNote({ ...newNote, description: e.target.value })}
+                        onChange={(e) =>
+                            setNewNote({ ...newNote, description: e.target.value })
+                        }
                         size="large"
                         style={{ marginTop: 12, marginBottom: 20, borderRadius: 8 }}
                     />
@@ -1808,21 +1908,20 @@ const FamilyNotes: React.FC = () => {
                     <Button
                         type="primary"
                         icon={<PlusOutlined />}
-                        onClick={handleAddNote}
+                        onClick={handleSaveNote}
                         block
                         size="large"
                         style={{
                             borderRadius: 8,
-                            background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)',
-                            border: 'none',
+                            background: "linear-gradient(90deg, #3b82f6, #8b5cf6)",
+                            border: "none",
                             fontWeight: 500,
                         }}
                     >
-                        {editingNoteIndex !== null ? 'Update Note' : 'Add Note'}
+                        {editingNoteIndex !== null ? "Update Note" : "Add Note"}
                     </Button>
                 </div>
             </Modal>
-
 
             <Modal
                 open={newCategoryModal}
@@ -1831,26 +1930,26 @@ const FamilyNotes: React.FC = () => {
                 centered
                 width={450}
                 closable={false}
-                style={{ borderRadius: 12, overflow: 'hidden' }}
+                style={{ borderRadius: 12, overflow: "hidden" }}
                 styles={{ body: { padding: 0 } }}
             >
                 {/* Gradient Header */}
                 <div
                     style={{
-                        background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)',
-                        padding: '16px 24px',
-                        color: 'white',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
+                        background: "linear-gradient(90deg, #3b82f6, #8b5cf6)",
+                        padding: "16px 24px",
+                        color: "white",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
                     }}
                 >
                     <PlusOutlined />
-                    <h3 style={{ color: 'white', margin: 0 }}>Add New Category</h3>
+                    <h3 style={{ color: "white", margin: 0 }}>Add New Category</h3>
                 </div>
 
                 {/* Content */}
-                <div style={{ padding: '24px', backgroundColor: '#fff' }}>
+                <div style={{ padding: "24px", backgroundColor: "#fff" }}>
                     <Input
                         placeholder="Enter category name"
                         value={newCategoryName}
@@ -1860,12 +1959,12 @@ const FamilyNotes: React.FC = () => {
                     />
 
                     {/* Footer */}
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                    <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
                         <Button
                             onClick={() => setNewCategoryModal(false)}
                             style={{
                                 borderRadius: 8,
-                                padding: '6px 24px',
+                                padding: "6px 24px",
                             }}
                         >
                             Cancel
@@ -1875,9 +1974,9 @@ const FamilyNotes: React.FC = () => {
                             onClick={handleAddCategory}
                             style={{
                                 borderRadius: 8,
-                                padding: '6px 24px',
-                                background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)',
-                                border: 'none',
+                                padding: "6px 24px",
+                                background: "linear-gradient(90deg, #3b82f6, #8b5cf6)",
+                                border: "none",
                                 fontWeight: 500,
                             }}
                         >
@@ -1893,7 +1992,6 @@ const FamilyNotes: React.FC = () => {
                     onChange={(e) => setNewCategoryName(e.target.value)}
                 />
             </Modal>
-
         </>
     );
 };

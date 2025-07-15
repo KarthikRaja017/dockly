@@ -24,6 +24,8 @@ interface Event {
     end_date?: string;
     start_date?: string;
     is_all_day?: boolean;
+    source_email?: string;
+    provider?: string;
 }
 
 interface Meal {
@@ -52,6 +54,8 @@ interface ConnectedAccount {
     email: string;
     displayName: string;
     accountType: string;
+    provider: string;
+    color: string;
 }
 
 interface Goal {
@@ -279,7 +283,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({
         meals: data?.meals || sampleCalendarData.meals
     };
 
-
     // Helper function to get all person names
     const getPersonNames = (): string[] => {
         return Object.keys(personColors);
@@ -462,7 +465,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({
     };
 
     // Modified to show preview instead of edit form
-
     const handleEventClick = (event: Event) => {
         setPreviewingEvent({
             ...event,
@@ -473,7 +475,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({
 
         setIsPreviewVisible(true);
     };
-
 
     // New function to handle edit from preview
     const handleEditFromPreview = () => {
@@ -520,9 +521,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({
         return connectedAccounts.find(account => account.userName === userName) || null;
     };
 
-
-
-
     const handleModalSave = () => {
         setLoading(true);
 
@@ -565,7 +563,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             invitee,
                         };
 
-                // 👇 Add ID for editing case only
+                // Add ID for editing case only
                 if (editingEvent) {
                     (payload as any).id = editingEvent.id;
                 }
@@ -631,7 +629,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({
         setIsModalVisible(true);
     };
 
-
     const parseTimeToMinutes = (timeStr: string) => {
         const [time, period] = timeStr.split(' ');
         const [hours, minutes] = time.split(':').map(Number);
@@ -674,6 +671,9 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                 borderLeftWidth: "6px",
             },
         };
+
+        // Get account info for this event
+        const accountInfo = connectedAccounts.find(acc => acc.email === event.source_email);
 
         return (
             <div
@@ -738,7 +738,12 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     }}
                 >
                     <User size={size === "small" ? 8 : 10} />
-                    {event.person}
+                    {accountInfo?.displayName || event.person}
+                    {accountInfo && (
+                        <span style={{ fontSize: "8px", opacity: 0.7 }}>
+                            ({accountInfo.provider})
+                        </span>
+                    )}
                 </div>
                 {hoveredEvent === event.id && (
                     <div
@@ -1398,9 +1403,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({
 
     const renderDayView = () => {
         const dayEvents = getEventsForDate(currentDate ?? new Date());
-        // const dayMeals = getMealsForDate(currentDate);
-        // const dayGoals = getGoalsForDate(currentDate);
-        // const dayTodos = getTodosForDate(currentDate);
 
         return (
             <div
@@ -1868,12 +1870,12 @@ const CustomCalendar: React.FC<CalendarProps> = ({
         );
     };
 
-    // New Preview Modal Component
-
+    // Event Preview Modal Component
     const EventPreviewModal = () => {
         if (!isPreviewVisible || !previewingEvent) return null;
 
-        const account = getConnectedAccount(previewingEvent.person);
+        const account = getConnectedAccount(previewingEvent.person) ||
+            connectedAccounts.find(acc => acc.email === previewingEvent.source_email);
 
         return (
             <SimpleModal isVisible={isPreviewVisible} onClose={() => setIsPreviewVisible(false)}>
@@ -1933,7 +1935,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                         }}>
                             <Clock size={18} />
                             {previewingEvent.startTime} - {previewingEvent.endTime}
-
                         </div>
                     </div>
 
@@ -1960,14 +1961,14 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                 fontWeight: "700",
                                 fontSize: "16px"
                             }}>
-                                {(account?.displayName || previewingEvent.person).charAt(0).toUpperCase()}
+                                {(account?.displayName || account?.email || previewingEvent.person).charAt(0).toUpperCase()}
                             </div>
                             <div>
                                 <div style={{ fontWeight: "600", color: "#1f2937", fontSize: "16px" }}>
-                                    {account?.displayName || previewingEvent.person}
+                                    {account?.displayName || account?.email || previewingEvent.person}
                                 </div>
                                 <div style={{ color: "#6b7280", fontSize: "14px" }}>
-                                    {getPersonData(previewingEvent.person).email}
+                                    {account?.provider || previewingEvent.provider || "Google"} Account
                                 </div>
                             </div>
                         </div>
@@ -1983,7 +1984,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             border: "1px solid #e2e8f0"
                         }}>
                             <CalendarIcon size={20} color="#6b7280" />
-
                             <div>
                                 <div style={{ fontWeight: "600", color: "#1f2937" }}>
                                     {previewingEvent.is_all_day
@@ -2342,7 +2342,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     </h3>
                 </div>
                 <div style={{ display: "flex", gap: "6px" }}>
-
                     <Select
                         value={view}
                         onChange={(value) => {
@@ -2370,12 +2369,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             e.currentTarget.style.transform = "translateY(0)";
                             e.currentTarget.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.05)";
                         }}
-                        // suffixIcon={<CalendarOutlined />}
                         prefix={<CalendarOutlined />}
-                    // dropdownStyle={{
-                    //     borderRadius: 12,
-                    //     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                    // }}
                     >
                         {viewOptions.map((option) => (
                             <Option key={option} value={option}>
@@ -2393,8 +2387,15 @@ const CustomCalendar: React.FC<CalendarProps> = ({
 
             {/* Enhanced Quick Add Event */}
             <div style={{ marginTop: '24px' }}>
-                <SmartInputBox source={source} allowMentions={allowMentions} enableHashMentions={enabledHashmentions} familyMembers={familyMembers} personColors={personColors}
-                    setBackup={setBackup} backup={backup} />
+                <SmartInputBox
+                    source={source}
+                    allowMentions={allowMentions}
+                    enableHashMentions={enabledHashmentions}
+                    familyMembers={familyMembers}
+                    personColors={personColors}
+                    setBackup={setBackup}
+                    backup={backup}
+                />
             </div>
 
             {/* Enhanced Calendar Views */}
@@ -2416,19 +2417,14 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                 {view === "Day" && renderDayView()}
                 {view === "Year" && renderYearView()}
             </div>
+
             {/* Enhanced Person Legend */}
-            <Card style={{ marginTop: 16 }}>
+            {/* <Card style={{ marginTop: 16 }}>
                 <Space wrap>
                     <Text strong>Connected Accounts:</Text>
-                    {/* <Tag style={{ cursor: 'pointer', padding: '4px 12px', border: `1px solid ${PRIMARY_COLOR}`, borderRadius: '12px' }}
-                    ><Avatar
-                        size="small"
-                        style={{ backgroundColor: PRIMARY_COLOR, marginRight: 8 }}
-                    >
-                            D
-                        </Avatar> {user.email}</Tag> */}
                     {Object.entries(personColors).map(([userName, personData]) => {
-                        const account = getConnectedAccount(userName);
+                        const account = getConnectedAccount(userName) ||
+                            connectedAccounts.find(acc => acc.email === personData.email);
                         return (
                             <Popover
                                 key={userName}
@@ -2445,10 +2441,10 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                                 <MailOutlined />
                                                 <Text copyable>{personData.email}</Text>
                                             </Space>
-                                            {account?.accountType && (
+                                            {account?.provider && (
                                                 <Space>
                                                     <LinkOutlined />
-                                                    <Tag color="blue">{account.accountType}</Tag>
+                                                    <Tag color="blue">{account.provider}</Tag>
                                                 </Space>
                                             )}
                                         </Space>
@@ -2457,7 +2453,12 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                 title="Account Information"
                             >
                                 <Tag
-                                    style={{ cursor: 'pointer', padding: '4px 12px', border: `1px solid ${personData.color}`, borderRadius: '12px', }}
+                                    style={{
+                                        cursor: 'pointer',
+                                        padding: '4px 12px',
+                                        border: `1px solid ${personData.color}`,
+                                        borderRadius: '12px',
+                                    }}
                                 >
                                     <Space>
                                         <Avatar
@@ -2472,16 +2473,13 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             </Popover>
                         );
                     })}
-
                 </Space>
-            </Card>
+            </Card> */}
 
             {/* Event Preview Modal */}
             <EventPreviewModal />
 
             {/* Enhanced Event Form Modal */}
-
-
             <Modal
                 title={
                     <Space>
@@ -2584,7 +2582,8 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             >
                                 <Select placeholder="Select person">
                                     {Object.keys(personColors).map(userName => {
-                                        const account = getConnectedAccount(userName);
+                                        const account = getConnectedAccount(userName) ||
+                                            connectedAccounts.find(acc => acc.email === getPersonData(userName).email);
                                         return (
                                             <Option key={userName} value={userName}>
                                                 <Space>
@@ -2607,7 +2606,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                         </Col>
                     </Row>
 
-
                     <Form.Item
                         name="location"
                         label={<Space><EnvironmentOutlined />Location</Space>}
@@ -2620,7 +2618,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     </Form.Item>
                 </Form>
             </Modal>
-
         </Card>
     );
 };

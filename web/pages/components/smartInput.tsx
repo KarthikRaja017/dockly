@@ -37,6 +37,7 @@ const SmartInputBox: React.FC<SmartInputBoxProps> = ({
     familyMembers,
     backup
 }) => {
+    console.log("🚀 ~ personColors:............", personColors)
     const [newEventText, setNewEventText] = useState('');
     const [showMentions, setShowMentions] = useState(false);
     const [cursorPosition, setCursorPosition] = useState(0);

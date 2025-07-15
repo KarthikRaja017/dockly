@@ -1,5 +1,6 @@
-"use client";
-import React, { useState } from "react";
+'use client';
+
+import React, { useEffect, useState } from "react";
 import {
     Card,
     Button,
@@ -31,7 +32,8 @@ import {
     FileTextOutlined,
     TagOutlined,
 } from "@ant-design/icons";
-
+import { useSearchParams } from "next/navigation";
+import { addPlannerNotes, deletePlannerNote, getPlannerNotes, updatePlannerNote } from "../../../services/planner";
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
@@ -110,7 +112,29 @@ const FamilyHubComplete = () => {
             createdAt: new Date(2024, 6, 1),
             category: "FINANCE",
         },
+
     ]);
+
+
+    const fetchPlannerNotes = async () => {
+        try {
+            const res = await getPlannerNotes();
+            if (res.data.status === 1) {
+                const plannerNotes = res.data.payload.map((note: any) => ({
+                    id: note.id,
+                    title: note.title,
+                    content: note.description,
+                    createdAt: new Date(note.created_at),
+                    category: "PLANNER",
+                }));
+                plannerNotes.sort((a: NoteData, b: NoteData) => b.createdAt.getTime() - a.createdAt.getTime());
+                setNotes(plannerNotes);
+            }
+        } catch (err) {
+            console.error("Error fetching planner notes", err);
+        }
+    };
+
 
     // UI State
     const [activeTab, setActiveTab] = useState("sticky-notes");
@@ -120,6 +144,22 @@ const FamilyHubComplete = () => {
     const [editingSticky, setEditingSticky] = useState<string | null>(null);
     const [isNoteModalVisible, setIsNoteModalVisible] = useState(false);
     const [form] = Form.useForm();
+
+    const searchParams = useSearchParams();
+
+    useEffect(() => {
+        if (selectedCategory === "PLANNER") {
+            fetchPlannerNotes();
+        }
+    }, [selectedCategory]);
+
+    useEffect(() => {
+        const cat = searchParams?.get("category");
+        if (cat && categories.includes(cat)) {
+            setActiveTab("notes");
+            setSelectedCategory(cat);
+        }
+    }, []);
 
     // Status Configuration
     const statusConfig = {
@@ -153,12 +193,13 @@ const FamilyHubComplete = () => {
         },
     };
 
-    const categories = ["All", "FAMILY", "FINANCE", "HOME", "HEALTH"];
+    const categories = ["All", "FAMILY", "FINANCE", "HOME", "HEALTH", "PLANNER"];
     const categoryColors = {
         FAMILY: { color: "#52c41a", background: "#f6ffed" },
         FINANCE: { color: "#1890ff", background: "#f0f5ff" },
         HOME: { color: "#faad14", background: "#fffbe6" },
         HEALTH: { color: "#722ed1", background: "#f9f0ff" },
+        PLANNER: { color: "#4096ff", background: "#e6f4ff" },
     };
 
     // Sticky Notes Functions
@@ -187,27 +228,43 @@ const FamilyHubComplete = () => {
         setIsNoteModalVisible(true);
     };
 
-    const handleNoteModalOk = () => {
-        form
-            .validateFields()
-            .then((values) => {
+    const handleNoteModalOk = async () => {
+        try {
+            const values = await form.validateFields();
+
+            const newNotePayload = {
+                title: values.title || "New Note",
+                description: values.content || "Start writing your note here...",
+                date: new Date().toISOString().slice(0, 10), // today's date in YYYY-MM-DD
+            };
+
+            const res = await addPlannerNotes(newNotePayload);
+
+            if (res.data.status === 1) {
+                const backendNote = res.data.payload;
+
                 const newNote: NoteData = {
-                    id: Date.now().toString(),
-                    title: values.title || "New Note",
-                    content: values.content || "Start writing your note here...",
-                    createdAt: new Date(),
-                    category: values.category,
+                    id: backendNote.id,
+                    title: backendNote.title,
+                    content: backendNote.description,
+                    createdAt: new Date(backendNote.created_at || new Date()),
+                    category: "PLANNER",
                 };
-                setNotes([newNote, ...notes]);
+
+                setNotes((prev) => [newNote, ...prev]);
                 setIsNoteModalVisible(false);
-                form.resetFields();
                 setEditingNote(newNote.id);
+                form.resetFields();
                 message.success("Note created successfully!");
-            })
-            .catch((error) => {
-                message.error("Please fill in all required fields");
-            });
+            } else {
+                message.error("Failed to add note");
+            }
+        } catch (err) {
+            console.error(err);
+            message.error("Please fill in all required fields");
+        }
     };
+
 
     const handleNoteModalCancel = () => {
         setIsNoteModalVisible(false);
@@ -263,6 +320,7 @@ const FamilyHubComplete = () => {
                 })}
             </Menu>
         );
+
 
         return (
             <Card
@@ -356,11 +414,62 @@ const FamilyHubComplete = () => {
 
     // Render Note Card
     const renderNoteCard = (note: NoteData) => {
-        const categoryColor = categoryColors[
-            note.category as keyof typeof categoryColors
-        ] || { color: "#666", background: "#f5f5f5" };
+        const categoryColor =
+            categoryColors[note.category as keyof typeof categoryColors] || {
+                color: "#666",
+                background: "#f5f5f5",
+            };
 
-        const noteMenu = (
+        const isPlannerNote = note.category === "PLANNER";
+        const updateNote = async (id: string, updates: Partial<NoteData>) => {
+            try {
+                setNotes((prev) =>
+                    prev.map((n) => (n.id === id ? { ...n, ...updates } : n))
+                );
+
+                // Only call backend if category is PLANNER
+                if (selectedCategory === "PLANNER") {
+                    await updatePlannerNote({ id, ...updates });
+                    message.success("Planner note updated successfully");
+                }
+            } catch (err) {
+                console.error("Update failed", err);
+                message.error("Failed to update note");
+            }
+        };
+
+        const deleteNote = async (id: string) => {
+            try {
+                setNotes((prev) => prev.filter((n) => n.id !== id));
+
+                // Only call backend if category is PLANNER
+                if (selectedCategory === "PLANNER") {
+                    await deletePlannerNote(id);
+                    fetchPlannerNotes();
+                    message.success("Planner note deleted");
+                }
+            } catch (err) {
+                console.error("Delete failed", err);
+                message.error("Failed to delete note");
+            }
+        };
+
+        const noteMenuItems = [
+            {
+                key: "edit",
+                icon: <EditOutlined />,
+                label: "Edit",
+                onClick: () => setEditingNote(editingNote === note.id ? null : note.id),
+            },
+            {
+                key: "delete",
+                icon: <DeleteOutlined />,
+                label: <span style={{ color: "#ff4d4f" }}>Delete</span>,
+                onClick: () => deleteNote(note.id),
+            },
+        ];
+
+        const noteMenu = isPlannerNote ? (
             <Menu>
                 <Menu.Item
                     key="edit"
@@ -380,7 +489,7 @@ const FamilyHubComplete = () => {
                     Delete
                 </Menu.Item>
             </Menu>
-        );
+        ) : null;
 
         return (
             <Card
@@ -443,9 +552,11 @@ const FamilyHubComplete = () => {
                         </Tag>
                     </div>
 
-                    <Dropdown overlay={noteMenu} trigger={["click"]}>
-                        <Button type="text" icon={<MoreOutlined />} />
-                    </Dropdown>
+                    {isPlannerNote && (
+                        <Dropdown menu={{ items: noteMenuItems }} trigger={["click"]}>
+                            <Button type="text" icon={<MoreOutlined />} />
+                        </Dropdown>
+                    )}
                 </div>
 
                 <div
@@ -486,7 +597,7 @@ const FamilyHubComplete = () => {
                         {note.createdAt.toLocaleDateString()}
                     </Space>
 
-                    {editingNote === note.id && (
+                    {editingNote === note.id && isPlannerNote && (
                         <Space>
                             <Button size="small" onClick={() => setEditingNote(null)}>
                                 Cancel
@@ -816,4 +927,3 @@ const FamilyHubComplete = () => {
 };
 
 export default FamilyHubComplete;
-

@@ -346,6 +346,7 @@ const Documents: React.FC<ImportantDocumentsCardProps> = ({ isMobile }) => {
                 boxShadow: `0 2px 8px ${SHADOW_COLOR}`,
                 marginBottom: '16px',
                 width: '100%',
+                minHeight: '420px',
                 border: '1px solid #d9d9d9',
             }}
             styles={{ body: { padding: '16px' } }}

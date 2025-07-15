@@ -1277,27 +1277,27 @@ class AddWeeklyGoals(Resource):
         id = uniqueId(digit=15, isNum=True)
         backup = data.get("backup", [])
 
+        # 🗓 Compute current week's Saturday
+        today = datetime.today()
+        weekday = today.weekday()  # Monday = 0
+        days_until_saturday = (5 - weekday) if weekday <= 5 else 0
+        weekend_date = today + timedelta(days=days_until_saturday)
+
         goal = {
             "id": id,
             "user_id": uid,
             "goal": data.get("goal", ""),
-            "date": data.get("date", ""),
-            "time": data.get("time", ""),
+            "date": data.get("date"),
+            "time": datetime.now().strftime("%I:%M %p"),
             "priority": Priority.LOW.value,
             "goal_status": GoalStatus.YET_TO_START.value,
             "status": Status.ACTIVE.value,
         }
+
         DBHelper.insert("weekly_goals", return_column="id", **goal)
 
-        try:
-            start_dt = datetime.strptime(
-                f"{data.get('date', '')} {data.get('time', '')}", "%Y-%m-%d %I:%M %p"
-            )
-        except ValueError:
-            return {"status": 0, "message": "Invalid date/time format", "payload": {}}
-
         if backup:
-            create_calendar_event(uid, data.get("goal", ""), start_dt)
+            create_calendar_event(uid, data.get("goal", ""), weekend_date)
 
         return {
             "status": 1,
@@ -1413,26 +1413,26 @@ class AddWeeklyTodos(Resource):
         id = uniqueId(digit=15, isNum=True)
         backup = data.get("backup", [])
 
+        # 🗓 Compute current week's Saturday
+        today = datetime.today()
+        weekday = today.weekday()
+        days_until_saturday = (5 - weekday) if weekday <= 5 else 0
+        weekend_date = today + timedelta(days=days_until_saturday)
+
         todo = {
             "id": id,
             "user_id": uid,
             "text": data.get("text", ""),
-            "date": data.get("date", ""),
-            "time": data.get("time", ""),
+            "date": data.get("date"),
+            "time": datetime.now().strftime("%I:%M %p"),
             "priority": data.get("priority", "medium"),
-            "goal_id": data.get("goal_id", None),
             "completed": False,
         }
+
         DBHelper.insert("weekly_todos", return_column="id", **todo)
-        try:
-            start_dt = datetime.strptime(
-                f"{data.get('date', '')} {data.get('time', '')}", "%Y-%m-%d %I:%M %p"
-            )
-        except ValueError:
-            return {"status": 0, "message": "Invalid date/time format", "payload": {}}
 
         if backup:
-            create_calendar_event(uid, data.get("text", ""), start_dt)
+            create_calendar_event(uid, data.get("text", ""), weekend_date)
 
         return {
             "status": 1,
@@ -1508,11 +1508,7 @@ def create_calendar_event(user_id, title, start_dt, end_dt=None, attendees=None)
         select_fields=["access_token", "refresh_token", "email"],
     )
     if not user_cred:
-        return {
-            "status": 0,
-            "message": "No connected account found for user",
-            "payload": {},
-        }
+        raise Exception("No connected Google account found.")
 
     creds = Credentials(
         token=user_cred["access_token"],
@@ -1538,7 +1534,61 @@ def create_calendar_event(user_id, title, start_dt, end_dt=None, attendees=None)
         "guestsCanSeeOtherGuests": True,
     }
 
-    return service.events().insert(calendarId="primary", body=event).execute()
+    created_event = service.events().insert(calendarId="primary", body=event).execute()
+
+    return created_event.get("id")  # ✅ return only the Google event ID
+
+
+def update_calendar_event(
+    user_id, calendar_event_id, title, start_dt, end_dt=None, attendees=None
+):
+    user_cred = DBHelper.find_one(
+        "connected_accounts",
+        filters={"user_id": user_id},
+        select_fields=["access_token", "refresh_token", "email"],
+    )
+    if not user_cred:
+        raise Exception("No connected Google account found.")
+
+    creds = Credentials(
+        token=user_cred["access_token"],
+        refresh_token=user_cred["refresh_token"],
+        token_uri=uri,
+        client_id=CLIENT_ID,
+        client_secret=CLIENT_SECRET,
+        scopes=SCOPE.split(),
+    )
+
+    service = build("calendar", "v3", credentials=creds)
+
+    if end_dt is None:
+        end_dt = start_dt + timedelta(hours=1)
+
+    # First: Get the existing event from Google
+    existing_event = (
+        service.events().get(calendarId="primary", eventId=calendar_event_id).execute()
+    )
+
+    # Update fields
+    existing_event["summary"] = title
+    existing_event["start"] = {
+        "dateTime": start_dt.isoformat(),
+        "timeZone": "Asia/Kolkata",
+    }
+    existing_event["end"] = {"dateTime": end_dt.isoformat(), "timeZone": "Asia/Kolkata"}
+    existing_event["attendees"] = attendees or []
+    existing_event["guestsCanModify"] = True
+    existing_event["guestsCanInviteOthers"] = True
+    existing_event["guestsCanSeeOtherGuests"] = True
+
+    # Update on Google Calendar
+    updated_event = (
+        service.events()
+        .update(calendarId="primary", eventId=calendar_event_id, body=existing_event)
+        .execute()
+    )
+
+    return updated_event.get("id")  # Optional return
 
 
 class AddSmartNote(Resource):
@@ -1866,3 +1916,100 @@ class GetPlanner(Resource):
                 "events": allEvents,
             },
         }
+
+
+class AddPlannerNotes(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        data = request.get_json(silent=True)
+
+        if not data.get("title"):
+            return {"status": 0, "message": "Title is required", "payload": {}}
+
+        note = {
+            "id": uniqueId(digit=15, isNum=True),
+            "user_id": uid,
+            "title": data.get("title", ""),
+            "description": data.get("description", ""),
+            "date": data.get("date") or date.today().isoformat(),
+            "status": "Yet to Start",
+        }
+
+        DBHelper.insert("notes", return_column="id", **note)
+
+        return {
+            "status": 1,
+            "message": "Note added successfully",
+            "payload": note,
+        }
+
+
+class GetPlannerNotes(Resource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        notes = DBHelper.find_all(
+            "notes",
+            {"user_id": uid},
+            select_fields=[
+                "id",
+                "title",
+                "description",
+                "date",
+                "status",
+                "created_at",
+                "updated_at",
+            ],
+        )
+
+        # Convert `date`, `created_at`, and `updated_at` to string
+        for note in notes:
+            if isinstance(note.get("date"), (datetime, date)):
+                note["date"] = note["date"].isoformat()
+            if isinstance(note.get("created_at"), datetime):
+                note["created_at"] = note["created_at"].isoformat()
+            if isinstance(note.get("updated_at"), datetime):
+                note["updated_at"] = note["updated_at"].isoformat()
+
+        return {"status": 1, "payload": notes}
+
+
+class UpdatePlannerNotes(Resource):
+    @auth_required(isOptional=True)
+    def put(self, uid, user):
+        data = request.get_json(silent=True)
+        note_id = data.get("id")
+
+        if not note_id:
+            return {"status": 0, "message": "Note ID is required", "payload": {}}
+
+        update_data = {}
+        for field in ["title", "description", "date", "status"]:
+            if data.get(field) is not None:
+                update_data[field] = data.get(field)
+
+        if not update_data:
+            return {"status": 0, "message": "No fields to update", "payload": {}}
+
+        success = DBHelper.update_one(
+            "notes", {"id": note_id, "user_id": uid}, update_data
+        )
+
+        if success:
+            return {"status": 1, "message": "Note updated successfully"}
+        else:
+            return {"status": 0, "message": "Note not found or update failed"}
+
+
+class DeletePlannerNotes(Resource):
+    @auth_required(isOptional=True)
+    def delete(self, uid, user):
+        note_id = request.args.get("id")
+
+        if not note_id:
+            return {"status": 0, "message": "Note ID is required", "payload": {}}
+
+        try:
+            DBHelper.delete_all("notes", {"id": note_id, "user_id": uid})
+            return {"status": 1, "message": "Note deleted successfully"}
+        except Exception as e:
+            return {"status": 0, "message": "Failed to delete note", "error": str(e)}

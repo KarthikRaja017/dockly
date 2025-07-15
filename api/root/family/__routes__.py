@@ -52,3 +52,5 @@ family_api.add_resource(UpdatePersonalInfo, "/update/personal-info")
 family_api.add_resource(AddSchoolInfo, "/add/school-info")
 family_api.add_resource(AddActivities, "/add/activities")
 family_api.add_resource(GetSchoolInfo, "/get/school-info")
+
+family_api.add_resource(UpdateNote, "/family/update/note")

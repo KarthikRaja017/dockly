@@ -198,3 +198,31 @@ export async function fetchNoteSuggestions(
   });
   return response.data;
 }
+
+export async function addPlannerNotes(params: {
+  title: string;
+  description: string;
+  date: string;
+}) {
+  return api.post('/add/planner-notes', params);
+}
+
+export async function getPlannerNotes() {
+  return api.get('/get/planner-notes');
+}
+
+// Update a planner note
+export async function updatePlannerNote(params: {
+  id: string;
+  title?: string;
+  description?: string;
+  date?: string;
+  status?: string;
+}) {
+  return api.put('/update/planner-notes', params);
+}
+
+// Delete a planner note
+export async function deletePlannerNote(id: string) {
+  return api.delete(`/delete/planner-notes?id=${id}`);
+}

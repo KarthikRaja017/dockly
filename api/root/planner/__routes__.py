@@ -86,16 +86,20 @@
 
 from .models import (
     AddEvents,
+    AddPlannerNotes,
     AddSmartNote,
     AddWeeklyGoals,
     AddWeeklyTodos,
+    DeletePlannerNotes,
     FrequentNotes,
     GetPlanner,
+    GetPlannerNotes,
     GetSmartNotes,
     GetWeeklyGoals,
     GetWeeklyTodos,
     AddWeeklyFocus,
     GetWeeklyFocus,
+    UpdatePlannerNotes,
     UpdateWeeklyGoals,
     UpdateWeeklyTodos,
 )
@@ -119,3 +123,9 @@ planner_api.add_resource(GetWeeklyFocus, "/get/weekly-focus")
 planner_api.add_resource(AddSmartNote, "/add/smart-notes")
 planner_api.add_resource(GetSmartNotes, "/get/smart-notes")
 planner_api.add_resource(FrequentNotes, "/smartnotes/suggestions/<string:uid>")
+
+
+planner_api.add_resource(AddPlannerNotes, "/add/planner-notes")
+planner_api.add_resource(GetPlannerNotes, "/get/planner-notes")
+planner_api.add_resource(UpdatePlannerNotes, "/update/planner-notes")
+planner_api.add_resource(DeletePlannerNotes, "/delete/planner-notes")

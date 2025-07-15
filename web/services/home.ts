@@ -211,3 +211,78 @@ export async function deleteProperty(
     throw error;
   }
 }
+
+// Interface for Mortgage data
+interface Mortgage {
+  id: string;
+  name: string;
+  meta: string;
+  amount: number;
+  interestRate: number;
+  term: number;
+  created_at?: string;
+  updated_at?: string;
+  is_active: number;
+}
+
+// Interface for API response
+interface ApiResponse<T> {
+  status: number;
+  message: string;
+  payload: T;
+}
+
+export async function addMortgage(
+  params: any
+): Promise<ApiResponse<{ loans: Mortgage[] }>> {
+  return api.post('/add/mortgage', params).then((res) => res.data);
+}
+
+export async function getLoansAndMortgages(
+  params: any
+): Promise<ApiResponse<{ loans: Mortgage[] }>> {
+  return api.get('/get/mortgage', { params }).then((res) => res.data);
+}
+
+export async function updateMortgage(
+  mortgageId: string,
+  params: any
+): Promise<ApiResponse<{ loans: Mortgage[] }>> {
+  return api
+    .put(`/update/mortgage/${mortgageId}`, params)
+    .then((res) => res.data);
+}
+
+export async function deleteMortgage(
+  mortgageId: string
+): Promise<ApiResponse<{ loans: Mortgage[] }>> {
+  return api.delete(`/delete/mortgage/${mortgageId}`).then((res) => res.data);
+}
+
+export async function addPlannerNotes(params: {
+  title: string;
+  description: string;
+  date: string;
+}) {
+  return api.post('/add/planner-notes', params);
+}
+
+export async function getPlannerNotes() {
+  return api.get('/get/planner-notes');
+}
+
+// Update a planner note
+export async function updatePlannerNote(params: {
+  id: string;
+  title?: string;
+  description?: string;
+  date?: string;
+  status?: string;
+}) {
+  return api.put('/update/planner-notes', params);
+}
+
+// Delete a planner note
+export async function deletePlannerNote(id: string) {
+  return api.delete(`/delete/planner-notes?id=${id}`);
+}

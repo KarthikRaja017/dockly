@@ -1,7 +1,6 @@
-
 'use client';
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Typography, Row, Col, Modal } from 'antd';
+import { Card, Button, Typography, Row, Col, Modal, Steps } from 'antd';
 import {
   ArrowRightOutlined,
   HomeOutlined,
@@ -13,6 +12,7 @@ import 'antd/dist/reset.css';
 import { useRouter } from 'next/navigation';
 
 const { Title, Paragraph } = Typography;
+const { Step } = Steps;
 
 const HomeIntroBoard: React.FC = () => {
   const [isHomeUser, setIsHomeUser] = useState(false);
@@ -20,6 +20,14 @@ const HomeIntroBoard: React.FC = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const router = useRouter();
   const [step, setStep] = useState(1);
+  const [username, setUsername] = useState<string | null>(null);
+
+  useEffect(() => {
+    const storedUsername = localStorage.getItem('username');
+    if (storedUsername) {
+      setUsername(storedUsername);
+    }
+  }, []);
 
   const handleGetStarted = async () => {
     setLoading(true);
@@ -38,21 +46,28 @@ const HomeIntroBoard: React.FC = () => {
     setIsModalVisible(true);
   };
 
-  const [username, setUsername] = useState<string | null>(null);
-  useEffect(() => {
-    const storedUsername = localStorage.getItem('username');
-    if (storedUsername) {
-      setUsername(storedUsername);
-    }
-  }, [])
-
   const handleCancel = () => {
     setIsModalVisible(false);
   };
-  const handlesubmit = () => {
-    localStorage.setItem("home-hub", "1");
+
+  const handleLaunchSetup = () => {
+    setIsHomeUser(true);
+    setIsModalVisible(false);
+    setStep(1); // Start at step 1 of the setup process
+  };
+
+  const nextStep = () => {
+    setStep((prev) => Math.min(prev + 1, 3));
+  };
+
+  const prevStep = () => {
+    setStep((prev) => Math.max(prev - 1, 1));
+  };
+
+  const completeSetup = () => {
+    localStorage.setItem('home-hub', '1');
     router.push(`/${username}/home-hub`);
-  }
+  };
 
   return (
     <Card style={{ padding: '0px 24px' }} loading={loading}>
@@ -71,17 +86,14 @@ const HomeIntroBoard: React.FC = () => {
               justifyContent: 'space-between',
               alignItems: 'center',
               width: '100%',
-              padding: '20px 0',
+              padding: '-20px 0',
             }}
-          >
-            {/* <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1890ff' }}>Dockly</div>
-            <div style={{ fontSize: '18px', color: '#555' }}>JS</div> */}
-          </div>
+          />
 
           <Row
             gutter={24}
             style={{
-              marginTop: 75,
+              marginTop: '20px',
               alignItems: 'center',
               justifyContent: 'center',
             }}
@@ -123,12 +135,12 @@ const HomeIntroBoard: React.FC = () => {
                   flexDirection: 'column',
                   alignItems: 'start',
                   justifyContent: 'center',
-                  padding: '0 20px',
+                  padding: '0 -20px',
                 }}
               >
                 <Title level={1}>Welcome to Your Home Board</Title>
-                <Paragraph style={{ maxWidth: 500, fontSize: 18 }}>
-                  Your central dashboard for managing all aspects of your home - from mortgage and property details to utilities, maintenance, and household documents.
+                <Paragraph style={{ maxWidth: 800, fontSize: 18 }}>
+                  Your central dashboard for managing all aspects of your home  from mortgage and property details to utilities, maintenance, and household documents.
                 </Paragraph>
               </div>
               <div
@@ -239,15 +251,74 @@ const HomeIntroBoard: React.FC = () => {
       ) : (
         <div
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: '400px',
-            fontSize: '24px',
-            color: '#666',
+            padding: '24px',
+            minHeight: '450px',
           }}
         >
-          Home Board Setup (Placeholder)
+          <Steps current={step - 1} style={{ marginBottom: '24px' }}>
+            <Step title="Property Details" />
+            <Step title="Utilities & Services" />
+            <Step title="Maintenance & Family" />
+          </Steps>
+          {step === 1 && (
+            <div>
+              <Title level={2}>Step 1: Property Details</Title>
+              <Paragraph>
+                Connect your property details by linking to Zillow, Redfin, or manually input your information. This step helps track value, mortgage, and documents.
+              </Paragraph>
+              <Button
+                type="primary"
+                onClick={nextStep}
+                style={{ marginTop: '16px' }}
+              >
+                Next
+              </Button>
+            </div>
+          )}
+          {step === 2 && (
+            <div>
+              <Title level={2}>Step 2: Utilities & Services</Title>
+              <Paragraph>
+                Link your utility accounts (electricity, water, internet) to monitor bills and usage in one place.
+              </Paragraph>
+              <Button
+                type="default"
+                onClick={prevStep}
+                style={{ marginRight: '8px' }}
+              >
+                Previous
+              </Button>
+              <Button
+                type="primary"
+                onClick={nextStep}
+                style={{ marginTop: '16px' }}
+              >
+                Next
+              </Button>
+            </div>
+          )}
+          {step === 3 && (
+            <div>
+              <Title level={2}>Step 3: Maintenance & Family</Title>
+              <Paragraph>
+                Set up maintenance schedules and coordinate with family members for household responsibilities.
+              </Paragraph>
+              <Button
+                type="default"
+                onClick={prevStep}
+                style={{ marginRight: '8px' }}
+              >
+                Previous
+              </Button>
+              <Button
+                type="primary"
+                onClick={completeSetup}
+                style={{ marginTop: '16px' }}
+              >
+                Complete Setup
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -267,7 +338,7 @@ const HomeIntroBoard: React.FC = () => {
           <Button
             key="launch"
             type="primary"
-            onClick={handlesubmit}
+            onClick={handleLaunchSetup}
             style={{ background: '#0052cc', borderColor: '#0052cc' }}
           >
             Launch Setup Home

@@ -1,9 +1,9 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Card, Button, Modal, Form, Input, DatePicker, Checkbox, message, Space, Typography, Select } from 'antd';
-import { DeleteOutlined, PlusOutlined, EyeOutlined, ToolOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { Button, Modal, Form, Input, DatePicker, Checkbox, message, Space, Typography, Select } from 'antd';
+import { DeleteOutlined, PlusOutlined, EyeOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import moment from 'moment';
-import { addMaintenanceTask, getMaintenanceTasks, updateMaintenanceTask, deleteMaintenanceTask } from '../../../web/services/home';
+import { addMaintenanceTask, getMaintenanceTasks, updateMaintenanceTask, deleteMaintenanceTask } from '../../services/home';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -32,14 +32,14 @@ const Maintenance: React.FC<{ uid: string }> = ({ uid }) => {
         try {
             const response = await getMaintenanceTasks({ uid });
             if (response.status === 1) {
-                setTasks(response.payload.tasks || []); // Ensure tasks is an array
+                setTasks(response.payload.tasks || []);
             } else {
                 message.error(response.message);
-                setTasks([]); // Reset to empty array on error
+                setTasks([]);
             }
         } catch (error) {
             message.error('Failed to fetch maintenance tasks');
-            setTasks([]); // Reset to empty array on error
+            setTasks([]);
         }
     };
 
@@ -73,7 +73,7 @@ const Maintenance: React.FC<{ uid: string }> = ({ uid }) => {
         setIsModalOpen(false);
         form.resetFields();
     };
-
+    const PRIMARY_COLOR = "#1890ff";
     const handleCheckboxChange = async (taskId: string, checked: boolean) => {
         try {
             const currentTask = tasks.find(t => t.id === taskId);
@@ -110,23 +110,10 @@ const Maintenance: React.FC<{ uid: string }> = ({ uid }) => {
                 }
             },
             okButtonProps: {
-                style: {
-                    backgroundColor: '#6b7280',
-                    border: 'none',
-                    borderRadius: '6px',
-                    color: '#fff',
-                    padding: '4px 15px',
-                    height: '32px',
-                },
+                type: 'primary',
             },
             cancelButtonProps: {
-                style: {
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    color: '#6b7280',
-                    padding: '4px 15px',
-                    height: '32px',
-                },
+                type: 'default',
             },
         });
     };
@@ -166,260 +153,206 @@ const Maintenance: React.FC<{ uid: string }> = ({ uid }) => {
     const displayTasks = getDisplayTasks();
 
     return (
-        <div style={{ padding: '16px' }}>
-            <Card
-                style={{
-                    borderRadius: '12px',
-                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
-                    border: '1px solid #e5e7eb',
-                    backgroundColor: '#ffffff',
-                    padding: '16px',
-                    width: '100%',
-                    minHeight: '200px',
-                    maxHeight: '600px',
-                    marginTop: '-15px',
-                    overflowY: displayTasks.length > 3 ? 'auto' : 'hidden',
-                }}
-            >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <ToolOutlined style={{ fontSize: '18px', color: '#1f2937' }} />
-                        <Title
-                            level={3}
-                            style={{
-                                fontSize: '18px',
-                                fontWeight: '600',
-                                margin: '0',
-                                color: '#1f2937',
-                            }}
-                        >
-                            Home Maintenance
-                        </Title>
+        <div
+            style={{
+                padding: '24px',
+                maxWidth: '800px',
+                margin: '0 auto',
+                border: '1px solid #e5e7eb',
+                borderRadius: '12px',
+                backgroundColor: '#ffffff',
+                minHeight: '450px',
+            }}
+        >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                <Title level={3} style={{ fontSize: '24px', fontWeight: '600', margin: '0', color: '#1f2937' }}>
+                    🔧 Home Maintenance
+                </Title>
+                <Space>
+                    <Select
+                        value={filter}
+                        onChange={(value) => setFilter(value)}
+                        style={{
+                            width: '120px',
+                            height: '32px',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                        }}
+                    >
+                        <Option value="all">All</Option>
+                        <Option value="completed">Completed</Option>
+                        <Option value="pending">Pending</Option>
+                    </Select>
+                    <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={showModal}
+                        style={{
+                            height: '32px',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                        }}
+                    >
+                        Add Task
+                    </Button>
+                </Space>
+            </div>
+
+            <Space direction="vertical" style={{ width: '100%', gap: '16px' }}>
+                {displayTasks.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '24px 0', color: '#6b7280' }}>
+                        <CheckCircleOutlined style={{ fontSize: '24px', color: '#6b7280', marginBottom: '12px' }} />
+                        <Text style={{ fontSize: '16px' }}>All caught up! No tasks.</Text>
                     </div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                        <Select
-                            value={filter}
-                            onChange={(value) => setFilter(value)}
-                            style={{
-                                width: '120px',
-                                height: '32px',
-                                borderRadius: '6px',
-                                border: '1px solid #d1d5db',
-                                backgroundColor: '#f9fafb',
-                                color: '#6b7280',
-                                fontSize: '14px',
-                            }}
-                            dropdownStyle={{ borderRadius: '6px' }}
-                        >
-                            <Option value="all">All</Option>
-                            <Option value="completed">Completed</Option>
-                            <Option value="pending">Pending</Option>
-                        </Select>
+                ) : (
+                    displayTasks.map((task) => {
+                        const daysUntil = getDaysUntilDue(task.date);
+                        const isOverdue = daysUntil < 0 && !task.completed;
+                        const isDueToday = daysUntil === 0 && !task.completed;
+
+                        return (
+                            <div
+                                key={task.id}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: '16px',
+                                    borderRadius: '8px',
+                                    backgroundColor: task.completed ? '#f3f4f6' : '#ffffff',
+                                    border: '1px solid #e5e7eb',
+                                    transition: 'background-color 0.2s ease',
+                                }}
+                                onMouseEnter={(e) => {
+                                    if (!task.completed) {
+                                        e.currentTarget.style.backgroundColor = '#f9fafb';
+                                    }
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = task.completed ? '#f3f4f6' : '#ffffff';
+                                }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: '1' }}>
+                                    <Checkbox
+                                        checked={task.completed}
+                                        onChange={(e) => handleCheckboxChange(task.id, e.target.checked)}
+                                    />
+                                    <div>
+                                        <Text
+                                            style={{
+                                                fontSize: '16px',
+                                                fontWeight: '500',
+                                                color: task.completed ? '#9ca3af' : '#1f2937',
+                                                textDecoration: task.completed ? 'line-through' : 'none',
+                                            }}
+                                        >
+                                            {task.name}
+                                        </Text>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px' }}>
+                                            <Space>
+                                                <CheckCircleOutlined style={{ fontSize: '14px', color: '#6b7280' }} />
+                                                <Text style={{ fontSize: '14px', color: '#6b7280' }}>{formatDate(task.date)}</Text>
+                                            </Space>
+                                            {!task.completed && isOverdue && (
+                                                <Text
+                                                    style={{
+                                                        fontSize: '12px',
+                                                        color: '#dc2626',
+                                                        fontWeight: '500',
+                                                        padding: '4px 8px',
+                                                        borderRadius: '6px',
+                                                        backgroundColor: '#fee2e2',
+                                                    }}
+                                                >
+                                                    {Math.abs(daysUntil)} days overdue
+                                                </Text>
+                                            )}
+                                            {!task.completed && isDueToday && (
+                                                <Text
+                                                    style={{
+                                                        fontSize: '12px',
+                                                        color: '#d97706',
+                                                        fontWeight: '500',
+                                                        padding: '4px 8px',
+                                                        borderRadius: '6px',
+                                                        backgroundColor: '#fef3c7',
+                                                    }}
+                                                >
+                                                    Due today
+                                                </Text>
+                                            )}
+                                            {!task.completed && daysUntil > 0 && (
+                                                <Text
+                                                    style={{
+                                                        fontSize: '12px',
+                                                        color: '#16a34a',
+                                                        fontWeight: '500',
+                                                        padding: '4px 8px',
+                                                        borderRadius: '6px',
+                                                        backgroundColor: '#dcfce7',
+                                                    }}
+                                                >
+                                                    {daysUntil} days remaining
+                                                </Text>
+                                            )}
+                                            {task.completed && (
+                                                <Text
+                                                    style={{
+                                                        fontSize: '12px',
+                                                        color: '#6b7280',
+                                                        fontWeight: '500',
+                                                        padding: '4px 8px',
+                                                        borderRadius: '6px',
+                                                        backgroundColor: '#d1d5db',
+                                                    }}
+                                                >
+                                                    Completed
+                                                </Text>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                                <Button
+                                    icon={<DeleteOutlined />}
+                                    onClick={() => handleDeleteTask(task.id)}
+                                    style={{
+                                        borderRadius: '6px',
+                                        fontSize: '14px',
+                                    }}
+                                >
+
+                                </Button>
+                            </div>
+                        );
+                    })
+                )}
+                {tasks.length > 3 && (
+                    <div style={{ display: 'flex', justifyContent: 'center', marginTop: '24px' }}>
                         <Button
-                            type="default"
-                            icon={<PlusOutlined />}
-                            onClick={showModal}
+                            type="primary"
+                            icon={<EyeOutlined />}
+                            onClick={showViewModal}
                             style={{
-                                height: '32px',
                                 borderRadius: '6px',
-                                border: '1px solid #d1d5db',
-                                backgroundColor: '#f9fafb',
-                                color: '#6b7280',
                                 fontSize: '14px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '4px',
-                                padding: '4px 15px',
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = '#f3f4f6';
-                                e.currentTarget.style.color = '#374151';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = '#f9fafb';
-                                e.currentTarget.style.color = '#6b7280';
+                                marginTop: '-24px',
                             }}
                         >
-                            Add Task
+                            View All ({tasks.length})
                         </Button>
                     </div>
-                </div>
-
-                <div>
-                    {displayTasks.length === 0 && tasks.length === 0 ? (
-                        <div style={{ textAlign: 'left', padding: '16px 0', color: '#6b7280' }}>
-                            <CheckCircleOutlined style={{ fontSize: '20px', color: '#6b7280', marginBottom: '8px' }} />
-                            <Text style={{ fontSize: '14px' }}>All caught up! No tasks.</Text>
-                        </div>
-                    ) : (
-                        <Space direction="vertical" style={{ width: '100%', gap: '8px' }}>
-                            {displayTasks.map((task) => {
-                                const daysUntil = getDaysUntilDue(task.date);
-                                const isOverdue = daysUntil < 0 && !task.completed;
-                                const isDueToday = daysUntil === 0 && !task.completed;
-
-                                return (
-                                    <Card
-                                        key={task.id}
-                                        style={{
-                                            borderRadius: '8px',
-                                            border: '1px solid #e5e7eb',
-                                            backgroundColor: task.completed ? '#e5e7eb' : '#f9fafb',
-                                            padding: '8px',
-                                            transition: 'background-color 0.2s ease',
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            if (!task.completed) {
-                                                e.currentTarget.style.backgroundColor = '#f3f4f6';
-                                            }
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            e.currentTarget.style.backgroundColor = task.completed ? '#e5e7eb' : '#f9fafb';
-                                        }}
-                                    >
-                                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flex: '1' }}>
-                                                <Checkbox
-                                                    checked={task.completed}
-                                                    onChange={(e) => handleCheckboxChange(task.id, e.target.checked)}
-                                                    style={{ marginTop: '2px' }}
-                                                />
-                                                <div style={{ flex: '1' }}>
-                                                    <Text
-                                                        style={{
-                                                            fontSize: '14px',
-                                                            fontWeight: '600',
-                                                            color: task.completed ? '#9ca3af' : '#1f2937',
-                                                            textDecoration: task.completed ? 'line-through' : 'none',
-                                                        }}
-                                                    >
-                                                        {task.name}
-                                                    </Text>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                                                        <Space>
-                                                            <CheckCircleOutlined style={{ fontSize: '12px', color: '#6b7280' }} />
-                                                            <Text style={{ fontSize: '12px', color: '#6b7280' }}>{formatDate(task.date)}</Text>
-                                                        </Space>
-                                                        {!task.completed && isOverdue && (
-                                                            <Text
-                                                                style={{
-                                                                    fontSize: '12px',
-                                                                    color: '#6b7280',
-                                                                    fontWeight: '500',
-                                                                    padding: '2px 6px',
-                                                                    borderRadius: '6px',
-                                                                    border: '1px solid #e5e7eb',
-                                                                }}
-                                                            >
-                                                                {Math.abs(daysUntil)} days overdue
-                                                            </Text>
-                                                        )}
-                                                        {!task.completed && isDueToday && (
-                                                            <Text
-                                                                style={{
-                                                                    fontSize: '12px',
-                                                                    color: '#6b7280',
-                                                                    fontWeight: '500',
-                                                                    padding: '2px 6px',
-                                                                    borderRadius: '6px',
-                                                                    border: '1px solid #e5e7eb',
-                                                                }}
-                                                            >
-                                                                Due today
-                                                            </Text>
-                                                        )}
-                                                        {!task.completed && daysUntil > 0 && (
-                                                            <Text
-                                                                style={{
-                                                                    fontSize: '12px',
-                                                                    color: '#6b7280',
-                                                                    fontWeight: '500',
-                                                                    padding: '2px 6px',
-                                                                    borderRadius: '6px',
-                                                                    border: '1px solid #e5e7eb',
-                                                                    backgroundColor: '#a1f38c',
-                                                                }}
-                                                            >
-                                                                {daysUntil} days remaining
-                                                            </Text>
-                                                        )}
-                                                        {task.completed && (
-                                                            <Text
-                                                                style={{
-                                                                    fontSize: '12px',
-                                                                    color: '#6b7280',
-                                                                    fontWeight: '500',
-                                                                    padding: '2px 6px',
-                                                                    borderRadius: '6px',
-                                                                    border: '1px solid #e5e7eb',
-                                                                    backgroundColor: '#d1d5db',
-                                                                }}
-                                                            >
-                                                                Completed
-                                                            </Text>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <Button
-                                                icon={<DeleteOutlined />}
-                                                onClick={() => handleDeleteTask(task.id)}
-                                                style={{
-                                                    borderRadius: '6px',
-                                                    color: '#6b7280',
-                                                    border: 'none',
-                                                    background: 'none',
-                                                    fontSize: '12px',
-                                                    padding: '4px',
-                                                }}
-                                                onMouseEnter={(e) => {
-                                                    e.currentTarget.style.backgroundColor = '#f3f4f6';
-                                                    e.currentTarget.style.color = '#374151';
-                                                }}
-                                                onMouseLeave={(e) => {
-                                                    e.currentTarget.style.backgroundColor = 'none';
-                                                    e.currentTarget.style.color = '#6b7280';
-                                                }}
-                                            />
-                                        </div>
-                                    </Card>
-                                );
-                            })}
-                            {tasks.length > 3 && (
-                                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
-                                    <Button
-                                        icon={<EyeOutlined />}
-                                        onClick={showViewModal}
-                                        style={{
-                                            backgroundColor: '#2563eb',
-                                            color: '#ffffff',
-                                            borderRadius: '6px',
-                                            border: 'none',
-                                            padding: '4px 15px',
-                                            height: '32px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '4px',
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            e.currentTarget.style.backgroundColor = '#1d4ed8';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            e.currentTarget.style.backgroundColor = '#2563eb';
-                                        }}
-                                    >
-                                        View All ({tasks.length})
-                                    </Button>
-                                </div>
-                            )}
-                        </Space>
-                    )}
-                </div>
-            </Card>
+                )}
+            </Space>
 
             <Modal
                 title={
-                    <Title level={4} style={{ margin: '0', color: '#1f2937', fontSize: '16px', fontWeight: '600' }}>
+                    <Title level={4} style={{ margin: '0', color: '#1f2937', fontSize: '18px', fontWeight: '600' }}>
                         Add New Task
                     </Title>
                 }
@@ -427,28 +360,17 @@ const Maintenance: React.FC<{ uid: string }> = ({ uid }) => {
                 onOk={handleOk}
                 onCancel={handleCancel}
                 okButtonProps={{
-                    style: {
-                        backgroundColor: '#6b7280',
-                        border: 'none',
-                        borderRadius: '6px',
-                        color: '#fff',
-                        padding: '4px 15px',
-                        height: '32px',
-                    },
+                    type: 'primary',
+                    style: { borderRadius: '6px', fontSize: '14px' },
                 }}
                 cancelButtonProps={{
-                    style: {
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        color: '#6b7280',
-                        padding: '4px 15px',
-                        height: '32px',
-                    },
+                    type: 'default',
+                    style: { borderRadius: '6px', fontSize: '14px' },
                 }}
                 style={{ borderRadius: '12px' }}
                 width={400}
             >
-                <Form form={form} layout="vertical" style={{ marginTop: '12px' }}>
+                <Form form={form} layout="vertical" style={{ marginTop: '16px' }}>
                     <Form.Item
                         name="name"
                         label={<Text style={{ fontWeight: '500', color: '#1f2937', fontSize: '14px' }}>Task Name</Text>}
@@ -459,7 +381,6 @@ const Maintenance: React.FC<{ uid: string }> = ({ uid }) => {
                             style={{
                                 borderRadius: '6px',
                                 padding: '8px',
-                                border: '1px solid #d1d5db',
                                 fontSize: '14px',
                             }}
                         />
@@ -475,7 +396,6 @@ const Maintenance: React.FC<{ uid: string }> = ({ uid }) => {
                                 width: '100%',
                                 borderRadius: '6px',
                                 padding: '8px',
-                                border: '1px solid #d1d5db',
                                 fontSize: '14px',
                             }}
                             placeholder="Select due date"
@@ -486,148 +406,145 @@ const Maintenance: React.FC<{ uid: string }> = ({ uid }) => {
 
             <Modal
                 title={
-                    <Title level={4} style={{ margin: '0', color: '#1f2937', fontSize: '16px', fontWeight: '600' }}>
+                    <Title level={4} style={{ margin: '0', color: '#1f2937', fontSize: '18px', fontWeight: '600' }}>
                         All Tasks
                     </Title>
                 }
                 open={isViewModalOpen}
                 onCancel={handleViewCancel}
-                footer={null}
+                footer={[
+                    <Button
+                        key="cancel"
+                        type="default"
+                        onClick={handleViewCancel}
+                        style={{ borderRadius: '6px', fontSize: '14px' }}
+                    >
+                        Close
+                    </Button>,
+                ]}
                 width={600}
                 style={{ borderRadius: '12px' }}
                 bodyStyle={{ maxHeight: '400px', overflowY: 'auto', padding: '16px' }}
             >
-                <Space direction="vertical" style={{ width: '100%', gap: '8px' }}>
+                <Space direction="vertical" style={{ width: '100%', gap: '16px' }}>
                     {tasks.map((task) => {
                         const daysUntil = getDaysUntilDue(task.date);
                         const isOverdue = daysUntil < 0 && !task.completed;
                         const isDueToday = daysUntil === 0 && !task.completed;
 
                         return (
-                            <Card
+                            <div
                                 key={task.id}
                                 style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: '16px',
                                     borderRadius: '8px',
+                                    backgroundColor: task.completed ? '#f3f4f6' : '#ffffff',
                                     border: '1px solid #e5e7eb',
-                                    backgroundColor: task.completed ? '#e5e7eb' : '#f9fafb',
-                                    padding: '8px',
                                     transition: 'background-color 0.2s ease',
                                 }}
                                 onMouseEnter={(e) => {
                                     if (!task.completed) {
-                                        e.currentTarget.style.backgroundColor = '#f3f4f6';
+                                        e.currentTarget.style.backgroundColor = '#f9fafb';
                                     }
                                 }}
                                 onMouseLeave={(e) => {
-                                    e.currentTarget.style.backgroundColor = task.completed ? '#e5e7eb' : '#f9fafb';
+                                    e.currentTarget.style.backgroundColor = task.completed ? '#f3f4f6' : '#ffffff';
                                 }}
                             >
-                                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flex: '1' }}>
-                                        <Checkbox
-                                            checked={task.completed}
-                                            onChange={(e) => handleCheckboxChange(task.id, e.target.checked)}
-                                            style={{ marginTop: '2px' }}
-                                        />
-                                        <div style={{ flex: '1' }}>
-                                            <Text
-                                                style={{
-                                                    fontSize: '14px',
-                                                    fontWeight: '600',
-                                                    color: task.completed ? '#9ca3af' : '#1f2937',
-                                                    textDecoration: task.completed ? 'line-through' : 'none',
-                                                }}
-                                            >
-                                                {task.name}
-                                            </Text>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                                                <Space>
-                                                    <CheckCircleOutlined style={{ fontSize: '12px', color: '#6b7280' }} />
-                                                    <Text style={{ fontSize: '12px', color: '#6b7280' }}>{formatDate(task.date)}</Text>
-                                                </Space>
-                                                {!task.completed && isOverdue && (
-                                                    <Text
-                                                        style={{
-                                                            fontSize: '12px',
-                                                            color: '#6b7280',
-                                                            fontWeight: '500',
-                                                            padding: '2px 6px',
-                                                            borderRadius: '6px',
-                                                            border: '1px solid #e5e7eb',
-                                                        }}
-                                                    >
-                                                        {Math.abs(daysUntil)} days overdue
-                                                    </Text>
-                                                )}
-                                                {!task.completed && isDueToday && (
-                                                    <Text
-                                                        style={{
-                                                            fontSize: '12px',
-                                                            color: '#6b7280',
-                                                            fontWeight: '500',
-                                                            padding: '2px 6px',
-                                                            borderRadius: '6px',
-                                                            border: '1px solid #e5e7eb',
-                                                        }}
-                                                    >
-                                                        Due today
-                                                    </Text>
-                                                )}
-                                                {!task.completed && daysUntil > 0 && (
-                                                    <Text
-                                                        style={{
-                                                            fontSize: '12px',
-                                                            color: '#6b7280',
-                                                            fontWeight: '500',
-                                                            padding: '2px 6px',
-                                                            borderRadius: '6px',
-                                                            border: '1px solid #e5e7eb',
-                                                            backgroundColor: '#a1f38c',
-                                                        }}
-                                                    >
-                                                        {daysUntil} days remaining
-                                                    </Text>
-                                                )}
-                                                {task.completed && (
-                                                    <Text
-                                                        style={{
-                                                            fontSize: '12px',
-                                                            color: '#6b7280',
-                                                            fontWeight: '500',
-                                                            padding: '2px 6px',
-                                                            borderRadius: '6px',
-                                                            border: '1px solid #e5e7eb',
-                                                            backgroundColor: '#d1d5db',
-                                                        }}
-                                                    >
-                                                        Completed
-                                                    </Text>
-                                                )}
-                                            </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: '1' }}>
+                                    <Checkbox
+                                        checked={task.completed}
+                                        onChange={(e) => handleCheckboxChange(task.id, e.target.checked)}
+                                    />
+                                    <div>
+                                        <Text
+                                            style={{
+                                                fontSize: '16px',
+                                                fontWeight: '500',
+                                                color: task.completed ? '#9ca3af' : '#1f2937',
+                                                textDecoration: task.completed ? 'line-through' : 'none',
+                                            }}
+                                        >
+                                            {task.name}
+                                        </Text>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px' }}>
+                                            <Space>
+                                                <CheckCircleOutlined style={{ fontSize: '14px', color: '#6b7280' }} />
+                                                <Text style={{ fontSize: '14px', color: '#6b7280' }}>{formatDate(task.date)}</Text>
+                                            </Space>
+                                            {!task.completed && isOverdue && (
+                                                <Text
+                                                    style={{
+                                                        fontSize: '12px',
+                                                        color: '#dc2626',
+                                                        fontWeight: '500',
+                                                        padding: '4px 8px',
+                                                        borderRadius: '6px',
+                                                        backgroundColor: '#fee2e2',
+                                                    }}
+                                                >
+                                                    {Math.abs(daysUntil)} days overdue
+                                                </Text>
+                                            )}
+                                            {!task.completed && isDueToday && (
+                                                <Text
+                                                    style={{
+                                                        fontSize: '12px',
+                                                        color: '#d97706',
+                                                        fontWeight: '500',
+                                                        padding: '4px 8px',
+                                                        borderRadius: '6px',
+                                                        backgroundColor: '#fef3c7',
+                                                    }}
+                                                >
+                                                    Due today
+                                                </Text>
+                                            )}
+                                            {!task.completed && daysUntil > 0 && (
+                                                <Text
+                                                    style={{
+                                                        fontSize: '12px',
+                                                        color: '#16a34a',
+                                                        fontWeight: '500',
+                                                        padding: '4px 8px',
+                                                        borderRadius: '6px',
+                                                        backgroundColor: '#dcfce7',
+                                                    }}
+                                                >
+                                                    {daysUntil} days remaining
+                                                </Text>
+                                            )}
+                                            {task.completed && (
+                                                <Text
+                                                    style={{
+                                                        fontSize: '12px',
+                                                        color: '#6b7280',
+                                                        fontWeight: '500',
+                                                        padding: '4px 8px',
+                                                        borderRadius: '6px',
+                                                        backgroundColor: '#d1d5db',
+                                                    }}
+                                                >
+                                                    Completed
+                                                </Text>
+                                            )}
                                         </div>
                                     </div>
-                                    <Button
-                                        icon={<DeleteOutlined />}
-                                        onClick={() => handleDeleteTask(task.id)}
-                                        style={{
-                                            borderRadius: '6px',
-                                            color: '#6b7280',
-                                            border: 'none',
-                                            background: 'none',
-                                            fontSize: '12px',
-                                            padding: '4px',
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            e.currentTarget.style.backgroundColor = '#f3f4f6';
-                                            e.currentTarget.style.color = '#374151';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            e.currentTarget.style.backgroundColor = 'none';
-                                            e.currentTarget.style.color = '#6b7280';
-                                        }}
-                                    />
                                 </div>
-                            </Card>
+                                <Button
+                                    icon={<DeleteOutlined />}
+                                    onClick={() => handleDeleteTask(task.id)}
+                                    style={{
+                                        borderRadius: '6px',
+                                        fontSize: '14px',
+                                    }}
+                                >
+
+                                </Button>
+                            </div>
                         );
                     })}
                 </Space>

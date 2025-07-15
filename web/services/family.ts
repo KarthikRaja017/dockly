@@ -475,3 +475,12 @@ export async function getUpcomingActivities(userId: string): Promise<any> {
     throw error;
   }
 }
+
+export async function updateNote(params: {
+  id: number;
+  title: string;
+  description: string;
+  category_id: number;
+}) {
+  return api.post('/family/update/note', params);
+}

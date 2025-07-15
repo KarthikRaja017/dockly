@@ -515,6 +515,35 @@ class GetPets(Resource):
         }
 
 
+class UpdateNote(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid=None, user=None):
+        data = request.get_json(force=True)
+
+        note_id = data.get("id")
+        title = data.get("title", "").strip()
+        description = data.get("description", "").strip()
+        category_id = data.get("category_id")
+
+        if not note_id or not title or not description or not category_id:
+            return {"status": 0, "message": "Missing required fields"}, 422
+
+        try:
+            DBHelper.update(
+                table_name="notes_lists",
+                filters={"id": note_id, "user_id": uid},
+                update_fields={
+                    "title": title,
+                    "description": description,
+                    "category_id": category_id,
+                    "updated_at": datetime.now().isoformat(),
+                },
+            )
+            return {"status": 1, "message": "Note updated successfully"}
+        except Exception as e:
+            return {"status": 0, "message": f"Update failed: {str(e)}"}
+
+
 class GetContacts(Resource):
     @auth_required(isOptional=True)
     def get(self, uid, user):

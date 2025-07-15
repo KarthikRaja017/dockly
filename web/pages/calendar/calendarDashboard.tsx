@@ -320,7 +320,7 @@ const CalendarDashboard = (props: any) => {
             boxShadow: "0 8px 24px rgba(0,0,0,0.05)",
             width: "350px",
           }}
-          bodyStyle={{ padding: 0 }}
+        // bodyStyle={{ padding: 0 }}
         >
           <div style={{ padding: 20 }}>
             <div style={{ display: "flex", justifyContent: "space-between" }}>

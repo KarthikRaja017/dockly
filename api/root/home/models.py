@@ -1,9 +1,11 @@
 from flask import request
 from flask_restful import Resource
 import logging
-from datetime import datetime
+from datetime import datetime, date
 from root.db.dbHelper import DBHelper
 from root.auth.auth import auth_required
+import random
+import string
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -22,26 +24,10 @@ class AddMaintenanceTask(Resource):
         if not name or not date:
             return {"status": 0, "message": "Name and date are required", "payload": {}}
 
-        # Convert date to YYYY-MM-DD if needed
-        try:
-            # Try parsing as YYYY-MM-DD first
-            try:
-                parsed_date = datetime.strptime(date, "%Y-%m-%d")
-            except ValueError:
-                # Try parsing as DD-MM-YYYY and convert
-                parsed_date = datetime.strptime(date, "%d-%m-%Y")
-            date_str = parsed_date.strftime("%Y-%m-%d")
-        except ValueError:
-            return {
-                "status": 0,
-                "message": "Invalid date format. Use YYYY-MM-DD or DD-MM-YYYY.",
-                "payload": {},
-            }
-
         task_data = {
             "user_id": uid,
             "name": name,
-            "date": date_str,  # Always YYYY-MM-DD
+            "date": date,  # Expect YYYY-MM-DD
             "completed": False,
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat(),
@@ -890,7 +876,7 @@ class DeleteInsurance(Resource):
 
 class AddProperty(Resource):
     @auth_required(isOptional=True)
-    def post(self, uid, _user):
+    def post(self, uid, user):
         input_data = request.get_json(silent=True)
         if not input_data:
             return {"status": 0, "message": "No input data received", "payload": {}}
@@ -923,7 +909,7 @@ class AddProperty(Resource):
                     "message": "Purchase price must be non-negative",
                     "payload": {},
                 }
-        except (ValueError, TypeError):
+        except (ValueError, TypeError, AttributeError):
             return {
                 "status": 0,
                 "message": "Invalid purchase price format",
@@ -939,8 +925,9 @@ class AddProperty(Resource):
                 "payload": {},
             }
 
-        # Do not include 'pid' so the DB can auto-generate it
+        # Generate a unique pid
         property_data = {
+            "pid": str(datetime.now().timestamp()),  # Generate unique pid
             "user_id": uid,
             "address": address,
             "purchase_date": purchase_date,
@@ -957,7 +944,9 @@ class AddProperty(Resource):
             inserted_id = DBHelper.insert(
                 "property_information", return_column="pid", **property_data
             )
-            property_data["pid"] = inserted_id
+            property_data["pid"] = (
+                inserted_id if inserted_id else property_data["pid"]
+            )  # Use inserted_id if provided, else keep generated pid
             return {
                 "status": 1,
                 "message": "Property Added Successfully",
@@ -992,9 +981,7 @@ class GetProperties(Resource):
                     "is_active",
                 ],
             )
-            logger.info(
-                f"Fetched properties for user_id {uid}: {properties}"
-            )  # Debug log
+            # logger.info(f"Fetched properties for user_id {uid}: {properties}")  # Debug log
             user_properties = [
                 {
                     "id": str(property["pid"]),
@@ -1032,12 +1019,12 @@ class GetProperties(Resource):
                 "payload": {"properties": user_properties},
             }
         except Exception as e:
-            logger.error(f"Error fetching properties for user_id {uid}: {str(e)}")
-            return {
-                "status": 0,
-                "message": f"Error fetching properties: {str(e)}",
-                "payload": {},
-            }
+            logger.error(f"Error fetching properties for user_id {uid}: {str()}")
+            # return {
+            #     "status": 0,
+            #     "message": f"Error fetching properties: {str(e)}",
+            #     "payload": {}
+            # }
 
 
 class UpdateProperty(Resource):
@@ -1167,80 +1154,433 @@ class UpdateProperty(Resource):
             }
 
 
-class GetLoansAndMortgages(Resource):
+class AddMortgage(Resource):
     @auth_required(isOptional=True)
     def post(self, uid, user):
+        input_data = request.get_json(silent=True)
+        if not input_data:
+            return {"status": 0, "message": "No input data received", "payload": {}}
+
+        name = input_data.get("name", "").strip()
+        meta = input_data.get("meta", "").strip()
+        amount = input_data.get("amount")
+        interest_rate = input_data.get("interestRate")
+        term = input_data.get("term")
+
+        if not all(
+            [
+                name,
+                meta,
+                amount is not None,
+                interest_rate is not None,
+                term is not None,
+            ]
+        ):
+            return {
+                "status": 0,
+                "message": "Name, meta, amount, interest rate, and term are required",
+                "payload": {},
+            }
+
         try:
-            accounts = DBHelper.find_all(
-                "bank_accounts",
-                filters={"user_id": uid},
+            amount = float(amount)
+            interest_rate = float(interest_rate)
+            term = int(term)
+            if amount < 0 or interest_rate < 0 or term <= 0:
+                return {
+                    "status": 0,
+                    "message": "Amount and interest rate must be non-negative, term must be positive",
+                    "payload": {},
+                }
+        except (ValueError, TypeError):
+            return {
+                "status": 0,
+                "message": "Invalid format for amount, interest rate, or term",
+                "payload": {},
+            }
+
+        mortgage_data = {
+            "id": str(datetime.now().timestamp()),
+            "user_id": uid,
+            "name": name,
+            "meta": meta,
+            "amount": amount,
+            "interest_rate": interest_rate,
+            "term": term,
+            "created_at": datetime.now().isoformat(),
+            "updated_at": datetime.now().isoformat(),
+            "is_active": 1,
+        }
+
+        try:
+            inserted_id = DBHelper.insert(
+                "mortgages", return_column="id", **mortgage_data
+            )
+            mortgage_data["id"] = inserted_id if inserted_id else mortgage_data["id"]
+            return {
+                "status": 1,
+                "message": "Mortgage Added Successfully",
+                "payload": {"loans": [mortgage_data]},
+            }
+        except Exception as e:
+            logger.error(f"Error adding mortgage: {str(e)}")
+            return {
+                "status": 0,
+                "message": f"Error adding mortgage: {str(e)}",
+                "payload": {},
+            }
+
+
+class GetMortgages(Resource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        try:
+            mortgages = DBHelper.find_all(
+                table_name="mortgages",
+                filters={"user_id": uid, "is_active": 1},
                 select_fields=[
                     "id",
                     "name",
-                    "provider",
-                    "current_balance",
-                    "currency",
-                    "transacted_first",
-                    "transacted_last",
+                    "meta",
+                    "amount",
+                    "interest_rate",
+                    "term",
+                    "created_at",
+                    "updated_at",
+                    "is_active",
                 ],
             )
-
-            def classify(acc):
-                name = (acc.get("name") or "").lower()
-                provider = (acc.get("provider") or "").lower()
-                if (
-                    "loan" in name
-                    or "loan" in provider
-                    or "mortgage" in name
-                    or "mortgage" in provider
-                ):
-                    return "Loans"
-                elif (
-                    "credit" in name
-                    or "card" in provider
-                    or "amex" in provider
-                    or "visa" in provider
-                ):
-                    return "Credit Cards"
-                elif (
-                    "investment" in name
-                    or "401" in name
-                    or "fidelity" in provider
-                    or "vanguard" in provider
-                ):
-                    return "Investments"
-                else:
-                    return "Cash Accounts"
-
-            COLOR_MAP = {
-                "Loans": "#ef4444",
-                "Credit Cards": "#1e40af",
-                "Investments": "#8b5cf6",
-                "Cash Accounts": "#3b82f6",
-            }
-
-            loans = []
-            for acc in accounts:
-                if classify(acc) == "Loans":
-                    item = {
-                        "id": acc["id"],
-                        "name": acc["name"],
-                        "provider": acc["provider"],
-                        "current_balance": float(acc["current_balance"] or 0),
-                        "currency": acc["currency"],
-                        "meta": f"{acc['name']} • {acc['currency']} {float(acc['current_balance'] or 0):.2f}",
-                        "color": COLOR_MAP["Loans"],
-                    }
-                    loans.append(item)
-
-            total_balance = sum(loan["current_balance"] for loan in loans)
-
-            logger.info(f"Fetched {len(loans)} loans and mortgages for user {uid}")
+            user_mortgages = [
+                {
+                    "id": str(mortgage["id"]),
+                    "name": mortgage["name"],
+                    "meta": mortgage["meta"],
+                    "amount": float(mortgage["amount"]),
+                    "interestRate": float(mortgage["interest_rate"]),
+                    "term": mortgage["term"],
+                    "created_at": (
+                        mortgage["created_at"].isoformat()
+                        if mortgage["created_at"]
+                        else None
+                    ),
+                    "updated_at": (
+                        mortgage["updated_at"].isoformat()
+                        if mortgage["updated_at"]
+                        else None
+                    ),
+                    "is_active": mortgage["is_active"],
+                }
+                for mortgage in mortgages
+            ]
             return {
                 "status": 1,
-                "message": "Loans and mortgages retrieved",
-                "payload": {"loans": loans, "total_balance": total_balance},
+                "message": "Mortgages fetched successfully",
+                "payload": {"loans": user_mortgages},
             }
         except Exception as e:
-            logger.error(f"Error in GetLoansAndMortgages: {str(e)}")
-            return {"error": str(e)}
+            logger.error(f"Error fetching mortgages: {str(e)}")
+            return {
+                "status": 0,
+                "message": f"Error fetching mortgages: {str(e)}",
+                "payload": {},
+            }
+
+
+class UpdateMortgage(Resource):
+    @auth_required(isOptional=True)
+    def put(self, uid, user, mortgage_id):
+        input_data = request.get_json(silent=True)
+        if not input_data:
+            return {"status": 0, "message": "No input data received", "payload": {}}
+
+        updates = {}
+        if "name" in input_data and input_data["name"].strip():
+            updates["name"] = input_data["name"].strip()
+        if "meta" in input_data and input_data["meta"].strip():
+            updates["meta"] = input_data["meta"].strip()
+        if "amount" in input_data:
+            try:
+                amount = float(input_data["amount"])
+                if amount < 0:
+                    return {
+                        "status": 0,
+                        "message": "Amount must be non-negative",
+                        "payload": {},
+                    }
+                updates["amount"] = amount
+            except (ValueError, TypeError):
+                return {"status": 0, "message": "Invalid amount format", "payload": {}}
+        if "interestRate" in input_data:
+            try:
+                interest_rate = float(input_data["interestRate"])
+                if interest_rate < 0:
+                    return {
+                        "status": 0,
+                        "message": "Interest rate must be non-negative",
+                        "payload": {},
+                    }
+                updates["interest_rate"] = interest_rate
+            except (ValueError, TypeError):
+                return {
+                    "status": 0,
+                    "message": "Invalid interest rate format",
+                    "payload": {},
+                }
+        if "term" in input_data:
+            try:
+                term = int(input_data["term"])
+                if term <= 0:
+                    return {
+                        "status": 0,
+                        "message": "Term must be a positive integer",
+                        "payload": {},
+                    }
+                updates["term"] = term
+            except (ValueError, TypeError):
+                return {"status": 0, "message": "Invalid term format", "payload": {}}
+        updates["updated_at"] = datetime.now().isoformat()
+
+        if not updates:
+            return {"status": 0, "message": "No valid updates provided", "payload": {}}
+
+        try:
+            result = DBHelper.update_one(
+                table_name="mortgages",
+                filters={"id": mortgage_id, "user_id": uid, "is_active": 1},
+                updates=updates,
+                return_fields=[
+                    "id",
+                    "name",
+                    "meta",
+                    "amount",
+                    "interest_rate",
+                    "term",
+                    "created_at",
+                    "updated_at",
+                    "is_active",
+                ],
+            )
+            if result:
+                updated_mortgage = {
+                    "id": str(result["id"]),
+                    "name": result["name"],
+                    "meta": result["meta"],
+                    "amount": float(result["amount"]),
+                    "interestRate": float(result["interest_rate"]),
+                    "term": result["term"],
+                    "created_at": (
+                        result["created_at"].isoformat()
+                        if result["created_at"]
+                        else None
+                    ),
+                    "updated_at": (
+                        result["updated_at"].isoformat()
+                        if result["updated_at"]
+                        else None
+                    ),
+                    "is_active": result["is_active"],
+                }
+                return {
+                    "status": 1,
+                    "message": "Mortgage Updated Successfully",
+                    "payload": {"loans": [updated_mortgage]},
+                }
+            else:
+                return {
+                    "status": 0,
+                    "message": "Mortgage not found or not authorized",
+                    "payload": {},
+                }
+        except Exception as e:
+            logger.error(f"Error updating mortgage: {str(e)}")
+            return {
+                "status": 0,
+                "message": f"Error updating mortgage: {str(e)}",
+                "payload": {},
+            }
+
+
+class DeleteMortgage(Resource):
+    @auth_required(isOptional=True)
+    def delete(self, uid, user, mortgage_id):
+        try:
+            mortgage = DBHelper.find_one(
+                table_name="mortgages",
+                filters={"id": mortgage_id, "user_id": uid, "is_active": 1},
+                select_fields=[
+                    "id",
+                    "name",
+                    "meta",
+                    "amount",
+                    "interest_rate",
+                    "term",
+                    "is_active",
+                ],
+            )
+            if not mortgage:
+                logger.warning(
+                    f"Mortgage not found or already inactive: id={mortgage_id}, user_id={uid}"
+                )
+                return {
+                    "status": 0,
+                    "message": "Mortgage not found or already inactive",
+                    "payload": {},
+                }
+
+            result = DBHelper.update_one(
+                table_name="mortgages",
+                filters={"id": mortgage_id, "user_id": uid},
+                updates={"is_active": 0, "updated_at": datetime.now().isoformat()},
+                return_fields=[
+                    "id",
+                    "name",
+                    "meta",
+                    "amount",
+                    "interest_rate",
+                    "term",
+                    "is_active",
+                ],
+            )
+            if result:
+                logger.info(
+                    f"Mortgage deactivated successfully: id={mortgage_id}, is_active={result['is_active']}"
+                )
+                return {
+                    "status": 1,
+                    "message": "Mortgage Deactivated Successfully",
+                    "payload": {
+                        "loans": [
+                            {
+                                "id": str(result["id"]),
+                                "name": result["name"],
+                                "meta": result["meta"],
+                                "amount": float(result["amount"]),
+                                "interestRate": float(result["interest_rate"]),
+                                "term": result["term"],
+                                "is_active": result["is_active"],
+                            }
+                        ]
+                    },
+                }
+            else:
+                logger.warning(
+                    f"Failed to deactivate mortgage: id={mortgage_id}, user_id={uid}"
+                )
+                return {
+                    "status": 0,
+                    "message": "Failed to deactivate mortgage",
+                    "payload": {},
+                }
+        except Exception as e:
+            logger.error(
+                f"Error deactivating mortgage: id={mortgage_id}, error={str(e)}"
+            )
+            return {
+                "status": 0,
+                "message": f"Error deactivating mortgage: {str(e)}",
+                "payload": {},
+            }
+
+
+def uniqueId(digit=15, isNum=True):
+    if isNum:
+        return "".join(random.choices(string.digits, k=digit))
+    else:
+        return "".join(random.choices(string.ascii_letters + string.digits, k=digit))
+
+
+class AddPlannerNotes(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        data = request.get_json(silent=True)
+
+        if not data.get("title"):
+            return {"status": 0, "message": "Title is required", "payload": {}}
+
+        note = {
+            "id": uniqueId(digit=15, isNum=True),
+            "user_id": uid,
+            "title": data.get("title", ""),
+            "description": data.get("description", ""),
+            "date": data.get("date") or date.today().isoformat(),
+            "status": "Yet to Start",
+        }
+
+        DBHelper.insert("notes", return_column="id", **note)
+
+        return {
+            "status": 1,
+            "message": "Note added successfully",
+            "payload": note,
+        }
+
+
+class GetPlannerNotes(Resource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        notes = DBHelper.find_all(
+            "notes",
+            {"user_id": uid},
+            select_fields=[
+                "id",
+                "title",
+                "description",
+                "date",
+                "status",
+                "created_at",
+                "updated_at",
+            ],
+        )
+
+        # Convert `date`, `created_at`, and `updated_at` to string
+        for note in notes:
+            if isinstance(note.get("date"), (datetime, date)):
+                note["date"] = note["date"].isoformat()
+            if isinstance(note.get("created_at"), datetime):
+                note["created_at"] = note["created_at"].isoformat()
+            if isinstance(note.get("updated_at"), datetime):
+                note["updated_at"] = note["updated_at"].isoformat()
+
+        return {"status": 1, "payload": notes}
+
+
+class UpdatePlannerNotes(Resource):
+    @auth_required(isOptional=True)
+    def put(self, uid, user):
+        data = request.get_json(silent=True)
+        note_id = data.get("id")
+
+        if not note_id:
+            return {"status": 0, "message": "Note ID is required", "payload": {}}
+
+        update_data = {}
+        for field in ["title", "description", "date", "status"]:
+            if data.get(field) is not None:
+                update_data[field] = data.get(field)
+
+        if not update_data:
+            return {"status": 0, "message": "No fields to update", "payload": {}}
+
+        success = DBHelper.update_one(
+            "notes", {"id": note_id, "user_id": uid}, update_data
+        )
+
+        if success:
+            return {"status": 1, "message": "Note updated successfully"}
+        else:
+            return {"status": 0, "message": "Note not found or update failed"}
+
+
+class DeletePlannerNotes(Resource):
+    @auth_required(isOptional=True)
+    def delete(self, uid, user):
+        note_id = request.args.get("id")
+
+        if not note_id:
+            return {"status": 0, "message": "Note ID is required", "payload": {}}
+
+        try:
+            DBHelper.delete_all("notes", {"id": note_id, "user_id": uid})
+            return {"status": 1, "message": "Note deleted successfully"}
+        except Exception as e:
+            return {"status": 0, "message": "Failed to delete note", "error": str(e)}

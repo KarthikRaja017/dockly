@@ -11,26 +11,12 @@ const { Item: FormItem } = Form;
 const { Option } = Select;
 
 // Define schema for dynamic insurance types
-const insuranceSchemas: { [key: string]: { label: string } } = {
-    Health: { label: 'Health Insurance' },
-    Auto: { label: 'Auto Insurance' },
-    Home: { label: 'Home Insurance' },
-    Life: { label: 'Life Insurance' }
+const insuranceSchemas = {
+    Health: 'Health Insurance',
+    Auto: 'Auto Insurance',
+    Home: 'Home Insurance',
+    Life: 'Life Insurance'
 };
-// const insuranceSchemas: {
-//     Health: {
-//         label: string;
-//     };
-//     Auto: {
-//         label: string;
-//     };
-//     Home: {
-//         label: string;
-//     };
-//     Life: {
-//         label: string;
-//     };
-// }
 
 // Types
 interface InsuranceDetail {
@@ -72,9 +58,7 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
 
     const PRIMARY_COLOR = '#1890ff';
     const SHADOW_COLOR = 'rgba(0, 0, 0, 0.1)';
-
-    // Replace with actual user_id from auth context
-    // const userId = 'test_user_id'; // TODO: Replace with actual user ID from auth context
+    const BORDER_RADIUS = '8px';
 
     // Fetch insurance policies on mount
     useEffect(() => {
@@ -82,7 +66,7 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
             setLoading(true);
             try {
                 const response = await getInsurance({});
-                console.log('Fetched insurance response:', response); // Debug log
+                console.log('Fetched insurance response:', response);
                 if (response.status === 1) {
                     const insurances = response.payload.insurances || [];
                     setInsuranceData(insurances.map((item: Insurance) => ({
@@ -90,7 +74,7 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
                         color: PRIMARY_COLOR,
                         details: [
                             { key: 'Policy Number', value: item.meta },
-                            { key: 'Insurance Type', value: insuranceSchemas[item.type]?.label || item.type },
+                            { key: 'Insurance Type', value: insuranceSchemas[item.type as keyof typeof insuranceSchemas] || item.type },
                             { key: 'Duration', value: `${item.years} years` },
                             { key: 'Payment Amount', value: `$${item.payment}` },
                             { key: 'Renewal Date', value: item.renewalDate || 'N/A' },
@@ -161,7 +145,6 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
                 return;
             }
             const insurancePayload = {
-                // user_id: userId,
                 name: values.insuranceName,
                 meta: values.insuranceMeta,
                 type: values.insuranceType,
@@ -186,7 +169,7 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
                                     is_active: response.payload.insurance.is_active,
                                     details: [
                                         { key: 'Policy Number', value: values.insuranceMeta },
-                                        { key: 'Insurance Type', value: insuranceSchemas[values.insuranceType]?.label || values.insuranceType },
+                                        { key: 'Insurance Type', value: insuranceSchemas[values.insuranceType as keyof typeof insuranceSchemas] || values.insuranceType },
                                         { key: 'Duration', value: `${values.years} years` },
                                         { key: 'Payment Amount', value: `$${values.payment}` },
                                         { key: 'Renewal Date', value: values.renewalDate ? moment(values.renewalDate).format('YYYY-MM-DD') : 'N/A' },
@@ -207,7 +190,7 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
                         color: PRIMARY_COLOR,
                         details: [
                             { key: 'Policy Number', value: values.insuranceMeta },
-                            { key: 'Insurance Type', value: insuranceSchemas[values.insuranceType]?.label || values.insuranceType },
+                            { key: 'Insurance Type', value: insuranceSchemas[values.insuranceType as keyof typeof insuranceSchemas] || values.insuranceType },
                             { key: 'Duration', value: `${values.years} years` },
                             { key: 'Payment Amount', value: `$${values.payment}` },
                             { key: 'Renewal Date', value: values.renewalDate ? moment(values.renewalDate).format('YYYY-MM-DD') : 'N/A' },
@@ -248,6 +231,13 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
                     console.error('Error deactivating policy:', error);
                 }
             },
+            okButtonProps: {
+                type: 'primary',
+                style: { borderRadius: BORDER_RADIUS }
+            },
+            cancelButtonProps: {
+                style: { borderRadius: BORDER_RADIUS }
+            }
         });
     };
 
@@ -289,7 +279,14 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
                 onCancel={onCancel}
                 width={isMobile ? '90%' : 600}
                 destroyOnClose
-                style={{ borderRadius: '8px' }}
+                style={{ borderRadius: BORDER_RADIUS }}
+                okButtonProps={{
+                    type: 'primary',
+                    style: { borderRadius: BORDER_RADIUS }
+                }}
+                cancelButtonProps={{
+                    style: { borderRadius: BORDER_RADIUS }
+                }}
             >
                 <Form form={form} layout="vertical" preserve={false}>
                     <FormItem
@@ -297,24 +294,24 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
                         label="Policy Holder Name"
                         rules={[{ required: true, message: 'Please enter policy name!' }]}
                     >
-                        <Input placeholder="Enter policy name" style={{ borderRadius: '4px' }} />
+                        <Input placeholder="Enter policy name" style={{ borderRadius: BORDER_RADIUS }} />
                     </FormItem>
                     <FormItem
                         name="insuranceMeta"
                         label="Policy Number"
                         rules={[{ required: true, message: 'Please enter policy number!' }]}
                     >
-                        <Input placeholder="e.g., POL-123456" style={{ borderRadius: '4px' }} />
+                        <Input placeholder="e.g., POL-123456" style={{ borderRadius: BORDER_RADIUS }} />
                     </FormItem>
                     <FormItem
                         name="insuranceType"
                         label="Insurance Type"
                         rules={[{ required: true, message: 'Please select insurance type!' }]}
                     >
-                        <Select placeholder="Select type" style={{ borderRadius: '4px' }}>
-                            {Object.keys(insuranceSchemas).map(key => (
+                        <Select placeholder="Select type" style={{ borderRadius: BORDER_RADIUS }}>
+                            {Object.entries(insuranceSchemas).map(([key, value]) => (
                                 <Option key={key} value={key}>
-                                    {insuranceSchemas[key].label}
+                                    {value}
                                 </Option>
                             ))}
                         </Select>
@@ -324,7 +321,7 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
                         label="Duration (Years)"
                         rules={[{ required: true, message: 'Please select duration!' }]}
                     >
-                        <Select placeholder="Select duration" style={{ borderRadius: '4px' }}>
+                        <Select placeholder="Select duration" style={{ borderRadius: BORDER_RADIUS }}>
                             {[...Array(10)].map((_, i) => (
                                 <Option key={i + 1} value={i + 1}>
                                     {i + 1} year{i ? 's' : ''}
@@ -338,7 +335,7 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
                         rules={[{ required: true, message: 'Please enter payment amount!' }]}
                     >
                         <InputNumber
-                            style={{ width: '100%', borderRadius: '4px' }}
+                            style={{ width: '100%', borderRadius: BORDER_RADIUS }}
                             min={0}
                             step={100}
                             placeholder="e.g., 1250"
@@ -362,10 +359,11 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
                         ]}
                     >
                         <DatePicker
-                            style={{ width: '100%', borderRadius: '4px' }}
+                            style={{ width: '100%', borderRadius: BORDER_RADIUS }}
                             format="YYYY-MM-DD"
                             onChange={(value) => {
-                                if (value && !value.isValid()) {
+                                // Convert Dayjs to string before passing to moment
+                                if (value && !moment(value.format('YYYY-MM-DD'), 'YYYY-MM-DD').isValid()) {
                                     console.warn('Invalid date selected:', value);
                                     form.setFieldsValue({ renewalDate: null });
                                 }
@@ -380,34 +378,33 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
     return (
         <Card
             title={
-                <span>
-                    <span style={{ marginRight: '8px' }}>🛡️</span> Insurance Policies
-                </span>
+                <Space>
+                    <span style={{ fontSize: isMobile ? '16px' : '20px' }}>🛡️ Insurance Policies</span>
+                </Space>
             }
             extra={
                 <Button
+                    type="primary"
                     icon={<PlusOutlined />}
                     onClick={() => openModal('add')}
                     style={{
-                        backgroundColor: PRIMARY_COLOR,
-                        color: '#fff',
-                        borderRadius: '4px',
-                        border: 'none',
-                        padding: '0 16px',
-                        height: '32px',
+                        borderRadius: BORDER_RADIUS,
+                        padding: isMobile ? '0 12px' : '0 16px',
+                        height: isMobile ? '36px' : '40px',
                     }}
                 >
                     Add Insurance
                 </Button>
             }
             style={{
-                borderRadius: '10px',
-                boxShadow: `0 2px 8px ${SHADOW_COLOR}`,
-                marginBottom: '16px',
+                borderRadius: BORDER_RADIUS,
+                boxShadow: `0 4px 12px ${SHADOW_COLOR}`,
+                // margin: isMobile ? '8px' : '16px',
                 width: '100%',
                 border: '1px solid #d9d9d9',
+                minHeight: '300px',
             }}
-            styles={{ body: { padding: '16px' } }}
+            styles={{ body: { padding: isMobile ? '12px' : '16px' } }}
         >
             <List
                 loading={loading}
@@ -418,41 +415,61 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
                         actions={[
                             <Button
                                 key="view"
-                                size="small"
+                                type="primary"
+                                icon={<EyeOutlined />}
                                 onClick={() => openModal('view', item)}
                                 style={{
-                                    color: PRIMARY_COLOR,
-                                    borderColor: PRIMARY_COLOR,
-                                    backgroundColor: 'transparent',
-                                    borderRadius: '4px',
-                                    padding: '0 8px',
+                                    borderRadius: BORDER_RADIUS,
+                                    padding: '0 12px',
+                                    height: '32px',
                                 }}
                             >
-                                <EyeOutlined /> View
+                                View
                             </Button>,
                         ]}
-                        style={{ borderBottom: '1px solid #f0f0f0', padding: isMobile ? '8px 4px' : '8px 0' }}
+                        style={{
+                            borderBottom: '1px solid #f0f0f0',
+                            padding: isMobile ? '8px 4px' : '12px 8px',
+                            background: '#fff',
+                            borderRadius: BORDER_RADIUS,
+                            marginBottom: '8px',
+                        }}
                     >
                         <List.Item.Meta
                             avatar={
-                                <Avatar style={{ backgroundColor: item.color, borderRadius: '50%' }}>
+                                <Avatar
+                                    style={{
+                                        backgroundColor: item.color,
+                                        borderRadius: '50%',
+                                        width: isMobile ? '40px' : '48px',
+                                        height: isMobile ? '40px' : '48px',
+                                        lineHeight: isMobile ? '40px' : '48px',
+                                        fontSize: isMobile ? '18px' : '20px',
+                                    }}
+                                >
                                     {item.name[0]}
                                 </Avatar>
                             }
-                            title={<Text strong>{item.name}</Text>}
+                            title={<Text strong style={{ fontSize: isMobile ? '14px' : '16px' }}>{item.name}</Text>}
                             description={
-                                <Text>
-                                    {item.meta} • {insuranceSchemas[item.type]?.label || item.type} • {item.years} year
-                                    {item.years > 1 ? 's' : ''} • Renewal: {item.renewalDate || 'N/A'}
-                                </Text>
+                                <Space direction="vertical" size={4}>
+                                    <Text style={{ fontSize: isMobile ? '12px' : '14px' }}>
+                                        {item.meta} • {insuranceSchemas[item.type as keyof typeof insuranceSchemas] || item.type}
+                                    </Text>
+                                    <Text style={{ fontSize: isMobile ? '12px' : '14px' }}>
+                                        {item.years} year{item.years > 1 ? 's' : ''} • Renewal: {item.renewalDate || 'N/A'}
+                                    </Text>
+                                </Space>
                             }
                         />
                     </List.Item>
                 )}
             />
             {insuranceData.length === 0 && !loading && (
-                <div style={{ textAlign: 'center', marginTop: '16px' }}>
-                    <Text type="secondary">No insurance policies found. Add a policy to get started.</Text>
+                <div style={{ textAlign: 'center', margin: '24px 0' }}>
+                    <Text type="secondary" style={{ fontSize: isMobile ? '14px' : '16px' }}>
+                        No insurance policies found. Add a policy to get started.
+                    </Text>
                 </div>
             )}
             <FormModal
@@ -482,36 +499,34 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
             <Modal
                 title={
                     <Space>
-                        <Text strong>{viewing?.name || 'Insurance Details'}</Text>
+                        <Text strong style={{ fontSize: isMobile ? '16px' : '18px' }}>{viewing?.name || 'Insurance Details'}</Text>
                         <Button
-                            size="small"
-                            style={{
-                                color: '#fff',
-                                backgroundColor: PRIMARY_COLOR,
-                                borderColor: PRIMARY_COLOR,
-                                borderRadius: '4px',
-                                padding: '0 8px',
-                                marginLeft: '250px'
-                            }}
+                            type="primary"
+                            icon={<EditOutlined />}
                             onClick={() => {
                                 openModal('edit', viewing!);
                                 setModals({ add: false, edit: true, view: false });
                             }}
+                            style={{
+                                borderRadius: BORDER_RADIUS,
+                                padding: '0 12px',
+                                height: '32px',
+                            }}
                         >
-                            <EditOutlined /> Edit
+                            Edit
                         </Button>
                         <Button
-                            size="small"
-                            style={{
-                                color: '#fff',
-                                backgroundColor: '#ff4d4f',
-                                borderColor: '#ff4d4f',
-                                borderRadius: '4px',
-                                padding: '0 8px',
-                            }}
+                            type="primary"
+                            danger
+                            icon={<DeleteOutlined />}
                             onClick={() => viewing && handleDelete(viewing.id)}
+                            style={{
+                                borderRadius: BORDER_RADIUS,
+                                padding: '0 12px',
+                                height: '32px',
+                            }}
                         >
-                            <DeleteOutlined /> Delete
+                            Delete
                         </Button>
                     </Space>
                 }
@@ -519,35 +534,26 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
                 onCancel={() => setModals({ ...modals, view: false })}
                 footer={
                     <Button
+                        type="primary"
                         onClick={() => setModals({ ...modals, view: false })}
-                        style={{ borderRadius: '4px' }}
+                        style={{ borderRadius: BORDER_RADIUS }}
                     >
                         Close
                     </Button>
                 }
                 width={isMobile ? '90%' : 600}
                 destroyOnClose
-                style={{ borderRadius: '8px' }}
+                style={{ borderRadius: BORDER_RADIUS }}
             >
                 {viewing && (
-                    <div style={{ lineHeight: '2' }}>
-                        <Text strong>Policy Number: </Text>
-                        <Text>{viewing.meta}</Text>
-                        <br />
-                        <Text strong>Insurance Type: </Text>
-                        <Text>{insuranceSchemas[viewing.type]?.label || viewing.type}</Text>
-                        <br />
-                        <Text strong>Duration: </Text>
-                        <Text>
-                            {viewing.years} year{viewing.years > 1 ? 's' : ''}
-                        </Text>
-                        <br />
-                        <Text strong>Payment Amount: </Text>
-                        <Text>${viewing.payment}</Text>
-                        <br />
-                        <Text strong>Renewal Date: </Text>
-                        <Text>{viewing.renewalDate || 'N/A'}</Text>
-                    </div>
+                    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                        {viewing.details?.map((detail, index) => (
+                            <div key={index}>
+                                <Text strong style={{ fontSize: isMobile ? '14px' : '16px' }}>{detail.key}: </Text>
+                                <Text style={{ fontSize: isMobile ? '14px' : '16px' }}>{detail.value}</Text>
+                            </div>
+                        ))}
+                    </Space>
                 )}
             </Modal>
         </Card>

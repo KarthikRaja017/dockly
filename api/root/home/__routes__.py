@@ -24,9 +24,15 @@ home_api.add_resource(AddProperty, "/add/property")
 home_api.add_resource(GetProperties, "/get/property")
 home_api.add_resource(UpdateProperty, "/property/update/<string:property_id>")
 # home_api.add_resource(DeleteProperty, "/property/delete/<string:property_id>")
+home_api.add_resource(AddMortgage, "/add/mortgage")
+home_api.add_resource(GetMortgages, "/get/mortgage")
+home_api.add_resource(UpdateMortgage, "/update/mortgage/<string:mortgage_id>")
+home_api.add_resource(DeleteMortgage, "/delete/mortgage/<string:mortgage_id>")
 
-home_api.add_resource(GetLoansAndMortgages, "/get/loans_and_mortgages")
-
+home_api.add_resource(AddPlannerNotes, "/add/planner-notes")
+home_api.add_resource(GetPlannerNotes, "/get/planner-notes")
+home_api.add_resource(UpdatePlannerNotes, "/update/planner-notes")
+home_api.add_resource(DeletePlannerNotes, "/delete/planner-notes")
 
 # from .models import *
 # from . import home_api

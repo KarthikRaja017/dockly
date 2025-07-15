@@ -227,11 +227,12 @@ const FamilyMembersCard: React.FC<FamilyMembersCardProps> = ({
                 onCancel={() => setIsViewAllModalVisible(false)}
                 footer={null}
                 width={isMobile ? '90%' : '600px'}
-                bodyStyle={{
-                    padding: 0,
-                    maxHeight: (familyMembers?.length ?? 0) > 5 ? '400px' : 'auto',
-                    overflowY: (familyMembers?.length ?? 0) > 5 ? 'auto' : 'visible',
-
+                styles={{
+                    body: {
+                        padding: 0,
+                        maxHeight: (familyMembers?.length ?? 0) > 5 ? '400px' : 'auto',
+                        overflowY: (familyMembers?.length ?? 0) > 5 ? 'auto' : 'visible',
+                    }
                 }}
             >
                 <div
