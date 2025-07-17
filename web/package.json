@@ -54,5 +54,8 @@
     "eslint": "latest",
     "eslint-config-next": "latest",
     "typescript": "latest"
+  },
+  "resolutions": {
+    "rc-util": "^5.35.0"
   }
 }

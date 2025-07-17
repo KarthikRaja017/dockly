@@ -56,7 +56,7 @@ const FinanceTabs = () => {
           </div>
           <div style={{ display: "flex" }}>
             <div style={{ width: 950 }}>
-              <MonthlyBudget uid={""} />
+              <MonthlyBudget />
             </div>
             <GoalsCard uid={""} />
           </div>
@@ -95,7 +95,7 @@ const FinanceTabs = () => {
       key: "4",
       children: (
         <div>
-          <MonthlyBudget uid={""} />
+          <MonthlyBudget />
         </div>
       ),
     },
