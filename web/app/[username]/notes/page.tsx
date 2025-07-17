@@ -1,4 +1,5 @@
-'use client';
+
+"use client";
 
 import React, { useEffect, useState } from "react";
 import {
@@ -33,7 +34,12 @@ import {
     TagOutlined,
 } from "@ant-design/icons";
 import { useSearchParams } from "next/navigation";
-import { addPlannerNotes, deletePlannerNote, getPlannerNotes, updatePlannerNote } from "../../../services/planner";
+import {
+    addPlannerNotes,
+    deletePlannerNote,
+    getPlannerNotes,
+    updatePlannerNote,
+} from "../../../services/planner";
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
@@ -112,9 +118,7 @@ const FamilyHubComplete = () => {
             createdAt: new Date(2024, 6, 1),
             category: "FINANCE",
         },
-
     ]);
-
 
     const fetchPlannerNotes = async () => {
         try {
@@ -127,14 +131,16 @@ const FamilyHubComplete = () => {
                     createdAt: new Date(note.created_at),
                     category: "PLANNER",
                 }));
-                plannerNotes.sort((a: NoteData, b: NoteData) => b.createdAt.getTime() - a.createdAt.getTime());
+                plannerNotes.sort(
+                    (a: NoteData, b: NoteData) =>
+                        b.createdAt.getTime() - a.createdAt.getTime()
+                );
                 setNotes(plannerNotes);
             }
         } catch (err) {
             console.error("Error fetching planner notes", err);
         }
     };
-
 
     // UI State
     const [activeTab, setActiveTab] = useState("sticky-notes");
@@ -265,7 +271,6 @@ const FamilyHubComplete = () => {
         }
     };
 
-
     const handleNoteModalCancel = () => {
         setIsNoteModalVisible(false);
         form.resetFields();
@@ -321,7 +326,6 @@ const FamilyHubComplete = () => {
             </Menu>
         );
 
-
         return (
             <Card
                 key={note.id}
@@ -345,6 +349,8 @@ const FamilyHubComplete = () => {
             >
                 <div
                     style={{
+                        marginLeft: "40px",
+                        marginTop: "40px",
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "flex-start",
@@ -414,11 +420,12 @@ const FamilyHubComplete = () => {
 
     // Render Note Card
     const renderNoteCard = (note: NoteData) => {
-        const categoryColor =
-            categoryColors[note.category as keyof typeof categoryColors] || {
-                color: "#666",
-                background: "#f5f5f5",
-            };
+        const categoryColor = categoryColors[
+            note.category as keyof typeof categoryColors
+        ] || {
+            color: "#666",
+            background: "#f5f5f5",
+        };
 
         const isPlannerNote = note.category === "PLANNER";
         const updateNote = async (id: string, updates: Partial<NoteData>) => {
@@ -625,6 +632,8 @@ const FamilyHubComplete = () => {
                 minHeight: "100vh",
                 padding: 24,
                 background: "#F5F5F5",
+                paddingRight: 10, // ⬅ remove right padding
+                paddingLeft: 100,
             }}
         >
             <div style={{ maxWidth: 1280, margin: "0 auto" }}>
@@ -637,6 +646,8 @@ const FamilyHubComplete = () => {
                             justifyContent: "center",
                             gap: 12,
                             marginBottom: 16,
+                            marginLeft: 0, // ⬅ align to left
+                            marginRight: "auto", // ⬅ push content to left
                         }}
                     >
                         <HomeOutlined style={{ fontSize: 32, color: "#6366f1" }} />
@@ -923,6 +934,7 @@ const FamilyHubComplete = () => {
                 </div>
             </div>
         </div>
+
     );
 };
 
