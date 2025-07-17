@@ -37,7 +37,7 @@ const SmartInputBox: React.FC<SmartInputBoxProps> = ({
     familyMembers,
     backup
 }) => {
-    console.log("🚀 ~ personColors:............", personColors)
+    // console.log("🚀 ~ personColors:............", personColors)
     const [newEventText, setNewEventText] = useState('');
     const [showMentions, setShowMentions] = useState(false);
     const [cursorPosition, setCursorPosition] = useState(0);
@@ -280,7 +280,7 @@ const SmartInputBox: React.FC<SmartInputBoxProps> = ({
             </div>
 
             {/* Connected Account Section */}
-            <div style={{ marginTop: '12px', display: 'flex', gap: '10px' }}>
+            {/* <div style={{ marginTop: '12px', display: 'flex', gap: '10px' }}>
                 <Text type="secondary" style={{ fontSize: 12, marginTop: 8 }}>
                     Backup Account :
                 </Text>
@@ -328,7 +328,7 @@ const SmartInputBox: React.FC<SmartInputBoxProps> = ({
                         </div>
                     );
                 })}
-            </div>
+            </div> */}
         </div>
     );
 

@@ -1,10 +1,11 @@
 # models.py
 import base64
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from email.message import EmailMessage
 import json
 import re
 import smtplib
+from root.planner.models import create_calendar_event, update_calendar_event
 from root.common import DocklyUsers, HubsEnum, Permissions, Status
 from root.utilis import uniqueId
 from root.users.models import generate_otp, send_otp_email
@@ -1244,16 +1245,36 @@ class AddTask(Resource):
     def post(self, uid, user):
         data = request.get_json(silent=True)
 
+        # Fetch the project title
+        project = DBHelper.find_one(
+            "projects", filters={"project_id": data.get("project_id"), "uid": uid}
+        )
+        if not project:
+            return {"status": 0, "message": "Project not found"}
+
+        title = data.get("title")
+        due_date_str = data.get("due_date")  # Format: 'YYYY-MM-DD'
+
+        # Set up all-day event times
+        event_title = f"{project['title']} - {title}"
+        start_dt = datetime.strptime(due_date_str, "%Y-%m-%d")
+        end_dt = start_dt + timedelta(days=1)  # All-day ends at midnight next day
+
+        # Create Google Calendar event
+        calendar_event_id = create_calendar_event(uid, event_title, start_dt, end_dt)
+
+        # Save task with calendar_event_id
         DBHelper.insert(
             table_name="tasks",
             return_column="uid",
             uid=uid,
             project_id=data.get("project_id"),
-            title=data.get("title"),
-            due_date=data.get("due_date"),
+            title=title,
+            due_date=due_date_str,
             assignee=data.get("assignee"),
             type=data.get("type"),
             completed=data.get("completed", False),
+            calendar_event_id=calendar_event_id,
         )
 
         return {"status": 1, "message": "Task added successfully"}
@@ -1326,7 +1347,10 @@ class UpdateTask(Resource):
         if not task_id:
             return {"status": 0, "message": "Task ID is required"}, 400
 
-        # Update only the provided fields
+        task = DBHelper.find_one("tasks", filters={"task_id": task_id, "uid": uid})
+        if not task:
+            return {"status": 0, "message": "Task not found"}
+
         updates = {
             "title": data.get("title"),
             "due_date": data.get("due_date"),
@@ -1335,10 +1359,48 @@ class UpdateTask(Resource):
             "completed": data.get("completed"),
             "updated_at": datetime.utcnow(),
         }
-
-        # Remove keys with None values to avoid overwriting
         updates = {k: v for k, v in updates.items() if v is not None}
 
+        try:
+            # ───── Get event details ─────
+            new_title = updates.get("title", task["title"])
+            new_due_date_str = updates.get("due_date", task["due_date"])
+            start_dt = datetime.strptime(new_due_date_str, "%Y-%m-%d")
+            end_dt = start_dt + timedelta(days=1)
+
+            project = DBHelper.find_one(
+                "projects", filters={"project_id": task["project_id"], "uid": uid}
+            )
+            event_title = f"{project['title']} - {new_title}"
+
+            calendar_event_id = task.get("calendar_event_id")
+            print("Existing calendar_event_id:", calendar_event_id)
+
+            if calendar_event_id:
+                try:
+                    # ✅ Attempt to update existing event
+                    update_calendar_event(
+                        uid, calendar_event_id, event_title, start_dt, end_dt
+                    )
+                    print("Google Calendar event updated")
+                except Exception as e:
+                    print(
+                        "⚠ Failed to update existing calendar event. Creating new one."
+                    )
+                    # 🔁 If update fails (event might have been deleted), create new event
+                    new_event_id = create_calendar_event(
+                        uid, event_title, start_dt, end_dt
+                    )
+                    updates["calendar_event_id"] = new_event_id
+            else:
+                print("No existing calendar_event_id. Creating new one.")
+                new_event_id = create_calendar_event(uid, event_title, start_dt, end_dt)
+                updates["calendar_event_id"] = new_event_id
+
+        except Exception as e:
+            print("Google Calendar Sync Error:", str(e))
+
+        # Update task in DB
         DBHelper.update_one(
             table_name="tasks",
             filters={"task_id": task_id, "uid": uid},

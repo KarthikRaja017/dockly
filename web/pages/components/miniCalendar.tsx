@@ -2,6 +2,37 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 
+// Professional color palette
+const COLORS = {
+    primary: '#1C1C1E',
+    secondary: '#48484A',
+    accent: '#007AFF',
+    success: '#34C759',
+    warning: '#FF9500',
+    error: '#FF3B30',
+    background: '#F2F2F7',
+    surface: '#FFFFFF',
+    surfaceSecondary: '#F9F9FB',
+    border: '#E5E5EA',
+    borderLight: '#F1F1F5',
+    text: '#1C1C1E',
+    textSecondary: '#6D6D80',
+    textTertiary: '#8E8E93',
+    overlay: 'rgba(0, 0, 0, 0.4)',
+    shadowLight: 'rgba(0, 0, 0, 0.05)',
+    shadowMedium: 'rgba(0, 0, 0, 0.1)',
+    shadowHeavy: 'rgba(0, 0, 0, 0.15)',
+};
+
+const SPACING = {
+    xs: 4,
+    sm: 8,
+    md: 16,
+    lg: 24,
+    xl: 32,
+    xxl: 48,
+};
+
 interface Event {
     id: string;
     title: string;
@@ -58,8 +89,8 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
     };
 
     const monthDays = getMonthDays(displayDate);
-    const totalRows = Math.ceil(monthDays.length / 7); // number of weeks in the month
-    const cellHeight = Math.floor((350 - 100) / totalRows); // 60px reserved for header + weekdays
+    const totalRows = Math.ceil(monthDays.length / 7);
+    const cellHeight = Math.floor((300 - 100) / totalRows);
 
     const navigateMonth = (direction: 'prev' | 'next') => {
         const newDate = new Date(displayDate);
@@ -80,13 +111,13 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
     return (
         <div
             style={{
-                background: 'white',
-                borderRadius: '14px',
-                padding: '12px',
-                border: '1px solid rgba(229, 231, 235, 0.5)',
-                backdropFilter: 'blur(10px)',
+                background: COLORS.surface,
+                borderRadius: '16px',
+                padding: SPACING.md,
+                border: `1px solid ${COLORS.borderLight}`,
+                boxShadow: `0 2px 8px ${COLORS.shadowLight}`,
                 maxWidth: '450px',
-                height: '350px',
+                height: '380px',
                 display: 'flex',
                 flexDirection: 'column',
                 boxSizing: 'border-box',
@@ -97,23 +128,40 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                marginBottom: '8px',
+                marginBottom: SPACING.md,
+                padding: `${SPACING.sm}px 0`,
             }}>
-                <button onClick={() => navigateMonth('prev')} style={navBtnStyle}>
+                <button
+                    onClick={() => navigateMonth('prev')}
+                    style={{
+                        ...navBtnStyle,
+                        background: COLORS.surfaceSecondary,
+                        color: COLORS.textSecondary,
+                        border: `1px solid ${COLORS.borderLight}`,
+                    }}
+                >
                     <ChevronLeft size={14} />
                 </button>
                 <div style={{
-                    fontSize: '14px',
+                    fontSize: '16px',
                     fontWeight: 700,
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px',
-                    color: '#1f2937'
+                    gap: SPACING.sm,
+                    color: COLORS.text,
                 }}>
-                    <Calendar size={14} />
+                    <Calendar size={16} />
                     {displayDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                 </div>
-                <button onClick={() => navigateMonth('next')} style={navBtnStyle}>
+                <button
+                    onClick={() => navigateMonth('next')}
+                    style={{
+                        ...navBtnStyle,
+                        background: COLORS.surfaceSecondary,
+                        color: COLORS.textSecondary,
+                        border: `1px solid ${COLORS.borderLight}`,
+                    }}
+                >
                     <ChevronRight size={14} />
                 </button>
             </div>
@@ -123,13 +171,23 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
                 display: 'grid',
                 gridTemplateColumns: 'repeat(7, 1fr)',
                 fontSize: '11px',
-                color: '#6b7280',
-                marginBottom: '4px',
+                color: COLORS.textSecondary,
+                marginBottom: SPACING.sm,
                 textAlign: 'center',
                 fontWeight: 600,
+                padding: `${SPACING.sm}px 0`,
+                borderBottom: `1px solid ${COLORS.borderLight}`,
             }}>
                 {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-                    <div key={`${d}-${i}`} style={{ color: i === 0 || i === 6 ? '#ef4444' : undefined }}>{d}</div>
+                    <div
+                        key={`${d}-${i}`}
+                        style={{
+                            color: i === 0 || i === 6 ? COLORS.accent : COLORS.textSecondary,
+                            fontWeight: 600,
+                        }}
+                    >
+                        {d}
+                    </div>
                 ))}
             </div>
 
@@ -137,7 +195,7 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
             <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(7, 1fr)',
-                gap: '4px',
+                gap: SPACING.xs,
                 flexGrow: 1,
             }}>
                 {monthDays.map((date, idx) => {
@@ -154,33 +212,34 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
                             style={{
                                 position: 'relative',
                                 height: `${cellHeight}px`,
-                                fontSize: '11px',
+                                fontSize: '12px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                borderRadius: '8px',
+                                borderRadius: '10px',
                                 fontWeight: today ? 700 : 500,
                                 cursor: isCurrent && !past ? 'pointer' : 'default',
                                 background: selected
-                                    ? 'linear-gradient(135deg, #3b82f6, #60a5fa)'
+                                    ? `linear-gradient(135deg, ${COLORS.accent}, ${COLORS.accent}dd)`
                                     : today
-                                        ? '#dbeafe'
+                                        ? `${COLORS.accent}10`
                                         : 'transparent',
                                 color: selected
-                                    ? '#fff'
+                                    ? COLORS.surface
                                     : today
-                                        ? '#1e3a8a'
+                                        ? COLORS.accent
                                         : past
-                                            ? '#9ca3af'
+                                            ? COLORS.textTertiary
                                             : isCurrent
-                                                ? '#111827'
-                                                : '#d1d5db',
-                                border: today && !selected ? '1px solid #3b82f6' : 'none',
+                                                ? COLORS.text
+                                                : COLORS.textTertiary,
+                                border: today && !selected ? `1px solid ${COLORS.accent}` : 'none',
                                 transition: 'all 0.2s ease-in-out',
+                                boxShadow: selected ? `0 2px 8px ${COLORS.accent}30` : 'none',
                             }}
                             onMouseEnter={(e) => {
                                 if (isCurrent && !past && !selected) {
-                                    (e.currentTarget as HTMLDivElement).style.background = '#f3f4f6';
+                                    (e.currentTarget as HTMLDivElement).style.background = COLORS.surfaceSecondary;
                                 }
                             }}
                             onMouseLeave={(e) => {
@@ -193,7 +252,7 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
                             {eventsToday.length > 0 && (
                                 <div style={{
                                     position: 'absolute',
-                                    bottom: '4px',
+                                    bottom: SPACING.xs,
                                     left: '50%',
                                     transform: 'translateX(-50%)',
                                     display: 'flex',
@@ -202,23 +261,23 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
                                     flexWrap: 'wrap',
                                     justifyContent: 'center'
                                 }}>
-                                    {eventsToday.slice(0, 2).map((event, i) => (
+                                    {eventsToday.slice(0, 3).map((event, i) => (
                                         <div key={i} style={{
                                             width: '4px',
                                             height: '4px',
                                             borderRadius: '50%',
-                                            backgroundColor: selected ? '#fff' : event.color,
-                                            boxShadow: `0 0 4px ${event.color}`,
+                                            backgroundColor: selected ? COLORS.surface : (event.color || COLORS.accent),
+                                            boxShadow: `0 0 4px ${event.color || COLORS.accent}30`,
                                             opacity: 0.9
                                         }} />
                                     ))}
-                                    {eventsToday.length > 2 && (
+                                    {eventsToday.length > 3 && (
                                         <div style={{
                                             width: '4px',
                                             height: '4px',
                                             borderRadius: '50%',
-                                            backgroundColor: selected ? '#fff' : '#6b7280',
-                                            opacity: 0.5
+                                            backgroundColor: selected ? COLORS.surface : COLORS.textSecondary,
+                                            opacity: 0.7
                                         }} />
                                     )}
                                 </div>
@@ -232,17 +291,16 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
 };
 
 const navBtnStyle: React.CSSProperties = {
-    padding: '7px 8px',
-    background: '#e0f2fe',
+    padding: '8px 10px',
     border: 'none',
     borderRadius: '8px',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    transition: 'background 0.3s ease-in-out',
-    color: '#0284c7',
-    boxShadow: '0 1px 4px rgba(0,0,0,0.1)'
+    transition: 'all 0.2s ease-in-out',
+    fontSize: '12px',
+    fontWeight: 500,
 };
 
 export default MiniCalendar;

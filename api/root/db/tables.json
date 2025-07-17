@@ -410,7 +410,25 @@
         "description TEXT NOT NULL",
         "calendar_event_id VARCHAR(255)",
         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        "synced_to_google BOOLEAN DEFAULT FALSE",
+        "google_calendar_id VARCHAR(255)",
         "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+      ]
+    },
+    {
+      "table_name": "property_information",
+      "columns": [
+        "pid VARCHAR(255) PRIMARY KEY",
+        "user_id VARCHAR REFERENCES users(uid)",
+        "address VARCHAR(500)",
+        "purchase_date DATE",
+        "purchase_price NUMERIC",
+        "square_footage VARCHAR(50)",
+        "lot_size VARCHAR(50)",
+        "property_tax_id VARCHAR(200)",
+        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        "is_active INT "
       ]
     },
     {
@@ -534,6 +552,7 @@
         "assignee VARCHAR(255)",
         "type VARCHAR(50)",
         "completed BOOLEAN DEFAULT FALSE",
+        "calendar_event_id VARCHAR(255)",
         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
         "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
         "FOREIGN KEY (project_id) REFERENCES projects(project_id) ON DELETE CASCADE",
@@ -550,6 +569,8 @@
         "date TEXT NOT NULL",
         "time TEXT",
         "goal_id VARCHAR(255)",
+        "synced_to_google BOOLEAN DEFAULT FALSE",
+        "google_calendar_id VARCHAR(255)",
         "completed BOOLEAN DEFAULT FALSE",
         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
       ]
@@ -564,6 +585,8 @@
         "time TEXT",
         "priority INT",
         "goal_status INT",
+        "synced_to_google BOOLEAN DEFAULT FALSE",
+        "google_calendar_id VARCHAR(255)",
         "status INT",
         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
       ]

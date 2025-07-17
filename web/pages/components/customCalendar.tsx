@@ -11,6 +11,37 @@ import { addEvent } from "../../services/google";
 import { PRIMARY_COLOR } from "../../app/comman";
 import { useCurrentUser } from "../../app/userContext";
 
+// Professional color palette
+const COLORS = {
+    primary: '#1C1C1E',
+    secondary: '#48484A',
+    accent: '#1890FF',
+    success: '#52C41A',
+    warning: '#FAAD14',
+    error: '#FF4D4F',
+    background: '#FAFAFA',
+    surface: '#FFFFFF',
+    surfaceSecondary: '#F8F9FA',
+    border: '#E8E8E8',
+    borderLight: '#F0F0F0',
+    text: '#1C1C1E',
+    textSecondary: '#8C8C8C',
+    textTertiary: '#BFBFBF',
+    overlay: 'rgba(0, 0, 0, 0.45)',
+    shadowLight: 'rgba(0, 0, 0, 0.04)',
+    shadowMedium: 'rgba(0, 0, 0, 0.08)',
+    shadowHeavy: 'rgba(0, 0, 0, 0.12)',
+};
+
+const SPACING = {
+    xs: 4,
+    sm: 8,
+    md: 16,
+    lg: 24,
+    xl: 32,
+    xxl: 48,
+};
+
 interface Event {
     id: string;
     title: string;
@@ -93,6 +124,7 @@ interface CalendarProps {
     familyMembers?: { name: string; email?: string }[];
     onDateChange?: (date: Date) => void;
     onViewChange?: (view: 'Day' | 'Week' | 'Month' | 'Year') => void;
+    view: "Day" | "Week" | "Month" | "Year"
     currentDate?: Date;
     setCurrentDate?: (date: Date) => void;
     setBackup?: (data: any) => void;
@@ -109,7 +141,7 @@ export const sampleCalendarData: CalendarData = {
             endTime: '11:30 AM',
             date: '2025-01-08',
             person: 'Family',
-            color: '#10B981',
+            color: COLORS.success,
             description: 'Weekly family brunch at the local cafe',
             location: 'Sunny Side Cafe'
         },
@@ -120,112 +152,21 @@ export const sampleCalendarData: CalendarData = {
             endTime: '4:00 PM',
             date: '2025-01-08',
             person: 'Emma',
-            color: '#EC4899',
+            color: COLORS.error,
             description: 'Regular soccer practice session',
             location: 'Central Park Sports Field'
         },
-        {
-            id: '3',
-            title: 'John - Team Meeting',
-            startTime: '9:00 AM',
-            endTime: '10:00 AM',
-            date: '2025-01-09',
-            person: 'John',
-            color: '#3B82F6',
-            description: 'Weekly team sync meeting',
-            location: 'Conference Room A'
-        },
-        {
-            id: '4',
-            title: 'Liam - Piano Lesson',
-            startTime: '3:30 PM',
-            endTime: '4:30 PM',
-            date: '2025-01-09',
-            person: 'Liam',
-            color: '#F59E0B',
-            description: 'Piano lessons with Mrs. Johnson',
-            location: 'Music Academy'
-        },
-        {
-            id: '5',
-            title: 'Sarah - Book Club',
-            startTime: '7:00 PM',
-            endTime: '9:00 PM',
-            date: '2025-01-09',
-            person: 'Sarah',
-            color: '#8B5CF6',
-            description: 'Monthly book club meeting',
-            location: 'City Library'
-        },
-        {
-            id: '6',
-            title: 'Liam - Dentist',
-            startTime: '2:00 PM',
-            endTime: '3:00 PM',
-            date: '2025-01-10',
-            person: 'Liam',
-            color: '#F59E0B',
-            description: 'Regular dental checkup',
-            location: 'Downtown Dental Clinic'
-        },
-        {
-            id: '7',
-            title: 'Emma - Math Tutoring',
-            startTime: '4:00 PM',
-            endTime: '5:00 PM',
-            date: '2025-01-10',
-            person: 'Emma',
-            color: '#EC4899',
-            description: 'Weekly math tutoring session',
-            location: 'Learning Center'
-        },
-        {
-            id: '8',
-            title: 'Family Game Night',
-            startTime: '6:30 PM',
-            endTime: '9:00 PM',
-            date: '2025-01-11',
-            person: 'Family',
-            color: '#10B981',
-            description: 'Weekly family game night with board games',
-            location: 'Home - Living Room'
-        },
     ],
-    meals: [
-        {
-            id: 'm1',
-            name: 'Pancakes & Eggs',
-            emoji: '🥞',
-            date: '2025-01-08',
-        },
-        {
-            id: 'm2',
-            name: 'Pizza Night',
-            emoji: '🍕',
-            date: '2025-01-08',
-        },
-        {
-            id: 'm3',
-            name: 'Spaghetti Bolognese',
-            emoji: '🍝',
-            date: '2025-01-09',
-        },
-        {
-            id: 'm4',
-            name: 'Taco Tuesday',
-            emoji: '🌮',
-            date: '2025-01-10',
-        },
-    ],
+    meals: [],
 };
 
 // Default person colors
 const defaultPersonColors: PersonColors = {
-    John: { color: "#3B82F6", email: "john@example.com" },
-    Sarah: { color: "#8B5CF6", email: "sarah@example.com" },
-    Emma: { color: "#EC4899", email: "emma@example.com" },
-    Liam: { color: "#F59E0B", email: "liam@example.com" },
-    Family: { color: "#10B981", email: "family@example.com" },
+    John: { color: COLORS.accent, email: "john@example.com" },
+    Sarah: { color: COLORS.warning, email: "sarah@example.com" },
+    Emma: { color: COLORS.error, email: "emma@example.com" },
+    Liam: { color: COLORS.success, email: "liam@example.com" },
+    Family: { color: COLORS.secondary, email: "family@example.com" },
 };
 
 const { Text } = Typography;
@@ -247,9 +188,9 @@ const CustomCalendar: React.FC<CalendarProps> = ({
     currentDate,
     setCurrentDate,
     setBackup,
+    view,
     backup
 }) => {
-    const [view, setView] = useState<"Day" | "Week" | "Month" | "Year">("Week");
     const [isNavigating, setIsNavigating] = useState(false);
     const [hoveredEvent, setHoveredEvent] = useState<string | null>(null);
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -275,7 +216,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
     }
 
     const getPersonData = (person: string): PersonData => {
-        return personColors[person] || { color: "#1976d2", email: "" };
+        return personColors[person] || { color: COLORS.accent, email: "" };
     };
 
     const finalData: CalendarData = {
@@ -283,12 +224,10 @@ const CustomCalendar: React.FC<CalendarProps> = ({
         meals: data?.meals || sampleCalendarData.meals
     };
 
-    // Helper function to get all person names
     const getPersonNames = (): string[] => {
         return Object.keys(personColors);
     };
 
-    // Helper function to format date consistently without timezone issues
     const formatDateString = (date: Date): string => {
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -296,14 +235,12 @@ const CustomCalendar: React.FC<CalendarProps> = ({
         return `${year}-${month}-${day}`;
     };
 
-    // Helper function to check if a date is in the past
     const isPastDate = (dateStr: string): boolean => {
         const today = new Date();
         const todayStr = formatDateString(today);
         return dateStr < todayStr;
     };
 
-    // Helper function to check if a time is in the past for today
     const isPastTime = (dateStr: string, timeStr: string): boolean => {
         const today = new Date();
         const todayStr = formatDateString(today);
@@ -319,29 +256,22 @@ const CustomCalendar: React.FC<CalendarProps> = ({
         return timeHour < currentHour || (timeHour === currentHour && timeMinute <= currentMinute);
     };
 
-    // Helper function to get goals for a specific date
     const getGoalsForDate = (date: Date): Goal[] => {
         const dateStr = formatDateString(date);
         return goals.filter(goal => goal.date === dateStr);
     };
 
-    // Helper function to get todos for a specific date
     const getTodosForDate = (date: Date): Todo[] => {
         const dateStr = formatDateString(date);
         return todos.filter(todo => todo.date === dateStr);
     };
 
-    // Helper function to get priority color for todos
     const getPriorityColor = (priority: string) => {
         switch (priority) {
-            case "high":
-                return "#ef4444";
-            case "medium":
-                return "#f59e0b";
-            case "low":
-                return "#10b981";
-            default:
-                return "#6b7280";
+            case "high": return COLORS.error;
+            case "medium": return COLORS.warning;
+            case "low": return COLORS.success;
+            default: return COLORS.textSecondary;
         }
     };
 
@@ -411,7 +341,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({
             if (setCurrentDate) {
                 setCurrentDate(newDate ?? new Date());
             }
-            // Notify parent component about date change
             if (onDateChange) {
                 onDateChange(newDate);
             }
@@ -430,7 +359,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({
     };
 
     const handleTimeSlotClick = (date: string, time: string) => {
-        // Check if the selected date/time is in the past
         if (isPastDate(date)) {
             alert("Cannot schedule events in the past. Please select a future date.");
             return;
@@ -444,12 +372,10 @@ const CustomCalendar: React.FC<CalendarProps> = ({
             return;
         }
 
-        // Convert time to proper format for prefilling
         const startTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
         const endHours = hours + 1;
         const endTime = `${endHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 
-        // Set form values for prefilling
         form.setFieldsValue({
             title: '',
             date: dayjs(date),
@@ -464,7 +390,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({
         setIsModalVisible(true);
     };
 
-    // Modified to show preview instead of edit form
     const handleEventClick = (event: Event) => {
         setPreviewingEvent({
             ...event,
@@ -476,14 +401,30 @@ const CustomCalendar: React.FC<CalendarProps> = ({
         setIsPreviewVisible(true);
     };
 
-    // New function to handle edit from preview
     const handleEditFromPreview = () => {
         if (!previewingEvent) return;
+
+        const convertTo24Hour = (time12h: string): string => {
+            const [time, modifier] = time12h.split(' ');
+            let [hours, minutes] = time.split(':');
+            if (hours === '12') {
+                hours = '00';
+            }
+            if (modifier === 'PM') {
+                hours = (parseInt(hours, 10) + 12).toString();
+            }
+            return `${hours.padStart(2, '0')}:${minutes || '00'}`;
+        };
+
+        const addHour = (time24h: string): string => {
+            const [hours, minutes] = time24h.split(':').map(Number);
+            const newHours = (hours + 1) % 24;
+            return `${newHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+        };
 
         const startTime24 = convertTo24Hour(previewingEvent.startTime);
         const endTime24 = previewingEvent.endTime ? convertTo24Hour(previewingEvent.endTime) : addHour(startTime24);
 
-        // Set form values for editing
         form.setFieldsValue({
             title: previewingEvent.title,
             date: dayjs(previewingEvent.date),
@@ -497,24 +438,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({
         setEditingEvent(previewingEvent);
         setIsPreviewVisible(false);
         setIsModalVisible(true);
-    };
-
-    const convertTo24Hour = (time12h: string): string => {
-        const [time, modifier] = time12h.split(' ');
-        let [hours, minutes] = time.split(':');
-        if (hours === '12') {
-            hours = '00';
-        }
-        if (modifier === 'PM') {
-            hours = (parseInt(hours, 10) + 12).toString();
-        }
-        return `${hours.padStart(2, '0')}:${minutes || '00'}`;
-    };
-
-    const addHour = (time24h: string): string => {
-        const [hours, minutes] = time24h.split(':').map(Number);
-        const newHours = (hours + 1) % 24;
-        return `${newHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
     };
 
     const getConnectedAccount = (userName: string): ConnectedAccount | null => {
@@ -563,7 +486,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             invitee,
                         };
 
-                // Add ID for editing case only
                 if (editingEvent) {
                     (payload as any).id = editingEvent.id;
                 }
@@ -574,7 +496,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
 
                     if (status === 1) {
                         showNotification("Success", message, "success");
-                        if (fetchEvents) fetchEvents(); // refresh calendar
+                        if (fetchEvents) fetchEvents();
                     } else {
                         showNotification("Error", message, "error");
                     }
@@ -596,7 +518,23 @@ const CustomCalendar: React.FC<CalendarProps> = ({
     };
 
     const onEditEvent = (event: any) => {
-        console.log("Editing event:", event);
+        const convertTo24Hour = (time12h: string): string => {
+            if (!time12h) return "00:00";
+            const [time, modifier] = time12h.split(" ");
+            let [hours, minutes] = time.split(":");
+            if (hours === "12") hours = "00";
+            if (modifier === "PM") hours = String(parseInt(hours, 10) + 12);
+            return `${hours.padStart(2, "0")}:${minutes || "00"}`;
+        };
+
+        const eventDate = event.date;
+        const eventStartTime = event.start_time || event.startTime || "12:00 AM";
+        const eventTime24 = convertTo24Hour(eventStartTime);
+
+        if (isPastDate(eventDate) || isPastTime(eventDate, eventTime24)) {
+            showNotification("Info", "You cannot edit past events.", "info");
+            return;
+        }
 
         const isAllDay =
             event.start_time === "12:00 AM" && event.end_time === "11:59 PM";
@@ -672,7 +610,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({
             },
         };
 
-        // Get account info for this event
         const accountInfo = connectedAccounts.find(acc => acc.email === event.source_email);
 
         return (
@@ -716,7 +653,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                 )}
                 <div
                     style={{
-                        color: "#1f2937",
+                        color: COLORS.text,
                         fontWeight: "600",
                         fontSize: sizeStyles[size].fontSize,
                         overflow: "hidden",
@@ -730,7 +667,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                 <div
                     style={{
                         fontSize: size === "small" ? "9px" : "11px",
-                        color: "#6b7280",
+                        color: COLORS.textSecondary,
                         fontWeight: "500",
                         display: "flex",
                         alignItems: "center",
@@ -789,19 +726,19 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                 onClick={onClick}
                 style={{
                     background: isToday
-                        ? "linear-gradient(135deg, #3b82f615, #3b82f608)"
-                        : "linear-gradient(135deg, #ffffff, #f8fafc)",
+                        ? `linear-gradient(135deg, ${COLORS.accent}15, ${COLORS.accent}08)`
+                        : `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`,
                     borderRadius: compactMode ? "12px" : "16px",
                     padding: compactMode ? "12px" : "20px",
                     border: isToday
-                        ? "2px solid #3b82f6"
-                        : "1px solid #e2e8f0",
+                        ? `2px solid ${COLORS.accent}`
+                        : `1px solid ${COLORS.borderLight}`,
                     display: "flex",
                     flexDirection: "column",
                     height: compactMode ? "160px" : "450px",
                     boxShadow: isToday
-                        ? "0 8px 25px rgba(59, 130, 246, 0.15), 0 4px 12px rgba(59, 130, 246, 0.1)"
-                        : "0 4px 12px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.02)",
+                        ? `0 8px 25px ${COLORS.accent}15, 0 4px 12px ${COLORS.accent}10`
+                        : `0 4px 12px ${COLORS.shadowLight}, 0 2px 4px ${COLORS.shadowLight}`,
                     transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                     cursor: isPast ? "not-allowed" : "pointer",
                     position: "relative",
@@ -813,22 +750,22 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     if (isCurrentMonth && !isPast) {
                         e.currentTarget.style.transform = "translateY(-4px) scale(1.02)";
                         e.currentTarget.style.boxShadow = isToday
-                            ? "0 12px 35px rgba(59, 130, 246, 0.25), 0 8px 20px rgba(59, 130, 246, 0.15)"
-                            : "0 12px 35px rgba(0, 0, 0, 0.15), 0 8px 20px rgba(0, 0, 0, 0.08)";
+                            ? `0 12px 35px ${COLORS.accent}25, 0 8px 20px ${COLORS.accent}15`
+                            : `0 12px 35px ${COLORS.shadowMedium}, 0 8px 20px ${COLORS.shadowLight}`;
                     }
                 }}
                 onMouseLeave={(e) => {
                     e.currentTarget.style.transform = "translateY(0) scale(1)";
                     e.currentTarget.style.boxShadow = isToday
-                        ? "0 8px 25px rgba(59, 130, 246, 0.15), 0 4px 12px rgba(59, 130, 246, 0.1)"
-                        : "0 4px 12px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.02)";
+                        ? `0 8px 25px ${COLORS.accent}15, 0 4px 12px ${COLORS.accent}10`
+                        : `0 4px 12px ${COLORS.shadowLight}, 0 2px 4px ${COLORS.shadowLight}`;
                 }}
             >
                 <div
                     style={{
                         fontSize: compactMode ? "16px" : "28px",
                         fontWeight: isToday ? "800" : "700",
-                        color: isToday ? "#3B82F6" : isPast ? "#9ca3af" : "#1f2937",
+                        color: isToday ? COLORS.accent : isPast ? COLORS.textTertiary : COLORS.text,
                         marginBottom: compactMode ? "8px" : "16px",
                         transition: "color 0.2s ease",
                         display: "flex",
@@ -841,7 +778,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                         <div style={{
                             width: "6px",
                             height: "6px",
-                            backgroundColor: "#3B82F6",
+                            backgroundColor: COLORS.accent,
                             borderRadius: "50%",
                             animation: "pulse 2s infinite"
                         }} />
@@ -854,7 +791,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                         marginBottom: showMeals && meals.length > 0 ? "16px" : "0",
                         overflowY: "auto",
                         scrollbarWidth: "thin",
-                        scrollbarColor: "#e5e7eb transparent",
+                        scrollbarColor: `${COLORS.border} transparent`,
                         paddingRight: "4px",
                     }}
                 >
@@ -877,10 +814,10 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                         <div
                             style={{
                                 fontSize: "11px",
-                                color: "#6b7280",
+                                color: COLORS.textSecondary,
                                 padding: "6px 12px",
                                 fontWeight: "600",
-                                backgroundColor: "#f1f5f9",
+                                backgroundColor: COLORS.surfaceSecondary,
                                 borderRadius: "8px",
                                 textAlign: "center",
                                 animation: "pulse 2s infinite",
@@ -890,13 +827,12 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                         </div>
                     )}
 
-                    {/* Show goals for this specific date */}
                     {dayGoals.length > 0 && (
                         <div style={{ marginTop: "8px" }}>
                             <div style={{
                                 fontSize: "10px",
                                 fontWeight: "700",
-                                color: "#10b981",
+                                color: COLORS.success,
                                 marginBottom: "4px",
                                 textTransform: "uppercase",
                                 letterSpacing: "0.5px"
@@ -908,12 +844,12 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                     key={goal.id}
                                     style={{
                                         fontSize: "10px",
-                                        color: "#10b981",
+                                        color: COLORS.success,
                                         padding: "4px 8px",
-                                        backgroundColor: "#ecfdf5",
+                                        backgroundColor: `${COLORS.success}15`,
                                         borderRadius: "6px",
                                         marginBottom: "4px",
-                                        border: "1px solid #bbf7d0",
+                                        border: `1px solid ${COLORS.success}30`,
                                         textDecoration: goal.completed ? "line-through" : "none",
                                         opacity: goal.completed ? 0.7 : 1,
                                     }}
@@ -924,13 +860,12 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                         </div>
                     )}
 
-                    {/* Show todos for this specific date */}
                     {dayTodos.length > 0 && (
                         <div style={{ marginTop: "8px" }}>
                             <div style={{
                                 fontSize: "10px",
                                 fontWeight: "700",
-                                color: "#f59e0b",
+                                color: COLORS.warning,
                                 marginBottom: "4px",
                                 textTransform: "uppercase",
                                 letterSpacing: "0.5px"
@@ -969,7 +904,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
             if (!event.is_all_day) return false;
             const eventStart = new Date(event.start_date || event.date);
             const eventEnd = new Date(event.end_date || event.date);
-            return eventStart <= weekDays[6] && eventEnd >= weekDays[0]; // spans current week
+            return eventStart <= weekDays[6] && eventEnd >= weekDays[0];
         });
 
         return (
@@ -988,8 +923,8 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     style={{
                         display: "grid",
                         gridTemplateColumns: "80px repeat(7, 1fr)",
-                        background: "linear-gradient(135deg, #ffffff, #f8fafc)",
-                        borderBottom: "2px solid #e2e8f0",
+                        background: `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`,
+                        borderBottom: `2px solid ${COLORS.borderLight}`,
                         position: "sticky",
                         top: 0,
                         zIndex: 10,
@@ -1008,15 +943,15 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                 style={{
                                     padding: "16px 12px",
                                     textAlign: "center",
-                                    borderLeft: index > 0 ? "1px solid #e2e8f0" : "none",
+                                    borderLeft: index > 0 ? `1px solid ${COLORS.borderLight}` : "none",
                                     transition: "all 0.2s ease",
-                                    background: isToday ? "linear-gradient(135deg, #3b82f615, #3b82f608)" : "transparent",
+                                    background: isToday ? `linear-gradient(135deg, ${COLORS.accent}15, ${COLORS.accent}08)` : "transparent",
                                     position: "relative",
                                 }}
                             >
                                 <div style={{
                                     fontSize: "12px",
-                                    color: "#6b7280",
+                                    color: COLORS.textSecondary,
                                     marginBottom: "6px",
                                     fontWeight: "700",
                                     textTransform: "uppercase",
@@ -1027,13 +962,13 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                 <div style={{
                                     fontSize: "24px",
                                     fontWeight: "700",
-                                    color: isToday ? "#3b82f6" : "#1f2937",
+                                    color: isToday ? COLORS.accent : COLORS.text,
                                     position: "relative",
                                     marginBottom: "8px"
                                 }}>
                                     {isToday ? (
                                         <div style={{
-                                            background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+                                            background: `linear-gradient(135deg, ${COLORS.accent}, ${COLORS.accent}dd)`,
                                             color: "white",
                                             borderRadius: "50%",
                                             width: "36px",
@@ -1044,7 +979,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                             margin: "0 auto",
                                             fontSize: "16px",
                                             fontWeight: "700",
-                                            boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
+                                            boxShadow: `0 4px 12px ${COLORS.accent}30`,
                                             animation: "pulse 2s infinite"
                                         }}>
                                             {day.getDate()}
@@ -1054,13 +989,12 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                     )}
                                 </div>
 
-                                {/* Show indicators for goals and todos */}
                                 <div style={{ display: "flex", justifyContent: "center", gap: "4px" }}>
                                     {dayGoals.length > 0 && (
                                         <div style={{
                                             width: "6px",
                                             height: "6px",
-                                            backgroundColor: "#10b981",
+                                            backgroundColor: COLORS.success,
                                             borderRadius: "50%",
                                             animation: "pulse 2s infinite"
                                         }} />
@@ -1069,7 +1003,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                         <div style={{
                                             width: "6px",
                                             height: "6px",
-                                            backgroundColor: "#f59e0b",
+                                            backgroundColor: COLORS.warning,
                                             borderRadius: "50%",
                                             animation: "pulse 2s infinite"
                                         }} />
@@ -1085,8 +1019,8 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     style={{
                         display: "grid",
                         gridTemplateColumns: "80px repeat(7, 1fr)",
-                        backgroundColor: "#fff",
-                        borderBottom: "1px solid #e2e8f0",
+                        backgroundColor: COLORS.surface,
+                        borderBottom: `1px solid ${COLORS.borderLight}`,
                         padding: "6px 0",
                     }}
                 >
@@ -1094,7 +1028,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                         fontSize: "12px",
                         fontWeight: 600,
                         textAlign: "center",
-                        color: "#6b7280"
+                        color: COLORS.textSecondary
                     }}>
                         All Day
                     </div>
@@ -1144,7 +1078,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                         flex: 1,
                         overflowY: "auto",
                         scrollbarWidth: "thin",
-                        scrollbarColor: "#cbd5e1 transparent",
+                        scrollbarColor: `${COLORS.border} transparent`,
                     }}
                 >
                     <div
@@ -1156,8 +1090,8 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     >
                         {/* Time Labels */}
                         <div style={{
-                            borderRight: "2px solid #e2e8f0",
-                            background: "linear-gradient(135deg, #f8fafc, #f1f5f9)"
+                            borderRight: `2px solid ${COLORS.borderLight}`,
+                            background: `linear-gradient(135deg, ${COLORS.surfaceSecondary}, ${COLORS.borderLight})`
                         }}>
                             {hours.map((hour) => (
                                 <div
@@ -1170,8 +1104,8 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                         paddingRight: "12px",
                                         paddingTop: "6px",
                                         fontSize: "11px",
-                                        color: "#64748b",
-                                        borderBottom: "1px solid #e2e8f0",
+                                        color: COLORS.textSecondary,
+                                        borderBottom: `1px solid ${COLORS.borderLight}`,
                                         fontWeight: "600"
                                     }}
                                 >
@@ -1189,9 +1123,9 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                 <div
                                     key={dayIndex}
                                     style={{
-                                        borderLeft: dayIndex > 0 ? "1px solid #e2e8f0" : "none",
+                                        borderLeft: dayIndex > 0 ? `1px solid ${COLORS.borderLight}` : "none",
                                         position: "relative",
-                                        background: isToday ? "linear-gradient(180deg, #3b82f605, transparent)" : "transparent",
+                                        background: isToday ? `linear-gradient(180deg, ${COLORS.accent}05, transparent)` : "transparent",
                                         opacity: isPast ? 0.5 : 1
                                     }}
                                 >
@@ -1212,19 +1146,19 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                                 }}
                                                 style={{
                                                     height: "60px",
-                                                    borderBottom: "1px solid #e2e8f0",
+                                                    borderBottom: `1px solid ${COLORS.borderLight}`,
                                                     cursor: isPastSlot ? "not-allowed" : "pointer",
                                                     position: "relative",
                                                     transition: "background-color 0.2s ease",
-                                                    backgroundColor: hour >= 9 && hour <= 17 ? "#ffffff" : "#f8fafc",
+                                                    backgroundColor: hour >= 9 && hour <= 17 ? COLORS.surface : COLORS.surfaceSecondary,
                                                 }}
                                                 onMouseEnter={(e) => {
                                                     if (!isPastSlot) {
-                                                        e.currentTarget.style.backgroundColor = "#e0f2fe";
+                                                        e.currentTarget.style.backgroundColor = `${COLORS.accent}10`;
                                                     }
                                                 }}
                                                 onMouseLeave={(e) => {
-                                                    e.currentTarget.style.backgroundColor = hour >= 9 && hour <= 17 ? "#ffffff" : "#f8fafc";
+                                                    e.currentTarget.style.backgroundColor = hour >= 9 && hour <= 17 ? COLORS.surface : COLORS.surfaceSecondary;
                                                 }}
                                             />
                                         );
@@ -1321,6 +1255,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     opacity: isNavigating ? 0.7 : 1,
                     transform: isNavigating ? "scale(0.98)" : "scale(1)",
                     transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                    padding: SPACING.md,
                 }}
             >
                 <div
@@ -1328,11 +1263,11 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                         display: "grid",
                         gridTemplateColumns: "repeat(7, 1fr)",
                         gap: "2px",
-                        background: "linear-gradient(135deg, #f1f5f9, #e2e8f0)",
+                        background: `linear-gradient(135deg, ${COLORS.surfaceSecondary}, ${COLORS.borderLight})`,
                         borderRadius: "16px",
                         overflow: "hidden",
                         marginBottom: "16px",
-                        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
+                        boxShadow: `0 4px 12px ${COLORS.shadowLight}`,
                     }}
                 >
                     {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day) => (
@@ -1340,10 +1275,10 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             key={day}
                             style={{
                                 padding: "16px",
-                                background: "linear-gradient(135deg, #ffffff, #f8fafc)",
+                                background: `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`,
                                 textAlign: "center",
                                 fontWeight: "700",
-                                color: "#374151",
+                                color: COLORS.text,
                                 fontSize: "13px",
                                 letterSpacing: "0.5px",
                             }}
@@ -1358,7 +1293,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                         flex: 1,
                         overflowY: "auto",
                         scrollbarWidth: "thin",
-                        scrollbarColor: "#cbd5e1 transparent",
+                        scrollbarColor: `${COLORS.border} transparent`,
                         paddingRight: "4px",
                     }}
                 >
@@ -1413,17 +1348,18 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     opacity: isNavigating ? 0.7 : 1,
                     transform: isNavigating ? "translateY(10px)" : "translateY(0)",
                     transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                    padding: SPACING.md,
                 }}
             >
                 <div
                     style={{
                         textAlign: "center",
                         padding: "24px",
-                        background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+                        background: `linear-gradient(135deg, ${COLORS.accent}, ${COLORS.accent}dd)`,
                         color: "white",
                         borderRadius: "20px",
                         marginBottom: "20px",
-                        boxShadow: "0 8px 25px rgba(59, 130, 246, 0.3)",
+                        boxShadow: `0 8px 25px ${COLORS.accent}30`,
                     }}
                 >
                     <div
@@ -1448,16 +1384,15 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                 </div>
 
                 <div style={{ display: "flex", gap: "20px", flex: 1, overflow: "hidden" }}>
-                    {/* Events Section */}
                     <div style={{ flex: 1 }}>
                         <div
                             style={{
-                                background: "linear-gradient(135deg, #ffffff, #f8fafc)",
+                                background: `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`,
                                 borderRadius: "20px",
                                 padding: "24px",
-                                border: "1px solid #e2e8f0",
+                                border: `1px solid ${COLORS.borderLight}`,
                                 height: "100%",
-                                boxShadow: "0 8px 25px rgba(0, 0, 0, 0.08)",
+                                boxShadow: `0 8px 25px ${COLORS.shadowLight}`,
                                 display: "flex",
                                 flexDirection: "column",
                             }}
@@ -1467,7 +1402,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                     margin: "0 0 20px 0",
                                     fontSize: "22px",
                                     fontWeight: "800",
-                                    color: "#1f2937",
+                                    color: COLORS.text,
                                     animation: "slideInLeft 0.5s ease",
                                     display: "flex",
                                     alignItems: "center",
@@ -1481,7 +1416,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                     flex: 1,
                                     overflowY: "auto",
                                     scrollbarWidth: "thin",
-                                    scrollbarColor: "#cbd5e1 transparent",
+                                    scrollbarColor: `${COLORS.border} transparent`,
                                     paddingRight: "8px",
                                 }}
                             >
@@ -1496,7 +1431,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                         <div style={{ fontSize: "48px", marginBottom: "16px" }}>📅</div>
                                         <p
                                             style={{
-                                                color: "#6b7280",
+                                                color: COLORS.textSecondary,
                                                 fontSize: "16px",
                                                 fontWeight: "500",
                                             }}
@@ -1553,8 +1488,9 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                     overflowY: "auto",
                     scrollbarWidth: "thin",
-                    scrollbarColor: "#cbd5e1 transparent",
+                    scrollbarColor: `${COLORS.border} transparent`,
                     paddingRight: "8px",
+                    padding: SPACING.md,
                 }}
             >
                 <div
@@ -1595,22 +1531,22 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             <div
                                 key={index}
                                 style={{
-                                    background: "linear-gradient(135deg, #ffffff, #f8fafc)",
+                                    background: `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`,
                                     borderRadius: "20px",
                                     padding: "20px",
-                                    border: "1px solid #e2e8f0",
-                                    boxShadow: "0 8px 25px rgba(0, 0, 0, 0.08)",
+                                    border: `1px solid ${COLORS.borderLight}`,
+                                    boxShadow: `0 8px 25px ${COLORS.shadowLight}`,
                                     transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                                     animation: `fadeInUp 0.6s ease ${index * 0.05}s both`,
                                     cursor: "pointer",
                                 }}
                                 onMouseEnter={(e) => {
                                     e.currentTarget.style.transform = "translateY(-6px) scale(1.02)";
-                                    e.currentTarget.style.boxShadow = "0 16px 35px rgba(0, 0, 0, 0.15)";
+                                    e.currentTarget.style.boxShadow = `0 16px 35px ${COLORS.shadowMedium}`;
                                 }}
                                 onMouseLeave={(e) => {
                                     e.currentTarget.style.transform = "translateY(0) scale(1)";
-                                    e.currentTarget.style.boxShadow = "0 8px 25px rgba(0, 0, 0, 0.08)";
+                                    e.currentTarget.style.boxShadow = `0 8px 25px ${COLORS.shadowLight}`;
                                 }}
                             >
                                 <div
@@ -1618,7 +1554,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                         textAlign: "center",
                                         fontWeight: "800",
                                         marginBottom: "16px",
-                                        color: "#1f2937",
+                                        color: COLORS.text,
                                         fontSize: "18px",
                                         display: "flex",
                                         alignItems: "center",
@@ -1645,7 +1581,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                             style={{
                                                 textAlign: "center",
                                                 fontWeight: "700",
-                                                color: "#6b7280",
+                                                color: COLORS.textSecondary,
                                                 padding: "6px",
                                             }}
                                         >
@@ -1678,34 +1614,33 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                                     textAlign: "center",
                                                     padding: "6px",
                                                     background: hasContent
-                                                        ? "linear-gradient(135deg, #dbeafe, #bfdbfe)"
+                                                        ? `linear-gradient(135deg, ${COLORS.accent}15, ${COLORS.accent}08)`
                                                         : "transparent",
                                                     borderRadius: "6px",
                                                     opacity: isCurrentMonth ? (isPast ? 0.3 : 1) : 0.4,
                                                     fontWeight: isToday ? "800" : "500",
-                                                    color: isToday ? "#3B82F6" : isPast ? "#9ca3af" : "#1f2937",
+                                                    color: isToday ? COLORS.accent : isPast ? COLORS.textTertiary : COLORS.text,
                                                     cursor: (isCurrentMonth && !isPast) ? "pointer" : "not-allowed",
                                                     transition: "all 0.2s ease",
                                                     position: "relative",
-                                                    border: isToday ? "2px solid #3B82F6" : "1px solid transparent",
+                                                    border: isToday ? `2px solid ${COLORS.accent}` : "1px solid transparent",
                                                 }}
                                                 onMouseEnter={(e) => {
                                                     if (isCurrentMonth && !isPast) {
-                                                        e.currentTarget.style.background = "linear-gradient(135deg, #bfdbfe, #93c5fd)";
+                                                        e.currentTarget.style.background = `linear-gradient(135deg, ${COLORS.accent}25, ${COLORS.accent}15)`;
                                                         e.currentTarget.style.transform = "scale(1.15)";
                                                     }
                                                 }}
                                                 onMouseLeave={(e) => {
                                                     if (isCurrentMonth && !isPast) {
                                                         e.currentTarget.style.background = hasContent
-                                                            ? "linear-gradient(135deg, #dbeafe, #bfdbfe)"
+                                                            ? `linear-gradient(135deg, ${COLORS.accent}15, ${COLORS.accent}08)`
                                                             : "transparent";
                                                         e.currentTarget.style.transform = "scale(1)";
                                                     }
                                                 }}
                                             >
                                                 {day.getDate()}
-                                                {/* Indicators for different types of content */}
                                                 <div style={{
                                                     position: "absolute",
                                                     top: "2px",
@@ -1718,7 +1653,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                                             style={{
                                                                 width: "4px",
                                                                 height: "4px",
-                                                                backgroundColor: "#3B82F6",
+                                                                backgroundColor: COLORS.accent,
                                                                 borderRadius: "50%",
                                                                 animation: "pulse 2s infinite",
                                                             }}
@@ -1729,7 +1664,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                                             style={{
                                                                 width: "4px",
                                                                 height: "4px",
-                                                                backgroundColor: "#10b981",
+                                                                backgroundColor: COLORS.success,
                                                                 borderRadius: "50%",
                                                                 animation: "pulse 2s infinite",
                                                             }}
@@ -1740,7 +1675,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                                             style={{
                                                                 width: "4px",
                                                                 height: "4px",
-                                                                backgroundColor: "#f59e0b",
+                                                                backgroundColor: COLORS.warning,
                                                                 borderRadius: "50%",
                                                                 animation: "pulse 2s infinite",
                                                             }}
@@ -1757,11 +1692,11 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                         <div
                                             style={{
                                                 fontSize: "12px",
-                                                color: "#6b7280",
+                                                color: COLORS.textSecondary,
                                                 textAlign: "center",
                                                 fontWeight: "600",
                                                 padding: "6px 12px",
-                                                background: "linear-gradient(135deg, #dbeafe, #bfdbfe)",
+                                                background: `linear-gradient(135deg, ${COLORS.accent}15, ${COLORS.accent}08)`,
                                                 borderRadius: "6px",
                                                 display: "flex",
                                                 alignItems: "center",
@@ -1776,11 +1711,11 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                         <div
                                             style={{
                                                 fontSize: "12px",
-                                                color: "#6b7280",
+                                                color: COLORS.textSecondary,
                                                 textAlign: "center",
                                                 fontWeight: "600",
                                                 padding: "6px 12px",
-                                                background: "linear-gradient(135deg, #ecfdf5, #d1fae5)",
+                                                background: `linear-gradient(135deg, ${COLORS.success}15, ${COLORS.success}08)`,
                                                 borderRadius: "6px",
                                                 display: "flex",
                                                 alignItems: "center",
@@ -1795,11 +1730,11 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                         <div
                                             style={{
                                                 fontSize: "12px",
-                                                color: "#6b7280",
+                                                color: COLORS.textSecondary,
                                                 textAlign: "center",
                                                 fontWeight: "600",
                                                 padding: "6px 12px",
-                                                background: "linear-gradient(135deg, #fef3c7, #fde68a)",
+                                                background: `linear-gradient(135deg, ${COLORS.warning}15, ${COLORS.warning}08)`,
                                                 borderRadius: "6px",
                                                 display: "flex",
                                                 alignItems: "center",
@@ -1823,7 +1758,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({
 
     const viewOptions = ["Day", "Week", "Month", "Year"] as const;
 
-    // Enhanced Modal Components
     const SimpleModal = ({ isVisible, onClose, children }: {
         isVisible: boolean;
         onClose: () => void;
@@ -1839,7 +1773,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    backgroundColor: "rgba(0, 0, 0, 0.6)",
+                    backgroundColor: COLORS.overlay,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -1851,15 +1785,15 @@ const CustomCalendar: React.FC<CalendarProps> = ({
             >
                 <div
                     style={{
-                        background: "linear-gradient(135deg, #ffffff, #f8fafc)",
+                        background: `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`,
                         borderRadius: "20px",
                         padding: "32px",
                         maxWidth: "550px",
                         width: "90%",
                         maxHeight: "85vh",
                         overflowY: "auto",
-                        boxShadow: "0 25px 50px rgba(0, 0, 0, 0.25)",
-                        border: "1px solid #e2e8f0",
+                        boxShadow: `0 25px 50px ${COLORS.shadowHeavy}`,
+                        border: `1px solid ${COLORS.borderLight}`,
                         animation: "slideInUp 0.4s ease",
                     }}
                     onClick={(e) => e.stopPropagation()}
@@ -1870,7 +1804,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({
         );
     };
 
-    // Event Preview Modal Component
     const EventPreviewModal = () => {
         if (!isPreviewVisible || !previewingEvent) return null;
 
@@ -1886,8 +1819,8 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             position: "absolute",
                             top: "-8px",
                             right: "-8px",
-                            background: "linear-gradient(135deg, #f1f5f9, #e2e8f0)",
-                            border: "1px solid #d1d5db",
+                            background: `linear-gradient(135deg, ${COLORS.surfaceSecondary}, ${COLORS.borderLight})`,
+                            border: `1px solid ${COLORS.border}`,
                             borderRadius: "50%",
                             width: "32px",
                             height: "32px",
@@ -1898,10 +1831,10 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             transition: "all 0.2s ease"
                         }}
                         onMouseEnter={(e) => {
-                            e.currentTarget.style.background = "linear-gradient(135deg, #e5e7eb, #d1d5db)";
+                            e.currentTarget.style.background = `linear-gradient(135deg, ${COLORS.border}, ${COLORS.borderLight})`;
                         }}
                         onMouseLeave={(e) => {
-                            e.currentTarget.style.background = "linear-gradient(135deg, #f1f5f9, #e2e8f0)";
+                            e.currentTarget.style.background = `linear-gradient(135deg, ${COLORS.surfaceSecondary}, ${COLORS.borderLight})`;
                         }}
                     >
                         <X size={16} />
@@ -1915,15 +1848,24 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                         borderRadius: "16px",
                         border: `2px solid ${previewingEvent.color}30`
                     }}>
-                        <h2 style={{
-                            margin: "0 0 12px 0",
-                            fontSize: "24px",
-                            fontWeight: "800",
-                            color: "#1f2937",
-                            lineHeight: "1.3"
-                        }}>
-                            {previewingEvent.title}
+                        <h2
+                            style={{
+                                fontSize: "20px",
+                                fontWeight: 700,
+                                textAlign: "center",
+                                marginBottom: "12px",
+                                wordWrap: "break-word",
+                                overflowWrap: "break-word",
+                                whiteSpace: "normal",
+                                wordBreak: "break-word",
+                                maxWidth: "100%",
+                                lineHeight: "1.4",
+                                color: COLORS.text,
+                            }}
+                        >
+                            {previewingEvent?.title}
                         </h2>
+
                         <div style={{
                             display: "flex",
                             alignItems: "center",
@@ -1939,15 +1881,14 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     </div>
 
                     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-                        {/* Person Info */}
                         <div style={{
                             display: "flex",
                             alignItems: "center",
                             gap: "12px",
                             padding: "16px",
-                            background: "linear-gradient(135deg, #f8fafc, #f1f5f9)",
+                            background: `linear-gradient(135deg, ${COLORS.surfaceSecondary}, ${COLORS.borderLight})`,
                             borderRadius: "12px",
-                            border: "1px solid #e2e8f0"
+                            border: `1px solid ${COLORS.borderLight}`
                         }}>
                             <div style={{
                                 width: "40px",
@@ -1964,28 +1905,27 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                 {(account?.displayName || account?.email || previewingEvent.person).charAt(0).toUpperCase()}
                             </div>
                             <div>
-                                <div style={{ fontWeight: "600", color: "#1f2937", fontSize: "16px" }}>
+                                <div style={{ fontWeight: "600", color: COLORS.text, fontSize: "16px" }}>
                                     {account?.displayName || account?.email || previewingEvent.person}
                                 </div>
-                                <div style={{ color: "#6b7280", fontSize: "14px" }}>
+                                <div style={{ color: COLORS.textSecondary, fontSize: "14px" }}>
                                     {account?.provider || previewingEvent.provider || "Google"} Account
                                 </div>
                             </div>
                         </div>
 
-                        {/* Date Info */}
                         <div style={{
                             display: "flex",
                             alignItems: "center",
                             gap: "12px",
                             padding: "16px",
-                            background: "linear-gradient(135deg, #f8fafc, #f1f5f9)",
+                            background: `linear-gradient(135deg, ${COLORS.surfaceSecondary}, ${COLORS.borderLight})`,
                             borderRadius: "12px",
-                            border: "1px solid #e2e8f0"
+                            border: `1px solid ${COLORS.borderLight}`
                         }}>
-                            <CalendarIcon size={20} color="#6b7280" />
+                            <CalendarIcon size={20} color={COLORS.textSecondary} />
                             <div>
-                                <div style={{ fontWeight: "600", color: "#1f2937" }}>
+                                <div style={{ fontWeight: "600", color: COLORS.text }}>
                                     {previewingEvent.is_all_day
                                         ? `${new Date(previewingEvent.start_date ?? previewingEvent.date).toLocaleDateString("en-US", {
                                             weekday: "long",
@@ -2012,98 +1952,124 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             </div>
                         </div>
 
-                        {/* Location */}
                         {previewingEvent.location && (
                             <div style={{
                                 display: "flex",
                                 alignItems: "center",
                                 gap: "12px",
                                 padding: "16px",
-                                background: "linear-gradient(135deg, #f8fafc, #f1f5f9)",
+                                background: `linear-gradient(135deg, ${COLORS.surfaceSecondary}, ${COLORS.borderLight})`,
                                 borderRadius: "12px",
-                                border: "1px solid #e2e8f0"
+                                border: `1px solid ${COLORS.borderLight}`
                             }}>
-                                <MapPin size={20} color="#6b7280" />
+                                <MapPin size={20} color={COLORS.textSecondary} />
                                 <div>
-                                    <div style={{ fontWeight: "600", color: "#1f2937" }}>
+                                    <div style={{ fontWeight: "600", color: COLORS.text }}>
                                         {previewingEvent.location}
                                     </div>
                                 </div>
                             </div>
                         )}
 
-                        {/* Description */}
                         {previewingEvent.description && (
                             <div style={{
                                 padding: "16px",
-                                background: "linear-gradient(135deg, #f8fafc, #f1f5f9)",
+                                background: `linear-gradient(135deg, ${COLORS.surfaceSecondary}, ${COLORS.borderLight})`,
                                 borderRadius: "12px",
-                                border: "1px solid #e2e8f0"
+                                border: `1px solid ${COLORS.borderLight}`
                             }}>
-                                <div style={{ fontWeight: "600", color: "#1f2937", marginBottom: "8px" }}>
+                                <div style={{ fontWeight: "600", color: COLORS.text, marginBottom: "8px" }}>
                                     Description
                                 </div>
-                                <div style={{ color: "#6b7280", lineHeight: "1.6" }}>
+                                <div style={{ color: COLORS.textSecondary, lineHeight: "1.6" }}>
                                     {previewingEvent.description}
                                 </div>
                             </div>
                         )}
 
-                        {/* Edit Button */}
-                        <div style={{
-                            display: "flex",
-                            justifyContent: "center",
-                            gap: "16px",
-                            marginTop: "20px",
-                            paddingTop: "20px",
-                            borderTop: "1px solid #e2e8f0"
-                        }}>
-                            <button
-                                onClick={() => {
-                                    onEditEvent(previewingEvent);
-                                    setIsPreviewVisible(false);
-                                }}
-                                style={{
-                                    padding: "12px 24px",
-                                    background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
-                                    color: "white",
-                                    border: "none",
-                                    borderRadius: "12px",
-                                    cursor: "pointer",
-                                    fontSize: "14px",
-                                    fontWeight: "600",
-                                    transition: "all 0.2s ease",
-                                    boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "8px"
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = "linear-gradient(135deg, #1d4ed8, #1e40af)";
-                                    e.currentTarget.style.transform = "translateY(-1px)";
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = "linear-gradient(135deg, #3b82f6, #1d4ed8)";
-                                    e.currentTarget.style.transform = "translateY(0)";
-                                }}
-                            >
-                                <Edit size={16} />
-                                Edit Event
-                            </button>
-                        </div>
+                        {(() => {
+                            const convertTo24Hour = (time12h: string): string => {
+                                const [time, modifier] = time12h.split(' ');
+                                let [hours, minutes] = time.split(':');
+                                if (hours === '12') {
+                                    hours = '00';
+                                }
+                                if (modifier === 'PM') {
+                                    hours = (parseInt(hours, 10) + 12).toString();
+                                }
+                                return `${hours.padStart(2, '0')}:${minutes || '00'}`;
+                            };
+
+                            const isAllDay =
+                                previewingEvent.startTime === "12:00 AM" &&
+                                previewingEvent.endTime === "11:59 PM";
+
+                            const isPastEvent = (() => {
+                                if (isAllDay) {
+                                    const endDateStr = previewingEvent.end_date || previewingEvent.date;
+                                    const endDate = new Date(endDateStr + "T23:59:59");
+                                    const now = new Date();
+                                    return now > endDate;
+                                } else {
+                                    const startTime24 = convertTo24Hour(previewingEvent.startTime);
+                                    return (
+                                        isPastDate(previewingEvent.date) ||
+                                        isPastTime(previewingEvent.date, startTime24)
+                                    );
+                                }
+                            })();
+
+                            if (isPastEvent) return null;
+
+                            return (
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        justifyContent: "center",
+                                        gap: "16px",
+                                        marginTop: "20px",
+                                        paddingTop: "20px",
+                                        borderTop: `1px solid ${COLORS.borderLight}`
+                                    }}
+                                >
+                                    <button
+                                        onClick={() => {
+                                            onEditEvent(previewingEvent);
+                                            setIsPreviewVisible(false);
+                                        }}
+                                        style={{
+                                            padding: "12px 24px",
+                                            background: `linear-gradient(135deg, ${COLORS.accent}, ${COLORS.accent}dd)`,
+                                            color: "white",
+                                            border: "none",
+                                            borderRadius: "12px",
+                                            cursor: "pointer",
+                                            fontSize: "14px",
+                                            fontWeight: "600",
+                                            transition: "all 0.2s ease",
+                                            boxShadow: `0 4px 12px ${COLORS.accent}30`,
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "8px"
+                                        }}
+                                    >
+                                        <Edit size={16} />
+                                        Edit
+                                    </button>
+                                </div>
+                            );
+                        })()}
                     </div>
                 </div>
             </SimpleModal>
         );
     };
 
-    // Get minimum date for inputs (today's date)
     const getMinDate = () => {
         const today = new Date();
         return formatDateString(today);
     };
 
-    // Get minimum time for today
     const getMinTime = () => {
         const now = new Date();
         const hours = now.getHours().toString().padStart(2, '0');
@@ -2116,16 +2082,16 @@ const CustomCalendar: React.FC<CalendarProps> = ({
     }
 
     return (
-        <Card
-            style={{
-                background: "white",
-                minHeight: "100vh",
-                borderRadius: 12,
-                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-                backgroundColor: "white",
-                border: "1px solid rgb(235, 236, 243)",
-            }}
-        >
+        <div style={{
+            background: COLORS.surface,
+            // minHeight: "100vh",
+            height: '100%',
+            borderRadius: 12,
+            boxShadow: `0 1px 3px ${COLORS.shadowLight}`,
+            backgroundColor: COLORS.surface,
+            border: `1px solid ${COLORS.borderLight}`,
+            overflow: 'hidden',
+        }}>
             <style>
                 {`
           @keyframes slideInUp {
@@ -2214,7 +2180,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({
             }
           }
 
-          /* Enhanced Scrollbar Styles */
           ::-webkit-scrollbar {
             width: 8px;
           }
@@ -2224,257 +2189,204 @@ const CustomCalendar: React.FC<CalendarProps> = ({
           }
           
           ::-webkit-scrollbar-thumb {
-            background: linear-gradient(135deg, #cbd5e1, #94a3b8);
+            background: linear-gradient(135deg, ${COLORS.border}, ${COLORS.textTertiary});
             border-radius: 4px;
             transition: background 0.3s ease;
           }
           
           ::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(135deg, #94a3b8, #64748b);
+            background: linear-gradient(135deg, ${COLORS.textTertiary}, ${COLORS.textSecondary});
           }
         `}
             </style>
 
-            {/* Enhanced Header */}
-            <div
-                style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "24px",
-                    flexWrap: "wrap",
-                    gap: "20px",
-                }}
-            >
-                <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-                    <button
-                        onClick={() => { if (setCurrentDate) setCurrentDate(new Date()); }}
-                        style={{
-                            padding: "12px 20px",
-                            background: "linear-gradient(135deg, #ffffff, #f8fafc)",
-                            border: "1px solid #e2e8f0",
-                            borderRadius: "12px",
-                            cursor: "pointer",
-                            fontSize: "14px",
-                            fontWeight: "600",
-                            color: "#374151",
-                            transition: "all 0.3s ease",
-                            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.05)",
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = "linear-gradient(135deg, #f1f5f9, #e2e8f0)";
-                            e.currentTarget.style.transform = "translateY(-2px)";
-                            e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.1)";
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = "linear-gradient(135deg, #ffffff, #f8fafc)";
-                            e.currentTarget.style.transform = "translateY(0)";
-                            e.currentTarget.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.05)";
-                        }}
-                    >
-                        Today
-                    </button>
-                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                        <button
-                            onClick={() => navigateDate("prev")}
-                            style={{
-                                padding: "12px",
-                                background: "linear-gradient(135deg, #ffffff, #f8fafc)",
-                                border: "1px solid #e2e8f0",
-                                borderRadius: "12px",
-                                cursor: "pointer",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                transition: "all 0.3s ease",
-                                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.05)",
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = "linear-gradient(135deg, #f1f5f9, #e2e8f0)";
-                                e.currentTarget.style.transform = "translateY(-2px)";
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = "linear-gradient(135deg, #ffffff, #f8fafc)";
-                                e.currentTarget.style.transform = "translateY(0)";
-                            }}
-                        >
-                            <ChevronLeft size={18} />
-                        </button>
-                        <button
-                            onClick={() => navigateDate("next")}
-                            style={{
-                                padding: "12px",
-                                background: "linear-gradient(135deg, #ffffff, #f8fafc)",
-                                border: "1px solid #e2e8f0",
-                                borderRadius: "12px",
-                                cursor: "pointer",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                transition: "all 0.3s ease",
-                                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.05)",
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = "linear-gradient(135deg, #f1f5f9, #e2e8f0)";
-                                e.currentTarget.style.transform = "translateY(-2px)";
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = "linear-gradient(135deg, #ffffff, #f8fafc)";
-                                e.currentTarget.style.transform = "translateY(0)";
-                            }}
-                        >
-                            <ChevronRight size={18} />
-                        </button>
-                    </div>
-                    <h3 style={{
-                        margin: 0,
-                        color: "#1f2937",
-                        fontSize: "26px",
-                        fontWeight: "700",
+            <div style={{ padding: SPACING.lg }}>
+                {/* Enhanced Header */}
+                <div
+                    style={{
                         display: "flex",
+                        justifyContent: "space-between",
                         alignItems: "center",
-                        gap: "8px",
-                    }}>
-                        <CalendarIcon size={28} />
-                        {view === "Year"
-                            ? (currentDate ?? new Date()).getFullYear()
-                            : formatDate(currentDate ?? new Date())}
-                    </h3>
+                        marginBottom: "24px",
+                        flexWrap: "wrap",
+                        gap: "20px",
+                    }}
+                >
+                    <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+                        <button
+                            onClick={() => { if (setCurrentDate) setCurrentDate(new Date()); }}
+                            style={{
+                                padding: "12px 20px",
+                                background: `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`,
+                                border: `1px solid ${COLORS.borderLight}`,
+                                borderRadius: "12px",
+                                cursor: "pointer",
+                                fontSize: "14px",
+                                fontWeight: "600",
+                                color: COLORS.text,
+                                transition: "all 0.3s ease",
+                                boxShadow: `0 2px 8px ${COLORS.shadowLight}`,
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = `linear-gradient(135deg, ${COLORS.surfaceSecondary}, ${COLORS.borderLight})`;
+                                e.currentTarget.style.transform = "translateY(-2px)";
+                                e.currentTarget.style.boxShadow = `0 4px 12px ${COLORS.shadowMedium}`;
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`;
+                                e.currentTarget.style.transform = "translateY(0)";
+                                e.currentTarget.style.boxShadow = `0 2px 8px ${COLORS.shadowLight}`;
+                            }}
+                        >
+                            Today
+                        </button>
+                        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                            <button
+                                onClick={() => navigateDate("prev")}
+                                style={{
+                                    padding: "12px",
+                                    background: `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`,
+                                    border: `1px solid ${COLORS.borderLight}`,
+                                    borderRadius: "12px",
+                                    cursor: "pointer",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    transition: "all 0.3s ease",
+                                    boxShadow: `0 2px 8px ${COLORS.shadowLight}`,
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = `linear-gradient(135deg, ${COLORS.surfaceSecondary}, ${COLORS.borderLight})`;
+                                    e.currentTarget.style.transform = "translateY(-2px)";
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`;
+                                    e.currentTarget.style.transform = "translateY(0)";
+                                }}
+                            >
+                                <ChevronLeft size={18} />
+                            </button>
+                            <button
+                                onClick={() => navigateDate("next")}
+                                style={{
+                                    padding: "12px",
+                                    background: `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`,
+                                    border: `1px solid ${COLORS.borderLight}`,
+                                    borderRadius: "12px",
+                                    cursor: "pointer",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    transition: "all 0.3s ease",
+                                    boxShadow: `0 2px 8px ${COLORS.shadowLight}`,
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = `linear-gradient(135deg, ${COLORS.surfaceSecondary}, ${COLORS.borderLight})`;
+                                    e.currentTarget.style.transform = "translateY(-2px)";
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`;
+                                    e.currentTarget.style.transform = "translateY(0)";
+                                }}
+                            >
+                                <ChevronRight size={18} />
+                            </button>
+                        </div>
+                        <h3 style={{
+                            margin: 0,
+                            color: COLORS.text,
+                            fontSize: "26px",
+                            fontWeight: "700",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                        }}>
+                            <CalendarIcon size={28} />
+                            {view === "Year"
+                                ? (currentDate ?? new Date()).getFullYear()
+                                : formatDate(currentDate ?? new Date())}
+                        </h3>
+                    </div>
+                    <div style={{ display: "flex", gap: "6px" }}>
+                        <Select
+                            value={view}
+                            onChange={(value) => {
+                                if (onViewChange) {
+                                    onViewChange(value);
+                                }
+                            }}
+                            style={{
+                                width: 180,
+                                borderRadius: 12,
+                                background: `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`,
+                                boxShadow: `0 2px 8px ${COLORS.shadowLight}`,
+                                fontWeight: 600,
+                                fontSize: 14
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = `linear-gradient(135deg, ${COLORS.surfaceSecondary}, ${COLORS.borderLight})`;
+                                e.currentTarget.style.transform = "translateY(-2px)";
+                                e.currentTarget.style.boxShadow = `0 4px 12px ${COLORS.shadowMedium}`;
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`;
+                                e.currentTarget.style.transform = "translateY(0)";
+                                e.currentTarget.style.boxShadow = `0 2px 8px ${COLORS.shadowLight}`;
+                            }}
+                            prefix={<CalendarOutlined />}
+                        >
+                            {viewOptions.map((option) => (
+                                <Option key={option} value={option}>
+                                    {option}
+                                </Option>
+                            ))}
+                        </Select>
+                        <Button
+                            type="primary"
+                            icon={<PlusOutlined />}
+                            onClick={() => setIsModalVisible(true)}
+                            style={{
+                                backgroundColor: COLORS.accent,
+                                borderColor: COLORS.accent,
+                                borderRadius: '8px',
+                            }}
+                        />
+                    </div>
                 </div>
-                <div style={{ display: "flex", gap: "6px" }}>
-                    <Select
-                        value={view}
-                        onChange={(value) => {
-                            setView(value);
-                            // Notify parent component about view change
-                            if (onViewChange) {
-                                onViewChange(value);
-                            }
-                        }}
-                        style={{
-                            width: 180,
-                            borderRadius: 12,
-                            background: 'linear-gradient(135deg, #ffffff, #f8fafc)',
-                            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.05)",
-                            fontWeight: 600,
-                            fontSize: 14
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = "linear-gradient(135deg, #f1f5f9, #e2e8f0)";
-                            e.currentTarget.style.transform = "translateY(-2px)";
-                            e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.1)";
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = "linear-gradient(135deg, #ffffff, #f8fafc)";
-                            e.currentTarget.style.transform = "translateY(0)";
-                            e.currentTarget.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.05)";
-                        }}
-                        prefix={<CalendarOutlined />}
-                    >
-                        {viewOptions.map((option) => (
-                            <Option key={option} value={option}>
-                                {option}
-                            </Option>
-                        ))}
-                    </Select>
-                    <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        onClick={() => setIsModalVisible(true)}
+
+                {/* Enhanced Quick Add Event */}
+                <div style={{ marginTop: '24px' }}>
+                    <SmartInputBox
+                        source={source}
+                        allowMentions={allowMentions}
+                        enableHashMentions={enabledHashmentions}
+                        familyMembers={familyMembers}
+                        personColors={personColors}
+                        setBackup={setBackup}
+                        backup={backup}
                     />
                 </div>
-            </div>
 
-            {/* Enhanced Quick Add Event */}
-            <div style={{ marginTop: '24px' }}>
-                <SmartInputBox
-                    source={source}
-                    allowMentions={allowMentions}
-                    enableHashMentions={enabledHashmentions}
-                    familyMembers={familyMembers}
-                    personColors={personColors}
-                    setBackup={setBackup}
-                    backup={backup}
-                />
+                {/* Enhanced Calendar Views */}
+                <div
+                    style={{
+                        background: `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`,
+                        borderRadius: "20px",
+                        border: `1px solid ${COLORS.borderLight}`,
+                        height: "650px",
+                        display: "flex",
+                        flexDirection: "column",
+                        animation: "fadeInUp 0.6s ease",
+                        boxShadow: `0 8px 25px ${COLORS.shadowLight}`,
+                        overflow: "hidden",
+                    }}
+                >
+                    {view === "Week" && renderWeekView()}
+                    {view === "Month" && renderMonthView()}
+                    {view === "Day" && renderDayView()}
+                    {view === "Year" && renderYearView()}
+                </div>
             </div>
-
-            {/* Enhanced Calendar Views */}
-            <div
-                style={{
-                    background: "linear-gradient(135deg, #ffffff, #f8fafc)",
-                    borderRadius: "20px",
-                    border: "1px solid #e2e8f0",
-                    height: "650px",
-                    display: "flex",
-                    flexDirection: "column",
-                    animation: "fadeInUp 0.6s ease",
-                    boxShadow: "0 8px 25px rgba(0, 0, 0, 0.08)",
-                    overflow: "hidden",
-                }}
-            >
-                {view === "Week" && renderWeekView()}
-                {view === "Month" && renderMonthView()}
-                {view === "Day" && renderDayView()}
-                {view === "Year" && renderYearView()}
-            </div>
-
-            {/* Enhanced Person Legend */}
-            {/* <Card style={{ marginTop: 16 }}>
-                <Space wrap>
-                    <Text strong>Connected Accounts:</Text>
-                    {Object.entries(personColors).map(([userName, personData]) => {
-                        const account = getConnectedAccount(userName) ||
-                            connectedAccounts.find(acc => acc.email === personData.email);
-                        return (
-                            <Popover
-                                key={userName}
-                                content={
-                                    <div style={{ maxWidth: 250 }}>
-                                        <Space direction="vertical" size="small">
-                                            <div>
-                                                <Text strong>{account?.displayName || userName}</Text>
-                                                <br />
-                                                <Text type="secondary">@{userName}</Text>
-                                            </div>
-                                            <Divider style={{ margin: '8px 0' }} />
-                                            <Space>
-                                                <MailOutlined />
-                                                <Text copyable>{personData.email}</Text>
-                                            </Space>
-                                            {account?.provider && (
-                                                <Space>
-                                                    <LinkOutlined />
-                                                    <Tag color="blue">{account.provider}</Tag>
-                                                </Space>
-                                            )}
-                                        </Space>
-                                    </div>
-                                }
-                                title="Account Information"
-                            >
-                                <Tag
-                                    style={{
-                                        cursor: 'pointer',
-                                        padding: '4px 12px',
-                                        border: `1px solid ${personData.color}`,
-                                        borderRadius: '12px',
-                                    }}
-                                >
-                                    <Space>
-                                        <Avatar
-                                            size="small"
-                                            style={{ backgroundColor: personData.color, marginRight: 8 }}
-                                        >
-                                            {(account?.displayName || userName).charAt(0).toUpperCase()}
-                                        </Avatar>
-                                        {account?.displayName || userName}
-                                    </Space>
-                                </Tag>
-                            </Popover>
-                        );
-                    })}
-                </Space>
-            </Card> */}
 
             {/* Event Preview Modal */}
             <EventPreviewModal />
@@ -2497,6 +2409,12 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                 }}
                 okText={editingEvent ? 'Update Event' : 'Create Event'}
                 width={600}
+                okButtonProps={{
+                    style: {
+                        backgroundColor: COLORS.accent,
+                        borderColor: COLORS.accent,
+                    }
+                }}
             >
                 <Form
                     form={form}
@@ -2618,7 +2536,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     </Form.Item>
                 </Form>
             </Modal>
-        </Card>
+        </div>
     );
 };
 
