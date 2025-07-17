@@ -705,6 +705,22 @@
         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
         "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
       ]
+    },
+
+    {
+      "table_name": "finance_goals",
+      "columns": [
+        "id VARCHAR(255) PRIMARY KEY",
+        "user_id VARCHAR(255) REFERENCES users(uid) ON DELETE CASCADE",
+        "name VARCHAR(100)",
+        "goal_status INT",
+        "target_amount NUMERIC",
+        "saved_amount NUMERIC",
+        "deadline DATE",
+        "is_active INT",
+        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+      ]
     }
   ]
 }

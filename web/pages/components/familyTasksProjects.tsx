@@ -33,6 +33,8 @@ import {
     MoreOutlined,
     StarOutlined,
     TeamOutlined,
+    LeftOutlined,
+    RightOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
@@ -148,33 +150,32 @@ const FamilyTasksComponent: React.FC<Props> = ({
         project_id: `template-${i + 1}`,
         title: '',
         description: '',
-        due_date: '',
+        due_date: dayjs().format('YYYY-MM-DD'),
         progress: 0,
         tasks: [],
     }));
 
     const getTemplateTasks = (projectId: string): Task[] => {
-        return [
-            {
-                id: 1,
-                title: '',
-                assignee: 'all',
-                type: 'default',
-                completed: false,
-                due: '',
-            },
-            {
-                id: 2,
-                title: '',
-                assignee: 'all',
-                type: 'default',
-                completed: false,
-                due: '',
-            },
-        ];
+        return Array.from({ length: 3 }, (_, i) => ({
+            id: i + 1,
+            title: '',
+            assignee: 'all',
+            type: 'default',
+            completed: false,
+            due: dayjs().format('MMM D'), // optional: make the task more realistic with today's date
+        }));
     };
 
+
     const displayedProjects = [...filledProjects, ...(showTemplateProjects ? templateProjects : [])];
+    const [currentPage, setCurrentPage] = useState(0);
+    const projectsPerPage = 2;
+    const totalPages = Math.ceil(displayedProjects.length / projectsPerPage);
+    const paginatedProjects = displayedProjects.slice(
+        currentPage * projectsPerPage,
+        currentPage * projectsPerPage + projectsPerPage
+    );
+
 
     const getPriorityIcon = (priority: string) => {
         switch (priority) {
@@ -288,290 +289,312 @@ const FamilyTasksComponent: React.FC<Props> = ({
                 />
             ) : (
                 <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-                    gap: SPACING.lg,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: SPACING.md,
                 }}>
-                    {displayedProjects.map((proj) => {
-                        const tasksToDisplay = proj.title ? proj.tasks : getTemplateTasks(proj.project_id);
-                        const status = getStatusBadge(proj.progress);
-                        const completedTasks = tasksToDisplay.filter(t => t.completed).length;
-                        const totalTasks = tasksToDisplay.length;
+                    <Button
+                        icon={<LeftOutlined />}
+                        disabled={currentPage === 0}
+                        onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+                        style={{
+                            borderRadius: '50%',
+                            backgroundColor: COLORS.surface,
+                            boxShadow: `0 1px 4px ${COLORS.shadowMedium}`,
+                            border: `1px solid ${COLORS.borderLight}`,
+                        }}
+                    />
 
-                        return (
-                            <Card
-                                key={proj.project_id}
-                                style={{
-                                    background: COLORS.surface,
-                                    borderRadius: '14px',
-                                    border: `1px solid ${COLORS.borderLight}`,
-                                    boxShadow: `0 2px 8px ${COLORS.shadowLight}`,
-                                    transition: 'all 0.3s ease',
-                                    cursor: proj.title ? 'default' : 'pointer',
-                                }}
-                                bodyStyle={{ padding: SPACING.md }}
-                                hoverable={!proj.title}
-                                onClick={() => !proj.title && setModalVisible(true)}
-                            >
-                                <div style={{ marginBottom: SPACING.md }}>
-                                    <div style={{
-                                        display: 'flex',
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(2, 1fr)',
+                        gap: SPACING.lg,
+                        flex: 1,
+                    }}>
+                        {paginatedProjects.map((proj) => {
+                            const isTemplate = !proj.title;
+                            const isEmptyRealProject = proj.title && proj.tasks.length === 0;
+                            const tasksToDisplay = isTemplate || isEmptyRealProject
+                                ? getTemplateTasks(proj.project_id)
+                                : proj.tasks;
+                            const status = getStatusBadge(proj.progress);
+                            const completedTasks = tasksToDisplay.filter(t => t.completed).length;
+                            const totalTasks = tasksToDisplay.length;
+
+                            return (
+                                <Card
+                                    key={proj.project_id}
+                                    style={{
+                                        background: COLORS.surface,
+                                        borderRadius: '14px',
+                                        border: `1px solid ${COLORS.borderLight}`,
+                                        boxShadow: `0 2px 8px ${COLORS.shadowLight}`,
+                                        transition: 'all 0.3s ease',
+                                        cursor: proj.title ? 'default' : 'pointer',
+                                        height: '365px',            // 👈 Set fixed height
+                                        display: 'flex',            // 👈 These help with consistent layout
+                                        flexDirection: 'column',
                                         justifyContent: 'space-between',
-                                        alignItems: 'flex-start',
-                                        marginBottom: SPACING.sm,
-                                    }}>
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.sm }}>
-                                                <Title level={4} style={{
-                                                    margin: 0,
-                                                    color: proj.title ? COLORS.text : COLORS.textSecondary,
-                                                    fontStyle: proj.title ? 'normal' : 'italic',
-                                                    fontSize: '16px',
-                                                }}>
-                                                    {proj.title || 'Add New Project'}
-                                                </Title>
-                                                {proj.title && (
-                                                    <Badge
-                                                        color={status.color}
-                                                        text={status.text}
-                                                        style={{ fontSize: '11px' }}
-                                                    />
-                                                )}
-                                            </div>
-                                            <Text style={{
-                                                color: proj.description ? COLORS.textSecondary : COLORS.textTertiary,
-                                                fontSize: '13px',
-                                                fontStyle: proj.description ? 'normal' : 'italic',
-                                                display: 'block',
-                                                marginTop: SPACING.xs,
-                                            }}>
-                                                {proj.description || 'Project description...'}
-                                            </Text>
-                                        </div>
-                                        {proj.title && (
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.xs }}>
+                                    }}
+                                    bodyStyle={{ padding: SPACING.md }}
+                                    hoverable={!proj.title}
+                                    onClick={() => !proj.title && setModalVisible(true)}
+                                >
+                                    {/* Title + Progress */}
+                                    <div style={{ marginBottom: SPACING.md }}>
+                                        <div style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'flex-start',
+                                            marginBottom: SPACING.sm,
+                                        }}>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.sm }}>
+                                                    <Title level={4} style={{
+                                                        margin: 0,
+                                                        color: proj.title ? COLORS.text : COLORS.textSecondary,
+                                                        fontStyle: proj.title ? 'normal' : 'italic',
+                                                        fontSize: '16px',
+                                                    }}>
+                                                        {proj.title || 'Add New Project'}
+                                                    </Title>
+                                                    {proj.title && (
+                                                        <Badge
+                                                            color={status.color}
+                                                            text={status.text}
+                                                            style={{ fontSize: '11px' }}
+                                                        />
+                                                    )}
+                                                </div>
                                                 <Text style={{
-                                                    fontSize: '24px',
-                                                    fontWeight: 700,
-                                                    color: getProgressColor(proj.progress),
+                                                    color: proj.description ? COLORS.textSecondary : COLORS.textTertiary,
+                                                    fontSize: '13px',
+                                                    fontStyle: proj.description ? 'normal' : 'italic',
+                                                    display: 'block',
+                                                    marginTop: SPACING.xs,
                                                 }}>
-                                                    {proj.progress}%
+                                                    {proj.description || 'Project description...'}
                                                 </Text>
+                                            </div>
+                                            {proj.title && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.xs }}>
+                                                    <Text style={{
+                                                        fontSize: '24px',
+                                                        fontWeight: 700,
+                                                        color: getProgressColor(proj.progress),
+                                                    }}>
+                                                        {proj.progress}%
+                                                    </Text>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {proj.due_date && (
+                                            <div style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: SPACING.xs,
+                                                marginBottom: SPACING.sm,
+                                            }}>
+                                                <CalendarOutlined style={{ color: COLORS.textSecondary, fontSize: '12px' }} />
+                                                <Text style={{ color: COLORS.textSecondary, fontSize: '12px' }}>
+                                                    Due: {dayjs(proj.due_date).format('MMM D, YYYY')}
+                                                </Text>
+                                            </div>
+                                        )}
+
+                                        {proj.progress > 0 && (
+                                            <div style={{ marginBottom: SPACING.md }}>
+                                                <div style={{
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'center',
+                                                    marginBottom: SPACING.xs,
+                                                }}>
+                                                    <Text style={{ fontSize: '12px', color: COLORS.textSecondary, fontWeight: 600 }}>
+                                                        Progress
+                                                    </Text>
+                                                    <Text style={{ fontSize: '12px', color: COLORS.textSecondary }}>
+                                                        {completedTasks}/{totalTasks} tasks
+                                                    </Text>
+                                                </div>
+                                                <Progress
+                                                    percent={proj.progress}
+                                                    strokeColor={getProgressColor(proj.progress)}
+                                                    trailColor={COLORS.borderLight}
+                                                    showInfo={false}
+                                                    strokeWidth={6}
+                                                    style={{ marginBottom: SPACING.sm }}
+                                                />
                                             </div>
                                         )}
                                     </div>
 
-                                    {proj.due_date && (
-                                        <div style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: SPACING.xs,
-                                            marginBottom: SPACING.sm,
-                                        }}>
-                                            <CalendarOutlined style={{
-                                                color: COLORS.textSecondary,
-                                                fontSize: '12px',
-                                            }} />
-                                            <Text style={{
-                                                color: COLORS.textSecondary,
-                                                fontSize: '12px',
-                                            }}>
-                                                Due: {dayjs(proj.due_date).format('MMM D, YYYY')}
-                                            </Text>
-                                        </div>
-                                    )}
-
-                                    {proj.progress > 0 && (
-                                        <div style={{ marginBottom: SPACING.md }}>
-                                            <div style={{
-                                                display: 'flex',
-                                                justifyContent: 'space-between',
-                                                alignItems: 'center',
-                                                marginBottom: SPACING.xs,
-                                            }}>
-                                                <Text style={{
-                                                    fontSize: '12px',
-                                                    color: COLORS.textSecondary,
-                                                    fontWeight: 600,
-                                                }}>
-                                                    Progress
-                                                </Text>
-                                                <Text style={{
-                                                    fontSize: '12px',
-                                                    color: COLORS.textSecondary,
-                                                }}>
-                                                    {completedTasks}/{totalTasks} tasks
-                                                </Text>
-                                            </div>
-                                            <Progress
-                                                percent={proj.progress}
-                                                strokeColor={getProgressColor(proj.progress)}
-                                                trailColor={COLORS.borderLight}
-                                                showInfo={false}
-                                                strokeWidth={6}
-                                                style={{ marginBottom: SPACING.sm }}
+                                    {/* Tasks */}
+                                    <div
+                                        style={{
+                                            flex: 1,
+                                            overflowY: 'auto',
+                                            marginBottom: SPACING.md,
+                                            paddingRight: '4px',
+                                            minHeight: '0', // ensures flex layout respects overflow
+                                        }}
+                                    >
+                                        {tasksToDisplay.length === 0 ? (
+                                            <Empty
+                                                description={<Text style={{ color: COLORS.textSecondary, fontSize: '12px' }}>No tasks yet</Text>}
+                                                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                                style={{ margin: 0 }}
                                             />
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div style={{
-                                    maxHeight: '200px',
-                                    overflowY: 'auto',
-                                    marginBottom: SPACING.md,
-                                }}>
-                                    {tasksToDisplay.length === 0 ? (
-                                        <Empty
-                                            description={
-                                                <Text style={{ color: COLORS.textSecondary, fontSize: '12px' }}>
-                                                    No tasks yet
-                                                </Text>
-                                            }
-                                            image={Empty.PRESENTED_IMAGE_SIMPLE}
-                                            style={{ margin: 0 }}
-                                        />
-                                    ) : (
-                                        tasksToDisplay.map((task) => (
-                                            <div
-                                                key={task.id}
-                                                style={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    padding: SPACING.sm,
-                                                    background: task.completed ?
-                                                        `${COLORS.success}08` :
-                                                        task.title ? COLORS.surfaceSecondary : `${COLORS.borderLight}50`,
-                                                    borderRadius: '10px',
-                                                    marginBottom: SPACING.sm,
-                                                    border: `1px solid ${task.completed ?
-                                                        `${COLORS.success}20` :
-                                                        task.title ? COLORS.borderLight : `${COLORS.borderLight}80`
-                                                        }`,
-                                                    borderLeft: task.title ?
-                                                        `3px solid ${priorityColor[task.type] || COLORS.textSecondary}` :
-                                                        `3px solid ${COLORS.borderLight}`,
-                                                }}
-                                            >
-                                                <div style={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: SPACING.sm,
-                                                    flex: 1,
-                                                }}>
-                                                    {task.title && (
-                                                        <Checkbox
-                                                            checked={task.completed}
-                                                            onChange={() => proj.title && onToggleTask?.(proj.project_id, task.id)}
-                                                            style={{
-                                                                transform: 'scale(0.9)',
-                                                                color: COLORS.accent,
-                                                            }}
-                                                        />
-                                                    )}
-                                                    <div style={{ flex: 1 }}>
-                                                        <div style={{
-                                                            fontSize: '13px',
-                                                            fontWeight: 500,
-                                                            color: !task.title ? COLORS.textTertiary :
-                                                                task.completed ? COLORS.textSecondary : COLORS.text,
-                                                            fontStyle: !task.title ? 'italic' : 'normal',
-                                                            textDecoration: task.completed ? 'line-through' : 'none',
-                                                        }}>
-                                                            {task.title || 'New task'}
-                                                        </div>
-                                                        {task.due && (
+                                        ) : (
+                                            tasksToDisplay.map((task) => (
+                                                <div
+                                                    key={task.id}
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        padding: SPACING.sm,
+                                                        minHeight: 40, // ✅ ensures it's not too small
+                                                        background: task.completed
+                                                            ? `${COLORS.success}08`
+                                                            : task.title
+                                                                ? COLORS.surfaceSecondary
+                                                                : `${COLORS.borderLight}30`,
+                                                        borderRadius: '10px',
+                                                        marginBottom: SPACING.sm,
+                                                        border: `1px solid ${task.completed
+                                                            ? `${COLORS.success}20`
+                                                            : task.title
+                                                                ? COLORS.borderLight
+                                                                : `${COLORS.borderLight}80`
+                                                            }`,
+                                                        borderLeft: task.title
+                                                            ? `3px solid ${priorityColor[task.type] || COLORS.textSecondary}`
+                                                            : `3px solid ${COLORS.borderLight}`,
+                                                    }}
+                                                >
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.sm, flex: 1 }}>
+                                                        {task.title && (
+                                                            <Checkbox
+                                                                checked={task.completed}
+                                                                onChange={() => proj.title && onToggleTask?.(proj.project_id, task.id)}
+                                                                style={{ transform: 'scale(0.9)', color: COLORS.accent }}
+                                                            />
+                                                        )}
+                                                        <div style={{ flex: 1 }}>
                                                             <div style={{
-                                                                fontSize: '11px',
-                                                                color: COLORS.textSecondary,
-                                                                marginTop: SPACING.xs,
+                                                                fontSize: '13px',
+                                                                fontWeight: 500,
+                                                                color: !task.title ? COLORS.textTertiary :
+                                                                    task.completed ? COLORS.textSecondary : COLORS.text,
+                                                                fontStyle: !task.title ? 'italic' : 'normal',
+                                                                textDecoration: task.completed ? 'line-through' : 'none',
                                                             }}>
-                                                                <ClockCircleOutlined style={{ marginRight: SPACING.xs }} />
-                                                                {task.due}
+                                                                {task.title || 'New task'}
                                                             </div>
+                                                            {task.due && (
+                                                                <div style={{
+                                                                    fontSize: '11px',
+                                                                    color: COLORS.textSecondary,
+                                                                    marginTop: SPACING.xs,
+                                                                }}>
+                                                                    <ClockCircleOutlined style={{ marginRight: SPACING.xs }} />
+                                                                    {task.due}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.xs }}>
+                                                        {showAvatarInTask && task.title && (
+                                                            <Tooltip title={task.assignee}>
+                                                                <Avatar
+                                                                    size={20}
+                                                                    style={{
+                                                                        backgroundColor: priorityColor[task.type] || COLORS.textSecondary,
+                                                                        color: COLORS.surface,
+                                                                        fontSize: '10px',
+                                                                        fontWeight: 600,
+                                                                    }}
+                                                                >
+                                                                    {task.assignee ? task.assignee[0].toUpperCase() : '?'}
+                                                                </Avatar>
+                                                            </Tooltip>
+                                                        )}
+                                                        {task.title && (
+                                                            <Tooltip title="Edit task">
+                                                                <Button
+                                                                    type="text"
+                                                                    size="small"
+                                                                    icon={<EditOutlined />}
+                                                                    onClick={() => {
+                                                                        setEditingTask({ projectId: proj.project_id, task });
+                                                                        setEditTaskModal(true);
+                                                                    }}
+                                                                    style={{
+                                                                        color: COLORS.textSecondary,
+                                                                        fontSize: '12px',
+                                                                        width: '24px',
+                                                                        height: '24px',
+                                                                    }}
+                                                                />
+                                                            </Tooltip>
                                                         )}
                                                     </div>
                                                 </div>
-                                                <div style={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: SPACING.xs,
-                                                }}>
-                                                    {showAvatarInTask && task.title && (
-                                                        <Tooltip title={task.assignee}>
-                                                            <Avatar
-                                                                size={20}
-                                                                style={{
-                                                                    backgroundColor: priorityColor[task.type] || COLORS.textSecondary,
-                                                                    color: COLORS.surface,
-                                                                    fontSize: '10px',
-                                                                    fontWeight: 600,
-                                                                }}
-                                                            >
-                                                                {task.assignee ? task.assignee[0].toUpperCase() : '?'}
-                                                            </Avatar>
-                                                        </Tooltip>
-                                                    )}
-                                                    {task.title && (
-                                                        <Tooltip title="Edit task">
-                                                            <Button
-                                                                type="text"
-                                                                size="small"
-                                                                icon={<EditOutlined />}
-                                                                onClick={() => {
-                                                                    setEditingTask({ projectId: proj.project_id, task });
-                                                                    setEditTaskModal(true);
-                                                                }}
-                                                                style={{
-                                                                    color: COLORS.textSecondary,
-                                                                    fontSize: '12px',
-                                                                    width: '24px',
-                                                                    height: '24px',
-                                                                }}
-                                                            />
-                                                        </Tooltip>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
+                                            ))
+                                        )}
+                                    </div>
 
-                                <div style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    paddingTop: SPACING.sm,
-                                    borderTop: `1px solid ${COLORS.borderLight}`,
-                                }}>
-                                    <Button
-                                        type="link"
-                                        size="small"
-                                        icon={<PlusOutlined />}
-                                        onClick={() => proj.title ? onAddTask?.(proj.project_id) : setModalVisible(true)}
-                                        style={{
-                                            color: COLORS.accent,
-                                            fontWeight: 500,
-                                            fontSize: '13px',
-                                            padding: 0,
-                                        }}
-                                    >
-                                        {proj.title ? 'Add Task' : 'Add Project'}
-                                    </Button>
-                                    {proj.title && (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.xs }}>
-                                            <Text style={{
-                                                fontSize: '11px',
-                                                color: COLORS.textSecondary,
-                                            }}>
-                                                {completedTasks} of {totalTasks} done
-                                            </Text>
-                                        </div>
-                                    )}
-                                </div>
-                            </Card>
-                        );
-                    })}
+                                    {/* Footer */}
+                                    <div style={{
+                                        marginTop: 'auto', // 👈 locks the footer to bottom in flex column
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        paddingTop: SPACING.sm,
+                                        borderTop: `1px solid ${COLORS.borderLight}`,
+                                    }}>
+                                        <Button
+                                            type="link"
+                                            size="small"
+                                            icon={<PlusOutlined />}
+                                            onClick={() => proj.title ? onAddTask?.(proj.project_id) : setModalVisible(true)}
+                                            style={{
+                                                color: COLORS.accent,
+                                                fontWeight: 500,
+                                                fontSize: '13px',
+                                                padding: 0,
+                                            }}
+                                        >
+                                            {proj.title ? 'Add Task' : 'Add Project'}
+                                        </Button>
+                                        {proj.title && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.xs }}>
+                                                <Text style={{ fontSize: '11px', color: COLORS.textSecondary }}>
+                                                    {completedTasks} of {totalTasks} done
+                                                </Text>
+                                            </div>
+                                        )}
+                                    </div>
+                                </Card>
+                            );
+                        })}
+                    </div>
+
+                    <Button
+                        icon={<RightOutlined />}
+                        disabled={currentPage >= totalPages - 1}
+                        onClick={() => setCurrentPage(prev => Math.min(totalPages - 1, prev + 1))}
+                        style={{
+                            borderRadius: '50%',
+                            backgroundColor: COLORS.surface,
+                            boxShadow: `0 1px 4px ${COLORS.shadowMedium}`,
+                            border: `1px solid ${COLORS.borderLight}`,
+                        }}
+                    />
                 </div>
+
             )}
 
             {/* Enhanced Add Project Modal */}

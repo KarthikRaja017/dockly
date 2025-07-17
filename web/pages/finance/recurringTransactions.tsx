@@ -1,6 +1,7 @@
+
 'use client';
 import React, { useEffect, useState } from 'react';
-import { Button, message, Spin } from 'antd';
+import { Button, message } from 'antd';
 import { getRecurringTransactions } from '../../services/apiConfig';
 import DocklyLoader from '../../utils/docklyLoader';
 
@@ -11,7 +12,12 @@ const RecurringTransactions = () => {
     useEffect(() => {
         fetchRecurring();
     }, []);
-
+    /*************  ✨ Windsurf Command ⭐  *************/
+    /**
+     * Fetches recurring transactions for the user from the server
+     * @returns {Promise<void>}
+     */
+    /*******  13960fcc-61f5-4694-85ed-e2284daffb3b  *******/
     const fetchRecurring = async () => {
         const user_id = localStorage.getItem('userId');
         if (!user_id) {
@@ -31,6 +37,11 @@ const RecurringTransactions = () => {
         }
     };
 
+    // If not loading and no transactions, return null to prevent rendering
+    if (!loading && transactions.length === 0) {
+        return null;
+    }
+
     return (
         <div
             style={{
@@ -39,9 +50,10 @@ const RecurringTransactions = () => {
                 padding: '24px',
                 boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)',
                 width: 380,
-                height: 560,
+                height: 520,
                 fontFamily: "'Segoe UI', sans-serif",
                 overflowY: 'auto',
+                marginTop: '26px',
             }}
         >
             <div

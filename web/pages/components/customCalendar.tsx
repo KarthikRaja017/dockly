@@ -2077,9 +2077,9 @@ const CustomCalendar: React.FC<CalendarProps> = ({
         return `${hours}:${minutes}`;
     };
 
-    if (loading) {
-        return <DocklyLoader />
-    }
+    // if (loading) {
+    //     return <DocklyLoader />
+    // }
 
     return (
         <div style={{

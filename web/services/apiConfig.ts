@@ -104,3 +104,23 @@ export async function getExpenseIncome(params: any) {
 export async function getTotalBalance(params: any) {
   return api.post('/get/total-balance', params).then((res) => res.data);
 }
+
+export async function addFinanceGoal(params: any) {
+  return api.post('/add/finance_goal', params);
+}
+export async function getFinanceGoal(params: any) {
+  return api.get('/get/finance_goal', {
+    params: { ...params },
+  });
+}
+
+export async function updateFinanceGoal(params: any) {
+  return api.post('/update/finance_goal', params);
+}
+export async function generateMonthlyBudget(params: any) {
+  return api.post('/get/monthly-budget', params).then((res) => res.data);
+}
+
+export async function updateMonthlyBudget(params: any) {
+  return api.post('/update/monthly-budget', params).then((res) => res.data);
+}

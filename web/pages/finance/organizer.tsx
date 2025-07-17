@@ -56,12 +56,12 @@ const FinanceTabs = () => {
           </div>
           <div style={{ display: "flex" }}>
             <div style={{ width: 950 }}>
-              <MonthlyBudget />
+              <MonthlyBudget uid={""} />
             </div>
-            <GoalsCard />
+            <GoalsCard uid={""} />
           </div>
           <div style={{ display: "flex" }}>
-            <div style={{ width: 950 }}>
+            <div style={{ width: "100%" }}>
               <RecentTransactions onViewAll={goToTransactionsTab} />
             </div>
             <RecurringTransactions />
@@ -95,7 +95,7 @@ const FinanceTabs = () => {
       key: "4",
       children: (
         <div>
-          <MonthlyBudget />
+          <MonthlyBudget uid={""} />
         </div>
       ),
     },
@@ -172,7 +172,7 @@ const BoardTitle: React.FC = () => {
           marginRight: '16px',
         }}
       >
-        <DollarSign size={24} />
+        {/* <DollarSign size={24} /> */}
       </div>
       <h1
         style={{
@@ -182,7 +182,7 @@ const BoardTitle: React.FC = () => {
           margin: 0,
         }}
       >
-        Finance Board
+        💵Finance Board
       </h1>
     </div>
   );
