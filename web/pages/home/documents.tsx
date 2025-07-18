@@ -329,7 +329,7 @@ const Documents: React.FC<ImportantDocumentsCardProps> = ({ isMobile }) => {
                             onClick={() => setIsModalOpen(true)}
                             style={{ borderColor: '#d9d9d9', backgroundColor: 'transparent' }}
                         >
-                            Upload Document
+                            <UploadOutlined />
                         </Button>
                         {/* <Button
               type="default"

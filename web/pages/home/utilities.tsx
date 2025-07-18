@@ -254,7 +254,8 @@ const Utilities: React.FC = () => {
                             onClick={() => setIsAddModalOpen(true)}
                             style={{ backgroundColor: PRIMARY_COLOR, borderColor: PRIMARY_COLOR }}
                         >
-                            <PlusOutlined /> Add Utilities
+                            <PlusOutlined />
+                            {/* Add Utilities */}
                         </Button>
                     </Space>
                 }

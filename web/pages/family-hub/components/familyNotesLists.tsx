@@ -1,18 +1,18 @@
-
+"use client";
 import {
-    DeleteOutlined,
     EditOutlined,
     FileTextOutlined,
     PlusOutlined,
     RightOutlined,
 } from "@ant-design/icons";
-import { Button, Input, message, Modal, Space } from "antd";
+import { Button, Input, message, Modal } from "antd";
 import { useState, useEffect } from "react";
-import { addNote, getAllNotes, updateNote } from "../../../services/family";
+import { getAllNotes, updateNote, addNote } from "../../../services/family";
 
 interface Note {
     title: string;
     description: string;
+    created_at?: string;
 }
 
 interface Category {
@@ -30,11 +30,11 @@ const categoryColorMap: Record<string, string> = {
 };
 
 const defaultCategories: Category[] = [
-    { title: "Important Notes", icon: "📌", items: [] },
-    { title: "House Rules & Routines", icon: "🏠", items: [] },
-    { title: "Shopping Lists", icon: "🛍", items: [] },
-    { title: "Birthday & Gift Ideas", icon: "🎁", items: [] },
-    { title: "Meal Ideas & Recipes", icon: "🍽", items: [] },
+    { title: "Important Notes", icon: "\ud83d\udccc", items: [] },
+    { title: "House Rules & Routines", icon: "\ud83c\udfe0", items: [] },
+    { title: "Shopping Lists", icon: "\ud83d\uded5", items: [] },
+    { title: "Birthday & Gift Ideas", icon: "\ud83c\udf81", items: [] },
+    { title: "Meal Ideas & Recipes", icon: "\ud83c\udf7d", items: [] },
 ];
 
 const categoryIdMap: Record<string, number> = {
@@ -60,9 +60,10 @@ const FamilyNotes = () => {
     );
     const [newNote, setNewNote] = useState<Note>({ title: "", description: "" });
     const [editingNoteIndex, setEditingNoteIndex] = useState<number | null>(null);
+    const [showNoteForm, setShowNoteForm] = useState<boolean>(false);
+    const [loading, setLoading] = useState<boolean>(false);
     const [newCategoryModal, setNewCategoryModal] = useState<boolean>(false);
     const [newCategoryName, setNewCategoryName] = useState<string>("");
-    const [loading, setLoading] = useState<boolean>(false);
 
     useEffect(() => {
         getNotes();
@@ -81,6 +82,7 @@ const FamilyNotes = () => {
                 grouped[catId].unshift({
                     title: note.title,
                     description: note.description,
+                    created_at: note.created_at,
                 });
             });
             const updatedCategories = defaultCategories.map((cat) => {
@@ -94,28 +96,31 @@ const FamilyNotes = () => {
         setLoading(false);
     };
 
-    const openModal = (index: number | null) => {
+    const openModal = (index: number) => {
         setActiveCategoryIndex(index);
+        setModalOpen(true);
+        setShowNoteForm(false);
         setEditingNoteIndex(null);
         setNewNote({ title: "", description: "" });
-        setModalOpen(true);
+    };
+
+    const handleEditNote = (note: Note, idx: number) => {
+        setEditingNoteIndex(idx);
+        setNewNote({ ...note });
+        setShowNoteForm(true);
     };
 
     const handleSaveNote = async () => {
-        setLoading(true);
-        if (
-            !newNote.title.trim() ||
-            !newNote.description.trim() ||
-            activeCategoryIndex === null
-        ) {
-            message.error("Please fill in all fields");
-            setLoading(false);
-            return;
-        }
-
+        if (activeCategoryIndex === null) return;
         const categoryTitle = categories[activeCategoryIndex].title;
         const category_id = categoryIdMap[categoryTitle];
 
+        if (!newNote.title.trim() || !newNote.description.trim()) {
+            message.error("Please fill in all fields");
+            return;
+        }
+
+        setLoading(true);
         try {
             if (editingNoteIndex !== null) {
                 const rawNotes = await getAllNotes();
@@ -129,7 +134,7 @@ const FamilyNotes = () => {
                         note.category_id === category_id
                 );
                 if (!fullNote) {
-                    message.error("Original note not found for update");
+                    message.error("Note not found");
                     setLoading(false);
                     return;
                 }
@@ -142,15 +147,9 @@ const FamilyNotes = () => {
                 if (res.data.status === 1) {
                     message.success("Note updated");
                     await getNotes();
-                    setModalOpen(false);
-                } else {
-                    message.error(res.data.message || "Failed to update");
                 }
             } else {
-                const user_id =
-                    typeof window !== "undefined"
-                        ? localStorage.getItem("userId") || ""
-                        : "";
+                const user_id = localStorage.getItem("userId") || "";
                 const res = await addNote({
                     title: newNote.title,
                     description: newNote.description,
@@ -160,30 +159,15 @@ const FamilyNotes = () => {
                 if (res.data.status === 1) {
                     message.success("Note added");
                     await getNotes();
-                    setModalOpen(false);
-                } else {
-                    message.error(res.data.message || "Failed to add");
                 }
             }
+            setShowNoteForm(false);
+            setEditingNoteIndex(null);
+            setNewNote({ title: "", description: "" });
         } catch (err) {
             message.error("Something went wrong");
         }
-        setNewNote({ title: "", description: "" });
-        setEditingNoteIndex(null);
         setLoading(false);
-    };
-
-    const handleDeleteNote = (idx: number) => {
-        if (activeCategoryIndex === null) return;
-        const updated = [...categories];
-        updated[activeCategoryIndex].items.splice(idx, 1);
-        setCategories(updated);
-    };
-
-    const handleEditNote = (note: Note, idx: number) => {
-        setEditingNoteIndex(idx);
-        setNewNote({ ...note });
-        setModalOpen(true);
     };
 
     const handleAddCategory = () => {
@@ -193,12 +177,13 @@ const FamilyNotes = () => {
             message.error("Category already exists");
             return;
         }
-        setCategories([...categories, { title: name, icon: "📁", items: [] }]);
+        setCategories([
+            ...categories,
+            { title: name, icon: "\ud83d\udcc1", items: [] },
+        ]);
         setNewCategoryModal(false);
         setNewCategoryName("");
     };
-
-    if (loading) return <div>Loading...</div>;
 
     return (
         <>
@@ -208,35 +193,28 @@ const FamilyNotes = () => {
                     backgroundColor: "#fff",
                     width: 430,
                     borderRadius: 16,
-                    boxShadow: "0 0 10px rgba(0,0,0,0.06)",
                     position: "relative",
-                    overflowY: "auto",
-                    maxHeight: 520,
                 }}
             >
-                <div
+                <h2
                     style={{
-                        marginBottom: 20,
+                        fontSize: 18,
+                        fontWeight: 600,
                         display: "flex",
                         alignItems: "center",
-                        justifyContent: "space-between",
+                        gap: 8,
                     }}
                 >
-                    <h2
-                        style={{
-                            fontSize: 18,
-                            fontWeight: 600,
-                            display: "flex",
-                            gap: 8,
-                            alignItems: "center",
-                        }}
-                    >
-                        <FileTextOutlined />
-                        Notes & Lists
-                    </h2>
-                </div>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                    <FileTextOutlined /> Notes & Lists
+                </h2>
+                <div
+                    style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 16,
+                        marginTop: 20,
+                    }}
+                >
                     {categories.map((category, index) => (
                         <div
                             key={index}
@@ -257,27 +235,23 @@ const FamilyNotes = () => {
                                     style={{
                                         width: 34,
                                         height: 34,
-                                        background: `${categoryColorMap[category.title] || "#ccc"
-                                            }20`,
+                                        background: `${categoryColorMap[category.title]}20`,
                                         borderRadius: 10,
                                         display: "flex",
-                                        alignItems: "center",
                                         justifyContent: "center",
-                                        fontSize: 16,
+                                        alignItems: "center",
                                     }}
                                 >
                                     {category.icon}
                                 </div>
-                                <span style={{ fontWeight: 600, fontSize: 14 }}>
-                                    {category.title}
-                                </span>
+                                <span style={{ fontWeight: 600 }}>{category.title}</span>
                             </div>
                             <RightOutlined style={{ fontSize: 14, color: "#666" }} />
                         </div>
                     ))}
                 </div>
 
-                {/* Floating "+" Button */}
+                {/* Floating + button */}
                 <Button
                     shape="default"
                     icon={<PlusOutlined />}
@@ -286,8 +260,8 @@ const FamilyNotes = () => {
                         position: "absolute",
                         top: 24,
                         right: 24,
-                        // width: 44,
-                        // height: 44,
+                        width: 44,
+                        height: 44,
                         borderRadius: 12,
                         backgroundColor: "#1677ff",
                         color: "white",
@@ -298,27 +272,75 @@ const FamilyNotes = () => {
                 />
             </div>
 
-            {/* Add/Edit Note Modal */}
-
+            <Modal
+                open={newCategoryModal}
+                onCancel={() => setNewCategoryModal(false)}
+                onOk={handleAddCategory}
+                centered
+                width={400}
+                okText="Add"
+            >
+                <div style={{ padding: 24 }}>
+                    <Input
+                        placeholder="New Category Name"
+                        value={newCategoryName}
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                        style={{ marginBottom: 20 }}
+                    />
+                </div>
+            </Modal>
 
             <Modal
                 open={modalOpen}
-                footer={null}
-                onCancel={() => setModalOpen(false)}
+                footer={[
+                    <Button key="cancel" onClick={() => setModalOpen(false)}>
+                        Cancel
+                    </Button>,
+                ]}
                 centered
                 width={550}
+                closeIcon={false}
             >
-                <div style={{ padding: 20, fontWeight: 600, fontSize: 16 }}>
-                    {activeCategoryIndex !== null && (
-                        <>
-                            {categories[activeCategoryIndex].icon} {categories[activeCategoryIndex].title}
-                        </>
-                    )}
-                </div>
-                <div style={{ padding: 24 }}>
-                    <div style={{ maxHeight: 200, overflowY: "auto", marginBottom: 16 }}>
-                        {activeCategoryIndex !== null &&
-                            categories[activeCategoryIndex].items.map((note, idx) => (
+                {activeCategoryIndex !== null && (
+                    <div>
+                        <div
+                            style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                marginBottom: 15,
+                            }}
+                        >
+                            <span style={{ fontSize: 22, fontWeight: 600 }}>
+                                {categories[activeCategoryIndex].icon}{" "}
+                                {categories[activeCategoryIndex].title}
+                            </span>
+                            <Button
+                                type="primary"
+                                shape="default"
+                                icon={<PlusOutlined />}
+                                onClick={() => {
+                                    setShowNoteForm(true);
+                                    setEditingNoteIndex(null);
+                                    setNewNote({ title: "", description: "" });
+                                }}
+                                style={{
+                                    position: "absolute",
+                                    top: 20,
+                                    right: 44,
+                                    width: 34,
+                                    height: 34,
+                                    borderRadius: 12,
+                                    backgroundColor: "#1677ff",
+                                    color: "white",
+                                    boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+                                    border: "none",
+                                }}
+                            />
+                        </div>
+
+                        <div style={{ maxHeight: 300, overflowY: "auto", paddingRight: 8 }}>
+                            {categories[activeCategoryIndex].items.map((note, idx) => (
                                 <div
                                     key={idx}
                                     style={{
@@ -332,12 +354,20 @@ const FamilyNotes = () => {
                                         alignItems: "center",
                                     }}
                                 >
-                                    <div style={{ fontSize: 14 }}>
-                                        <strong>
-                                            {idx + 1}. {note.title}
-                                        </strong>{" "}
-                                        — <span style={{ fontWeight: 400 }}>{note.description}</span>
+                                    <div>
+                                        <div>
+                                            <strong>
+                                                {idx + 1}. {note.title}
+                                            </strong>{" "}
+                                            — {note.description}
+                                        </div>
+                                        {note.created_at && (
+                                            <div style={{ fontSize: 10, color: "#888" }}>
+                                                {new Date(note.created_at).toLocaleString()}
+                                            </div>
+                                        )}
                                     </div>
+
                                     <Button
                                         icon={<EditOutlined />}
                                         size="small"
@@ -345,47 +375,38 @@ const FamilyNotes = () => {
                                     />
                                 </div>
                             ))}
-                    </div>
-                    <Input
-                        placeholder="Note Title"
-                        value={newNote.title}
-                        onChange={(e) => setNewNote({ ...newNote, title: e.target.value })}
-                        style={{ marginBottom: 12 }}
-                    />
-                    <Input
-                        placeholder="Note Description"
-                        value={newNote.description}
-                        onChange={(e) =>
-                            setNewNote({ ...newNote, description: e.target.value })
-                        }
-                        style={{ marginBottom: 20 }}
-                    />
-                    <Button
-                        type="primary"
-                        block
-                        icon={<PlusOutlined />}
-                        onClick={handleSaveNote}
-                    >
-                        {editingNoteIndex !== null ? "Update Note" : "Add Note"}
-                    </Button>
-                </div>
-            </Modal>
+                        </div>
 
-            <Modal
-                open={newCategoryModal}
-                onCancel={() => setNewCategoryModal(false)}
-                onOk={handleAddCategory}
-                centered
-                width={400}
-            >
-                <div style={{ padding: 24 }}>
-                    <Input
-                        placeholder="New Category Name"
-                        value={newCategoryName}
-                        onChange={(e) => setNewCategoryName(e.target.value)}
-                        style={{ marginBottom: 20 }}
-                    />
-                </div>
+                        {showNoteForm && (
+                            <div style={{ marginTop: 20 }}>
+                                <Input
+                                    placeholder="Note Title"
+                                    value={newNote.title}
+                                    onChange={(e) =>
+                                        setNewNote({ ...newNote, title: e.target.value })
+                                    }
+                                    style={{ marginBottom: 12 }}
+                                />
+                                <Input
+                                    placeholder="Note Description"
+                                    value={newNote.description}
+                                    onChange={(e) =>
+                                        setNewNote({ ...newNote, description: e.target.value })
+                                    }
+                                    style={{ marginBottom: 20 }}
+                                />
+                                <Button
+                                    type="primary"
+                                    block
+                                    onClick={handleSaveNote}
+                                    loading={loading}
+                                >
+                                    {editingNoteIndex !== null ? "Update Note" : "Add Note"}
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+                )}
             </Modal>
         </>
     );

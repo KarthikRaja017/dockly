@@ -289,7 +289,8 @@ const PropertyInformation: React.FC = () => {
                             onClick={() => setIsAddModalOpen(true)}
                             style={{ borderColor: '#d9d9d9', backgroundColor: 'transparent' }}
                         >
-                            <PlusOutlined /> Add
+                            <PlusOutlined />
+                            {/* Add */}
                         </Button>
                     </Space>
                 }

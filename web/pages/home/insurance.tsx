@@ -393,7 +393,7 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
                         height: isMobile ? '36px' : '40px',
                     }}
                 >
-                    Add Insurance
+                    {/* Add Insurance */}
                 </Button>
             }
             style={{

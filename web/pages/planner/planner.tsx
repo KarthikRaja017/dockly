@@ -927,12 +927,12 @@ const Planner = () => {
         setLoading(true);
         goalForm.validateFields().then(async (values) => {
             try {
-                const date = getDueDateByView(view, currentDate);
+                const formattedDate = dayjs(values.date).format("YYYY-MM-DD");
                 const time = dayjs().format("h:mm A");
 
                 const goalPayload = {
                     ...values,
-                    date,
+                    date: formattedDate,
                     time,
                     backup: backup,
                 };
@@ -1005,12 +1005,12 @@ const Planner = () => {
         setLoading(true);
         todoForm.validateFields().then(async (values) => {
             try {
-                const date = getDueDateByView(view, currentDate);
+                const formattedDate = dayjs(values.date).format("YYYY-MM-DD");
                 const time = dayjs().format("h:mm A");
 
                 const todoPayload = {
                     ...values,
-                    date,
+                    date: formattedDate,
                     time,
                     backup: backup,
                 };
@@ -1457,7 +1457,7 @@ const Planner = () => {
                                                                         color: COLORS.textSecondary,
                                                                         fontWeight: 500,
                                                                     }}>
-                                                                        {goal.date} {goal.time}
+                                                                        {goal.date}
                                                                     </Text>
                                                                     <Button
                                                                         type="text"
@@ -1640,7 +1640,7 @@ const Planner = () => {
                                                                         color: COLORS.textSecondary,
                                                                         fontWeight: 500,
                                                                     }}>
-                                                                        {todo.date} {todo.time}
+                                                                        {todo.date}
                                                                     </Text>
                                                                     <div style={{
                                                                         display: 'flex',
@@ -1928,6 +1928,7 @@ const Planner = () => {
                         </Form.Item>
                     </Form>
                 </Modal>
+
                 <Modal
                     title={
                         <div style={{
@@ -2006,6 +2007,18 @@ const Planner = () => {
                                 }}
                             />
                         </Form.Item>
+                        <Form.Item
+                            name="date"
+                            label={<Text strong style={{ fontSize: '15px' }}>Due Date</Text>}
+                            rules={[{ required: true, message: "Please select a due date" }]}
+                            initialValue={dayjs(getDueDateByView(view, currentDate))} // default value
+                        >
+                            <DatePicker
+                                format="YYYY-MM-DD"
+                                disabledDate={(current) => current && current < dayjs().startOf('day')}
+                                style={{ borderRadius: '10px', height: '44px', width: '100%' }}
+                            />
+                        </Form.Item>
                     </Form>
                 </Modal>
                 <Modal
@@ -2079,32 +2092,42 @@ const Planner = () => {
                         >
                             <Input
                                 placeholder="Task title"
-                                style={{
-                                    borderRadius: '10px',
-                                    height: '44px',
-                                    fontSize: '15px',
-                                }}
+                                style={{ borderRadius: '10px', height: '44px', fontSize: '15px' }}
                             />
                         </Form.Item>
-                        <Form.Item
-                            name="Goal_Id"
-                            label={<Text strong style={{ fontSize: '15px' }}>Goal_Id</Text>}
-                            rules={[{ required: false, message: "Please select a goal" }]}
-                        >
-                            <Select
-                                placeholder="Select a goal (optional)"
-                                allowClear
-                                style={{
-                                    borderRadius: '10px',
-                                }}
+
+                        <Space direction="horizontal" style={{ width: '100%' }}>
+                            <Form.Item
+                                name="date"
+                                label={<Text strong style={{ fontSize: '15px' }}>Due Date</Text>}
+                                rules={[{ required: true, message: "Please select due date" }]}
+                                initialValue={dayjs(getDueDateByView(view, currentDate))}
                             >
-                                {getAvailableGoals().map((goal) => (
-                                    <Select.Option key={goal.id} value={goal.id}>
-                                        {goal.text}
-                                    </Select.Option>
-                                ))}
-                            </Select>
-                        </Form.Item>
+                                <DatePicker
+                                    format="YYYY-MM-DD"
+                                    disabledDate={(current) => current && current < dayjs().startOf('day')}
+                                    style={{ borderRadius: '10px', height: '44px' }}
+                                />
+                            </Form.Item>
+
+                            <Form.Item
+                                name="goal_id"
+                                label={<Text strong style={{ fontSize: '15px' }}>Goal</Text>}
+                            >
+                                <Select
+                                    placeholder="Select a goal (optional)"
+                                    allowClear
+                                    style={{ borderRadius: '10px', minWidth: '200px', height: '44px' }}
+                                >
+                                    {getAvailableGoals().map((goal) => (
+                                        <Select.Option key={goal.id} value={goal.id}>
+                                            {goal.text}
+                                        </Select.Option>
+                                    ))}
+                                </Select>
+                            </Form.Item>
+                        </Space>
+
                         <Form.Item
                             name="priority"
                             label={<Text strong style={{ fontSize: '15px' }}>Priority</Text>}

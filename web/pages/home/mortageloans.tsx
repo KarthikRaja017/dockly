@@ -457,7 +457,7 @@ const MortgageLoans: React.FC<MortgageLoansProps> = ({ uid }) => {
                         onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.85')}
                         onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
                     >
-                        Add Mortgage
+                        {/* Add Mortgage */}
                     </Button>
                 }
                 style={{
@@ -497,7 +497,7 @@ const MortgageLoans: React.FC<MortgageLoansProps> = ({ uid }) => {
                                     borderRadius: '6px',
                                 }}
                             >
-                                Add Your First Mortgage
+                                {/* Add Your First Mortgage */}
                             </Button>
                         </div>
                     </div>
