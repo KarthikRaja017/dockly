@@ -34,8 +34,8 @@ import CalendarEventWidget from "../dashboard/calendar";
 // import { getUserGetStarted } from "../../services/user";
 import { getCalendarEvents } from "../../services/google";
 import { useCurrentUser } from "../../app/userContext";
-import DocklyLoader from "../../utils/docklyLoader";
 import { useRouter } from "next/navigation";
+import { useGlobalLoading } from "../../app/loadingContext";
 
 const { Title, Text, Paragraph } = Typography;
 const { Content } = Layout;
@@ -61,7 +61,7 @@ const DashboardPage = () => {
   const [incompleteKeys, setIncompleteKeys] = useState<string[]>([]);
   const username = typeof window !== "undefined" ? localStorage.getItem("username") : "";
   const [events, setEvents] = useState<any[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  const { loading, setLoading } = useGlobalLoading();
   const [accountModal, setAccountModal] = useState<boolean>(false);
   const [accounts, setAccounts] = useState<string[]>([]);
   const [accountColor, setAccountColor] = useState<Record<string, string>>({});
@@ -158,10 +158,6 @@ const DashboardPage = () => {
       ) : null,
     };
   });
-
-  if (loading) {
-    return <DocklyLoader />;
-  }
 
   return (
     <Content style={{ background: "#f9f9f9", margin: "80px 15px 0 50px" }}>

@@ -32,6 +32,7 @@ import { CalendarCheckIcon } from "lucide-react";
 import { getUserHubs } from "../../services/dashboard";
 import { useCurrentUser } from "../../app/userContext";
 import DocklyLoader from "../../utils/docklyLoader";
+import { useGlobalLoading } from "../../app/loadingContext";
 
 const { Text } = Typography;
 const { Sider } = Layout;
@@ -108,7 +109,7 @@ const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ collapsed }, ref) =>
   const username = currentUser?.user_name || "";
   const [hubs, setHubs] = useState([]);
   const [utilities, setUtilities] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const { loading, setLoading } = useGlobalLoading();
   const pathname = usePathname();
 
   useEffect(() => {
@@ -196,10 +197,6 @@ const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ collapsed }, ref) =>
     icon: getUtilityIcon(hub.name),
     label: hub.title,
   }));
-
-  if (loading) {
-    return <DocklyLoader />;
-  }
 
   return (
     <Sider

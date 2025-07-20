@@ -26,8 +26,14 @@ family_api.add_resource(SendInvitation, "/send/invitation")
 # family_api.add_resource(AddGuardianEmergencyInfo, "/add/guardian-emergency-info")
 # family_api.add_resource(GetGuardianEmergencyInfo, "/get/guardian-emergency-info")
 
+
 family_api.add_resource(AddNotes, "/family/add/notes")
 family_api.add_resource(GetNotes, "/family/get/notes")
+family_api.add_resource(UpdateNote, "/family/update/note")
+
+family_api.add_resource(AddNoteCategory, "/family/add/note_category")
+family_api.add_resource(GetNoteCategories, "/family/get/note_categories")
+
 
 family_api.add_resource(AddPet, "/add/pet")
 family_api.add_resource(GetPets, "/get/pets")
@@ -52,5 +58,3 @@ family_api.add_resource(UpdatePersonalInfo, "/update/personal-info")
 family_api.add_resource(AddSchoolInfo, "/add/school-info")
 family_api.add_resource(AddActivities, "/add/activities")
 family_api.add_resource(GetSchoolInfo, "/get/school-info")
-
-family_api.add_resource(UpdateNote, "/family/update/note")

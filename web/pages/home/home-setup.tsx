@@ -10,13 +10,14 @@ import {
 } from '@ant-design/icons';
 import 'antd/dist/reset.css';
 import { useRouter } from 'next/navigation';
+import { useGlobalLoading } from '../../app/loadingContext';
 
 const { Title, Paragraph } = Typography;
 const { Step } = Steps;
 
 const HomeIntroBoard: React.FC = () => {
   const [isHomeUser, setIsHomeUser] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const { loading, setLoading } = useGlobalLoading();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const router = useRouter();
   const [step, setStep] = useState(1);

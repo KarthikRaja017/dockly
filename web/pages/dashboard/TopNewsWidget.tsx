@@ -18,6 +18,7 @@ import {
     ExternalLink,
 } from 'lucide-react';
 import DocklyLoader from '../../utils/docklyLoader';
+import { useGlobalLoading } from '../../app/loadingContext';
 
 const { Text, Link } = Typography;
 
@@ -47,8 +48,9 @@ const CATEGORY_LABELS: Record<string, string> = {
 const TopNews: React.FC = () => {
     const [articles, setArticles] = useState<Article[]>([]);
     const [modalArticles, setModalArticles] = useState<Article[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [modalLoading, setModalLoading] = useState(false);
+    const { loading, setLoading } = useGlobalLoading();
+    // const { loading, setLoading } = useGlobalLoading();
+    // const [modalLoading, setModalLoading] = useState(false);
     const [bookmarked, setBookmarked] = useState(false);
     const [liveView, setLiveView] = useState(false);
     const [countryCode, setCountryCode] = useState('US');
@@ -94,7 +96,7 @@ const TopNews: React.FC = () => {
     };
 
     const fetchModalNews = async (category: string) => {
-        setModalLoading(true);
+        setLoading(true);
         try {
             const url = getFeedUrl(category);
             const res = await fetch(`${RSS_PROXY}${encodeURIComponent(url)}`);
@@ -104,7 +106,7 @@ const TopNews: React.FC = () => {
         } catch {
             message.error('Error loading category news');
         } finally {
-            setModalLoading(false);
+            setLoading(false);
         }
     };
 
@@ -154,9 +156,7 @@ const TopNews: React.FC = () => {
             </div>
 
             {/* Highlighted Top Article */}
-            {loading ? (
-                <DocklyLoader />
-            ) : (
+            {!loading && (
                 <>
                     {articles.length > 0 && (
                         <div style={{
@@ -292,9 +292,8 @@ const TopNews: React.FC = () => {
                     </Button>
                 </div>
 
-                {modalLoading && <DocklyLoader />}
 
-                {!modalLoading && modalArticles.length > 0 && (
+                {!loading && modalArticles.length > 0 && (
                     <>
                         {modalArticles.map((item, idx) => (
                             <div

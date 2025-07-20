@@ -11,13 +11,14 @@ import {
 } from '@ant-design/icons';
 import 'antd/dist/reset.css';
 import { useRouter } from 'next/navigation';
+import { useGlobalLoading } from '../../app/loadingContext';
 
 const { Title, Paragraph } = Typography;
 
 const VaultIntroBoard: React.FC = () => {
   const router = useRouter();
   const [isVaultUser, setIsVaultUser] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const { loading, setLoading } = useGlobalLoading();
   const [isModalVisible, setIsModalVisible] = useState(false);
 
   const handleGetStarted = async () => {
@@ -37,12 +38,12 @@ const VaultIntroBoard: React.FC = () => {
     setIsModalVisible(true);
   };
   const [username, setUsername] = useState<string | null>(null);
-    useEffect(() => {
-      const storedUsername = localStorage.getItem('username');
-      if (storedUsername) {
-        setUsername(storedUsername);
-      }
-    }, [])
+  useEffect(() => {
+    const storedUsername = localStorage.getItem('username');
+    if (storedUsername) {
+      setUsername(storedUsername);
+    }
+  }, [])
 
   const handleCancel = () => {
     setIsModalVisible(false);
@@ -89,7 +90,7 @@ const VaultIntroBoard: React.FC = () => {
                 style={{
                   width: '100%',
                   maxWidth: '100%',
-                  height:'400px',
+                  height: '400px',
                   borderRadius: 12,
                   objectFit: 'cover',
                 }}

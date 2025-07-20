@@ -11,7 +11,7 @@ interface SmartInputBoxProps {
     allowMentions?: boolean;
     enableHashMentions?: boolean;
     source?: string;
-    familyMembers?: { name: string; email?: string }[];
+    familyMembers?: { name: string; email?: string; status?: string }[]
     personColors?: PersonColors;
     setBackup?: (data: any) => void;
     backup?: any;
@@ -37,7 +37,7 @@ const SmartInputBox: React.FC<SmartInputBoxProps> = ({
     familyMembers,
     backup
 }) => {
-    // console.log("🚀 ~ personColors:............", personColors)
+
     const [newEventText, setNewEventText] = useState('');
     const [showMentions, setShowMentions] = useState(false);
     const [cursorPosition, setCursorPosition] = useState(0);
@@ -50,7 +50,11 @@ const SmartInputBox: React.FC<SmartInputBoxProps> = ({
 
     // const familyMembers = ['vini', 'emma', 'sri'];
     // const memberNames = (familyMembers ?? []).map((m) => m.toLowerCase());
-    const memberNames = (familyMembers ?? []).map((m) => m.name.toLowerCase());
+
+    const memberNames = (familyMembers ?? [])
+        .filter((m) => m.status?.toLowerCase() === 'accepted') // ✅ Filter accepted
+        .map((m) => m.name.toLowerCase());
+
 
     useEffect(() => {
         const uid = localStorage.getItem('userId') || '';

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Button,
     Card,
@@ -18,6 +18,7 @@ import {
     Tooltip,
     Badge,
     Divider,
+    Radio,
 } from 'antd';
 import {
     PlusOutlined,
@@ -98,13 +99,6 @@ const priorityColor: { [key: string]: string } = {
     default: COLORS.textSecondary,
 };
 
-const assignees = [
-    { label: 'John', value: 'john' },
-    { label: 'Sarah', value: 'sarah' },
-    { label: 'Emma', value: 'emma' },
-    { label: 'Liam', value: 'liam' },
-    { label: 'All', value: 'all' },
-];
 
 interface Props {
     title?: string;
@@ -113,12 +107,15 @@ interface Props {
         title: string;
         description: string;
         due_date: string;
+        visibility: 'public' | 'private';
     }) => void;
     onAddTask?: (projectId: string) => void;
     onToggleTask?: (projectId: string, taskId: number) => void;
     onUpdateTask?: (task: Task) => void;
     showAssigneeInputInEdit?: boolean;
     showAvatarInTask?: boolean;
+    familyMembers?: { name: string; email?: string; status?: string }[];
+    showVisibilityToggle?: boolean;
 }
 
 const FamilyTasksComponent: React.FC<Props> = ({
@@ -128,16 +125,26 @@ const FamilyTasksComponent: React.FC<Props> = ({
     onAddTask,
     onToggleTask,
     onUpdateTask,
+    familyMembers,
     showAssigneeInputInEdit = true,
     showAvatarInTask = true,
+    showVisibilityToggle = false,
 }) => {
     const [modalVisible, setModalVisible] = useState(false);
+    const [assignees, setAssignees] = useState<{ label: string; value: string }[]>([]);
     const [editTaskModal, setEditTaskModal] = useState(false);
-    const [newProject, setNewProject] = useState({
+    const [newProject, setNewProject] = useState<{
+        title: string;
+        description: string;
+        due_date: string;
+        visibility: 'public' | 'private';
+    }>({
         title: '',
         description: '',
         due_date: '',
+        visibility: 'private',
     });
+
     const [editingTask, setEditingTask] = useState<{
         projectId: string;
         task: Task | null;
@@ -148,6 +155,7 @@ const FamilyTasksComponent: React.FC<Props> = ({
     const [loadingProject, setLoadingProject] = useState(false);
     const [loadingTask, setLoadingTask] = useState(false);
     const [loadingEdit, setLoadingEdit] = useState(false);
+
     const filledProjects = projects.filter(p => p.title.trim());
     const showTemplateProjects = filledProjects.length < 2;
 
@@ -170,6 +178,24 @@ const FamilyTasksComponent: React.FC<Props> = ({
             due: dayjs().format('MMM D'), // optional: make the task more realistic with today's date
         }));
     };
+    useEffect(() => {
+        if (familyMembers && familyMembers.length > 0) {
+            const currentUserName = (localStorage.getItem("userName") || "").toLowerCase();
+
+            const accepted = familyMembers
+                .filter(
+                    (member) =>
+                        member.status?.toLowerCase() === "accepted" &&
+                        member.name.toLowerCase() !== currentUserName
+                )
+                .map((member) => ({
+                    label: member.name,
+                    value: member.name.toLowerCase(),
+                }));
+
+            setAssignees(accepted);
+        }
+    }, [familyMembers]);
 
 
     const displayedProjects = [...filledProjects, ...(showTemplateProjects ? templateProjects : [])];
@@ -629,7 +655,7 @@ const FamilyTasksComponent: React.FC<Props> = ({
                         await onAddProject(newProject);
                         setLoadingProject(false);
                         setModalVisible(false);
-                        setNewProject({ title: '', description: '', due_date: '' });
+                        setNewProject({ title: '', description: '', due_date: '', visibility: 'private' });
                     }
                 }}
                 confirmLoading={loadingProject}
@@ -684,6 +710,25 @@ const FamilyTasksComponent: React.FC<Props> = ({
                                 }}
                             />
                         </div>
+                        {showVisibilityToggle && (
+                            <div>
+                                <Text strong style={{ color: COLORS.text, marginBottom: SPACING.sm, display: 'block' }}>
+                                    Visibility
+                                </Text>
+                                <Radio.Group
+                                    onChange={(e) => setNewProject({ ...newProject, visibility: e.target.value })}
+                                    value={newProject.visibility}
+                                    style={{ display: 'flex', gap: SPACING.md }}
+                                >
+                                    <Radio.Button value="private" style={{ borderRadius: '8px' }}>
+                                        Private
+                                    </Radio.Button>
+                                    <Radio.Button value="public" style={{ borderRadius: '8px' }}>
+                                        Public
+                                    </Radio.Button>
+                                </Radio.Group>
+                            </div>
+                        )}
                     </Space>
                 </div>
             </Modal>

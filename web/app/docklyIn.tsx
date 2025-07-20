@@ -8,13 +8,14 @@ import { showNotification } from "../utils/notification";
 import DocklyLoader from "../utils/docklyLoader";
 import addUsername from "../services/user";
 import SignUpDockly from "../pages/sign-in/signUp";
+import { useGlobalLoading } from "./loadingContext";
 
 const { Title, Text, Link } = Typography;
 
 const DocklyLogin = () => {
   const router = useRouter();
   const [username, setUsername] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { loading, setLoading } = useGlobalLoading();
   const [emailView, setEmailView] = useState(false);
   const [email, setemail] = useState<string | null>(null);
 
@@ -76,10 +77,6 @@ const DocklyLogin = () => {
       setLoading(false);
     }
   };
-
-  {
-    if (loading) return <DocklyLoader />;
-  }
 
   return (
     <>

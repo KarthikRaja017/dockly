@@ -44,7 +44,8 @@ SCOPE = (
     "https://www.googleapis.com/auth/fitness.location.read "
     "https://www.googleapis.com/auth/fitness.sleep.read "
     "https://www.googleapis.com/auth/userinfo.email "
-    "https://www.googleapis.com/auth/userinfo.profile"
+    "https://www.googleapis.com/auth/userinfo.profile "
+    "openid"
 )
 
 

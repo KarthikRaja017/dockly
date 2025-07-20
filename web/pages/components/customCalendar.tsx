@@ -10,6 +10,7 @@ import DocklyLoader from "../../utils/docklyLoader";
 import { addEvent } from "../../services/google";
 import { PRIMARY_COLOR } from "../../app/comman";
 import { useCurrentUser } from "../../app/userContext";
+import { useGlobalLoading } from "../../app/loadingContext";
 
 // Professional color palette
 const COLORS = {
@@ -191,6 +192,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
     view,
     backup
 }) => {
+    // console.log("🚀 ~ data:", data)
     const [isNavigating, setIsNavigating] = useState(false);
     const [hoveredEvent, setHoveredEvent] = useState<string | null>(null);
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -199,7 +201,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
     const [previewingEvent, setPreviewingEvent] = useState<any | null>(null);
     const [allEvents, setAllEvents] = useState<Event[] | null>(null);
     const [form] = Form.useForm();
-    const [loading, setLoading] = useState(false);
+    const { loading, setLoading } = useGlobalLoading();
     const [isAllDay, setIsAllDay] = useState(false);
     const user = useCurrentUser();
 
@@ -212,7 +214,9 @@ const CustomCalendar: React.FC<CalendarProps> = ({
     }, [data?.events]);
 
     if (allEvents === null || allEvents.length === 0) {
-        return <DocklyLoader />
+        setLoading(true);
+    } else {
+        setLoading(false);
     }
 
     const getPersonData = (person: string): PersonData => {
@@ -220,7 +224,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
     };
 
     const finalData: CalendarData = {
-        events: allEvents,
+        events: allEvents ?? [],
         meals: data?.meals || sampleCalendarData.meals
     };
 
@@ -2311,6 +2315,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                         <Select
                             value={view}
                             onChange={(value) => {
+
                                 if (onViewChange) {
                                     onViewChange(value);
                                 }

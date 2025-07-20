@@ -6,6 +6,7 @@ import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import type { FamilyMember } from '../left-section';
 import { addContacts, getUserContacts } from '../../../services/family';
+import { useGlobalLoading } from '../../../app/loadingContext';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -63,7 +64,7 @@ const EmergencyContactsCard: React.FC<EmergencyContactsCardProps> = ({
         addedTime: dayjs(),
     });
     const [contacts, setContacts] = useState<Contact[]>([]);
-    const [loading, setLoading] = useState<boolean>(false);
+    const { loading, setLoading } = useGlobalLoading();
     const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
 
     useEffect(() => {

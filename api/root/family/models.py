@@ -5,9 +5,10 @@ from email.message import EmailMessage
 import json
 import re
 import smtplib
-from root.planner.models import create_calendar_event, update_calendar_event
+
+# from root.planner.models import create_calendar_event, update_calendar_event
 from root.common import DocklyUsers, HubsEnum, Permissions, Status
-from root.utilis import uniqueId
+from root.utilis import create_calendar_event, uniqueId, update_calendar_event
 from root.users.models import generate_otp, send_otp_email
 from root.config import EMAIL_PASSWORD, EMAIL_SENDER, SMTP_PORT, SMTP_SERVER, WEB_URL
 from root.email import generate_invitation_email
@@ -119,7 +120,6 @@ class AddFamilyMembers(Resource):
 
         # Prepare shared item IDs
         sharedKeys = list(inputData["sharedItems"].keys())
-        sharedComponents = [val for v in inputData["sharedItems"].values() for val in v]
         sharedItems = [
             DBHelper.find_one("hubs", filters={"name": key}, select_fields=["hid"])
             for key in sharedKeys
@@ -129,6 +129,7 @@ class AddFamilyMembers(Resource):
         otp = generate_otp()
         rname = inputData["name"]
 
+        # Check if the invited email already belongs to a Dockly user
         existingUser = DBHelper.find_one(
             "users",
             filters={"email": inputData["email"]},
@@ -145,18 +146,18 @@ class AddFamilyMembers(Resource):
 
             if existingUser["duser"] == DocklyUsers.PaidMember.value:
                 rusername = existingUser["user_name"]
-                encodedToken = "<encoded_token>"  # Create a real token if needed
+                encodedToken = (
+                    "<encoded_token>"  # Optional: generate a JWT or invite token
+                )
                 inviteLink = f"{WEB_URL}/{rusername}/dashboard"
 
                 sendInviteEmail(
                     inputData, user, rusername, encodedToken, inviteLink=inviteLink
                 )
-                # family_member_ids = get_connected_family_member_ids(uid)
-                # print(f"family_member_ids: {family_member_ids}")
-                # ✅ Create notification
+
                 notification = {
                     "sender_id": user["uid"],
-                    "receiver_id": existingUser["uid"],
+                    "receiver_id": existingUser["uid"],  # ✅ receiver_id present
                     "message": f"You have been invited to join {user['user_name']}'s Family Hub '{rusername}'",
                     "task_type": "family_request",
                     "action_required": True,
@@ -166,29 +167,10 @@ class AddFamilyMembers(Resource):
                         "input_data": inputData,
                         "shared_items_ids": sharedItemsIds,
                         "sender_user": user,
-                        # "familyMembers_ids": family_member_ids,
                     },
                 }
 
-                notification_id = DBHelper.insert(
-                    "notifications", return_column="id", **notification
-                )
-
-                # ✅ Emit real-time socket notification
-                # try:
-                #     from app import socketio  # adjust import path as needed
-
-                #     socketio.emit(
-                #         "family_invite",
-                #         {
-                #             "to": existingUser["uid"],
-                #             "message": notification["message"],
-                #             "notification_id": notification_id,
-                #             "metadata": notification["metadata"],
-                #         },
-                #     )
-                # except Exception as e:
-                #     print(f"Socket emit error: {e}")
+                DBHelper.insert("notifications", return_column="id", **notification)
 
                 return {
                     "status": 1,
@@ -196,76 +178,42 @@ class AddFamilyMembers(Resource):
                     "payload": {},
                 }
 
-        # ========== NEW GUEST USER FLOW ==========
-        # Generate unique guest username
-        parts = re.split(r"[\s_-]+", rname.strip())
-        relationName = parts[0].lower() + "".join(
-            word.capitalize() for word in parts[1:]
-        )
-        rusername = uniqueId(digit=3, isNum=True, prefix=relationName)
-
-        uid = uniqueId(digit=5, isNum=True, prefix="USER")
+        # ========== INVITE-ONLY FLOW FOR UNREGISTERED EMAIL ==========
         payload = json.dumps(
             {
                 "otp": otp,
                 "email": inputData["email"],
-                "userId": uid,
                 "fuser": user["uid"],
-                "duser": DocklyUsers.Guests.value,
+                "duser": 5,  # InvitePending type
             }
         )
         encodedToken = base64.urlsafe_b64encode(payload.encode()).decode()
+        inviteLink = f"{WEB_URL}/signup?invite_token={encodedToken}"
 
         DBHelper.insert(
-            "users",
-            return_column="uid",
-            uid=uid,
-            email=inputData["email"],
-            user_name=rusername,
-            is_email_verified=False,
-            is_active=Status.ACTIVE.value,
-            duser=DocklyUsers.Guests.value,
-            splan=0,
+            "notifications",
+            return_column="id",
+            sender_id=user["uid"],
+            # No receiver_id yet because user hasn't signed up
+            message=f"You've been invited to join {user['user_name']}'s Family Hub",
+            task_type="family_invite",
+            status="pending",
+            hub=HubsEnum.Family.value,
+            metadata={
+                "input_data": inputData,
+                "shared_items_ids": sharedItemsIds,
+                "sender_user": user,
+            },
         )
 
-        for id in sharedItemsIds:
-            DBHelper.insert(
-                table_name="users_access_hubs",
-                user_id=uid,
-                id=f"{uid}-{id}",
-                hubs=id,
-                is_active=Status.ACTIVE.value,
-                return_column="hubs",
-            )
-
-        userId = DBHelper.insert(
-            "family_members",
-            return_column="user_id",
-            user_id=user["uid"],
-            name=inputData.get("name", ""),
-            relationship=inputData.get("relationship", ""),
-            access_code=inputData.get("accessCode", ""),
-            method=inputData.get("method", "Email"),
-            email=inputData.get("email", ""),
+        sendInviteEmail(
+            inputData, user, user["user_name"], encodedToken, inviteLink=inviteLink
         )
-        # print(f"userId: {userId}")
-
-        for id in sharedItemsIds:
-            DBHelper.insert(
-                "family_hubs_access_mapping",
-                return_column="id",
-                user_id=user["uid"],
-                family_member_id=userId,
-                hubs=id,
-                permissions=Permissions.Read.value,
-            )
-
-        sendInviteEmail(inputData, user, rusername, encodedToken, inviteLink=True)
         send_otp_email(inputData["email"], otp)
 
         return {
             "status": 1,
-            "message": "Family member added successfully",
+            "message": "Family member invitation sent successfully",
             "payload": {},
         }
 
@@ -405,7 +353,20 @@ class AddPet(Resource):
                 "message": f"Missing required fields: {', '.join(missing_fields)}",
             }, 400
 
-        userId = DBHelper.insert(
+        family_group_id = inputData.get("family_group_id")
+        if not family_group_id:
+            # Fallback: try to get from user's family mapping
+            gid = DBHelper.find_one(
+                "family_members",
+                filters={"user_id": uid},
+                select_fields=["family_group_id"],
+            )
+            family_group_id = gid.get("family_group_id") if gid else None
+
+        if not family_group_id:
+            return {"status": 0, "message": "Missing family group ID"}, 400
+
+        pet_id = DBHelper.insert(
             "pets",
             return_column="user_id",
             user_id=uid,
@@ -414,11 +375,13 @@ class AddPet(Resource):
             breed=inputData.get("breed", ""),
             guardian_email=inputData.get("guardian_email", ""),
             guardian_contact=inputData.get("guardian_contact", ""),
+            family_group_id=family_group_id,
         )
+
         return {
             "status": 1,
             "message": "Pet added successfully",
-            "payload": {"userId": userId},
+            "payload": {"userId": pet_id},
         }
 
 
@@ -487,6 +450,19 @@ class AddGuardianEmergencyInfo(Resource):
 class GetPets(Resource):
     @auth_required(isOptional=True)
     def get(self, uid, user):
+        fuser = request.args.get("fuser")  # from query param
+        if not fuser:
+            # Fallback to current user's family_group_id
+            gid = DBHelper.find_one(
+                table_name="family_members",
+                select_fields=["family_group_id"],
+                filters={"user_id": uid},
+            )
+            fuser = gid.get("family_group_id") if gid else None
+
+        if not fuser:
+            return {"status": 0, "message": "Missing family_group_id (fuser)"}, 400
+
         pets = DBHelper.find_all(
             table_name="pets",
             select_fields=[
@@ -496,8 +472,9 @@ class GetPets(Resource):
                 "guardian_email",
                 "guardian_contact",
             ],
-            filters={"user_id": uid},
+            filters={"family_group_id": fuser},
         )
+
         pet_list = []
         for pet in pets:
             pet_list.append(
@@ -509,40 +486,12 @@ class GetPets(Resource):
                     "guardian_contact": pet["guardian_contact"] or "N/A",
                 }
             )
+
         return {
             "status": 1,
             "message": "Pets fetched successfully",
             "payload": {"pets": pet_list},
         }
-
-
-class UpdateNote(Resource):
-    @auth_required(isOptional=True)
-    def post(self, uid=None, user=None):
-        data = request.get_json(force=True)
-
-        note_id = data.get("id")
-        title = data.get("title", "").strip()
-        description = data.get("description", "").strip()
-        category_id = data.get("category_id")
-
-        if not note_id or not title or not description or not category_id:
-            return {"status": 0, "message": "Missing required fields"}, 422
-
-        try:
-            DBHelper.update(
-                table_name="notes_lists",
-                filters={"id": note_id, "user_id": uid},
-                update_fields={
-                    "title": title,
-                    "description": description,
-                    "category_id": category_id,
-                    "updated_at": datetime.now().isoformat(),
-                },
-            )
-            return {"status": 1, "message": "Note updated successfully"}
-        except Exception as e:
-            return {"status": 0, "message": f"Update failed: {str(e)}"}
 
 
 class GetContacts(Resource):
@@ -1024,11 +973,22 @@ def send_invitation_email(
         server.send_message(msg)
 
 
+def get_category_name(category_id):
+    cat = DBHelper.find_one(
+        table_name="notes_categories",
+        filters={"id": category_id},
+        select_fields=["name"],  # Only get the 'name' field
+    )
+
+    return cat["name"] if cat else ""
+
+
 class AddNotes(Resource):
     @auth_required(isOptional=True)  # This decorator injects uid and user
     def post(self, uid=None, user=None):  # ✅ Accept injected args here
         try:
             inputData = request.get_json(force=True)
+            print(f"==>> inputData: {inputData}")
         except Exception as e:
             return {"status": 0, "message": f"Invalid JSON: {str(e)}"}, 422
 
@@ -1073,7 +1033,7 @@ class GetNotes(Resource):
     @auth_required(isOptional=True)
     def get(self, uid=None, user=None):
         try:
-            # 1. Fetch both sent and received invites
+            # 1. Get all family member IDs
             sent_invites = DBHelper.find_all(
                 table_name="family_members",
                 select_fields=["fm_user_id"],
@@ -1085,13 +1045,12 @@ class GetNotes(Resource):
                 filters={"fm_user_id": uid},
             )
 
-            # 2. Combine and deduplicate
             family_member_ids = [m["fm_user_id"] for m in sent_invites] + [
                 m["user_id"] for m in received_invites
             ]
             family_member_ids = list(set(family_member_ids + [uid]))
 
-            # 3. Fetch notes from all those UIDs
+            # 2. Fetch notes
             select_fields = [
                 "id",
                 "title",
@@ -1107,7 +1066,7 @@ class GetNotes(Resource):
                 values=family_member_ids,
             )
 
-            # 4. Format results
+            # 3. Format notes and include category_name
             notes = []
             for note in notes_raw:
                 notes.append(
@@ -1116,6 +1075,9 @@ class GetNotes(Resource):
                         "title": note["title"],
                         "description": note["description"],
                         "category_id": note["category_id"],
+                        "category_name": get_category_name(
+                            note["category_id"]
+                        ),  # ✅ include category_name
                         "created_at": (
                             note["created_at"].isoformat()
                             if isinstance(note["created_at"], datetime)
@@ -1137,6 +1099,92 @@ class GetNotes(Resource):
 
         except Exception as e:
             return {"status": 0, "message": f"Failed to fetch notes: {str(e)}"}, 500
+
+
+class UpdateNote(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid=None, user=None):
+        data = request.get_json(force=True)
+
+        note_id = data.get("id")
+        title = data.get("title", "").strip()
+        description = data.get("description", "").strip()
+        category_id = data.get("category_id")
+
+        if not note_id or not title or not description or not category_id:
+            return {"status": 0, "message": "Missing required fields"}, 422
+
+        try:
+            DBHelper.update(
+                table_name="notes_lists",
+                filters={"id": note_id, "user_id": uid},
+                update_fields={
+                    "title": title,
+                    "description": description,
+                    "category_id": category_id,
+                    "updated_at": datetime.now().isoformat(),
+                },
+            )
+            return {"status": 1, "message": "Note updated successfully"}
+        except Exception as e:
+            return {"status": 0, "message": f"Update failed: {str(e)}"}
+
+
+class AddNoteCategory(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid=None, user=None):
+        try:
+            data = request.get_json(force=True)
+            name = data.get("name", "").strip()
+            icon = data.get("icon", "📁")
+            now = datetime.now().isoformat()
+
+            if not name:
+                return {"status": 0, "message": "Category name is required"}, 400
+
+            # Get the next available ID that is greater than 5
+            # last_id = DBHelper.fetch_one("SELECT MAX(id) FROM notes_categories")
+            nid = uniqueId(digit=3, isNum=True)
+
+            DBHelper.insert(
+                "notes_categories",
+                id=nid,
+                user_id=uid,
+                name=name,
+                icon=icon,
+                created_at=now,
+                updated_at=now,
+            )
+
+            return {"status": 1, "message": "Category added", "id": nid}
+        except Exception as e:
+            return {"status": 0, "message": f"Failed to add category: {str(e)}"}, 500
+
+
+class GetNoteCategories(Resource):
+    @auth_required(isOptional=True)
+    def get(self, uid=None, user=None):
+        try:
+            categories = DBHelper.find_all(
+                "notes_categories",
+                filters={"user_id": uid, "is_active": True},
+                select_fields=["id", "name", "icon"],
+            )
+
+            notesCategories = []
+            for category in categories:
+                notesCategories.append(
+                    {
+                        "title": category["name"],
+                        "icon": category["icon"],
+                        "id": category["id"],
+                    }
+                )
+
+            return {"status": 1, "payload": notesCategories}
+
+        except Exception as e:
+            return {"status": 0, "message": f"Failed to fetch categories: {str(e)}"}
 
 
 class AddProject(Resource):

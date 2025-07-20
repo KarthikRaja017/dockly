@@ -27,7 +27,7 @@ import { Button, Input, Spin, Card, Statistic, Tabs, Form, message, Space, Badge
 import { PasswordItem as PasswordItemType, apiClient } from '../../../services/api';
 import { socketManager } from '../../../services/socket';
 import { AlertTriangle, Wifi, WifiOff, Shield, ShieldCheck, ShieldX, LogOut, Database, TrendingUp, Star, Globe, ExternalLink, User, Copy, EyeOff, Eye, RefreshCw, Plus, Search, Unlock } from 'lucide-react';
-import DocklyLoader from '../../../utils/docklyLoader';
+import { useGlobalLoading } from '../../loadingContext';
 
 // Message Component
 interface MessageProps {
@@ -251,7 +251,7 @@ interface PasswordItemProps {
 const PasswordItem: React.FC<PasswordItemProps> = ({ password, onMessage }) => {
     const [showPassword, setShowPassword] = useState(false);
     const [actualPassword, setActualPassword] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
+    const { loading, setLoading } = useGlobalLoading();
 
     const getStrengthColor = (strength: number) => {
         if (strength >= 80) return { color: '#48bb78', background: '#f0fff4' };
@@ -434,7 +434,7 @@ const PasswordDashboard: React.FC<PasswordDashboardProps> = ({ onMessage }) => {
     const [passwords, setPasswords] = useState<PasswordItemType[]>([]);
     const [filteredPasswords, setFilteredPasswords] = useState<PasswordItemType[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [loading, setLoading] = useState(true);
+    const { loading, setLoading } = useGlobalLoading();
     const [syncing, setSyncing] = useState(false);
     const [selectedFilter, setSelectedFilter] = useState<'all' | 'weak' | 'favorites'>('all');
 
@@ -535,22 +535,6 @@ const PasswordDashboard: React.FC<PasswordDashboardProps> = ({ onMessage }) => {
     };
 
     const stats = getPasswordStats();
-
-    if (loading) {
-        return (
-            <div style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                minHeight: '384px',
-                flexDirection: 'column',
-                gap: '16px'
-            }}>
-                <DocklyLoader />
-                <span style={{ color: '#718096', fontSize: '18px' }}>Loading your passwords...</span>
-            </div>
-        );
-    }
 
     return (
         <div style={{ padding: '32px 0' }}>
@@ -682,7 +666,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
 }) => {
     const [form] = Form.useForm();
     const [unlockForm] = Form.useForm();
-    const [loading, setLoading] = useState(false);
+    const { loading, setLoading } = useGlobalLoading();
     const [error, setError] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [showUnlockPassword, setShowUnlockPassword] = useState(false);

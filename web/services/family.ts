@@ -252,6 +252,7 @@ interface PetData {
   guardianEmail?: string;
   guardianContact?: string;
   userId: string;
+  family_group_id: string;
 }
 
 export async function addContacts(params: ContactData): Promise<any> {
@@ -323,13 +324,24 @@ export async function addPets(params: PetData): Promise<any> {
 }
 
 export const getPets = async () => {
+  const fuser = localStorage.getItem('fuser');
   try {
-    const response = await api.get('/get/pets');
+    const response = await api.get('/get/pets', {
+      params: {
+        fuser,
+      },
+    });
     return response;
   } catch (error) {
     throw error;
   }
 };
+
+interface getAllNotes {
+  title: string;
+  description: string;
+  // created_at?: string; // <-- this enables storing timestamp
+}
 
 export async function addNote(params: {
   title: string;
@@ -342,6 +354,27 @@ export async function addNote(params: {
 
 export async function getAllNotes() {
   return api.get('/family/get/notes');
+}
+
+export async function updateNote(params: {
+  id: number;
+  title: string;
+  description: string;
+  category_id: number;
+}) {
+  return api.post('/family/update/note', params);
+}
+
+export async function addNoteCategory(params: {
+  name: string;
+  icon: string;
+  user_id: string;
+}) {
+  return api.post('/family/add/note_category', params);
+}
+
+export async function getNoteCategories() {
+  return api.get('/family/get/note_categories');
 }
 
 export async function addProject(params: any) {
@@ -474,13 +507,4 @@ export async function getUpcomingActivities(userId: string): Promise<any> {
     console.error('Error fetching upcoming activities:', error);
     throw error;
   }
-}
-
-export async function updateNote(params: {
-  id: number;
-  title: string;
-  description: string;
-  category_id: number;
-}) {
-  return api.post('/family/update/note', params);
 }

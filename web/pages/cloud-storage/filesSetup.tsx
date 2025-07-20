@@ -11,12 +11,13 @@ import {
 } from '@ant-design/icons';
 import 'antd/dist/reset.css';
 import { useRouter } from 'next/navigation';
+import { useGlobalLoading } from '../../app/loadingContext';
 const { Title, Paragraph } = Typography;
 
 const FilesIntroBoard: React.FC = () => {
   const router = useRouter();
   const [isFilesUser, setIsFilesUser] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const { loading, setLoading } = useGlobalLoading();
   const [isModalVisible, setIsModalVisible] = useState(false);
 
   const handleGetStarted = async () => {
@@ -31,13 +32,13 @@ const FilesIntroBoard: React.FC = () => {
       setLoading(false);
     }
   };
-   const [username, setUsername] = useState<string | null>(null);
-    useEffect(() => {
-      const storedUsername = localStorage.getItem('username');
-      if (storedUsername) {
-        setUsername(storedUsername);
-      }
-    }, [])
+  const [username, setUsername] = useState<string | null>(null);
+  useEffect(() => {
+    const storedUsername = localStorage.getItem('username');
+    if (storedUsername) {
+      setUsername(storedUsername);
+    }
+  }, [])
 
   const showModal = () => {
     setIsModalVisible(true);

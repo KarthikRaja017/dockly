@@ -18,12 +18,13 @@ import GoalsCard from "./goalcard";
 import RecurringTransactions from "./recurringTransactions";
 import { DollarSign } from "lucide-react";
 import DocklyLoader from "../../utils/docklyLoader";
+import { useGlobalLoading } from "../../app/loadingContext";
 
 const { Text, Title } = Typography;
 
 const FinanceTabs = () => {
   const [bankDetails, setBankDetails] = useState<any>(null);
-  const [loading, setLoading] = useState<boolean>(false);
+  const { loading, setLoading } = useGlobalLoading();
   const [activeKey, setActiveKey] = useState("1");
   const { session } = useQuilttSession();
 
@@ -109,10 +110,6 @@ const FinanceTabs = () => {
       ),
     },
   ];
-
-  if (loading) {
-    return <DocklyLoader />;
-  }
 
   return (
     <div style={{ margin: "65px 10px 10px 60px" }}>

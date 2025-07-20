@@ -121,13 +121,14 @@ interface WeeklyFocus {
 interface WeeklyTodo {
   id?: string;
   uid: string;
-  description: string;
+  text: string;
   completed?: boolean;
   priority?: 'high' | 'medium' | 'low';
   date?: string;
   time?: string;
   status?: string;
   goal_id?: string;
+  [key: string]: any;
 }
 
 interface WeeklyGoal {

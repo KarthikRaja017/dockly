@@ -892,6 +892,8 @@ class GetCalendarEvents(Resource):
 
 
 # Smart Notes Classes
+
+
 class AddSmartNote(Resource):
     @auth_required(isOptional=True)
     def post(self, uid, user):
@@ -911,6 +913,17 @@ class AddSmartNote(Resource):
                 parsed_datetime = extract_datetime(full_text)
         else:
             parsed_datetime = extract_datetime(full_text)
+
+            if members and not email:
+                try:
+                    # You may adjust this query according to your DB structure
+                    family_member = DBHelper.find_one(
+                        "family_members", filters={"user_id": uid, "name": members}
+                    )
+                    if family_member and family_member.get("email"):
+                        email = family_member["email"]
+                except Exception as e:
+                    print(f"Failed to resolve email for {members}:", e)
 
         if uid:
             DBHelper.insert(

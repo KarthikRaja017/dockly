@@ -7,6 +7,7 @@ import { Hubs } from '../../app/comman';
 import { showNotification } from '../../utils/notification';
 const { Text, Title } = Typography;
 import { UserAddOutlined, MailOutlined, UserOutlined, CheckCircleOutlined, SendOutlined, ShareAltOutlined } from '@ant-design/icons';
+import { useGlobalLoading } from '../../app/loadingContext';
 
 
 // Utility functions for validation
@@ -65,7 +66,7 @@ const FamilyInviteForm: React.FC<FamilyInviteFormProps> = ({ visible, onCancel, 
     const [pendingMember, setPendingMember] = useState<FormDataState | null>(null);
     const [username, setUsername] = useState<string>('');
     const [systemNotification, setSystemNotification] = useState(null);
-    const [loading, setLoading] = useState<boolean>(false);
+    const { loading, setLoading } = useGlobalLoading();
     const router = useRouter();
     const params = useParams();
 

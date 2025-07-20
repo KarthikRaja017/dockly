@@ -41,7 +41,7 @@ import {
 } from "@ant-design/icons";
 import { addProject, addTask, getProjects, getTasks, updateTask } from "../../services/family";
 import dayjs from "dayjs";
-import { addEvents, addPlannerNotes, addWeeklyGoal, addWeeklyTodo, deletePlannerNote, getPlanner, getPlannerNotes, updatePlannerNote, updateWeeklyGoal, updateWeeklyTodo } from "../../services/planner";
+import { addEvents, addPlannerNotes, addWeeklyGoal, addWeeklyTodo, deletePlannerNote, getPlanner, getPlannerNotes, getWeeklyTodos, updatePlannerNote, updateWeeklyGoal, updateWeeklyTodo } from "../../services/planner";
 import { getCalendarEvents } from "../../services/google";
 import DocklyLoader from "../../utils/docklyLoader";
 import { Calendar } from "lucide-react";
@@ -766,7 +766,7 @@ const Planner = () => {
                 }
 
                 setIsEventModalVisible(false);
-                fetchEvents();
+                await fetchEvents();
                 eventForm.resetFields();
             } catch (err) {
                 showNotification("Error", "Something went wrong", "error");
@@ -786,7 +786,7 @@ const Planner = () => {
         setLoading(true);
         try {
             await addProject({ ...project, source: 'planner' });
-            fetchProjects();
+            await fetchProjects();
         } catch {
             // Handle error
         }
@@ -975,7 +975,7 @@ const Planner = () => {
             const formattedGoals = rawGoals.map((item: any) => ({
                 id: item.id,
                 text: item.goal,
-                completed: item.goal_status === 1,
+                completed: item.completed ?? item.todo_status ?? false,
                 date: dayjs(item.date).format("YYYY-MM-DD"),
                 time: dayjs(item.time, ["h:mm A", "HH:mm"]).format("h:mm A"),
             }));
@@ -1033,7 +1033,7 @@ const Planner = () => {
                 const msg = status ? `${prefix} ${action} successfully` : backendMsg;
 
                 showNotification(status ? "Success" : "Error", msg, status ? "success" : "error");
-
+                await getWeeklyTodos({});
                 getUserPlanner(true, currentDate);
                 setIsTodoModalVisible(false);
                 setEditingTodo(null);
@@ -1093,29 +1093,37 @@ const Planner = () => {
         }
     };
 
+
     const transformEvents = (rawEvents: any[]): any[] => {
         return rawEvents.map((event, index) => {
+            // Attempt to extract standard Google Calendar fields
             const startDateTime = event.start?.dateTime ?? null;
             const endDateTime = event.end?.dateTime ?? null;
             const startDate = event.start?.date ?? null;
             const endDate = event.end?.date ?? null;
             const creatorEmail = event.creator?.email || event.source_email || "Unknown";
-
             const isGoogleEvent = event.kind === "calendar#event";
 
+            // Fallback: if manual event was added via Planner modal
+            const manualDate = event.date;
+            const manualTime = event.time;
+
+            // Determine start
             const start = startDateTime
                 ? dayjs(startDateTime)
                 : startDate
                     ? dayjs(startDate)
-                    : null;
+                    : manualDate
+                        ? dayjs(`${manualDate} ${manualTime || '00:00'}`)
+                        : null;
 
+            // Determine end
             let end: dayjs.Dayjs | null = null;
-
             if (endDateTime) {
                 end = dayjs(endDateTime);
             } else if (endDate) {
                 end = isGoogleEvent
-                    ? dayjs(endDate).subtract(1, "day")
+                    ? dayjs(endDate).subtract(1, "day") // Google all-day events end on the *next* day
                     : dayjs(endDate);
             } else if (start) {
                 end = start.add(1, "hour");
@@ -1123,7 +1131,6 @@ const Planner = () => {
 
             const formattedStart = start?.format("YYYY-MM-DD") ?? "";
             const formattedEnd = end?.format("YYYY-MM-DD") ?? "";
-
             const isAllDay = formattedStart !== formattedEnd;
 
             return {
@@ -1143,6 +1150,8 @@ const Planner = () => {
         });
     };
 
+
+
     useEffect(() => {
         fetchEvents();
         getUserPlanner(true, currentDate);
@@ -1150,13 +1159,50 @@ const Planner = () => {
         fetchNotes();
     }, []);
 
-    const handleToggleTodo = (id: string) => {
-        setTodos(
-            todos.map((todo) =>
-                todo.id === id ? { ...todo, completed: !todo.completed } : todo
-            )
-        );
+
+    const handleToggleTodo = async (id: string) => {
+        const todo = todos.find((t) => t.id === id);
+        if (!todo) return;
+
+        const updatedCompleted = !todo.completed;
+
+        try {
+            // Optimistically update the UI
+            setTodos((prevTodos) =>
+                prevTodos.map((t) =>
+                    t.id === id ? { ...t, completed: updatedCompleted } : t
+                )
+            );
+
+            // Send update to backend
+            await updateWeeklyTodo({
+                id: todo.id,
+                uid: user.uid,
+                text: todo.text,
+                date: todo.date,
+                time: todo.time,
+                priority: todo.priority,
+                goal_id: todo.goal_id,
+                completed: updatedCompleted,
+                sync_to_google: false,
+            });
+
+
+            // Optional: fetch updated todos again to ensure sync
+            // getUserPlanner(true, currentDate);
+
+        } catch (err) {
+            // Revert UI on failure
+            setTodos((prevTodos) =>
+                prevTodos.map((t) =>
+                    t.id === id ? { ...t, completed: !updatedCompleted } : t
+                )
+            );
+            showNotification("Error", "Failed to update task status", "error");
+        }
     };
+
+
 
     const handleEditGoal = (goal: any) => {
         setEditingGoal(goal);
@@ -1250,15 +1296,26 @@ const Planner = () => {
                     <Col span={6}>
                         <StatisticsCard
                             title="Active Projects"
-                            value={totalProjects}
+                            value={projects.reduce((acc, p) => acc + p.tasks.filter(t => t.completed).length, 0)} // completed tasks
+                            total={projects.reduce((acc, p) => acc + p.tasks.length, 0)} // total tasks
                             icon={<ProjectOutlined style={{ fontSize: '18px' }} />}
                             color={COLORS.accent}
+                        // showProgress
                         />
                     </Col>
                     <Col span={6}>
                         <StatisticsCard
-                            title="Calendar Events"
-                            value={totalEvents}
+                            title={`Calender Events (${view})`}
+                            value={getFilteredCalendarEvents().filter(event => {
+                                const { start, end } = getDateRange(currentDate, view);
+                                const startDay = dayjs(start).startOf("day");
+                                const endDay = dayjs(end).endOf("day");
+
+                                const eventStart = dayjs(event.start_date);
+                                const eventEnd = dayjs(event.end_date);
+
+                                return eventStart.isBefore(endDay) && eventEnd.isAfter(startDay);
+                            }).length}
                             icon={<CalendarOutlined style={{ fontSize: '18px' }} />}
                             color={COLORS.secondary}
                         />

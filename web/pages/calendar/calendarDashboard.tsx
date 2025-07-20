@@ -24,6 +24,7 @@ import DocklyLoader from "../../utils/docklyLoader";
 import UpcomingActivities from "../components/upcomingActivities";
 import CalendarPage, { sampleCalendarData } from "../components/customCalendar1";
 import CustomCalendar from "../components/customCalendar1";
+import { useGlobalLoading } from "../../app/loadingContext";
 
 const getEventColor = (eventDate: Date) => {
   const now = new Date();
@@ -39,7 +40,7 @@ const CalendarDashboard = (props: any) => {
   const { handleConnectMore } = props;
   const [username, setUsername] = useState<string | null>(null);
   const [users, setUsers] = useState<any[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  const { setLoading } = useGlobalLoading();
   const [events, setEvents] = useState<any[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<string[]>([]);
   const [accounts, setAccounts] = useState<{ email: string; provider: string }[]>([]);
@@ -120,10 +121,6 @@ const CalendarDashboard = (props: any) => {
       color: "#60a5fa", // lighter blue
     },
   ];
-
-  if (loading) {
-    return <DocklyLoader />
-  }
 
   return (
     <div>

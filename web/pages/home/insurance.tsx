@@ -5,6 +5,7 @@ import { Card, Button, List, Modal, Form, Input, Typography, message, Space, Ava
 import { EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined } from '@ant-design/icons';
 import moment, { Moment } from 'moment';
 import { addInsurance, getInsurance, updateInsurance, deleteInsurance } from '../../services/home';
+import { useGlobalLoading } from '../../app/loadingContext';
 
 const { Text } = Typography;
 const { Item: FormItem } = Form;
@@ -54,7 +55,7 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [viewing, setViewing] = useState<Insurance | null>(null);
     const [form] = Form.useForm();
-    const [loading, setLoading] = useState<boolean>(false);
+    const { loading, setLoading } = useGlobalLoading();
 
     const PRIMARY_COLOR = '#1890ff';
     const SHADOW_COLOR = 'rgba(0, 0, 0, 0.1)';

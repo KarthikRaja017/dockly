@@ -304,6 +304,31 @@ class OtpVerification(Resource):
             updates={"is_email_verified": True},
             return_fields=["uid", "email"],
         )
+        # 🔁 Link family invite notifications to this UID
+        new_user_email = uid.get("email", "").strip().lower()
+        new_user_uid = uid.get("uid")
+
+        pending_invites = DBHelper.find_all(
+            table_name="notifications",
+            filters={"status": "pending", "task_type": "family_invite"},
+            select_fields=["id", "metadata"],
+        )
+
+        for invite in pending_invites:
+            metadata = invite.get("metadata", {})
+            input_data = metadata.get("input_data", {})
+            invited_email = input_data.get("email", "").strip().lower()
+
+            if invited_email == new_user_email:
+                DBHelper.update(
+                    table_name="notifications",
+                    filters={"id": invite["id"]},
+                    update_fields={
+                        "receiver_id": new_user_uid,
+                        "task_type": "family_request",  # ✅ Required for action buttons
+                        "action_required": True,
+                    },
+                )
         userInfo = {
             "uid": uid.get("uid"),
         }

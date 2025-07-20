@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Input, Typography, notification, Select } from 'antd';
 import { addPet, addPets } from '../../services/family';
+import { useGlobalLoading } from '../../app/loadingContext';
 const { Text } = Typography;
 
 // Define types
@@ -30,7 +31,7 @@ const PetInviteForm: React.FC<PetInviteFormProps> = ({ visible, onCancel, onSubm
         guardianContact: '',
     });
     const [pendingPet, setPendingPet] = useState<FormDataState | null>(null);
-    const [loading, setLoading] = useState<boolean>(false);
+    const { loading, setLoading } = useGlobalLoading();
 
     // Popular pet types in the U.S.
     const petTypes = ['Dog', 'Cat', 'Bird', 'Fish', 'Rabbit', 'Other'];
@@ -80,6 +81,7 @@ const PetInviteForm: React.FC<PetInviteFormProps> = ({ visible, onCancel, onSubm
                 guardianEmail: formData.guardianEmail,
                 guardianContact: formData.guardianContact,
                 userId: localStorage.getItem('userId') || '',
+                family_group_id: localStorage.getItem('fuser') || '',
             });
             const responseData = response?.data || response;
             const status = responseData?.status ?? false;

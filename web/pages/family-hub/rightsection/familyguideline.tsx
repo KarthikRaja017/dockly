@@ -6,6 +6,7 @@ import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import type { Guideline } from '../right-section';
 import { addFamilyGuidelines, getFamilyGuidelines } from '../../../services/family';
+import { useGlobalLoading } from '../../../app/loadingContext';
 
 const { Title, Text } = Typography;
 
@@ -47,7 +48,7 @@ const FamilyGuidelinesCard: React.FC<FamilyGuidelinesCardProps> = ({
         addedTime: dayjs(),
     });
     const [editGuidelineIndex, setEditGuidelineIndex] = useState<number | null>(null);
-    const [loading, setLoading] = useState<boolean>(false);
+    const { loading, setLoading } = useGlobalLoading();
     const [showAllModal, setShowAllModal] = useState<boolean>(false);
 
     const displayedGuidelines = Array.isArray(guidelines) ? guidelines.slice(0, 2) : [];

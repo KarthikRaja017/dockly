@@ -7,6 +7,7 @@ import { API_URL } from '../../services/apiConfig';
 import { useCurrentUser } from '../../app/userContext';
 import { getUserConnectedAccounts } from '../../services/dashboard';
 import { trimGooglePhotoUrl } from './header';
+import { useGlobalLoading } from '../../app/loadingContext';
 
 const { Title, Text } = Typography;
 
@@ -24,7 +25,7 @@ type ConnectedAccount = {
 
 const FolderConnectionModal: React.FC<FolderConnectionModalProps> = ({ isModalVisible, setIsModalVisible }) => {
     const [connections, setConnections] = useState({ apple: false, outlook: false, google: false });
-    const [loading, setLoading] = useState(false);
+    const { loading, setLoading } = useGlobalLoading();
     const [connectedAccounts, setConnectedAccounts] = useState<ConnectedAccount[]>([]);
     const currentUser = useCurrentUser();
 

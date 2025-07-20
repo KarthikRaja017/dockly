@@ -14,13 +14,14 @@ interface FamilyMember {
 }
 
 const FamilyHubPage: React.FC = () => {
-    const [loading, setLoading] = useState(false);
+    const { loading, setLoading } = useGlobalLoading();
     const [profileVisible, setProfileVisible] = useState(false);
     const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
-    const [view] = useState<"Day" | "Week" | "Month" | "Year">("Month");
-    if (loading) {
-        return <DocklyLoader />
-    }
+    const [view, setView] = useState<"Day" | "Week" | "Month" | "Year">("Month")
+    const handleViewChange = (newView: "Day" | "Week" | "Month" | "Year") => {
+        setView(newView);
+    };
+
     return (
         <div
             style={{
@@ -57,12 +58,13 @@ const FamilyHubPage: React.FC = () => {
                     >
                         {/* <CustomCalendar data={sampleCalendarData} source="familyhub" allowMentions={true} enabledHashmentions={true} familyMembers={(familyMembers ?? []).filter(m => m.type === 'family')} /> */}
                         {/* <UpcomingActivities /> */}
-                        <CustomCalendar data={sampleCalendarData} source="familyhub" allowMentions={true} enabledHashmentions={true} familyMembers={(familyMembers ?? []).filter(m => m.type === 'family')} view={view} />
+                        <CustomCalendar data={sampleCalendarData} source="familyhub" allowMentions={true} enabledHashmentions={true} familyMembers={(familyMembers ?? []).filter(m => m.type === 'family')} view={view} onViewChange={handleViewChange} />
                     </div>
 
                     <FamilyNotes />
 
-                    <FamilyTasks />
+                    <FamilyTasks familyMembers={familyMembers.filter(m => m.type === 'family')} />
+
 
                     <div
                         style={{
@@ -129,7 +131,7 @@ const GuardiansEmergencyInfo: React.FC = () => {
     const [currentItemIndex, setCurrentItemIndex] = useState<number | null>(null);
     const [form] = Form.useForm();
     const [sectionItems, setSectionItems] = useState<GuardianItem[]>([]);
-    const [loading, setLoading] = useState(false);
+    const { loading, setLoading } = useGlobalLoading();
     const [error, setError] = useState<string | null>(null);
     const [expandedSections, setExpandedSections] = useState<{ [key: number]: boolean }>({});
 
@@ -660,7 +662,7 @@ const ImportantContacts: React.FC = () => {
     const [currentItemIndex, setCurrentItemIndex] = useState<number | null>(null);
     const [form] = Form.useForm();
     const [sectionItems, setSectionItems] = useState<ContactItem[]>([]);
-    const [loading, setLoading] = useState(false);
+    const { loading, setLoading } = useGlobalLoading();
     const [error, setError] = useState<string | null>(null);
 
     const contactRoles: { [key: string]: string[] } = {
@@ -1299,6 +1301,7 @@ type Task = {
     dueDate?: string;
 };
 
+
 type Project = {
     color?: string;
     project_id: string;
@@ -1307,14 +1310,19 @@ type Project = {
     due_date: string;
     progress: number;
     tasks: Task[];
+    visibility: string;
 };
+interface FamilyTasksProps {
+    familyMembers: { name: string; email?: string; status?: string }[];
+}
 
-const FamilyTasks: React.FC = () => {
+const FamilyTasks: React.FC<FamilyTasksProps> = ({ familyMembers }) => {
     const [projects, setProjects] = useState<Project[]>([]);
-
+    const publicProjects = projects.filter(p => p.visibility === 'public');
     useEffect(() => {
         fetchProjects();
     }, []);
+
 
     const fetchProjects = async () => {
         try {
@@ -1431,6 +1439,8 @@ const FamilyTasks: React.FC = () => {
                 onAddTask={handleAddTask}
                 onToggleTask={handleToggleTask}
                 onUpdateTask={handleUpdateTask}
+                familyMembers={familyMembers}
+
             />
         </div>
     );
@@ -1583,6 +1593,7 @@ import FamilyMembers from '../../pages/family-hub/components/familyMember';
 import FamilyHubMemberDetails from '../../pages/family-hub/components/profile';
 import FamilyTasksComponent from '../components/familyTasksProjects';
 import FamilyNotes from './components/familyNotesLists';
+import { useGlobalLoading } from '../../app/loadingContext';
 // import { PRIMARY_COLOR } from '../../comman';
 
 const FamilyCalendar: React.FC = () => {

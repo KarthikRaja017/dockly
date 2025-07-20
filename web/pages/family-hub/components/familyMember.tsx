@@ -9,6 +9,7 @@ import { getPets, getUsersFamilyMembers } from '../../../services/family';
 import FamilyInviteForm from '../FamilyInviteForm';
 import { capitalizeEachWord, PRIMARY_COLOR } from '../../../app/comman';
 import PetInviteForm from '../PetsInviteForm';
+import { useGlobalLoading } from '../../../app/loadingContext';
 
 interface FamilyMembersProps {
     profileVisible: boolean;
@@ -22,7 +23,7 @@ const FamilyMembers: React.FC<FamilyMembersProps> = ({ profileVisible, setProfil
     const [isFamilyModalVisible, setIsFamilyModalVisible] = useState(false);
     const [isPetModalVisible, setIsPetModalVisible] = useState(false)
     // const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
-    const [loading, setLoading] = useState<boolean>(false);
+    const { loading, setLoading } = useGlobalLoading();
 
     const currentUser = useCurrentUser();
     const dUser = currentUser?.duser;
@@ -96,7 +97,13 @@ const FamilyMembers: React.FC<FamilyMembersProps> = ({ profileVisible, setProfil
                 });
 
                 const pets = await getPetsData();
-                setFamilyMembers([...transformedMembers, ...pets]);
+
+                const meMember = transformedMembers.find((m: any) => m.role.toLowerCase() === 'me');
+                const otherMembers = transformedMembers.filter((m: any) => m.role.toLowerCase() !== 'me');
+                const sortedMembers = meMember ? [meMember, ...otherMembers] : otherMembers;
+
+                setFamilyMembers([...sortedMembers, ...pets]);
+
             }
         }
     };
@@ -303,8 +310,9 @@ const FamilyMembers: React.FC<FamilyMembersProps> = ({ profileVisible, setProfil
                     <PetInviteForm
                         visible={isPetModalVisible}
                         onCancel={handlePetCancel}
-                        onSubmit={(formData) => {
+                        onSubmit={async (formData) => {
                             // TODO: handle pet form submission
+                            await getMembers();
                             setIsPetModalVisible(false);
                         }}
                     />

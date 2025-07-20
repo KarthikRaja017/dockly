@@ -18,13 +18,14 @@ import { inputSuffix } from "./eventCarousel";
 import { addNotes, deleteNotes, getNotes, updateNotes } from "../../services/google";
 import { showNotification } from "../../utils/notification";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import { useGlobalLoading } from "../../app/loadingContext";
 
 const { Option } = Select;
 const { Title } = Typography;
 
 const ToDoList = () => {
     const [assignedTo, setAssignedTo] = useState("Asfar");
-    const [loading, setLoading] = useState(false);
+    const { loading, setLoading } = useGlobalLoading();
     const [tasks, setTasks] = useState<any[]>([]);
     const [activeTab, setActiveTab] = useState("today");
     const [viewMode, setViewMode] = useState<"my" | "family">("my");

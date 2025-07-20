@@ -230,6 +230,7 @@ import {
   getSavedTransactions,
 } from '../../services/apiConfig';
 import DocklyLoader from '../../utils/docklyLoader';
+import { useGlobalLoading } from '../../app/loadingContext';
 
 const { Text } = Typography;
 
@@ -241,7 +242,7 @@ const RecentTransactions = ({
   onViewAll?: () => void;
 }) => {
   const [transactions, setTransactions] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { loading, setLoading } = useGlobalLoading();
   const [expanded, setExpanded] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
@@ -335,9 +336,7 @@ const RecentTransactions = ({
         overflow: 'hidden',
       }}
     >
-      {loading ? (
-        <DocklyLoader />
-      ) : (
+      {!loading && (
         <>
           <List
             itemLayout="horizontal"

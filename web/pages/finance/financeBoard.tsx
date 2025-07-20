@@ -15,12 +15,13 @@ import { showNotification } from "../../utils/notification";
 import { useCurrentUser } from "../../app/userContext";
 import SetupFinanceBoard from "./setUpFinanceboard";
 import AuthProvider from "../components/authProvider";
+import { useGlobalLoading } from "../../app/loadingContext";
 
 const { Title, Paragraph, Text } = Typography;
 
 const FinanceIntroBoard = () => {
   const [isFinanceUser, setIsFinanceUser] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const { loading, setLoading } = useGlobalLoading();
   const { importSession } = useQuilttSession();
 
   const currentUser = useCurrentUser();

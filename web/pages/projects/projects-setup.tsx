@@ -11,13 +11,14 @@ import {
 } from '@ant-design/icons';
 import 'antd/dist/reset.css';
 import { useRouter } from 'next/navigation';
+import { useGlobalLoading } from '../../app/loadingContext';
 
 const { Title, Paragraph } = Typography;
 
 const ProjectsIntroBoard: React.FC = () => {
   const router = useRouter();
   const [isProjectUser, setIsProjectUser] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const { loading, setLoading } = useGlobalLoading();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [step, setStep] = useState(1);
 

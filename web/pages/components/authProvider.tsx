@@ -8,6 +8,7 @@ import MainLayout from "./mainLayout";
 import { UserContext } from "../../app/userContext";
 import { Spin } from "antd";
 import DocklyLoader from "../../utils/docklyLoader";
+import { useGlobalLoading } from "../../app/loadingContext";
 interface AuthProviderProps {
   children: React.ReactNode;
 }
@@ -22,7 +23,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
   const router = useRouter();
   const pathname = usePathname() || "";
   const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
+  const { loading, setLoading } = useGlobalLoading();
 
 
   const isPublicRoute = (path: string) => {
@@ -67,12 +68,12 @@ export default function AuthProvider({ children }: AuthProviderProps) {
   }, [pathname]);
 
   if (user === undefined) {
-    return <DocklyLoader />;
-  }
-
-  if (loading) {
     return <DocklyLoader />
   }
+
+  // if (loading) {
+  //   return <DocklyLoader />
+  // }
 
   return (
     <UserContext.Provider value={user}>

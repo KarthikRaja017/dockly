@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Card, List, Button, Space, Typography, Modal, Form, Input as AntInput, message, Avatar, Select, Dropdown, Menu } from "antd";
 import { PlusOutlined, MoreOutlined } from "@ant-design/icons";
 import { addUtility, getUtilities, updateUtility, deleteUtility } from "../../services/home";
+import { useGlobalLoading } from "../../app/loadingContext";
 
 const { Text } = Typography;
 const { Option } = Select;
@@ -38,7 +39,7 @@ const Utilities: React.FC = () => {
     const [editingUtility, setEditingUtility] = useState<Utility | null>(null);
     const [editForm] = Form.useForm();
     const [addForm] = Form.useForm();
-    const [loading, setLoading] = useState<boolean>(false);
+    const { loading, setLoading } = useGlobalLoading();
 
     // Replace with actual user_id from auth context
     const userId = "test_user_id"; // TODO: Replace with actual user ID from auth context

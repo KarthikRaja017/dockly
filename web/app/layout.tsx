@@ -1,4 +1,6 @@
 import AuthProvider from "../pages/components/authProvider";
+import DocklyLoader from "../utils/docklyLoader";
+import { LoadingProvider } from "./loadingContext";
 
 export const metadata = {
   title: "Dockly",
@@ -12,9 +14,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        <LoadingProvider>
+          <DocklyLoader />
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+        </LoadingProvider>
       </body>
     </html>
   );

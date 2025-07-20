@@ -460,17 +460,30 @@
         "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
       ]
     },
+
     {
-      "table_name": "notes",
+      "table_name": "notes_lists",
       "columns": [
-        "id VARCHAR(255) PRIMARY KEY",
-        "user_id VARCHAR(255) REFERENCES users(uid) ON DELETE CASCADE",
-        "title VARCHAR(255) NOT NULL",
-        "description TEXT",
-        "date DATE NOT NULL",
-        "status VARCHAR(50) DEFAULT 'Yet to Start'",
-        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
-        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+        "id SERIAL PRIMARY KEY",
+        "user_id VARCHAR(255)",
+        "title TEXT NOT NULL",
+        "description TEXT NOT NULL",
+        "created_at TIMESTAMP NOT NULL",
+        "updated_at TIMESTAMP NOT NULL",
+        "category_id INTEGER NOT NULL"
+      ]
+    },
+    {
+      "table_name": "notes_categories",
+      "columns": [
+        "id SERIAL PRIMARY KEY",
+        "user_id VARCHAR(255)",
+        "name TEXT NOT NULL",
+        "icon TEXT",
+        "meta JSONB DEFAULT '[]'::jsonb",
+        "created_at TIMESTAMP NOT NULL",
+        "updated_at TIMESTAMP NOT NULL",
+        "is_active BOOLEAN DEFAULT TRUE"
       ]
     },
 
@@ -510,7 +523,8 @@
         "species VARCHAR(50) NOT NULL",
         "breed VARCHAR(50)",
         "guardian_email VARCHAR(100) NOT NULL",
-        "guardian_contact VARCHAR(20) NOT NULL"
+        "guardian_contact VARCHAR(20) NOT NULL",
+        "family_group_id VARCHAR"
       ]
     },
     {

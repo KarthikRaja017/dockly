@@ -6,6 +6,7 @@ import { AxiosResponse } from "axios";
 import { emailVerification } from "../../services/apiConfig";
 import { showNotification } from "../../utils/notification";
 import DocklyLoader from "../../utils/docklyLoader";
+import { useGlobalLoading } from "../../app/loadingContext";
 
 const { Title, Text, Link } = Typography;
 
@@ -20,7 +21,7 @@ type ApiResponse = {
 
 const VerifyEmailPage: React.FC = () => {
   const [otp, setOtp] = useState(["", "", "", ""]);
-  const [loading, setLoading] = useState(false);
+  const { loading, setLoading } = useGlobalLoading();
   const [userId, setUserId] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const [duser, setDuser] = useState<string | null>(null);
@@ -121,10 +122,6 @@ const VerifyEmailPage: React.FC = () => {
       setLoading(false);
     }
   };
-
-  if (loading) {
-    return <DocklyLoader />;
-  }
 
   return (
     <Row

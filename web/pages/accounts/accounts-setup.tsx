@@ -12,12 +12,13 @@ import {
 
 import 'antd/dist/reset.css';
 import { useRouter } from 'next/navigation';
+import { useGlobalLoading } from '../../app/loadingContext';
 
 const { Title, Paragraph } = Typography;
 
 const AccountsIntroBoard: React.FC = () => {
   const [isAccountsUser, setIsAccountsUser] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const { loading, setLoading } = useGlobalLoading();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
 

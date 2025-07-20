@@ -4,6 +4,7 @@ import { Card, List, Button, Space, Typography, Modal, Form, Input as AntInput, 
 import { PlusOutlined, MoreOutlined } from '@ant-design/icons';
 import { getLoansAndMortgages, addMortgage, updateMortgage, deleteMortgage } from '../../services/home';
 import Dropdown from 'antd/es/dropdown/dropdown';
+import { useGlobalLoading } from '../../app/loadingContext';
 
 const { Text, Title } = Typography;
 
@@ -35,7 +36,7 @@ interface Mortgage {
 // Custom hook for mortgage logic
 const useMortgageLoans = (uid: string) => {
     const [mortgageData, setMortgageData] = React.useState<Mortgage[]>([]);
-    const [loading, setLoading] = React.useState<boolean>(true);
+    const { loading, setLoading } = useGlobalLoading();
 
     const fetchLoansAndMortgages = async () => {
         try {
@@ -482,9 +483,7 @@ const MortgageLoans: React.FC<MortgageLoansProps> = ({ uid }) => {
                     overflowY: 'auto',
                 }}
             >
-                {loading ? (
-                    <Skeleton active paragraph={{ rows: 1 }} style={{ padding: '24px' }} />
-                ) : mortgageData.length === 0 ? (
+                {!loading && mortgageData.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '32px', color: '#595959' }}>
                         <Text style={{ fontSize: '16px' }}>No mortgages or loans found. Add one to get started!</Text>
                         <div style={{ marginTop: '16px' }}>

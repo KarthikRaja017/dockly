@@ -27,10 +27,11 @@ import {
 } from 'lucide-react';
 import { getRecentActivities, respondToNotification } from '../../services/dashboard';
 import DocklyLoader from '../../utils/docklyLoader';
+import { useGlobalLoading } from '../../app/loadingContext';
 
 const RecentActivity: React.FC = () => {
   const [filter, setFilter] = useState('Notifications');
-  const [isLoading, setIsLoading] = useState(true);
+  const { loading: isLoading, setLoading: setIsLoading } = useGlobalLoading();
   const [searchTerm, setSearchTerm] = useState('');
   const [showQuickView, setShowQuickView] = useState(false);
   const [selectedItems, setSelectedItems] = useState<number[]>([]);
@@ -862,9 +863,6 @@ const RecentActivity: React.FC = () => {
     );
   };
 
-  if (isLoading) {
-    return <DocklyLoader />;
-  }
 
   return (
     <>

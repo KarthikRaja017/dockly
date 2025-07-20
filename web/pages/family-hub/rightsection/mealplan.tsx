@@ -6,6 +6,7 @@ import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import { addMealPlan, getUserMealPlan } from '../../../services/family';
 import { FamilyMember } from './sharedtasks';
+import { useGlobalLoading } from '../../../app/loadingContext';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -61,7 +62,7 @@ const MealPlansCard: React.FC<MealPlansCardProps> = ({
         addedTime: dayjs(),
     });
     const [editMealPlanIndex, setEditMealPlanIndex] = useState<number | null>(null);
-    const [loading, setLoading] = useState<boolean>(false);
+    const { loading, setLoading } = useGlobalLoading();
     const [showAllModal, setShowAllModal] = useState<boolean>(false);
     const [mealFilter, setMealFilter] = useState<'all' | 'breakfast' | 'lunch' | 'dinner'>('all');
 

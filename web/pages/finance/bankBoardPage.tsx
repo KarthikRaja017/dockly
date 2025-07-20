@@ -21,6 +21,7 @@ import FinanceIntroBoard from "./financeBoard";
 import BankPage from "./bankPage";
 import { useRouter } from "next/navigation";
 import DocklyLoader from "../../utils/docklyLoader";
+import { useGlobalLoading } from "../../app/loadingContext";
 
 const { Title } = Typography;
 export default function BankBoardPage() {
@@ -28,10 +29,8 @@ export default function BankBoardPage() {
   const [profileId, setProfileId] = useState("");
   const [emailId, setEmailId] = useState("");
   const [isFinanceAccount, setIsFinanceAccount] = useState(false);
-  console.log("🚀 ~ BankBoardPage ~ isFinanceAccount:", isFinanceAccount)
   const [bankDetails, setBankDetails] = useState<any>(null);
-  console.log("🚀 ~ BankBoardPage ~ bankDetails:", bankDetails)
-  const [loading, setLoading] = useState(true); // <-- Add loading state
+  const { loading, setLoading } = useGlobalLoading();
   const [connectionId, setConnectionId] = useState<string>();
   const [username, setUsername] = useState<string>("");
 
@@ -65,14 +64,6 @@ export default function BankBoardPage() {
       router.push(`/${username}/finance-hub/setup`);
     }
   }, [loading, bankDetails]);
-
-  if (loading) {
-    return (
-      // <div>
-      <DocklyLoader />
-      // </div>
-    ); // Or a spinner
-  }
 
   return (
     <div style={{ background: "#f0f2f5", minHeight: "100vh" }}>

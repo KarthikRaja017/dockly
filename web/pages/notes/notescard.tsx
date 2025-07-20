@@ -39,6 +39,7 @@ import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { addNotes, getNotes } from "../../services/notes";
 import { showNotification } from "../../utils/notification";
+import { useGlobalLoading } from "../../app/loadingContext";
 
 const { Text, Title } = Typography;
 const { TextArea } = Input;
@@ -60,7 +61,7 @@ interface StickyNotesProps {
 const StickyNotes: React.FC<StickyNotesProps> = ({ isOpen, setIsOpen }) => {
     const [notes, setNotes] = useState<Note[]>([]);
     const [showModal, setShowModal] = useState(false);
-    const [loading, setLoading] = useState(false);
+    const { loading, setLoading } = useGlobalLoading();
     const [modalMode, setModalMode] = useState<"create" | "edit">("create");
     const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
     const [form] = Form.useForm();
