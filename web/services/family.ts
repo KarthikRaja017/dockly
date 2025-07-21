@@ -377,6 +377,13 @@ export async function getNoteCategories() {
   return api.get('/family/get/note_categories');
 }
 
+export async function updateNoteCategory(params: {
+  id: number;
+  pinned: boolean;
+}) {
+  return api.post('/family/update/note_category', params);
+}
+
 export async function addProject(params: any) {
   return api.post('/add/project', params);
 }

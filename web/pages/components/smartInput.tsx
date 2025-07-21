@@ -60,18 +60,18 @@ const SmartInputBox: React.FC<SmartInputBoxProps> = ({
         const uid = localStorage.getItem('userId') || '';
         if (!uid) return;
 
-        const fetchSuggestions = async () => {
-            setLoading(true);
-            try {
-                const suggestions = await fetchNoteSuggestions(uid, source);
-                setFrequentNotes(suggestions);
-            } catch (err) {
-                console.error('Failed to load frequent notes', err);
-            }
-            setLoading(false);
-        };
+        // const fetchSuggestions = async () => {
+        //     setLoading(true);
+        //     try {
+        //         const suggestions = await fetchNoteSuggestions(uid, source);
+        //         setFrequentNotes(suggestions);
+        //     } catch (err) {
+        //         console.error('Failed to load frequent notes', err);
+        //     }
+        //     setLoading(false);
+        // };
 
-        fetchSuggestions();
+        // fetchSuggestions();
     }, [source]);
 
     const handleInputChange = (e: any) => {

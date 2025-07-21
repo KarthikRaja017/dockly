@@ -109,13 +109,14 @@ interface Props {
         due_date: string;
         visibility: 'public' | 'private';
     }) => void;
-    onAddTask?: (projectId: string) => void;
+    onAddTask?: (projectId: string, taskData?: { title: string; due_date: string }) => void;
     onToggleTask?: (projectId: string, taskId: number) => void;
     onUpdateTask?: (task: Task) => void;
     showAssigneeInputInEdit?: boolean;
     showAvatarInTask?: boolean;
     familyMembers?: { name: string; email?: string; status?: string }[];
     showVisibilityToggle?: boolean;
+    showAssigneeField?: boolean;
 }
 
 const FamilyTasksComponent: React.FC<Props> = ({
@@ -129,6 +130,7 @@ const FamilyTasksComponent: React.FC<Props> = ({
     showAssigneeInputInEdit = true,
     showAvatarInTask = true,
     showVisibilityToggle = false,
+    showAssigneeField = false
 }) => {
     const [modalVisible, setModalVisible] = useState(false);
     const [assignees, setAssignees] = useState<{ label: string; value: string }[]>([]);
@@ -149,6 +151,10 @@ const FamilyTasksComponent: React.FC<Props> = ({
         projectId: string;
         task: Task | null;
     }>({ projectId: '', task: null });
+    const [taskTitle, setTaskTitle] = useState('');
+    const [taskDueDate, setTaskDueDate] = useState<dayjs.Dayjs | null>(null);
+    const [taskAssignee, setTaskAssignee] = useState<string>('All');
+
     const [viewMoreProject, setViewMoreProject] = useState<Project | null>(null);
     const [viewMoreModalVisible, setViewMoreModalVisible] = useState(false);
 
@@ -389,8 +395,8 @@ const FamilyTasksComponent: React.FC<Props> = ({
                                                     loading={loadingTask}
                                                     onClick={async () => {
                                                         setLoadingTask(true);
-                                                        await onAddTask?.(proj.project_id);
-                                                        setLoadingTask(false);
+                                                        setEditingTask({ projectId: proj.project_id, task: null });
+                                                        setEditTaskModal(true);
                                                     }}
                                                     style={{
                                                         backgroundColor: COLORS.accent,
@@ -573,7 +579,7 @@ const FamilyTasksComponent: React.FC<Props> = ({
                                         ))
 
                                     )}
-                                    {sortedTasks.length > 2 && !isTemplate && (
+                                    {sortedTasks.filter(task => task.title).length > 2 && proj.title && (
                                         <Button
                                             type="link"
                                             size="small"
@@ -741,7 +747,7 @@ const FamilyTasksComponent: React.FC<Props> = ({
                         <span>Edit Task</span>
                     </div>
                 }
-                open={editTaskModal}
+                open={editTaskModal && editingTask?.task !== null}
                 onCancel={() => setEditTaskModal(false)}
                 onOk={async () => {
                     if (editingTask.task && onUpdateTask) {
@@ -898,6 +904,72 @@ const FamilyTasksComponent: React.FC<Props> = ({
                     </div>
                 ))}
             </Modal>
+            {/* Add Task Modal */}
+            <Modal
+                title="Add New Task"
+                open={editTaskModal && editingTask?.task === null}
+                onCancel={() => {
+                    setEditTaskModal(false);
+                    setTaskTitle('');
+                    setTaskDueDate(null);
+                    setTaskAssignee('All');
+                }}
+                onOk={async () => {
+                    if (!taskTitle || !taskDueDate || !editingTask?.projectId) return;
+
+                    const payload = {
+                        title: taskTitle,
+                        due_date: dayjs(taskDueDate).format('YYYY-MM-DD'),
+                        assignee: showAssigneeField ? taskAssignee : 'All',
+                    };
+
+                    setLoadingTask(true);
+                    await onAddTask?.(editingTask.projectId, payload);
+                    setLoadingTask(false);
+                    setEditTaskModal(false);
+                    setTaskTitle('');
+                    setTaskDueDate(null);
+                    setTaskAssignee('All');
+                }}
+            >
+                <Input
+                    placeholder="Enter task title"
+                    value={taskTitle}
+                    onChange={(e) => setTaskTitle(e.target.value)}
+                    style={{ marginBottom: 12 }}
+                />
+
+                <DatePicker
+                    value={taskDueDate}
+                    onChange={(date) => setTaskDueDate(date)}
+                    disabledDate={(current) => current && current < dayjs().startOf('day')}
+                    style={{ width: '100%', marginBottom: 12 }}
+                />
+
+                {showAssigneeField && (
+                    <Select
+                        placeholder="Select assignee"
+                        value={taskAssignee}
+                        onChange={(value) => setTaskAssignee(value)}
+                        style={{ width: '100%' }}
+                        options={assignees}
+
+                    />
+                    // <Select
+                    //     placeholder="Select assignee"
+                    //     value={editingTask.task?.assignee}
+                    //     onChange={(val) =>
+                    //         setEditingTask((prev) => ({
+                    //             ...prev,
+                    //             task: prev.task && { ...prev.task, assignee: val, type: val },
+                    //             }))
+                    //            }
+                    //     options={assignees}
+                    //     style={{ width: '100%', borderRadius: '8px' }}
+                    // />
+                )}
+            </Modal>
+
 
         </Card>
     );

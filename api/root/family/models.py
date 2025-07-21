@@ -1142,23 +1142,50 @@ class AddNoteCategory(Resource):
             if not name:
                 return {"status": 0, "message": "Category name is required"}, 400
 
-            # Get the next available ID that is greater than 5
-            # last_id = DBHelper.fetch_one("SELECT MAX(id) FROM notes_categories")
+            # generate custom ID
             nid = uniqueId(digit=3, isNum=True)
 
+            # ✅ insert with pinned=True
             DBHelper.insert(
                 "notes_categories",
                 id=nid,
                 user_id=uid,
                 name=name,
                 icon=icon,
+                pinned=True,  # ✅ store pinned
                 created_at=now,
                 updated_at=now,
             )
 
-            return {"status": 1, "message": "Category added", "id": nid}
+            return {
+                "status": 1,
+                "message": "Category added",
+                "payload": {"id": nid},  # ✅ match frontend expectation
+            }
         except Exception as e:
             return {"status": 0, "message": f"Failed to add category: {str(e)}"}, 500
+
+
+class UpdateNoteCategory(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid=None, user=None):
+        try:
+            data = request.get_json(force=True)
+            category_id = data.get("id")
+            pinned = data.get("pinned")
+
+            if category_id is None or pinned is None:
+                return {"status": 0, "message": "Missing id or pinned value"}, 400
+
+            DBHelper.update_one(
+                table_name="notes_categories",
+                filters={"id": category_id, "user_id": uid},
+                updates={"pinned": pinned},
+            )
+
+            return {"status": 1, "message": "Category pin updated"}
+        except Exception as e:
+            return {"status": 0, "message": str(e)}, 500
 
 
 class GetNoteCategories(Resource):
@@ -1168,7 +1195,7 @@ class GetNoteCategories(Resource):
             categories = DBHelper.find_all(
                 "notes_categories",
                 filters={"user_id": uid, "is_active": True},
-                select_fields=["id", "name", "icon"],
+                select_fields=["id", "name", "icon", "pinned"],
             )
 
             notesCategories = []
@@ -1178,8 +1205,10 @@ class GetNoteCategories(Resource):
                         "title": category["name"],
                         "icon": category["icon"],
                         "id": category["id"],
+                        "pinned": category["pinned"],
                     }
                 )
+            # print(f"==>> notesCategories: {notesCategories}")
 
             return {"status": 1, "payload": notesCategories}
 
@@ -1204,6 +1233,7 @@ class AddProject(Resource):
                     "due_date": input_data.get("due_date"),
                     "meta": input_data.get("meta", []),
                     "progress": input_data.get("progress", 0),
+                    "source": input_data.get("source", "familyhub"),
                     "updated_at": datetime.utcnow(),
                 },
             )
@@ -1221,6 +1251,7 @@ class AddProject(Resource):
                 description=input_data.get("description"),
                 due_date=input_data.get("due_date"),
                 meta=input_data.get("meta", []),
+                source=input_data.get("source", "familyhub"),
                 progress=input_data.get("progress", 0),
             )
             return {
@@ -1262,6 +1293,7 @@ class GetProjects(Resource):
                 "progress",
                 "created_at",
                 "updated_at",
+                "source",
             ],
             field="uid",
             values=familyMembersIds,
@@ -1277,6 +1309,7 @@ class GetProjects(Resource):
                 "progress": p["progress"],
                 "created_at": p["created_at"].isoformat(),
                 "updated_at": p["updated_at"].isoformat(),
+                "source": p["source"],
             }
             for p in projects
         ]

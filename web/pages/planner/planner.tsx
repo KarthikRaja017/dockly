@@ -108,6 +108,8 @@ type Project = {
     due_date: string;
     progress: number;
     tasks: Task[];
+    visibility: string;
+    source: string;
 };
 
 interface ConnectedAccount {
@@ -735,6 +737,13 @@ const Planner = () => {
         setIsNoteModalVisible(true);
     };
 
+    const publicProjects = projects.filter(p => p.visibility === 'public');
+
+    const filteredProjects = projects.filter(
+        (proj) => proj.source === 'planner'
+    );
+
+
     const handleDeleteNote = async (id: string) => {
         try {
             await deletePlannerNote(id);
@@ -782,26 +791,34 @@ const Planner = () => {
         title: string;
         description: string;
         due_date: string;
+        visibility: 'public' | 'private';
     }) => {
         setLoading(true);
         try {
-            await addProject({ ...project, source: 'planner' });
-            await fetchProjects();
+            await addProject({
+                ...project,
+                source: 'planner',
+                meta: { visibility: project.visibility }
+            });
+            fetchProjects();
         } catch {
             // Handle error
         }
         setLoading(false);
     };
 
-    const handleAddTask = async (projectId: string) => {
+    const handleAddTask = async (projectId: string,
+        taskData?: { title: string; due_date: string; assignee?: string }
+    ) => {
+        if (!taskData) return;
         setLoading(true);
         try {
             await addTask({
                 project_id: projectId,
-                title: 'New Task',
-                assignee: 'All',
+                title: taskData.title,
+                assignee: taskData.assignee || 'All',
                 type: 'low',
-                due_date: dayjs().format('YYYY-MM-DD'),
+                due_date: taskData.due_date,
                 completed: false,
             });
             fetchProjects();
@@ -876,6 +893,8 @@ const Planner = () => {
                             ? Math.round((tasks.filter((t: Task) => t.completed).length / tasks.length) * 100)
                             : 0,
                         tasks,
+                        visibility: proj.meta?.visibility || 'public',
+                        source: proj.source || '',
                     };
                 })
             );
@@ -983,7 +1002,7 @@ const Planner = () => {
             const formattedTodos = rawTodos.map((item: any) => ({
                 id: item.id,
                 text: item.text,
-                completed: item.todo_status,
+                completed: item.todo_status ?? item.todo_status ?? false,
                 priority: item.priority || "medium",
                 date: dayjs(item.date).format("YYYY-MM-DD"),
                 time: dayjs(item.time, ["h:mm A", "HH:mm"]).format("h:mm A"),
@@ -1149,7 +1168,25 @@ const Planner = () => {
             };
         });
     };
+    const handleAddProject = async () => {
+        try {
+            const values = await projectForm.validateFields();
 
+            const newProject = {
+                title: values.title,
+                description: values.category,
+                due_date: values.dueDate.format("YYYY-MM-DD"),
+                visibility: values.visibility || 'private',
+            };
+
+            await handleAddProjects(newProject); // ✅ This sends it to backend with meta.visibility
+
+            projectForm.resetFields();
+            setIsProjectModalVisible(false);
+        } catch (err) {
+            console.error('Validation failed:', err);
+        }
+    };
 
 
     useEffect(() => {
@@ -1753,13 +1790,15 @@ const Planner = () => {
                     <Col span={16}>
                         <FamilyTasksComponent
                             title="Projects"
-                            projects={projects}
+                            projects={filteredProjects}
                             onAddProject={handleAddProjects}
                             onAddTask={handleAddTask}
                             onToggleTask={handleToggleTask}
                             onUpdateTask={handleUpdateTask}
                             showAssigneeInputInEdit={false}
                             showAvatarInTask={false}
+                            showVisibilityToggle={true}
+                            showAssigneeField={false}
                         />
                     </Col>
                     <Col span={8}>
@@ -1926,6 +1965,7 @@ const Planner = () => {
                         <Button
                             key="submit"
                             type="primary"
+                            loading={loading}
                             onClick={() => {
                                 noteForm.validateFields().then(async (values) => {
                                     if (editingNote) {

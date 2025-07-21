@@ -116,20 +116,27 @@ const CustomHeader = ({
     items: [
       {
         key: "profile",
-        icon: <UserOutlined style={{ fontSize: 18, color: "#007B8F" }} />,
-        label: <div style={{ fontSize: "16px", padding: "10px", fontWeight: 500 }}>Profile</div>,
+        icon: <UserOutlined style={{ fontSize: 14, color: "#007B8F" }} />,
+        label: <div style={{ fontSize: "14px", padding: "2px", fontWeight: 500 }}>Profile</div>,
         onClick: () => router.push(`/${userName}/profile`),
       },
       {
         key: "settings",
-        icon: <SettingOutlined style={{ fontSize: 18, color: "#007B8F" }} />,
-        label: <div style={{ fontSize: "16px", padding: "10px", fontWeight: 500 }}>Settings</div>,
+        icon: <SettingOutlined style={{ fontSize: 14, color: "#007B8F" }} />,
+        label: <div style={{ fontSize: "14px", padding: "2px", fontWeight: 500 }}>Settings</div>,
         onClick: () => router.push(`/${userName}/settings`),
+      },
+      {
+        key: "logout",
+        icon: <LogoutOutlined style={{ fontSize: 14, color: "#d9363e" }} />,
+        label: <div style={{ fontSize: "14px", padding: "2px", fontWeight: 500, color: "#d9363e" }}>Logout</div>,
       },
     ],
     onClick: ({ key }: { key: string }) => {
       if (key === "logout") {
-        router.push("/logout");
+        localStorage.clear();
+        window.location.reload(); // You can also redirect to login page if needed
+        // router.push("/login"); // optional redirect
       }
     },
   };

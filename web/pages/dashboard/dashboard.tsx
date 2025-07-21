@@ -424,6 +424,7 @@
 
 
 // -----------------
+
 'use client'
 import React, { useEffect, useState } from 'react';
 // import Header from './Header';
@@ -434,6 +435,7 @@ import AlertsSuggestions from './AlertsSuggestions';
 import QuickActions from './QuickActions';
 import UpcomingActivities from './UpcomingActivities';
 import RecentActivity from './RecentActivity';
+import StickyNotes from '../notes/notescard';
 import FinanceSnapshot from './FinanceSnapshot';
 import HealthPulse from './HealthPulse';
 import ProductivityStats from './ProductivityStats';
@@ -509,6 +511,9 @@ const Dashboard: React.FC = () => {
         {/* Alerts & Quick Actions */}
         <AlertsSuggestions />
         <QuickActions />
+        <StickyNotes isOpen={false} setIsOpen={function (isOpen: boolean): void {
+          throw new Error('Function not implemented.');
+        }} />
 
         {/* Main Content Grid */}
         <div style={{
@@ -615,6 +620,7 @@ const Dashboard: React.FC = () => {
 };
 
 export default Dashboard;
+
 
 
 // 'use client';

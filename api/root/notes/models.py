@@ -10,32 +10,33 @@ class AddNotes(Resource):
         inputData = request.get_json(silent=True)
         if not inputData:
             return {"status": 0, "message": "Invalid input data", "payload": {}}
-        DBHelper.update_one(
-            table_name="sticky_notes",
-            filters={"id": id, "user_id": uid},
-            updates={
-                "title": inputData.get("title", ""),
-                "description": inputData.get("description", ""),
-                "reminder_date": inputData.get("reminderDate", ""),
-                "status": inputData.get("status", 0),
-            },
-        )
-        return {"status": 1, "message": "Notes  Added Successfully", "payload": {}}
-        # else:
-        #     user_id = DBHelper.insert(
-        #         'stickynotes',
-        #         return_column='user_id',
-        #         user_id=uid,
-        #         title=inputData.get("title", ""),
-        #         description=inputData.get("description", ""),
-        #         reminder_date=inputData.get("reminderDate", ""),
-        #         status=inputData.get("status", 0)
-        #     )
-        #     return {
-        #         "status": 1,
-        #         "message": "Notes Added Succefully",
-        #         "payload": {}
-        #     }
+
+        note_id = inputData.get("id")  # This will be None if not passed
+
+        if inputData.get("editing") and note_id:
+            # UPDATE note
+            DBHelper.update_one(
+                table_name="sticky_notes",
+                filters={"id": note_id, "user_id": uid},
+                updates={
+                    "title": inputData.get("title", ""),
+                    "description": inputData.get("description", ""),
+                    "reminder_date": inputData.get("reminderDate", ""),
+                    "status": inputData.get("status", 0),
+                },
+            )
+            return {"status": 1, "message": "Note updated successfully", "payload": {}}
+        else:
+            # INSERT new note
+            DBHelper.insert(
+                "sticky_notes",
+                user_id=uid,
+                title=inputData.get("title", ""),
+                description=inputData.get("description", ""),
+                reminder_date=inputData.get("reminderDate", ""),
+                status=inputData.get("status", 0),
+            )
+            return {"status": 1, "message": "Note added successfully", "payload": {}}
 
 
 class GetNotes(Resource):

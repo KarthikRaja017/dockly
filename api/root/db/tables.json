@@ -481,12 +481,12 @@
         "name TEXT NOT NULL",
         "icon TEXT",
         "meta JSONB DEFAULT '[]'::jsonb",
+        "pinned BOOLEAN DEFAULT FALSE",
         "created_at TIMESTAMP NOT NULL",
         "updated_at TIMESTAMP NOT NULL",
         "is_active BOOLEAN DEFAULT TRUE"
       ]
     },
-
     {
       "table_name": "contacts",
       "columns": [

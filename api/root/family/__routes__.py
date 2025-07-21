@@ -33,6 +33,7 @@ family_api.add_resource(UpdateNote, "/family/update/note")
 
 family_api.add_resource(AddNoteCategory, "/family/add/note_category")
 family_api.add_resource(GetNoteCategories, "/family/get/note_categories")
+family_api.add_resource(UpdateNoteCategory, "/family/update/note_category")
 
 
 family_api.add_resource(AddPet, "/add/pet")

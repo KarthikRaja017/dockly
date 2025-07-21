@@ -74,15 +74,15 @@ class AddWeeklyGoals(Resource):
             "synced_to_google": sync_to_google,
         }
 
-        # Sync to Google Calendar if enabled and backup exists
+        # Sync to Google Calendar if enabled
         if sync_to_google:
             try:
-                # Parse the date and time for Google Calendar
-                start_dt = datetime.strptime(
-                    f"{goal_date} {goal_time}", "%Y-%m-%d %I:%M %p"
-                )
+                # Create all-day event
+                start_dt = datetime.strptime(goal_date, "%Y-%m-%d")
+                end_dt = start_dt + timedelta(days=1)
+
                 google_event_id = create_calendar_event(
-                    uid, data.get("goal", ""), start_dt
+                    uid, data.get("goal", ""), start_dt, end_dt
                 )
                 goal["google_calendar_id"] = google_event_id
                 goal["synced_to_google"] = True
@@ -126,27 +126,28 @@ class UpdateWeeklyGoals(Resource):
         }
 
         try:
-            start_dt = datetime.strptime(
-                f"{data.get('date', '')} {data.get('time', '')}", "%Y-%m-%d %I:%M %p"
-            )
+            # Prepare all-day datetime range
+            start_dt = datetime.strptime(data.get("date", ""), "%Y-%m-%d")
+            end_dt = start_dt + timedelta(days=1)
         except ValueError:
-            return {"status": 0, "message": "Invalid date/time format", "payload": {}}
+            return {"status": 0, "message": "Invalid date format", "payload": {}}
 
         # Handle Google Calendar sync for updates
         if sync_to_google:
             try:
                 if existing_goal and existing_goal.get("google_calendar_id"):
-                    # Update existing Google Calendar event
+                    # Update existing Google Calendar event as all-day
                     update_calendar_event(
                         uid,
                         existing_goal["google_calendar_id"],
                         data.get("goal", ""),
                         start_dt,
+                        end_dt,
                     )
                 else:
-                    # Create new Google Calendar event
+                    # Create new all-day Google Calendar event
                     google_event_id = create_calendar_event(
-                        uid, data.get("goal", ""), start_dt
+                        uid, data.get("goal", ""), start_dt, end_dt
                     )
                     updates["google_calendar_id"] = google_event_id
             except Exception as e:
@@ -255,11 +256,16 @@ class AddWeeklyTodos(Resource):
         # Sync to Google Calendar if enabled
         if sync_to_google:
             try:
-                start_dt = datetime.strptime(
-                    f"{todo_date} {todo_time}", "%Y-%m-%d %I:%M %p"
-                )
+                # Convert selected date into datetime at midnight
+                start_dt = datetime.strptime(todo_date, "%Y-%m-%d")
+                end_dt = start_dt + timedelta(days=1)  # For all-day event
+
+                # Create all-day event by sending date range only
                 google_event_id = create_calendar_event(
-                    uid, data.get("text", ""), start_dt
+                    uid,
+                    data.get("text", ""),
+                    start_dt,
+                    end_dt,  # Sending end date = next day
                 )
                 todo["google_calendar_id"] = google_event_id
                 todo["synced_to_google"] = True
@@ -304,28 +310,33 @@ class UpdateWeeklyTodos(Resource):
             "synced_to_google": sync_to_google,
         }
 
+        if "completed" in data:
+            completed_raw = data.get("completed")
+            updates["completed"] = str(completed_raw).lower() == "true"
+
         try:
-            start_dt = datetime.strptime(
-                f"{data.get('date', '')} {data.get('time', '')}", "%Y-%m-%d %I:%M %p"
-            )
+            # Prepare all-day event datetime range
+            start_dt = datetime.strptime(data.get("date", ""), "%Y-%m-%d")
+            end_dt = start_dt + timedelta(days=1)
         except ValueError:
-            return {"status": 0, "message": "Invalid date/time format", "payload": {}}
+            return {"status": 0, "message": "Invalid date format", "payload": {}}
 
         # Handle Google Calendar sync for updates
         if sync_to_google:
             try:
                 if existing_todo and existing_todo.get("google_calendar_id"):
-                    # Update existing Google Calendar event
+                    # Update existing Google Calendar event as all-day
                     update_calendar_event(
                         uid,
                         existing_todo["google_calendar_id"],
                         data.get("text", ""),
                         start_dt,
+                        end_dt,
                     )
                 else:
-                    # Create new Google Calendar event
+                    # Create new all-day Google Calendar event
                     google_event_id = create_calendar_event(
-                        uid, data.get("text", ""), start_dt
+                        uid, data.get("text", ""), start_dt, end_dt
                     )
                     updates["google_calendar_id"] = google_event_id
             except Exception as e:

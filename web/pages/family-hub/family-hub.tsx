@@ -57,13 +57,23 @@ const FamilyHubPage: React.FC = () => {
                         }}
                     >
                         {/* <CustomCalendar data={sampleCalendarData} source="familyhub" allowMentions={true} enabledHashmentions={true} familyMembers={(familyMembers ?? []).filter(m => m.type === 'family')} /> */}
-                        {/* <UpcomingActivities /> */}
                         <CustomCalendar data={sampleCalendarData} source="familyhub" allowMentions={true} enabledHashmentions={true} familyMembers={(familyMembers ?? []).filter(m => m.type === 'family')} view={view} onViewChange={handleViewChange} />
+                        <UpcomingActivities />
+                    </div>
+                    <div
+                        style={{
+                            display: 'grid',
+                            gridTemplateColumns: '1fr 400px',
+                            gap: '14px',
+                            marginBottom: '24px',
+                        }}
+                    >
+                        {/* <CustomCalendar data={sampleCalendarData} source="familyhub" allowMentions={true} enabledHashmentions={true} familyMembers={(familyMembers ?? []).filter(m => m.type === 'family')} /> */}
+                        <FamilyTasks familyMembers={familyMembers.filter(m => m.type === 'family')} />
+                        <FamilyNotes />
                     </div>
 
-                    <FamilyNotes />
 
-                    <FamilyTasks familyMembers={familyMembers.filter(m => m.type === 'family')} />
 
 
                     <div
@@ -1318,7 +1328,7 @@ interface FamilyTasksProps {
 
 const FamilyTasks: React.FC<FamilyTasksProps> = ({ familyMembers }) => {
     const [projects, setProjects] = useState<Project[]>([]);
-    const publicProjects = projects.filter(p => p.visibility === 'public');
+    const publicProjects = projects.filter(p => p.visibility === 'public' || p.visibility === 'undefined');
     useEffect(() => {
         fetchProjects();
     }, []);
@@ -1327,7 +1337,10 @@ const FamilyTasks: React.FC<FamilyTasksProps> = ({ familyMembers }) => {
     const fetchProjects = async () => {
         try {
             const projRes = await getProjects({ source: 'familyhub' }); // ✅ pass source
-            const rawProjects = projRes.data.payload.projects || [];
+            const rawProjects = (projRes.data.payload.projects || []).filter(
+                (proj: any) => proj.source === 'familyhub' || (proj.source === 'planner' && proj.meta?.visibility === 'public')
+
+            );
 
             const projectsWithTasks = await Promise.all(
                 rawProjects.map(async (proj: any) => {
@@ -1358,6 +1371,8 @@ const FamilyTasks: React.FC<FamilyTasksProps> = ({ familyMembers }) => {
                             )
                             : 0,
                         tasks,
+                        visibility: proj.meta?.visibility || 'private',
+                        source: proj.source || '',
                     };
                 })
             );
@@ -1372,11 +1387,15 @@ const FamilyTasks: React.FC<FamilyTasksProps> = ({ familyMembers }) => {
         title: string;
         description: string;
         due_date: string;
+        visibility: 'public' | 'private';
     }) => {
         try {
             await addProject({
                 ...project,
                 source: 'familyhub',
+                meta: {
+                    visibility: project.visibility
+                }
             });
             message.success('Project added');
             fetchProjects();
@@ -1385,14 +1404,18 @@ const FamilyTasks: React.FC<FamilyTasksProps> = ({ familyMembers }) => {
         }
     };
 
-    const handleAddTask = async (projectId: string) => {
+
+    const handleAddTask = async (projectId: string,
+        taskData?: { title: string; due_date: string; assignee?: string }
+    ) => {
+        if (!taskData) return;
         try {
             await addTask({
                 project_id: projectId,
-                title: 'New Task',
-                assignee: 'All',
+                title: taskData.title,
+                assignee: taskData.assignee || 'All',
                 type: 'low',
-                due_date: dayjs().format('YYYY-MM-DD'),
+                due_date: taskData.due_date,
                 completed: false,
             });
             fetchProjects();
@@ -1400,6 +1423,7 @@ const FamilyTasks: React.FC<FamilyTasksProps> = ({ familyMembers }) => {
             message.error('Failed to add task');
         }
     };
+
 
     const handleToggleTask = async (projectId: string, taskId: number) => {
         const project = projects.find((p) => p.project_id === projectId);
@@ -1433,14 +1457,15 @@ const FamilyTasks: React.FC<FamilyTasksProps> = ({ familyMembers }) => {
     return (
         <div style={{ padding: '24px' }}>
             <FamilyTasksComponent
-                title="Family Projects & Tasks"
+                title="Projects & Tasks"
                 projects={projects}
                 onAddProject={handleAddProject}
                 onAddTask={handleAddTask}
                 onToggleTask={handleToggleTask}
                 onUpdateTask={handleUpdateTask}
                 familyMembers={familyMembers}
-
+                showVisibilityToggle={false}
+                showAssigneeField={true}
             />
         </div>
     );

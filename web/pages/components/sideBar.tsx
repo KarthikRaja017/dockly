@@ -197,7 +197,9 @@ const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ collapsed }, ref) =>
     icon: getUtilityIcon(hub.name),
     label: hub.title,
   }));
-
+  if (loading) {
+    return <DocklyLoader />
+  }
   return (
     <Sider
       ref={ref as RefObject<HTMLDivElement>}
