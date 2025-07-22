@@ -24,6 +24,15 @@
       ]
     },
     {
+      "table_name": "subscriptions",
+      "columns": [
+        "id SERIAL PRIMARY KEY",
+        "endpoint TEXT NOT NULL",
+        "auth TEXT NOT NULL",
+        "p256dh TEXT NOT NULL"
+      ]
+    },
+    {
       "table_name": "user_sessions",
       "columns": [
         "user_id VARCHAR REFERENCES users(uid)",
@@ -253,19 +262,7 @@
         "title VARCHAR(255)"
       ]
     },
-    {
-      "table_name": "property_information",
-      "columns": [
-        "id VARCHAR(255) PRIMARY KEY",
-        "user_id VARCHAR REFERENCES users(uid)",
-        "adress VARCHAR(500)",
-        "purchase_date DATE",
-        "purchased_price NUMERIC",
-        "square_footage VARCHAR(50)",
-        "lotsize VARCHAR(50)",
-        "property_taxid VARCHAR(200)"
-      ]
-    },
+
     {
       "table_name": "hubs",
       "columns": [
@@ -661,23 +658,6 @@
     },
 
     {
-      "table_name": "property_information",
-      "columns": [
-        "pid VARCHAR(255) PRIMARY KEY",
-        "user_id VARCHAR REFERENCES users(uid)",
-        "address VARCHAR(500)",
-        "purchase_date DATE",
-        "purchase_price NUMERIC",
-        "square_footage VARCHAR(50)",
-        "lot_size VARCHAR(50)",
-        "property_tax_id VARCHAR(200)",
-        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
-        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
-        "is_active INT "
-      ]
-    },
-
-    {
       "table_name": "home_maintenance",
       "columns": [
         "id SERIAL PRIMARY KEY",
@@ -732,6 +712,127 @@
         "saved_amount NUMERIC",
         "deadline DATE",
         "is_active INT",
+        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+      ]
+    },
+    {
+      "table_name": "personal_information",
+      "columns": [
+        "id SERIAL PRIMARY KEY",
+        "user_id VARCHAR(255) REFERENCES users(uid) ON DELETE CASCADE",
+
+        "first_name VARCHAR(100)",
+        "middle_name VARCHAR(100)",
+        "last_name VARCHAR(100)",
+        "preferred_name VARCHAR(100)",
+        "nicknames TEXT",
+        "relationship TEXT",
+        "date_of_birth DATE",
+        "age VARCHAR(20)",
+        "birthplace TEXT",
+        "gender VARCHAR(50)",
+
+        "phone_number VARCHAR(20)",
+        "primary_email VARCHAR(255)",
+        "additional_emails TEXT",
+        "same_as_primary BOOLEAN DEFAULT FALSE",
+
+        "ssn VARCHAR(100)",
+        "birth_cert_number TEXT",
+        "birth_cert TEXT",
+        "state_id VARCHAR(255)",
+        "passport TEXT",
+        "license TEXT",
+        "student_id VARCHAR(100)",
+
+        "primary_contact TEXT",
+        "primary_phone VARCHAR(20)",
+        "secondary_contact TEXT",
+        "secondary_phone VARCHAR(20)",
+        "emergency_contact TEXT",
+        "emergency_phone VARCHAR(20)",
+
+        "blood_type VARCHAR(10)",
+        "height VARCHAR(10)",
+        "weight VARCHAR(10)",
+        "eye_color VARCHAR(50)",
+        "insurance TEXT",
+        "member_id VARCHAR(100)",
+        "group_num VARCHAR(100)",
+        "last_checkup DATE",
+        "allergies TEXT",
+        "medications TEXT",
+        "notes TEXT",
+
+        "added_by VARCHAR(255)",
+        "added_time TIMESTAMP NOT NULL",
+        "edited_by VARCHAR(255)",
+        "updated_at TIMESTAMP NOT NULL"
+      ]
+    },
+    {
+      "table_name": "school_info",
+      "columns": [
+        "id SERIAL PRIMARY KEY",
+        "user_id VARCHAR(255) REFERENCES users(uid) ON DELETE CASCADE",
+        "school_name TEXT NOT NULL",
+        "grade_level VARCHAR(50)",
+        "student_id VARCHAR(100)",
+        "graduation_year VARCHAR(10)",
+        "homeroom_teacher TEXT",
+        "guidance_counselor TEXT",
+        "current_gpa VARCHAR(10)",
+        "attendance_rate VARCHAR(10)",
+        "school_address TEXT",
+        "notes TEXT",
+        "added_time TIMESTAMP NOT NULL",
+        "edited_by VARCHAR(255)",
+        "updated_at TIMESTAMP NOT NULL"
+      ]
+    },
+    {
+      "table_name": "activities",
+      "columns": [
+        "id SERIAL PRIMARY KEY",
+        "user_id VARCHAR(255) REFERENCES users(uid) ON DELETE CASCADE",
+        "title TEXT NOT NULL",
+        "schedule VARCHAR(100)",
+        "details JSONB",
+        "links JSONB",
+        "added_time TIMESTAMP NOT NULL",
+        "edited_by VARCHAR(255)",
+        "updated_at TIMESTAMP NOT NULL"
+      ]
+    },
+    {
+      "table_name": "healthcare_providers",
+      "columns": [
+        "id SERIAL PRIMARY KEY",
+        "user_id VARCHAR(255) REFERENCES users(uid) ON DELETE CASCADE",
+        "provider_title VARCHAR(255) NOT NULL",
+        "provider_name VARCHAR(255) NOT NULL",
+        "provider_phone VARCHAR(20)",
+        "added_by VARCHAR(255)",
+        "added_time TIMESTAMP NOT NULL",
+        "edited_by VARCHAR(255)",
+        "updated_at TIMESTAMP NOT NULL"
+      ]
+    },
+
+    {
+      "table_name": "bookmarks",
+      "columns": [
+        "id VARCHAR(255) PRIMARY KEY",
+        "user_id VARCHAR(255) REFERENCES users(uid) ON DELETE CASCADE",
+        "title TEXT NOT NULL",
+        "url TEXT NOT NULL",
+        "description TEXT",
+        "favicon TEXT",
+        "category VARCHAR(100) NOT NULL",
+        "tags TEXT[]",
+        "is_favorite BOOLEAN NOT NULL DEFAULT FALSE",
+        "is_active INT DEFAULT 1",
         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
         "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
       ]

@@ -4,10 +4,10 @@ import string
 import pytz
 from datetime import datetime, timezone
 import uuid
-from flask import request, session
+from flask import json, request, session
 from datetime import datetime, timedelta
 import requests
-from root.config import CLIENT_ID, CLIENT_SECRET, SCOPE, uri
+from root.config import CLIENT_ID, CLIENT_SECRET, SCOPE, WEB_URL, uri
 from root.db.dbHelper import DBHelper
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
@@ -356,3 +356,37 @@ def extract_datetime(text: str, now: datetime | None = None) -> datetime:
         return dt
 
     return now
+
+
+# from root.db.db import postgres
+# from flask import request
+# from pywebpush import webpush, WebPushException
+
+# conn = postgres.get_connection()
+
+
+# def send_notification(message="You have a new update on Dockly!"):
+#     payload = {
+#         "title": "Dockly Notification",
+#         "body": message,
+#         "url": WEB_URL,
+#         "icon": f"{WEB_URL}/logoBlue.png",
+#     }
+
+#     with conn.cursor() as cur:
+#         cur.execute("SELECT endpoint, auth, p256dh FROM subscriptions")
+#         rows = cur.fetchall()
+
+#     for row in rows:
+#         sub = {"endpoint": row[0], "keys": {"auth": row[1], "p256dh": row[2]}}
+#         try:
+#             webpush(
+#                 subscription_info=sub,
+#                 data=json.dumps(payload),
+#                 vapid_private_key=VAPID_PRIVATE_KEY,
+#                 vapid_claims=VAPID_CLAIMS,
+#             )
+#         except WebPushException as e:
+#             print(f"Push failed: {e}")
+
+#     return {"status": "Notification sent"}

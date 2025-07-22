@@ -4,11 +4,9 @@ import { Card, List, Button, Space, Typography, Modal, Form, Input as AntInput, 
 import { PlusOutlined, MoreOutlined } from '@ant-design/icons';
 import { getLoansAndMortgages, addMortgage, updateMortgage, deleteMortgage } from '../../services/home';
 import Dropdown from 'antd/es/dropdown/dropdown';
-import { useGlobalLoading } from '../../app/loadingContext';
 
 const { Text, Title } = Typography;
 
-// Mortgage types and icons
 const MORTGAGE_TYPES = [
     { type: 'Home Mortgage', icon: '🏠' },
     { type: 'Auto Loan', icon: '🚗' },
@@ -17,7 +15,6 @@ const MORTGAGE_TYPES = [
     { type: 'Vivo', icon: '🏦' },
 ];
 
-// Interface for Mortgage data
 interface Mortgage {
     id?: string;
     name: string;
@@ -31,31 +28,67 @@ interface Mortgage {
     remainingBalance?: number;
     refinanceDate?: string;
     loanOfficer?: string;
+    isSample?: boolean; // Add flag for sample data
 }
 
-// Custom hook for mortgage logic
+const ASH_COLOR = '#8c8c8c'; // Uniform ash color for sample data
+const PRIMARY_COLOR = 'linear-gradient(135deg, #1890ff, #40c4ff)'; // Color for real data
+
 const useMortgageLoans = (uid: string) => {
-    const [mortgageData, setMortgageData] = React.useState<Mortgage[]>([]);
-    const { loading, setLoading } = useGlobalLoading();
+    const [mortgageData, setMortgageData] = React.useState<Mortgage[]>([
+        // Sample data
+        {
+            id: 'New-1',
+            name: 'New Home Mortgage',
+            meta: 'MORT-001',
+            amount: 250000,
+            interestRate: 3.5,
+            term: 30,
+            monthlyPayment: 1122.61,
+            remainingBalance: 200000,
+            refinanceDate: '2023-05-15',
+            loanOfficer: 'John Doe',
+            isSample: true,
+        },
+        {
+            id: 'New-2',
+            name: 'New Auto Loan',
+            meta: 'AUTO-002',
+            amount: 30000,
+            interestRate: 4.0,
+            term: 5,
+            monthlyPayment: 552.50,
+            remainingBalance: 15000,
+            refinanceDate: undefined,
+            loanOfficer: 'Jane Smith',
+            isSample: true,
+        },
+    ]);
+    const [loading, setLoading] = React.useState<boolean>(true);
 
     const fetchLoansAndMortgages = async () => {
         try {
             setLoading(true);
             const response = await getLoansAndMortgages({ uid });
-            const loans = response.payload?.loans.map((loan: any) => ({
-                id: loan.id,
-                name: loan.name,
-                meta: loan.meta,
-                amount: loan.amount || 0,
-                interestRate: loan.interestRate || 0,
-                term: loan.term || 0,
-                monthlyPayment: loan.monthlyPayment || 0,
-                remainingBalance: loan.remainingBalance || 0,
-                userId: loan.userId || uid,
-                refinanceDate: loan.refinanceDate || null,
-                loanOfficer: loan.loanOfficer || null,
-            })) || [];
-            setMortgageData(loans);
+            if (response.status === 1 && response.payload?.loans?.length > 0) {
+                const loans = response.payload.loans.map((loan: any) => ({
+                    id: loan.id,
+                    name: loan.name,
+                    meta: loan.meta,
+                    amount: loan.amount || 0,
+                    interestRate: loan.interestRate || 0,
+                    term: loan.term || 0,
+                    monthlyPayment: loan.monthlyPayment || 0,
+                    remainingBalance: loan.remainingBalance || 0,
+                    userId: loan.userId || uid,
+                    refinanceDate: loan.refinanceDate || null,
+                    loanOfficer: loan.loanOfficer || null,
+                }));
+                setMortgageData(loans);
+                message.success(response.message);
+            } else {
+                message.info('No mortgages found. Displaying New data.');
+            }
         } catch (error) {
             message.error('Failed to fetch loans and mortgages');
             console.error('Error fetching loans and mortgages:', error);
@@ -69,14 +102,14 @@ const useMortgageLoans = (uid: string) => {
     }, [uid]);
 
     const addMortgageLocal = async (values: { name: string; meta: string; amount: number; interestRate: number; term: number; monthlyPayment: number; remainingBalance: number; refinanceDate?: string; loanOfficer?: string }) => {
-        if (mortgageData.some((m) => m.name.toLowerCase() === values.name.toLowerCase() && m.meta === values.meta)) {
+        if (mortgageData.some((m) => m.name.toLowerCase() === values.name.toLowerCase() && m.meta === values.meta && !m.isSample)) {
             message.error('Duplicate mortgage name or meta!');
             return false;
         }
         try {
             const response = await addMortgage({ ...values, uid, createdAt: new Date().toISOString() });
             if (response.status === 1) {
-                setMortgageData([...mortgageData, ...response.payload.loans]);
+                setMortgageData([...mortgageData.filter(m => !m.isSample), ...response.payload.loans]);
                 message.success('Mortgage added successfully!');
                 return true;
             } else {
@@ -91,7 +124,7 @@ const useMortgageLoans = (uid: string) => {
     };
 
     const updateMortgageLocal = async (id: string, values: { name: string; meta: string; amount: number; interestRate: number; term: number; monthlyPayment: number; remainingBalance: number; refinanceDate?: string; loanOfficer?: string }) => {
-        if (mortgageData.some((m) => m.id !== id && m.name.toLowerCase() === values.name.toLowerCase() && m.meta === values.meta)) {
+        if (mortgageData.some((m) => m.id !== id && m.name.toLowerCase() === values.name.toLowerCase() && m.meta === values.meta && !m.isSample)) {
             message.error('Duplicate mortgage name or meta!');
             return false;
         }
@@ -130,24 +163,26 @@ const useMortgageLoans = (uid: string) => {
     return { mortgageData, loading, addMortgage: addMortgageLocal, updateMortgage: updateMortgageLocal, deleteMortgage: deleteMortgageLocal, fetchLoansAndMortgages };
 };
 
-// Mortgage Item Component
 interface MortgageItemProps {
     mortgage: Mortgage;
     onEdit: (mortgage: Mortgage) => void;
     onDelete: (id: string) => void;
+    onAdd: () => void;
 }
 
-const MortgageItem: React.FC<MortgageItemProps> = ({ mortgage, onEdit, onDelete }) => {
+const MortgageItem: React.FC<MortgageItemProps> = ({ mortgage, onEdit, onDelete, onAdd }) => {
     const mortgageType = MORTGAGE_TYPES.find((mt) => mt.type === mortgage.name) || { icon: '🏦' };
 
     const menu = (
         <Menu>
-            <Menu.Item key="edit" onClick={() => onEdit(mortgage)}>
-                Edit
+            <Menu.Item key="edit" onClick={() => mortgage.isSample ? onAdd() : onEdit(mortgage)}>
+                {mortgage.isSample ? 'Add Real Mortgage' : 'Edit'}
             </Menu.Item>
-            <Menu.Item key="delete" onClick={() => onDelete(mortgage.id!)}>
-                Delete
-            </Menu.Item>
+            {!mortgage.isSample && (
+                <Menu.Item key="delete" onClick={() => onDelete(mortgage.id!)}>
+                    Delete
+                </Menu.Item>
+            )}
         </Menu>
     );
 
@@ -165,9 +200,11 @@ const MortgageItem: React.FC<MortgageItemProps> = ({ mortgage, onEdit, onDelete 
             }}
         >
             <div style={{ display: 'flex', alignItems: 'center' }}>
-                <Avatar style={{ background: 'linear-gradient(135deg, #1890ff, #40c4ff)', fontSize: '18px', marginRight: '16px' }}>{mortgageType.icon}</Avatar>
+                <Avatar style={{ background: mortgage.isSample ? ASH_COLOR : PRIMARY_COLOR, fontSize: '18px', marginRight: '16px' }}>{mortgageType.icon}</Avatar>
                 <div>
-                    <Text style={{ fontWeight: 600, fontSize: '16px', color: '#1f1f1f' }}>{mortgage.name}</Text>
+                    <Text style={{ fontWeight: 600, fontSize: '16px', color: mortgage.isSample ? ASH_COLOR : '#1f1f1f' }}>
+                        {mortgage.name} {mortgage.isSample && <Text type="secondary">(Sample)</Text>}
+                    </Text>
                     <Space direction="vertical" style={{ marginLeft: '12px', fontSize: '14px', color: '#595959' }}>
                         <Text> {mortgage.name} • ${mortgage.amount.toLocaleString()}</Text>
                     </Space>
@@ -194,18 +231,17 @@ const MortgageItem: React.FC<MortgageItemProps> = ({ mortgage, onEdit, onDelete 
     );
 };
 
-// Mortgage Details Component
 interface MortgageDetailsProps {
     mortgage: Mortgage;
 }
 
 const MortgageDetails: React.FC<MortgageDetailsProps> = ({ mortgage }) => (
     <div style={{ padding: '16px', background: '#fafafa', borderRadius: '8px', marginBottom: '16px' }}>
-        <Text strong style={{ fontSize: '16px', color: '#1f1f1f' }}>Loan Details</Text>
+        <Text strong style={{ fontSize: '16px', color: mortgage.isSample ? ASH_COLOR : '#1f1f1f' }}>Loan Details</Text>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
             <Text style={{ color: '#595959' }}> {mortgage.name}</Text>
             <Text style={{ color: '#595959' }}>
-                {mortgage.term}-year fixed at {mortgage.interestRate}%, {mortgage.remainingBalance?.toLocaleString()}
+                {mortgage.term}-year fixed at {mortgage.interestRate}%, ${mortgage.remainingBalance?.toLocaleString()}
             </Text>
         </div>
         {mortgage.name === 'Home Mortgage' && (
@@ -216,18 +252,22 @@ const MortgageDetails: React.FC<MortgageDetailsProps> = ({ mortgage }) => (
                 </Text>
             </div>
         )}
-        {/* {mortgage.refinanceDate && mortgage.loanOfficer && (
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
-        <Text strong style={{ fontSize: '16px', color: '#1f1f1f' }}>Refinance Notes</Text>
-        <Text style={{ color: '#595959' }}>
-          Last refinanced {new Date(mortgage.refinanceDate).toLocaleDateString()}, Loan Officer: {mortgage.loanOfficer}
-        </Text>
-      </div>
-    )} */}
+        {mortgage.refinanceDate && mortgage.loanOfficer && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
+                <Text strong style={{ fontSize: '16px', color: mortgage.isSample ? ASH_COLOR : '#1f1f1f' }}>Refinance Notes</Text>
+                <Text style={{ color: '#595959' }}>
+                    Last refinanced {new Date(mortgage.refinanceDate).toLocaleDateString()}, Loan Officer: {mortgage.loanOfficer}
+                </Text>
+            </div>
+        )}
+        {mortgage.isSample && (
+            <Text type="secondary" style={{ fontSize: '14px', marginTop: '8px', display: 'block' }}>
+                This is a sample mortgage. Add a real mortgage to edit or delete.
+            </Text>
+        )}
     </div>
 );
 
-// Mortgage Form Component
 interface MortgageFormProps {
     form: any;
     onOk: () => void;
@@ -249,7 +289,7 @@ const MortgageForm: React.FC<MortgageFormProps> = ({ form, onOk, onCancel, title
         width={600}
         bodyStyle={{ background: '#fafafa', borderRadius: '8px', padding: '24px' }}
         okButtonProps={{
-            style: { background: 'linear-gradient(135deg, #1890ff, #40c4ff)', border: 'none', borderRadius: '6px' },
+            style: { background: PRIMARY_COLOR, border: 'none', borderRadius: '6px' },
         }}
         cancelButtonProps={{ style: { borderRadius: '6px' } }}
     >
@@ -361,7 +401,6 @@ const MortgageForm: React.FC<MortgageFormProps> = ({ form, onOk, onCancel, title
     </Modal>
 );
 
-// Main Component
 interface MortgageLoansProps {
     uid: string;
 }
@@ -378,9 +417,16 @@ const MortgageLoans: React.FC<MortgageLoansProps> = ({ uid }) => {
     const handleAdd = () => {
         addForm.resetFields();
         setIsAddModalOpen(true);
+        if (mortgageData.every(m => m.isSample)) {
+            message.info('This is a sample mortgage. Please add a real mortgage.');
+        }
     };
 
     const handleEdit = (mortgage: Mortgage) => {
+        if (mortgage.isSample) {
+            handleAdd();
+            return;
+        }
         setEditingMortgage(mortgage);
         editForm.setFieldsValue({
             name: mortgage.name,
@@ -431,6 +477,10 @@ const MortgageLoans: React.FC<MortgageLoansProps> = ({ uid }) => {
     };
 
     const handleViewMore = () => {
+        if (mortgageData.every(m => m.isSample)) {
+            handleAdd();
+            return;
+        }
         setIsViewMoreModalOpen(true);
     };
 
@@ -483,7 +533,9 @@ const MortgageLoans: React.FC<MortgageLoansProps> = ({ uid }) => {
                     overflowY: 'auto',
                 }}
             >
-                {!loading && mortgageData.length === 0 ? (
+                {loading ? (
+                    <Skeleton active paragraph={{ rows: 1 }} style={{ padding: '24px' }} />
+                ) : mortgageData.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '32px', color: '#595959' }}>
                         <Text style={{ fontSize: '16px' }}>No mortgages or loans found. Add one to get started!</Text>
                         <div style={{ marginTop: '16px' }}>
@@ -504,10 +556,17 @@ const MortgageLoans: React.FC<MortgageLoansProps> = ({ uid }) => {
                     <div>
                         {mortgageData.slice(0, 1).map((mortgage) => (
                             <div key={mortgage.id}>
-                                <MortgageItem mortgage={mortgage} onEdit={handleEdit} onDelete={handleDelete} />
+                                <MortgageItem mortgage={mortgage} onEdit={handleEdit} onDelete={handleDelete} onAdd={handleAdd} />
                                 <MortgageDetails mortgage={mortgage} />
                             </div>
                         ))}
+                        {mortgageData.every(m => m.isSample) && (
+                            <div style={{ textAlign: 'center', padding: '16px', color: '#595959' }}>
+                                <Text style={{ fontSize: '16px' }}>
+                                    {/* The above are sample mortgages. Click them or the add button to add your own. */}
+                                </Text>
+                            </div>
+                        )}
                     </div>
                 )}
                 {mortgageData.length > 1 && (
@@ -569,7 +628,7 @@ const MortgageLoans: React.FC<MortgageLoansProps> = ({ uid }) => {
                         dataSource={mortgageData}
                         renderItem={(item) => (
                             <div>
-                                <MortgageItem mortgage={item} onEdit={handleEdit} onDelete={handleDelete} />
+                                <MortgageItem mortgage={item} onEdit={handleEdit} onDelete={handleDelete} onAdd={handleAdd} />
                                 <MortgageDetails mortgage={item} />
                             </div>
                         )}

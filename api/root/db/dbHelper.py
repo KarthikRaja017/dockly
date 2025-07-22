@@ -49,6 +49,51 @@ class DBHelper:
                 postgres.release_connection(conn)
 
     @staticmethod
+    def raw_sql(query, params=None):
+        conn = None
+        cur = None
+        try:
+            conn = postgres.get_connection()
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur.execute(query, params or ())
+            return cur.fetchall()
+        except Exception as e:
+            raise e
+        finally:
+            if cur:
+                cur.close()
+            if conn:
+                postgres.release_connection(conn)
+
+    @staticmethod
+    def count(table_name, filters=None):
+        conn = None
+        cur = None
+        try:
+            conn = postgres.get_connection()
+            cur = conn.cursor()
+
+            if filters:
+                where_clause = " AND ".join([f"{key} = %s" for key in filters])
+                values = list(filters.values())
+                query = f"SELECT COUNT(*) FROM {table_name} WHERE {where_clause}"
+            else:
+                query = f"SELECT COUNT(*) FROM {table_name}"
+                values = []
+
+            cur.execute(query, values)
+            result = cur.fetchone()
+            return result[0] if result else 0
+
+        except Exception as e:
+            raise e
+        finally:
+            if cur:
+                cur.close()
+            if conn:
+                postgres.release_connection(conn)
+
+    @staticmethod
     def find(table_name, filters=None, select_fields=None):
         conn = None
         cur = None

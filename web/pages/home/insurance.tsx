@@ -5,13 +5,11 @@ import { Card, Button, List, Modal, Form, Input, Typography, message, Space, Ava
 import { EditOutlined, DeleteOutlined, PlusOutlined, EyeOutlined } from '@ant-design/icons';
 import moment, { Moment } from 'moment';
 import { addInsurance, getInsurance, updateInsurance, deleteInsurance } from '../../services/home';
-import { useGlobalLoading } from '../../app/loadingContext';
 
 const { Text } = Typography;
 const { Item: FormItem } = Form;
 const { Option } = Select;
 
-// Define schema for dynamic insurance types
 const insuranceSchemas = {
     Health: 'Health Insurance',
     Auto: 'Auto Insurance',
@@ -19,7 +17,6 @@ const insuranceSchemas = {
     Life: 'Life Insurance'
 };
 
-// Types
 interface InsuranceDetail {
     key: string;
     value: string | number | null;
@@ -35,6 +32,7 @@ interface Insurance {
     color?: string;
     details?: InsuranceDetail[];
     is_active: number;
+    isSample?: boolean;
 }
 interface InsuranceCardProps {
     isMobile: boolean;
@@ -50,27 +48,65 @@ interface FormModalProps {
 }
 
 const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
-    const [insuranceData, setInsuranceData] = useState<Insurance[]>([]);
+    const ASH_COLOR = '#8c8c8c'; // Uniform ash color for sample data
+    const PRIMARY_COLOR = '#1890ff'; // Color for real data
+    const SHADOW_COLOR = 'rgba(0, 0, 0, 0.1)';
+    const BORDER_RADIUS = '8px';
+
+    const [insuranceData, setInsuranceData] = useState<Insurance[]>([
+        {
+            id: 'New-1',
+            name: 'New Health Policy',
+            meta: 'POL-HEALTH-001',
+            type: 'Health',
+            years: 1,
+            payment: 1200,
+            renewalDate: moment().add(1, 'year').format('YYYY-MM-DD'),
+            color: ASH_COLOR,
+            is_active: 1,
+            isSample: true,
+            details: [
+                { key: 'Policy Number', value: 'POL-HEALTH-001' },
+                { key: 'Insurance Type', value: 'Health Insurance' },
+                { key: 'Duration', value: '1 year' },
+                { key: 'Payment Amount', value: '$1200' },
+                { key: 'Renewal Date', value: moment().add(1, 'year').format('YYYY-MM-DD') },
+            ]
+        },
+        {
+            id: 'New-2',
+            name: 'New Auto Policy',
+            meta: 'POL-AUTO-002',
+            type: 'Auto',
+            years: 2,
+            payment: 800,
+            renewalDate: moment().add(2, 'years').format('YYYY-MM-DD'),
+            color: ASH_COLOR,
+            is_active: 1,
+            isSample: true,
+            details: [
+                { key: 'Policy Number', value: 'POL-AUTO-002' },
+                { key: 'Insurance Type', value: 'Auto Insurance' },
+                { key: 'Duration', value: '2 years' },
+                { key: 'Payment Amount', value: '$800' },
+                { key: 'Renewal Date', value: moment().add(2, 'years').format('YYYY-MM-DD') },
+            ]
+        },
+    ]);
     const [modals, setModals] = useState({ add: false, edit: false, view: false });
     const [editingId, setEditingId] = useState<string | null>(null);
     const [viewing, setViewing] = useState<Insurance | null>(null);
     const [form] = Form.useForm();
-    const { loading, setLoading } = useGlobalLoading();
+    const [loading, setLoading] = useState<boolean>(false);
 
-    const PRIMARY_COLOR = '#1890ff';
-    const SHADOW_COLOR = 'rgba(0, 0, 0, 0.1)';
-    const BORDER_RADIUS = '8px';
-
-    // Fetch insurance policies on mount
     useEffect(() => {
         const fetchInsurance = async () => {
             setLoading(true);
             try {
                 const response = await getInsurance({});
                 console.log('Fetched insurance response:', response);
-                if (response.status === 1) {
-                    const insurances = response.payload.insurances || [];
-                    setInsuranceData(insurances.map((item: Insurance) => ({
+                if (response.status === 1 && response.payload.insurances?.length > 0) {
+                    const insurances = response.payload.insurances.map((item: Insurance) => ({
                         ...item,
                         color: PRIMARY_COLOR,
                         details: [
@@ -80,10 +116,11 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
                             { key: 'Payment Amount', value: `$${item.payment}` },
                             { key: 'Renewal Date', value: item.renewalDate || 'N/A' },
                         ]
-                    })));
+                    }));
+                    setInsuranceData(insurances);
                     message.success(response.message);
                 } else {
-                    message.error(response.message);
+                    message.info('No insurance policies found. Displaying sample data.');
                 }
             } catch (error) {
                 message.error('Failed to fetch insurance policies');
@@ -95,7 +132,6 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
         fetchInsurance();
     }, []);
 
-    // Check for duplicate policy name and number
     const checkDuplicate = (name: string, meta: string, skipId?: string) => {
         return insuranceData.some(
             it =>
@@ -105,12 +141,14 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
         );
     };
 
-    // Open modal with proper state reset
     const openModal = (type: 'add' | 'edit' | 'view', insn?: Insurance) => {
         try {
-            if (type === 'add') {
+            if (type === 'add' || (insn?.isSample && type === 'view')) {
                 form.resetFields();
                 setModals({ add: true, edit: false, view: false });
+                if (insn?.isSample) {
+                    message.info('This is a sample policy. Please add a real policy.');
+                }
             } else if (type === 'edit' && insn) {
                 setEditingId(insn.id);
                 const vals = {
@@ -137,7 +175,6 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
         }
     };
 
-    // Handle form save for add/edit
     const handleSave = async (isEdit: boolean) => {
         try {
             const values = await form.validateFields();
@@ -197,7 +234,7 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
                             { key: 'Renewal Date', value: values.renewalDate ? moment(values.renewalDate).format('YYYY-MM-DD') : 'N/A' },
                         ]
                     };
-                    setInsuranceData(prev => [...prev, newInsurance]);
+                    setInsuranceData(prev => [...prev.filter(item => !item.isSample), newInsurance]);
                     message.success(response.message);
                 } else {
                     message.error(response.message);
@@ -212,7 +249,6 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
         }
     };
 
-    // Handle delete confirmation
     const handleDelete = (id: string) => {
         Modal.confirm({
             title: 'Are you sure you want to delete this policy?',
@@ -242,7 +278,6 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
         });
     };
 
-    // Form modal component
     const FormModal: React.FC<FormModalProps> = ({
         visible,
         title,
@@ -363,7 +398,6 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
                             style={{ width: '100%', borderRadius: BORDER_RADIUS }}
                             format="YYYY-MM-DD"
                             onChange={(value) => {
-                                // Convert Dayjs to string before passing to moment
                                 if (value && !moment(value.format('YYYY-MM-DD'), 'YYYY-MM-DD').isValid()) {
                                     console.warn('Invalid date selected:', value);
                                     form.setFieldsValue({ renewalDate: null });
@@ -400,7 +434,6 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
             style={{
                 borderRadius: BORDER_RADIUS,
                 boxShadow: `0 4px 12px ${SHADOW_COLOR}`,
-                // margin: isMobile ? '8px' : '16px',
                 width: '100%',
                 border: '1px solid #d9d9d9',
                 minHeight: '300px',
@@ -418,14 +451,14 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
                                 key="view"
                                 type="primary"
                                 icon={<EyeOutlined />}
-                                onClick={() => openModal('view', item)}
+                                onClick={() => openModal(item.isSample ? 'add' : 'view', item)}
                                 style={{
                                     borderRadius: BORDER_RADIUS,
                                     padding: '0 12px',
                                     height: '32px',
                                 }}
                             >
-                                View
+                                {/* View */}
                             </Button>,
                         ]}
                         style={{
@@ -451,7 +484,9 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
                                     {item.name[0]}
                                 </Avatar>
                             }
-                            title={<Text strong style={{ fontSize: isMobile ? '14px' : '16px' }}>{item.name}</Text>}
+                            title={<Text strong style={{ fontSize: isMobile ? '14px' : '16px' }}>
+                                {item.name} {item.isSample && <Text type="secondary">(Sample)</Text>}
+                            </Text>}
                             description={
                                 <Space direction="vertical" size={4}>
                                     <Text style={{ fontSize: isMobile ? '12px' : '14px' }}>
@@ -466,10 +501,10 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
                     </List.Item>
                 )}
             />
-            {insuranceData.length === 0 && !loading && (
+            {insuranceData.every(item => item.isSample) && !loading && (
                 <div style={{ textAlign: 'center', margin: '24px 0' }}>
                     <Text type="secondary" style={{ fontSize: isMobile ? '14px' : '16px' }}>
-                        No insurance policies found. Add a policy to get started.
+                        {/* No insurance policies found. The above are sample policies. Click them or the add button to add your own. */}
                     </Text>
                 </div>
             )}
@@ -513,6 +548,7 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
                                 padding: '0 12px',
                                 height: '32px',
                             }}
+                            disabled={viewing?.isSample}
                         >
                             Edit
                         </Button>
@@ -526,6 +562,7 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
                                 padding: '0 12px',
                                 height: '32px',
                             }}
+                            disabled={viewing?.isSample}
                         >
                             Delete
                         </Button>
@@ -554,6 +591,11 @@ const Insurance: React.FC<InsuranceCardProps> = ({ isMobile }) => {
                                 <Text style={{ fontSize: isMobile ? '14px' : '16px' }}>{detail.value}</Text>
                             </div>
                         ))}
+                        {viewing.isSample && (
+                            <Text type="secondary" style={{ fontSize: isMobile ? '14px' : '16px' }}>
+                                {/* This is a sample policy. Add a real policy to edit or delete. */}
+                            </Text>
+                        )}
                     </Space>
                 )}
             </Modal>

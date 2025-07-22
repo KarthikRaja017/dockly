@@ -15,10 +15,34 @@ interface MaintenanceTask {
     completed: boolean;
     created_at: string;
     updated_at: string;
+    isSample?: boolean; // Add flag for sample data
 }
 
+const ASH_COLOR = '#8c8c8c'; // Uniform ash color for sample data
+const PRIMARY_COLOR = '#1890ff'; // Color for real data
+
 const Maintenance: React.FC<{ uid: string }> = ({ uid }) => {
-    const [tasks, setTasks] = useState<MaintenanceTask[]>([]);
+    const [tasks, setTasks] = useState<MaintenanceTask[]>([
+        // Sample data
+        {
+            id: 'New-1',
+            name: 'New HVAC Maintenance',
+            date: moment().add(7, 'days').format('YYYY-MM-DD'),
+            completed: false,
+            created_at: moment().toISOString(),
+            updated_at: moment().toISOString(),
+            isSample: true,
+        },
+        {
+            id: 'New-2',
+            name: 'New Roof Inspection',
+            date: moment().add(14, 'days').format('YYYY-MM-DD'),
+            completed: false,
+            created_at: moment().toISOString(),
+            updated_at: moment().toISOString(),
+            isSample: true,
+        },
+    ]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [filter, setFilter] = useState<'all' | 'completed' | 'pending'>('all');
@@ -26,25 +50,49 @@ const Maintenance: React.FC<{ uid: string }> = ({ uid }) => {
 
     useEffect(() => {
         fetchTasks();
-    }, []);
+    }, [uid]);
 
     const fetchTasks = async () => {
         try {
             const response = await getMaintenanceTasks({ uid });
-            if (response.status === 1) {
+            if (response.status === 1 && response.payload.tasks?.length > 0) {
                 setTasks(response.payload.tasks || []);
+                message.success(response.message);
             } else {
-                message.error(response.message);
-                setTasks([]);
+                message.info('No maintenance tasks found. Displaying sample data.');
+                setTasks([
+                    {
+                        id: 'New-1',
+                        name: 'New HVAC Maintenance',
+                        date: moment().add(7, 'days').format('YYYY-MM-DD'),
+                        completed: false,
+                        created_at: moment().toISOString(),
+                        updated_at: moment().toISOString(),
+                        isSample: true,
+                    },
+                    {
+                        id: 'New-2',
+                        name: 'New Roof Inspection',
+                        date: moment().add(14, 'days').format('YYYY-MM-DD'),
+                        completed: false,
+                        created_at: moment().toISOString(),
+                        updated_at: moment().toISOString(),
+                        isSample: true,
+                    },
+                ]);
             }
         } catch (error) {
             message.error('Failed to fetch maintenance tasks');
-            setTasks([]);
+            console.error('Error fetching tasks:', error);
         }
     };
 
     const showModal = () => {
+        form.resetFields();
         setIsModalOpen(true);
+        if (tasks.every(t => t.isSample)) {
+            message.info('This is a sample task. Please add a real task.');
+        }
     };
 
     const handleOk = () => {
@@ -53,18 +101,19 @@ const Maintenance: React.FC<{ uid: string }> = ({ uid }) => {
                 const response = await addMaintenanceTask({
                     uid,
                     name: values.name,
-                    date: values.date.format('YYYY-MM-DD')
+                    date: values.date.format('YYYY-MM-DD'),
                 });
                 if (response.status === 1) {
+                    setTasks([...tasks.filter(t => !t.isSample), response.payload.task]);
                     form.resetFields();
                     setIsModalOpen(false);
                     message.success('Task added successfully');
-                    fetchTasks();
                 } else {
                     message.error(response.message);
                 }
             } catch (error) {
                 message.error('Failed to add task');
+                console.error('Error adding task:', error);
             }
         });
     };
@@ -73,11 +122,15 @@ const Maintenance: React.FC<{ uid: string }> = ({ uid }) => {
         setIsModalOpen(false);
         form.resetFields();
     };
-    const PRIMARY_COLOR = "#1890ff";
+
     const handleCheckboxChange = async (taskId: string, checked: boolean) => {
+        const task = tasks.find(t => t.id === taskId);
+        if (task?.isSample) {
+            showModal();
+            return;
+        }
         try {
-            const currentTask = tasks.find(t => t.id === taskId);
-            const response = await updateMaintenanceTask(taskId, { completed: checked, date: currentTask?.date });
+            const response = await updateMaintenanceTask(taskId, { completed: checked, date: task?.date });
             if (response.status === 1) {
                 setTasks((prevTasks) =>
                     prevTasks.map((task) =>
@@ -90,10 +143,16 @@ const Maintenance: React.FC<{ uid: string }> = ({ uid }) => {
             }
         } catch (error) {
             message.error('Failed to update task');
+            console.error('Error updating task:', error);
         }
     };
 
     const handleDeleteTask = async (taskId: string) => {
+        const task = tasks.find(t => t.id === taskId);
+        if (task?.isSample) {
+            showModal();
+            return;
+        }
         Modal.confirm({
             title: 'Are you sure you want to delete this task?',
             onOk: async () => {
@@ -107,6 +166,7 @@ const Maintenance: React.FC<{ uid: string }> = ({ uid }) => {
                     }
                 } catch (error) {
                     message.error('Failed to delete task');
+                    console.error('Error deleting task:', error);
                 }
             },
             okButtonProps: {
@@ -119,6 +179,10 @@ const Maintenance: React.FC<{ uid: string }> = ({ uid }) => {
     };
 
     const showViewModal = () => {
+        if (tasks.every(t => t.isSample)) {
+            showModal();
+            return;
+        }
         setIsViewModalOpen(true);
     };
 
@@ -194,6 +258,7 @@ const Maintenance: React.FC<{ uid: string }> = ({ uid }) => {
                             display: 'flex',
                             alignItems: 'center',
                             gap: '4px',
+                            backgroundColor: PRIMARY_COLOR,
                         }}
                     >
                         {/* Add Task */}
@@ -208,126 +273,138 @@ const Maintenance: React.FC<{ uid: string }> = ({ uid }) => {
                         <Text style={{ fontSize: '16px' }}>All caught up! No tasks.</Text>
                     </div>
                 ) : (
-                    displayTasks.map((task) => {
-                        const daysUntil = getDaysUntilDue(task.date);
-                        const isOverdue = daysUntil < 0 && !task.completed;
-                        const isDueToday = daysUntil === 0 && !task.completed;
+                    <>
+                        {displayTasks.map((task) => {
+                            const daysUntil = getDaysUntilDue(task.date);
+                            const isOverdue = daysUntil < 0 && !task.completed;
+                            const isDueToday = daysUntil === 0 && !task.completed;
 
-                        return (
-                            <div
-                                key={task.id}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    padding: '16px',
-                                    borderRadius: '8px',
-                                    backgroundColor: task.completed ? '#f3f4f6' : '#ffffff',
-                                    border: '1px solid #e5e7eb',
-                                    transition: 'background-color 0.2s ease',
-                                }}
-                                onMouseEnter={(e) => {
-                                    if (!task.completed) {
-                                        e.currentTarget.style.backgroundColor = '#f9fafb';
-                                    }
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.backgroundColor = task.completed ? '#f3f4f6' : '#ffffff';
-                                }}
-                            >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: '1' }}>
-                                    <Checkbox
-                                        checked={task.completed}
-                                        onChange={(e) => handleCheckboxChange(task.id, e.target.checked)}
-                                    />
-                                    <div>
-                                        <Text
-                                            style={{
-                                                fontSize: '16px',
-                                                fontWeight: '500',
-                                                color: task.completed ? '#9ca3af' : '#1f2937',
-                                                textDecoration: task.completed ? 'line-through' : 'none',
-                                            }}
-                                        >
-                                            {task.name}
-                                        </Text>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px' }}>
-                                            <Space>
-                                                <CheckCircleOutlined style={{ fontSize: '14px', color: '#6b7280' }} />
-                                                <Text style={{ fontSize: '14px', color: '#6b7280' }}>{formatDate(task.date)}</Text>
-                                            </Space>
-                                            {!task.completed && isOverdue && (
-                                                <Text
-                                                    style={{
-                                                        fontSize: '12px',
-                                                        color: '#dc2626',
-                                                        fontWeight: '500',
-                                                        padding: '4px 8px',
-                                                        borderRadius: '6px',
-                                                        backgroundColor: '#fee2e2',
-                                                    }}
-                                                >
-                                                    {Math.abs(daysUntil)} days overdue
-                                                </Text>
-                                            )}
-                                            {!task.completed && isDueToday && (
-                                                <Text
-                                                    style={{
-                                                        fontSize: '12px',
-                                                        color: '#d97706',
-                                                        fontWeight: '500',
-                                                        padding: '4px 8px',
-                                                        borderRadius: '6px',
-                                                        backgroundColor: '#fef3c7',
-                                                    }}
-                                                >
-                                                    Due today
-                                                </Text>
-                                            )}
-                                            {!task.completed && daysUntil > 0 && (
-                                                <Text
-                                                    style={{
-                                                        fontSize: '12px',
-                                                        color: '#16a34a',
-                                                        fontWeight: '500',
-                                                        padding: '4px 8px',
-                                                        borderRadius: '6px',
-                                                        backgroundColor: '#dcfce7',
-                                                    }}
-                                                >
-                                                    {daysUntil} days remaining
-                                                </Text>
-                                            )}
-                                            {task.completed && (
-                                                <Text
-                                                    style={{
-                                                        fontSize: '12px',
-                                                        color: '#6b7280',
-                                                        fontWeight: '500',
-                                                        padding: '4px 8px',
-                                                        borderRadius: '6px',
-                                                        backgroundColor: '#d1d5db',
-                                                    }}
-                                                >
-                                                    Completed
-                                                </Text>
-                                            )}
+                            return (
+                                <div
+                                    key={task.id}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        padding: '16px',
+                                        borderRadius: '8px',
+                                        backgroundColor: task.completed ? '#f3f4f6' : '#ffffff',
+                                        border: '1px solid #e5e7eb',
+                                        transition: 'background-color 0.2s ease',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (!task.completed) {
+                                            e.currentTarget.style.backgroundColor = '#f9fafb';
+                                        }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.backgroundColor = task.completed ? '#f3f4f6' : '#ffffff';
+                                    }}
+                                    onClick={task.isSample ? showModal : undefined}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: '1' }}>
+                                        <Checkbox
+                                            checked={task.completed}
+                                            onChange={(e) => handleCheckboxChange(task.id, e.target.checked)}
+                                            disabled={task.isSample}
+                                        />
+                                        <div>
+                                            <Text
+                                                style={{
+                                                    fontSize: '16px',
+                                                    fontWeight: '500',
+                                                    color: task.isSample ? ASH_COLOR : task.completed ? '#9ca3af' : '#1f2937',
+                                                    textDecoration: task.completed ? 'line-through' : 'none',
+                                                }}
+                                            >
+                                                {task.name} {task.isSample && <Text type="secondary">(Sample)</Text>}
+                                            </Text>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px' }}>
+                                                <Space>
+                                                    <CheckCircleOutlined style={{ fontSize: '14px', color: task.isSample ? ASH_COLOR : '#6b7280' }} />
+                                                    <Text style={{ fontSize: '14px', color: task.isSample ? ASH_COLOR : '#6b7280' }}>{formatDate(task.date)}</Text>
+                                                </Space>
+                                                {!task.completed && isOverdue && (
+                                                    <Text
+                                                        style={{
+                                                            fontSize: '12px',
+                                                            color: '#dc2626',
+                                                            fontWeight: '500',
+                                                            padding: '4px 8px',
+                                                            borderRadius: '6px',
+                                                            backgroundColor: '#fee2e2',
+                                                        }}
+                                                    >
+                                                        {Math.abs(daysUntil)} days overdue
+                                                    </Text>
+                                                )}
+                                                {!task.completed && isDueToday && (
+                                                    <Text
+                                                        style={{
+                                                            fontSize: '12px',
+                                                            color: '#d97706',
+                                                            fontWeight: '500',
+                                                            padding: '4px 8px',
+                                                            borderRadius: '6px',
+                                                            backgroundColor: '#fef3c7',
+                                                        }}
+                                                    >
+                                                        Due today
+                                                    </Text>
+                                                )}
+                                                {!task.completed && daysUntil > 0 && (
+                                                    <Text
+                                                        style={{
+                                                            fontSize: '12px',
+                                                            color: '#16a34a',
+                                                            fontWeight: '500',
+                                                            padding: '4px 8px',
+                                                            borderRadius: '6px',
+                                                            backgroundColor: '#dcfce7',
+                                                        }}
+                                                    >
+                                                        {daysUntil} days remaining
+                                                    </Text>
+                                                )}
+                                                {task.completed && (
+                                                    <Text
+                                                        style={{
+                                                            fontSize: '12px',
+                                                            color: '#6b7280',
+                                                            fontWeight: '500',
+                                                            padding: '4px 8px',
+                                                            borderRadius: '6px',
+                                                            backgroundColor: '#d1d5db',
+                                                        }}
+                                                    >
+                                                        Completed
+                                                    </Text>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
+                                    <Button
+                                        icon={<DeleteOutlined />}
+                                        onClick={() => handleDeleteTask(task.id)}
+                                        style={{
+                                            borderRadius: '6px',
+                                            fontSize: '14px',
+                                            color: task.isSample ? ASH_COLOR : undefined,
+                                        }}
+                                        disabled={task.isSample}
+                                    />
                                 </div>
-                                <Button
-                                    icon={<DeleteOutlined />}
-                                    onClick={() => handleDeleteTask(task.id)}
-                                    style={{
-                                        borderRadius: '6px',
-                                        fontSize: '14px',
-                                    }}
-                                >
+                            );
+                        })}
+                        {tasks.every(t => t.isSample) && (
+                            <div style={{ textAlign: 'center', padding: '16px', color: '#6b7280' }}>
+                                <Text style={{ fontSize: '16px' }}>
 
-                                </Button>
+                                    {/* No maintenance tasks found. The above are sample tasks. Click them or the add button to add your own. */}
+                                </Text>
                             </div>
-                        );
-                    })
+                        )}
+                    </>
                 )}
                 {tasks.length > 3 && (
                     <div style={{ display: 'flex', justifyContent: 'center', marginTop: '24px' }}>
@@ -342,6 +419,7 @@ const Maintenance: React.FC<{ uid: string }> = ({ uid }) => {
                                 alignItems: 'center',
                                 gap: '4px',
                                 marginTop: '-24px',
+                                backgroundColor: PRIMARY_COLOR,
                             }}
                         >
                             View All ({tasks.length})
@@ -361,7 +439,7 @@ const Maintenance: React.FC<{ uid: string }> = ({ uid }) => {
                 onCancel={handleCancel}
                 okButtonProps={{
                     type: 'primary',
-                    style: { borderRadius: '6px', fontSize: '14px' },
+                    style: { borderRadius: '6px', fontSize: '14px', backgroundColor: PRIMARY_COLOR },
                 }}
                 cancelButtonProps={{
                     type: 'default',
@@ -453,27 +531,29 @@ const Maintenance: React.FC<{ uid: string }> = ({ uid }) => {
                                 onMouseLeave={(e) => {
                                     e.currentTarget.style.backgroundColor = task.completed ? '#f3f4f6' : '#ffffff';
                                 }}
+                                onClick={task.isSample ? showModal : undefined}
                             >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: '1' }}>
                                     <Checkbox
                                         checked={task.completed}
                                         onChange={(e) => handleCheckboxChange(task.id, e.target.checked)}
+                                        disabled={task.isSample}
                                     />
                                     <div>
                                         <Text
                                             style={{
                                                 fontSize: '16px',
                                                 fontWeight: '500',
-                                                color: task.completed ? '#9ca3af' : '#1f2937',
+                                                color: task.isSample ? ASH_COLOR : task.completed ? '#9ca3af' : '#1f2937',
                                                 textDecoration: task.completed ? 'line-through' : 'none',
                                             }}
                                         >
-                                            {task.name}
+                                            {task.name} {task.isSample && <Text type="secondary">(Sample)</Text>}
                                         </Text>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '8px' }}>
                                             <Space>
-                                                <CheckCircleOutlined style={{ fontSize: '14px', color: '#6b7280' }} />
-                                                <Text style={{ fontSize: '14px', color: '#6b7280' }}>{formatDate(task.date)}</Text>
+                                                <CheckCircleOutlined style={{ fontSize: '14px', color: task.isSample ? ASH_COLOR : '#6b7280' }} />
+                                                <Text style={{ fontSize: '14px', color: task.isSample ? ASH_COLOR : '#6b7280' }}>{formatDate(task.date)}</Text>
                                             </Space>
                                             {!task.completed && isOverdue && (
                                                 <Text
@@ -531,6 +611,20 @@ const Maintenance: React.FC<{ uid: string }> = ({ uid }) => {
                                                     Completed
                                                 </Text>
                                             )}
+                                            {task.isSample && (
+                                                <Text
+                                                    style={{
+                                                        fontSize: '12px',
+                                                        color: ASH_COLOR,
+                                                        fontWeight: '500',
+                                                        padding: '4px 8px',
+                                                        borderRadius: '6px',
+                                                        backgroundColor: '#e5e7eb',
+                                                    }}
+                                                >
+                                                    Sample
+                                                </Text>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -540,13 +634,20 @@ const Maintenance: React.FC<{ uid: string }> = ({ uid }) => {
                                     style={{
                                         borderRadius: '6px',
                                         fontSize: '14px',
+                                        color: task.isSample ? ASH_COLOR : undefined,
                                     }}
-                                >
-
-                                </Button>
+                                    disabled={task.isSample}
+                                />
                             </div>
                         );
                     })}
+                    {tasks.every(t => t.isSample) && (
+                        <div style={{ textAlign: 'center', padding: '16px', color: '#6b7280' }}>
+                            <Text style={{ fontSize: '16px' }}>
+                                {/* No maintenance tasks found. The above are sample tasks. Click them or the add button to add your own. */}
+                            </Text>
+                        </div>
+                    )}
                 </Space>
             </Modal>
         </div>

@@ -1,4 +1,5 @@
 import AuthProvider from "../pages/components/authProvider";
+import NotificationInitializer from "../pages/components/notificationInitializer";
 import DocklyLoader from "../utils/docklyLoader";
 import { LoadingProvider } from "./loadingContext";
 
@@ -16,6 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <LoadingProvider>
           <DocklyLoader />
+          <NotificationInitializer />
           <AuthProvider>
             {children}
           </AuthProvider>

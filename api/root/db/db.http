@@ -5,8 +5,9 @@
 POST {{devPath}}/create-tables
 Content-Type: application/json
 
+
 # POST {{devPath}}/send/invitation
-# Content-Type: application/json
+# # Content-Type: application/json
 
 # {
 #   "sender_id": "YOUR_USER_ID",

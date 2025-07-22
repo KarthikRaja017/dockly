@@ -1,6 +1,7 @@
 
 "use client";
-import React, { useState, useMemo } from "react";
+
+import React, { useState, useEffect, useMemo } from "react";
 import {
     Input,
     Button,
@@ -16,11 +17,11 @@ import {
     Row,
     Col,
     Avatar,
-    Divider,
     Empty,
     Tooltip,
-    Switch,
-    List,
+    Table,
+    TableColumnsType,
+    Spin,
 } from "antd";
 import {
     SearchOutlined,
@@ -32,127 +33,23 @@ import {
     DeleteOutlined,
     CopyOutlined,
     AppstoreOutlined,
-    UnorderedListOutlined,
-    FilterOutlined,
-    SortAscendingOutlined,
+    TableOutlined,
     LinkOutlined,
-    TagsOutlined,
-    CalendarOutlined,
-    FolderOutlined,
     BookOutlined,
 } from "@ant-design/icons";
+import {
+    addBookmark,
+    getBookmarks,
+    deleteBookmark,
+    toggleFavorite,
+    getCategories,
+    getStats,
+} from "../../../services/bookmarks";
+import { Bookmark, BookmarkFormData } from "../../../types/bookmarks";
+import { useGlobalLoading } from "../../loadingContext";
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
-
-interface Bookmark {
-    id: string;
-    title: string;
-    url: string;
-    description?: string;
-    favicon?: string;
-    category: string;
-    tags: string[];
-    isFavorite: boolean;
-    createdAt: string;
-}
-
-const sampleBookmarks: Bookmark[] = [
-    {
-        id: "1",
-        title: "React Documentation",
-        url: "https://react.dev",
-        description:
-            "The official React documentation with guides, tutorials, and API reference.",
-        favicon: "https://react.dev/favicon.ico",
-        category: "Tech",
-        tags: ["react", "javascript", "frontend", "documentation"],
-        isFavorite: true,
-        createdAt: "2024-01-15T10:30:00Z",
-    },
-    {
-        id: "2",
-        title: "Dribbble - Discover the World's Top Designers",
-        url: "https://dribbble.com",
-        description:
-            "Dribbble is where designers gain inspiration, feedback, community, and jobs.",
-        favicon: "https://dribbble.com/favicon.ico",
-        category: "Design",
-        tags: ["design", "inspiration", "ui", "portfolio"],
-        isFavorite: false,
-        createdAt: "2024-01-14T15:45:00Z",
-    },
-    {
-        id: "3",
-        title: "TechCrunch - Startup and Technology News",
-        url: "https://techcrunch.com",
-        description:
-            "TechCrunch reporting on the business of technology, startups, and entrepreneurship.",
-        favicon: "https://techcrunch.com/favicon.ico",
-        category: "News",
-        tags: ["tech", "news", "startups", "business"],
-        isFavorite: false,
-        createdAt: "2024-01-13T09:20:00Z",
-    },
-    {
-        id: "4",
-        title: "GitHub - Developer Platform",
-        url: "https://github.com",
-        description:
-            "GitHub is where over 100 million developers shape the future of software, together.",
-        favicon: "https://github.com/favicon.ico",
-        category: "Tech",
-        tags: ["git", "code", "development", "collaboration"],
-        isFavorite: true,
-        createdAt: "2024-01-12T14:10:00Z",
-    },
-    {
-        id: "5",
-        title: "Figma - Design Tool",
-        url: "https://figma.com",
-        description: "Figma is a collaborative interface design tool for teams.",
-        favicon: "https://figma.com/favicon.ico",
-        category: "Design",
-        tags: ["figma", "design", "prototyping", "collaboration"],
-        isFavorite: true,
-        createdAt: "2024-01-11T11:00:00Z",
-    },
-    {
-        id: "6",
-        title: "Twitter - Social Network",
-        url: "https://twitter.com",
-        description: "From breaking news and entertainment to sports and politics.",
-        favicon: "https://twitter.com/favicon.ico",
-        category: "Social",
-        tags: ["social", "news", "networking"],
-        isFavorite: false,
-        createdAt: "2024-01-10T16:30:00Z",
-    },
-    {
-        id: "7",
-        title: "Stack Overflow - Programming Q&A",
-        url: "https://stackoverflow.com",
-        description:
-            "Stack Overflow is the largest online community for programmers to learn and share knowledge.",
-        favicon: "https://stackoverflow.com/favicon.ico",
-        category: "Tech",
-        tags: ["programming", "qa", "community", "help"],
-        isFavorite: false,
-        createdAt: "2024-01-09T13:15:00Z",
-    },
-    {
-        id: "8",
-        title: "Notion - All-in-one workspace",
-        url: "https://notion.so",
-        description:
-            "Notion is a single space where you can think, write, and plan.",
-        favicon: "https://notion.so/favicon.ico",
-        category: "Tools",
-        tags: ["productivity", "notes", "workspace", "organization"],
-        isFavorite: true,
-        createdAt: "2024-01-08T08:45:00Z",
-    },
-];
 
 const categoryColors: Record<string, string> = {
     Tech: "#1890ff",
@@ -160,70 +57,95 @@ const categoryColors: Record<string, string> = {
     News: "#fa541c",
     Social: "#52c41a",
     Tools: "#faad14",
+    Education: "#13c2c2",
+    Entertainment: "#eb2f96",
 };
 
 const Bookmarks: React.FC = () => {
-    const [bookmarks, setBookmarks] = useState<Bookmark[]>(sampleBookmarks);
+    const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
+    const { loading, setLoading } = useGlobalLoading();
     const [searchQuery, setSearchQuery] = useState("");
-    const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+    const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
     const [selectedCategory, setSelectedCategory] = useState("All");
     const [sortBy, setSortBy] = useState("newest");
     const [addModalVisible, setAddModalVisible] = useState(false);
+    const [categories, setCategories] = useState<string[]>(["All"]);
+    const [stats, setStats] = useState({
+        total_bookmarks: 0,
+        favorite_bookmarks: 0,
+        categories_count: 0,
+    });
+    const [modalMode, setModalMode] = useState<"create" | "edit">("create");
+    const [editingBookmarkId, setEditingBookmarkId] = useState<string | null>(
+        null
+    );
     const [form] = Form.useForm();
 
-    const categories = useMemo(() => {
-        const cats = Array.from(new Set(bookmarks.map((b) => b.category)));
-        return ["All", ...cats];
-    }, [bookmarks]);
+    // Load initial data
+    useEffect(() => {
+        loadBookmarks();
+        loadCategories();
+        loadStats();
+    }, []);
+
+    // Reload bookmarks when filters change
+    useEffect(() => {
+        loadBookmarks();
+    }, [searchQuery, selectedCategory, sortBy]);
+
+    const loadBookmarks = async () => {
+        try {
+            setLoading(true);
+            const response = await getBookmarks({
+                search: searchQuery || undefined,
+                category: selectedCategory !== "All" ? selectedCategory : undefined,
+                sortBy: sortBy,
+            });
+
+            const { status, message: msg, payload } = response.data;
+            if (status) {
+                setBookmarks(payload.bookmarks);
+            } else {
+                message.error(msg || "Failed to load bookmarks");
+            }
+        } catch (error) {
+            message.error("Failed to load bookmarks");
+            console.error("Error loading bookmarks:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const loadCategories = async () => {
+        try {
+            const response = await getCategories();
+            const { status, payload } = response.data;
+            if (status) {
+                setCategories(["All", ...payload.categories]);
+            }
+        } catch (error) {
+            console.error("Error loading categories:", error);
+        }
+    };
+
+    const loadStats = async () => {
+        try {
+            const response = await getStats();
+            const { status, payload } = response.data;
+            if (status) {
+                setStats(payload);
+            }
+        } catch (error) {
+            console.error("Error loading stats:", error);
+        }
+    };
 
     const filteredBookmarks = useMemo(() => {
-        let filtered = bookmarks;
+        return bookmarks; // Filtering is now done on the backend
+    }, [bookmarks]);
 
-        if (searchQuery) {
-            filtered = filtered.filter(
-                (bookmark) =>
-                    bookmark.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    bookmark.description
-                        ?.toLowerCase()
-                        .includes(searchQuery.toLowerCase()) ||
-                    bookmark.tags.some((tag) =>
-                        tag.toLowerCase().includes(searchQuery.toLowerCase())
-                    ) ||
-                    bookmark.url.toLowerCase().includes(searchQuery.toLowerCase())
-            );
-        }
-
-        if (selectedCategory !== "All") {
-            filtered = filtered.filter(
-                (bookmark) => bookmark.category === selectedCategory
-            );
-        }
-
-        filtered.sort((a, b) => {
-            switch (sortBy) {
-                case "newest":
-                    return (
-                        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-                    );
-                case "oldest":
-                    return (
-                        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-                    );
-                case "title":
-                    return a.title.localeCompare(b.title);
-                case "title-desc":
-                    return b.title.localeCompare(a.title);
-                case "category":
-                    return a.category.localeCompare(b.category);
-                default:
-                    return 0;
-            }
-        });
-
-        return filtered;
-    }, [bookmarks, searchQuery, selectedCategory, sortBy]);
-
-    const handleToggleFavorite = (id: string) => {
+    const handleToggleFavorite = async (id: string) => {
+        // Optimistically update UI first
         setBookmarks((prev) =>
             prev.map((bookmark) =>
                 bookmark.id === id
@@ -232,29 +154,101 @@ const Bookmarks: React.FC = () => {
             )
         );
 
-        const bookmark = bookmarks.find((b) => b.id === id);
-        if (bookmark) {
-            message.success(
-                bookmark.isFavorite
-                    ? `"${bookmark.title}" removed from favorites`
-                    : `"${bookmark.title}" added to favorites`
+        try {
+            const response = await toggleFavorite(id);
+            const { status, message: msg, payload } = response.data;
+
+            if (status) {
+                const updatedBookmark = {
+                    ...payload.bookmark,
+                    // Normalize snake_case to camelCase if needed
+                    isFavorite:
+                        payload.bookmark.isFavorite ??
+                        payload.bookmark.is_favorite ??
+                        false,
+                };
+
+                // Update with backend-confirmed bookmark (in case more fields changed)
+                setBookmarks((prev) =>
+                    prev.map((bookmark) =>
+                        bookmark.id === id ? updatedBookmark : bookmark
+                    )
+                );
+
+                message.success(
+                    updatedBookmark.isFavorite
+                        ? `"${updatedBookmark.title}" added to favorites`
+                        : `"${updatedBookmark.title}" removed from favorites`
+                );
+
+                // Reload stats to reflect favorite count change
+                loadStats();
+            } else {
+                message.error(msg || "Failed to update favorite status");
+
+                // Revert UI change if toggle failed
+                setBookmarks((prev) =>
+                    prev.map((bookmark) =>
+                        bookmark.id === id
+                            ? { ...bookmark, isFavorite: !bookmark.isFavorite }
+                            : bookmark
+                    )
+                );
+            }
+        } catch (error) {
+            message.error("Failed to update favorite status");
+            console.error("Error toggling favorite:", error);
+
+            // Revert UI on error
+            setBookmarks((prev) =>
+                prev.map((bookmark) =>
+                    bookmark.id === id
+                        ? { ...bookmark, isFavorite: !bookmark.isFavorite }
+                        : bookmark
+                )
             );
         }
     };
 
-    const handleDelete = (id: string) => {
-        const bookmark = bookmarks.find((b) => b.id === id);
-        setBookmarks((prev) => prev.filter((b) => b.id !== id));
+    const handleDelete = async (id: string) => {
+        try {
+            const bookmark = bookmarks.find((b) => b.id === id);
+            const response = await deleteBookmark(bookmark);
+            const { status, message: msg } = response.data;
 
-        if (bookmark) {
-            message.success(`"${bookmark.title}" has been deleted`);
+            if (status) {
+                setBookmarks((prev) => prev.filter((b) => b.id !== id));
+
+                if (bookmark) {
+                    message.success(`"${bookmark.title}" has been deleted`);
+                }
+
+                // Reload stats and categories
+                loadStats();
+                loadCategories();
+            } else {
+                message.error(msg || "Failed to delete bookmark");
+            }
+        } catch (error) {
+            message.error("Failed to delete bookmark");
+            console.error("Error deleting bookmark:", error);
         }
     };
 
     const handleEdit = (id: string) => {
         const bookmark = bookmarks.find((b) => b.id === id);
         if (bookmark) {
-            message.info("Edit functionality would open here in a real app.");
+            setModalMode("edit");
+            setEditingBookmarkId(id);
+            form.setFieldsValue({
+                title: bookmark.title,
+                url: bookmark.url,
+                description: bookmark.description,
+                category: bookmark.category,
+                tags: bookmark.tags.join(", "),
+                id: bookmark.id,
+            });
+            setAddModalVisible(true);
         }
     };
 
@@ -263,23 +257,88 @@ const Bookmarks: React.FC = () => {
         message.success("URL copied to clipboard");
     };
 
-    const handleAddBookmark = (values: any) => {
-        const bookmark: Bookmark = {
-            ...values,
-            id: Date.now().toString(),
-            isFavorite: false,
-            createdAt: new Date().toISOString(),
-            favicon: `https://www.google.com/s2/favicons?domain=${new URL(values.url).hostname
-                }`,
-            tags: values.tags
-                ? values.tags.split(",").map((tag: string) => tag.trim())
-                : [],
-        };
+    const openCreateModal = () => {
+        setModalMode("create");
+        form.resetFields();
+        setAddModalVisible(true);
+    };
 
-        setBookmarks((prev) => [bookmark, ...prev]);
+    const closeModal = () => {
         setAddModalVisible(false);
         form.resetFields();
-        message.success("Bookmark added successfully!");
+        setEditingBookmarkId(null);
+    };
+
+    const handleAddBookmark = async () => {
+        try {
+            const values = await form.validateFields();
+            const favicon = getFaviconFromUrl(values.url);
+
+            if (modalMode === "create") {
+                const bookmarkData: BookmarkFormData = {
+                    title: values.title,
+                    url: values.url,
+                    description: values.description,
+                    category: values.category,
+                    tags: values.tags
+                        ? values.tags.split(",").map((tag: string) => tag.trim())
+                        : [],
+                    favicon: favicon,
+                };
+
+                const response = await addBookmark(bookmarkData);
+                const { status, message: msg } = response.data;
+
+                if (status) {
+                    message.success(msg || "Bookmark added successfully!");
+                    loadBookmarks();
+                    loadStats();
+                    loadCategories();
+                } else {
+                    message.error(msg || "Failed to add bookmark");
+                }
+            } else {
+                // Edit mode
+                const bookmarkData = {
+                    id: values.id,
+                    editing: true,
+                    title: values.title,
+                    url: values.url,
+                    description: values.description,
+                    category: values.category,
+                    tags: values.tags
+                        ? values.tags.split(",").map((tag: string) => tag.trim())
+                        : [],
+                };
+
+                const response = await addBookmark(bookmarkData);
+                const { status, message: msg } = response.data;
+
+                if (status) {
+                    message.success(msg || "Bookmark updated successfully!");
+                    loadBookmarks();
+                    loadStats();
+                    loadCategories();
+                } else {
+                    message.error(msg || "Failed to update bookmark");
+                }
+            }
+
+            closeModal();
+        } catch (error) {
+            console.error("Error saving bookmark:", error);
+            message.error("Failed to save bookmark");
+        }
+    };
+
+    const getFaviconFromUrl = (url: string): string => {
+        try {
+            const parsedUrl = new URL(url);
+            return `${parsedUrl.origin}/favicon.ico`;
+        } catch (err) {
+            console.error("Invalid URL for favicon:", url);
+            return "";
+        }
     };
 
     const getDropdownMenu = (bookmark: Bookmark) => ({
@@ -320,128 +379,7 @@ const Bookmarks: React.FC = () => {
                 border: "1px solid #f0f0f0",
                 boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
                 backgroundColor: "#ffffff",
-            }}
-            onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-4px)";
-                e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.15)";
-            }}
-            onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.1)";
-            }}
-            actions={[
-                <Button
-                    type="text"
-                    icon={
-                        bookmark.isFavorite ? (
-                            <HeartFilled style={{ color: "#ff4d4f" }} />
-                        ) : (
-                            <HeartOutlined />
-                        )
-                    }
-                    onClick={() => handleToggleFavorite(bookmark.id)}
-                />,
-                <Dropdown menu={getDropdownMenu(bookmark)} trigger={["click"]}>
-                    <Button type="text" icon={<MoreOutlined />} />
-                </Dropdown>,
-            ]}
-        >
-            <div style={{ marginBottom: "12px" }}>
-                <div
-                    style={{ display: "flex", alignItems: "center", marginBottom: "8px" }}
-                >
-                    <Avatar
-                        src={bookmark.favicon}
-                        size="small"
-                        style={{ marginRight: "8px", backgroundColor: "#f5f5f5" }}
-                        icon={<LinkOutlined />}
-                    />
-                    <Tag
-                        color={categoryColors[bookmark.category] || "#666"}
-                        style={{ margin: 0, borderRadius: "12px", fontSize: "11px" }}
-                    >
-                        {bookmark.category}
-                    </Tag>
-                </div>
-
-                <Title
-                    level={5}
-                    style={{ margin: "0 0 8px 0", lineHeight: "1.4", color: "#262626" }}
-                >
-                    <a
-                        href={bookmark.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ color: "#1890ff", textDecoration: "none" }}
-                    >
-                        {bookmark.title}
-                    </a>
-                </Title>
-
-                <Paragraph
-                    style={{
-                        margin: "0 0 12px 0",
-                        color: "#595959",
-                        fontSize: "13px",
-                        lineHeight: "1.5",
-                    }}
-                    ellipsis={{ rows: 2 }}
-                >
-                    {bookmark.description}
-                </Paragraph>
-
-                <Text
-                    type="secondary"
-                    style={{ fontSize: "12px", display: "block", marginBottom: "8px" }}
-                >
-                    {new URL(bookmark.url).hostname}
-                </Text>
-
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
-                    {bookmark.tags.slice(0, 3).map((tag) => (
-                        <Tag
-                            key={tag}
-                            style={{
-                                margin: 0,
-                                backgroundColor: "#f6f8fa",
-                                border: "1px solid #e1e8ed",
-                                borderRadius: "8px",
-                                fontSize: "10px",
-                                color: "#586069",
-                            }}
-                        >
-                            {tag}
-                        </Tag>
-                    ))}
-                    {bookmark.tags.length > 3 && (
-                        <Tag
-                            style={{
-                                margin: 0,
-                                fontSize: "10px",
-                                backgroundColor: "#f0f0f0",
-                                color: "#666",
-                            }}
-                        >
-                            +{bookmark.tags.length - 3}
-                        </Tag>
-                    )}
-                </div>
-            </div>
-        </Card>
-    );
-
-    const renderBookmarkList = (bookmark: Bookmark) => (
-        <Card
-            key={bookmark.id}
-            hoverable
-            style={{
-                borderRadius: "12px",
-                overflow: "hidden",
-                transition: "all 0.3s ease",
-                border: "1px solid #f0f0f0",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-                backgroundColor: "#ffffff",
-                height: "320px", // Fixed height
+                height: "245px", // 💥 Fixed card height
                 display: "flex",
                 flexDirection: "column",
                 justifyContent: "space-between",
@@ -471,72 +409,200 @@ const Bookmarks: React.FC = () => {
                 </Dropdown>,
             ]}
         >
+            {/* Content wrapper with fixed height */}
             <div
                 style={{
-                    overflowY: "auto",
-                    maxHeight: "240px", // subtract space taken by actions
-                    paddingRight: "4px",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    height: "100%",
                 }}
             >
-                <div
-                    style={{ display: "flex", alignItems: "center", marginBottom: "8px" }}
-                >
+                {/* Top Section */}
+                <div>
+                    <div
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            marginBottom: "8px",
+                        }}
+                    >
+                        <Avatar
+                            src={bookmark.favicon}
+                            size="small"
+                            style={{ marginRight: "8px", backgroundColor: "#f5f5f5" }}
+                            icon={<LinkOutlined />}
+                        />
+                        <Tag
+                            color={categoryColors[bookmark.category] || "#666"}
+                            style={{ margin: 0, borderRadius: "12px", fontSize: "11px" }}
+                        >
+                            {bookmark.category}
+                        </Tag>
+                    </div>
+
+                    <Title
+                        level={5}
+                        style={{
+                            margin: "0 0 8px 0",
+                            lineHeight: "1.4",
+                            color: "#262626",
+                            fontSize: "15px",
+                        }}
+                    >
+                        <a
+                            href={bookmark.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: "#1890ff", textDecoration: "none" }}
+                        >
+                            {bookmark.title}
+                        </a>
+                    </Title>
+
+                    <Paragraph
+                        style={{
+                            margin: "0 0 12px 0",
+                            color: "#595959",
+                            fontSize: "13px",
+                            lineHeight: "1.5",
+                        }}
+                        ellipsis={{ rows: 2 }}
+                    >
+                        {bookmark.description || " "}
+                    </Paragraph>
+                </div>
+
+                {/* Bottom Section */}
+                <div>
+                    <Text
+                        type="secondary"
+                        style={{
+                            fontSize: "12px",
+                            display: "block",
+                            marginBottom: "8px",
+                        }}
+                    >
+                        {new URL(bookmark.url).hostname}
+                    </Text>
+
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+                        {bookmark.tags.slice(0, 3).map((tag: any) => (
+                            <Tag
+                                key={tag}
+                                style={{
+                                    margin: 0,
+                                    backgroundColor: "#f6f8fa",
+                                    border: "1px solid #e1e8ed",
+                                    borderRadius: "8px",
+                                    fontSize: "10px",
+                                    color: "#586069",
+                                }}
+                            >
+                                {tag}
+                            </Tag>
+                        ))}
+                        {bookmark.tags.length > 3 && (
+                            <Tag
+                                style={{
+                                    margin: 0,
+                                    fontSize: "10px",
+                                    backgroundColor: "#f0f0f0",
+                                    color: "#666",
+                                }}
+                            >
+                                +{bookmark.tags.length - 3}
+                            </Tag>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </Card>
+    );
+
+    const tableColumns: TableColumnsType<Bookmark> = [
+        {
+            title: "Bookmark",
+            dataIndex: "title",
+            key: "title",
+            width: "20%",
+            render: (_, bookmark) => (
+                <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
                     <Avatar
                         src={bookmark.favicon}
                         size="small"
-                        style={{ marginRight: "8px", backgroundColor: "#f5f5f5" }}
+                        style={{ backgroundColor: "#f5f5f5", marginTop: "4px" }}
                         icon={<LinkOutlined />}
                     />
-                    <Tag
-                        color={categoryColors[bookmark.category] || "#666"}
-                        style={{ margin: 0, borderRadius: "12px", fontSize: "11px" }}
-                    >
-                        {bookmark.category}
-                    </Tag>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ marginBottom: "4px" }}>
+                            <a
+                                href={bookmark.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                    color: "#1890ff",
+                                    textDecoration: "none",
+                                    fontWeight: 500,
+                                    fontSize: "14px",
+                                }}
+                            >
+                                {bookmark.title}
+                            </a>
+                        </div>
+                        {bookmark.description && (
+                            <div
+                                style={{
+                                    color: "#666",
+                                    fontSize: "12px",
+                                    lineHeight: "1.4",
+                                    marginBottom: "4px",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    display: "-webkit-box",
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: "vertical",
+                                }}
+                            >
+                                {bookmark.description}
+                            </div>
+                        )}
+                        <Text type="secondary" style={{ fontSize: "11px" }}>
+                            {new URL(bookmark.url).hostname}
+                        </Text>
+                    </div>
                 </div>
-
-                <Title
-                    level={5}
-                    style={{ margin: "0 0 8px 0", lineHeight: "1.4", color: "#262626" }}
+            ),
+        },
+        {
+            title: "Category",
+            dataIndex: "category",
+            key: "category",
+            width: "20%",
+            render: (category) => (
+                <Tag
+                    color={categoryColors[category] || "#666"}
+                    style={{ borderRadius: "12px", fontSize: "11px" }}
                 >
-                    <a
-                        href={bookmark.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ color: "#1890ff", textDecoration: "none" }}
-                    >
-                        {bookmark.title}
-                    </a>
-                </Title>
-
-                <Paragraph
-                    style={{
-                        margin: "0 0 12px 0",
-                        color: "#595959",
-                        fontSize: "13px",
-                        lineHeight: "1.5",
-                    }}
-                    ellipsis={false} // Disable ellipsis to allow full scrollable content
-                >
-                    {bookmark.description}
-                </Paragraph>
-
-                <Text
-                    type="secondary"
-                    style={{ fontSize: "12px", display: "block", marginBottom: "8px" }}
-                >
-                    {new URL(bookmark.url).hostname}
-                </Text>
-
+                    {category}
+                </Tag>
+            ),
+        },
+        {
+            title: "Tags",
+            dataIndex: "tags",
+            key: "tags",
+            width: "25%",
+            render: (tags: string[]) => (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
-                    {bookmark.tags.slice(0, 3).map((tag) => (
+                    {tags.slice(0, 3).map((tag) => (
                         <Tag
                             key={tag}
                             style={{
                                 margin: 0,
                                 backgroundColor: "#f6f8fa",
                                 border: "1px solid #e1e8ed",
-                                borderRadius: "8px",
+                                borderRadius: "6px",
                                 fontSize: "10px",
                                 color: "#586069",
                             }}
@@ -544,22 +610,75 @@ const Bookmarks: React.FC = () => {
                             {tag}
                         </Tag>
                     ))}
-                    {bookmark.tags.length > 3 && (
-                        <Tag
-                            style={{
-                                margin: 0,
-                                fontSize: "10px",
-                                backgroundColor: "#f0f0f0",
-                                color: "#666",
-                            }}
-                        >
-                            +{bookmark.tags.length - 3}
-                        </Tag>
+                    {tags.length > 3 && (
+                        <Tooltip title={tags.slice(3).join(", ")}>
+                            <Tag
+                                style={{
+                                    margin: 0,
+                                    fontSize: "10px",
+                                    backgroundColor: "#f0f0f0",
+                                    color: "#666",
+                                    cursor: "pointer",
+                                }}
+                            >
+                                +{tags.length - 3}
+                            </Tag>
+                        </Tooltip>
                     )}
                 </div>
-            </div>
-        </Card>
-    );
+            ),
+        },
+        {
+            title: "Added",
+            dataIndex: "createdAt",
+            key: "createdAt",
+            width: "12%",
+            render: (created_at) => {
+                console.log("🚀 ~ created_at:", created_at)
+                const date = new Date(created_at);
+                console.log("🚀 ~ date:", date)
+
+                return (
+                    <Text type="secondary" style={{ fontSize: "12px" }}>
+                        {date instanceof Date && !isNaN(date.getTime())
+                            ? date.toLocaleDateString()
+                            : "N/A"}
+                    </Text>
+                );
+            },
+        },
+        {
+            title: "Actions",
+            key: "actions",
+            width: "8%",
+            render: (_, bookmark) => (
+                <Space>
+                    <Tooltip
+                        title={
+                            bookmark.isFavorite ? "Remove from favorites" : "Add to favorites"
+                        }
+                    >
+                        <Button
+                            type="text"
+                            size="small"
+                            icon={
+                                bookmark.isFavorite ? (
+                                    <HeartFilled style={{ color: "#ff4d4f" }} />
+                                ) : (
+                                    <HeartOutlined />
+                                )
+                            }
+                            onClick={() => handleToggleFavorite(bookmark.id)}
+                        />
+                    </Tooltip>
+                    <Dropdown menu={getDropdownMenu(bookmark)} trigger={["click"]}>
+                        <Button type="text" size="small" icon={<MoreOutlined />} />
+                    </Dropdown>
+                </Space>
+            ),
+        },
+    ];
+
 
     return (
         <div
@@ -568,7 +687,6 @@ const Bookmarks: React.FC = () => {
                 minHeight: "100vh",
                 backgroundColor: "#ffffff",
                 padding: "24px",
-                // marginRight: '50px'
                 marginLeft: "40px",
             }}
         >
@@ -605,7 +723,7 @@ const Bookmarks: React.FC = () => {
                                 <Title level={3} style={{ margin: 0 }}>
                                     My Bookmarks
                                 </Title>
-                                <Text type="secondary">{bookmarks.length} bookmarks</Text>
+                                <Text type="secondary">{stats.total_bookmarks} bookmarks</Text>
                             </Col>
                         </Row>
                     </Col>
@@ -619,7 +737,7 @@ const Bookmarks: React.FC = () => {
                                 background: "#1890ff",
                                 borderColor: "#1890ff",
                             }}
-                            onClick={() => setAddModalVisible(true)}
+                            onClick={openCreateModal}
                         ></Button>
                     </Col>
                 </Row>
@@ -665,18 +783,14 @@ const Bookmarks: React.FC = () => {
                         </Select>
                     </Col>
                     <Col>
-                        <Tooltip title={viewMode === "grid" ? "Grid View" : "List View"}>
+                        <Tooltip title={viewMode === "grid" ? "Grid View" : "Table View"}>
                             <Button
                                 shape="circle"
                                 icon={
-                                    viewMode === "grid" ? (
-                                        <AppstoreOutlined />
-                                    ) : (
-                                        <UnorderedListOutlined />
-                                    )
+                                    viewMode === "grid" ? <AppstoreOutlined /> : <TableOutlined />
                                 }
                                 onClick={() =>
-                                    setViewMode(viewMode === "grid" ? "list" : "grid")
+                                    setViewMode(viewMode === "grid" ? "table" : "grid")
                                 }
                             />
                         </Tooltip>
@@ -694,7 +808,7 @@ const Bookmarks: React.FC = () => {
                             }}
                         >
                             <Title level={3} style={{ margin: 0, color: "#1890ff" }}>
-                                {bookmarks.length}
+                                {stats.total_bookmarks}
                             </Title>
                             <Text type="secondary">Total Bookmarks</Text>
                         </Card>
@@ -708,7 +822,7 @@ const Bookmarks: React.FC = () => {
                             }}
                         >
                             <Title level={3} style={{ margin: 0, color: "#ff4d4f" }}>
-                                {bookmarks.filter((b) => b.isFavorite).length}
+                                {stats.favorite_bookmarks}
                             </Title>
                             <Text type="secondary">Favorites</Text>
                         </Card>
@@ -722,7 +836,7 @@ const Bookmarks: React.FC = () => {
                             }}
                         >
                             <Title level={3} style={{ margin: 0, color: "#52c41a" }}>
-                                {categories.length - 1}
+                                {stats.categories_count}
                             </Title>
                             <Text type="secondary">Categories</Text>
                         </Card>
@@ -773,17 +887,30 @@ const Bookmarks: React.FC = () => {
                         ))}
                     </Row>
                 ) : (
-                    <div>{filteredBookmarks.map(renderBookmarkList)}</div>
+                    <Table
+                        columns={tableColumns}
+                        dataSource={filteredBookmarks}
+                        rowKey="id"
+                        pagination={{
+                            pageSize: 10,
+                            showSizeChanger: true,
+                            showQuickJumper: true,
+                            showTotal: (total, range) =>
+                                `${range[0]}-${range[1]} of ${total} bookmarks`,
+                        }}
+                        style={{
+                            backgroundColor: "#ffffff",
+                            borderRadius: "8px",
+                        }}
+                        rowHoverable
+                    />
                 )}
 
-                {/* Add Bookmark Modal */}
+                {/* Add/Edit Bookmark Modal */}
                 <Modal
-                    title="Add New Bookmark"
+                    title={modalMode === "create" ? "Add New Bookmark" : "Edit Bookmark"}
                     open={addModalVisible}
-                    onCancel={() => {
-                        setAddModalVisible(false);
-                        form.resetFields();
-                    }}
+                    onCancel={closeModal}
                     footer={null}
                     style={{ top: 20 }}
                 >
@@ -841,18 +968,15 @@ const Bookmarks: React.FC = () => {
                             <Input placeholder="Enter tags separated by commas (e.g., react, frontend, tutorial)" />
                         </Form.Item>
 
+                        <Form.Item name="id" hidden>
+                            <Input />
+                        </Form.Item>
+
                         <Form.Item style={{ marginBottom: 0, textAlign: "right" }}>
                             <Space>
-                                <Button
-                                    onClick={() => {
-                                        setAddModalVisible(false);
-                                        form.resetFields();
-                                    }}
-                                >
-                                    Cancel
-                                </Button>
+                                <Button onClick={closeModal}>Cancel</Button>
                                 <Button type="primary" htmlType="submit">
-                                    Add Bookmark
+                                    {modalMode === "create" ? "Add Bookmark" : "Update Bookmark"}
                                 </Button>
                             </Space>
                         </Form.Item>
@@ -864,3 +988,4 @@ const Bookmarks: React.FC = () => {
 };
 
 export default Bookmarks;
+

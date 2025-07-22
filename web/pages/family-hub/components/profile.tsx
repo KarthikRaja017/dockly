@@ -23,6 +23,8 @@ import {
     LaptopOutlined,
     SafetyCertificateOutlined
 } from '@ant-design/icons';
+import PersonalInfoSection from './personal-info';
+import MedicalInfoPage from './medical-info';
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -130,12 +132,12 @@ const FamilyMembers: React.FC = () => {
         {
             name: 'Eye Exam',
             date: 'September 20, 2024 - Dr. Sarah Martinez',
-            icon: '👁️'
+            icon: '👁'
         },
         {
             name: 'Sports Physical',
             date: 'August 1, 2024 - Dr. Emily Chen',
-            icon: '🏃‍♀️'
+            icon: '🏃‍♀'
         }
     ];
 
@@ -769,10 +771,10 @@ const FamilyMembers: React.FC = () => {
                                 Resources & Links
                             </Text>
                             <Space wrap>
-                                <a href="#" style={{ fontSize: 13 }}>🖼️ Portfolio Guidelines</a>
+                                <a href="#" style={{ fontSize: 13 }}>🖼 Portfolio Guidelines</a>
                                 <a href="#" style={{ fontSize: 13 }}>🎨 Supply List</a>
                                 <a href="#" style={{ fontSize: 13 }}>📸 Instagram Gallery</a>
-                                <a href="#" style={{ fontSize: 13 }}>🏛️ Museum Field Trips</a>
+                                <a href="#" style={{ fontSize: 13 }}>🏛 Museum Field Trips</a>
                             </Space>
                         </div>
 
@@ -943,207 +945,11 @@ const FamilyMembers: React.FC = () => {
                         <Col xs={24} lg={16}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
                                 {/* Personal Information Section */}
-                                <Card
-                                    title={
-                                        <span>
-                                            <FileTextOutlined style={{ marginRight: 8 }} />
-                                            Personal Information
-                                        </span>
-                                    }
-                                    extra={
-                                        <EditOutlined
-                                            style={{ cursor: 'pointer', color: '#1890ff' }}
-                                            onClick={handleEdit}
-                                        />
-                                    }
-                                    style={{ borderRadius: 12 }}
-                                >
-                                    <Form form={form} layout="vertical">
-                                        <Title level={5} style={{ marginBottom: 16 }}>Basic Information</Title>
-
-                                        <Row gutter={16}>
-                                            <Col xs={24} sm={12}>
-                                                <Form.Item label="First Name" name="firstName">
-                                                    <Input value="Emma" readOnly />
-                                                </Form.Item>
-                                            </Col>
-                                            <Col xs={24} sm={12}>
-                                                <Form.Item label="Middle Name" name="middleName">
-                                                    <Input value="Rose" readOnly />
-                                                </Form.Item>
-                                            </Col>
-                                        </Row>
-
-                                        <Row gutter={16}>
-                                            <Col xs={24} sm={12}>
-                                                <Form.Item label="Last Name" name="lastName">
-                                                    <Input value="Smith" readOnly />
-                                                </Form.Item>
-                                            </Col>
-                                            <Col xs={24} sm={12}>
-                                                <Form.Item label="Preferred Name" name="preferredName">
-                                                    <Input value="Emma" readOnly />
-                                                </Form.Item>
-                                            </Col>
-                                        </Row>
-
-                                        <Row gutter={16}>
-                                            <Col xs={24} sm={12}>
-                                                <Form.Item label="Nickname(s)" name="nicknames">
-                                                    <Input value="Em, Emmy" readOnly />
-                                                </Form.Item>
-                                            </Col>
-                                            <Col xs={24} sm={12}>
-                                                <Form.Item label="Relationship" name="relationship">
-                                                    <Input value="Daughter" readOnly />
-                                                </Form.Item>
-                                            </Col>
-                                        </Row>
-
-                                        <Row gutter={16}>
-                                            <Col xs={24} sm={12}>
-                                                <Form.Item label="Date of Birth" name="dateOfBirth">
-                                                    <Input type="date" value="2011-03-15" readOnly />
-                                                </Form.Item>
-                                            </Col>
-                                            <Col xs={24} sm={12}>
-                                                <Form.Item label="Age" name="age">
-                                                    <Input value="14 years old" readOnly />
-                                                </Form.Item>
-                                            </Col>
-                                        </Row>
-
-                                        <Row gutter={16}>
-                                            <Col xs={24} sm={12}>
-                                                <Form.Item label="Birthplace" name="birthplace">
-                                                    <Input value="Springfield, Illinois" readOnly />
-                                                </Form.Item>
-                                            </Col>
-                                            <Col xs={24} sm={12}>
-                                                <Form.Item label="Gender" name="gender">
-                                                    <Select value="Female" disabled>
-                                                        <Select.Option value="Female">Female</Select.Option>
-                                                        <Select.Option value="Male">Male</Select.Option>
-                                                        <Select.Option value="Other">Other</Select.Option>
-                                                        <Select.Option value="Prefer not to say">Prefer not to say</Select.Option>
-                                                    </Select>
-                                                </Form.Item>
-                                            </Col>
-                                        </Row>
-
-                                        <Title level={5} style={{ marginTop: 24, marginBottom: 16 }}>Contact Information</Title>
-
-                                        <Row gutter={16}>
-                                            <Col xs={24} sm={12}>
-                                                <Form.Item label="Phone Number" name="phoneNumber">
-                                                    <Input value="(555) 123-4567" readOnly />
-                                                </Form.Item>
-                                            </Col>
-                                            <Col xs={24} sm={12}>
-                                                <Form.Item label="Primary Email" name="primaryEmail">
-                                                    <Input value="emma.smith@family.com" readOnly />
-                                                </Form.Item>
-                                            </Col>
-                                        </Row>
-
-                                        <Form.Item label="Additional Email(s)" name="additionalEmails">
-                                            <Input value="emma.smith2029@schooldistrict.edu" readOnly />
-                                        </Form.Item>
-
-                                        <Title level={5} style={{ marginTop: 24, marginBottom: 16 }}>Address</Title>
-
-                                        <Form.Item name="sameAsPrimary" valuePropName="checked">
-                                            <Checkbox defaultChecked>Same as primary account holder</Checkbox>
-                                        </Form.Item>
-
-                                        <Title level={5} style={{ marginTop: 24, marginBottom: 16 }}>Identification Documents</Title>
-
-                                        <Alert
-                                            message="🔒 Sensitive Information - Access restricted to guardians only"
-                                            type="warning"
-                                            style={{ marginBottom: 16 }}
-                                        />
-
-                                        <Row gutter={16}>
-                                            <Col xs={24} sm={12}>
-                                                <Form.Item label="Social Security Number" name="ssn">
-                                                    <Input.Password value="•••-••-••••" readOnly />
-                                                </Form.Item>
-                                            </Col>
-                                            <Col xs={24} sm={12}>
-                                                <Form.Item label="Birth Certificate Number" name="birthCertNumber">
-                                                    <Input.Password value="••••••••••" readOnly />
-                                                </Form.Item>
-                                            </Col>
-                                        </Row>
-
-                                        <Title level={5} style={{ marginTop: 24, marginBottom: 16 }}>Emergency Contacts</Title>
-
-                                        <Row gutter={16}>
-                                            <Col xs={24} sm={12}>
-                                                <Form.Item label="Primary Contact" name="primaryContact">
-                                                    <Input value="John Smith (Father)" readOnly />
-                                                </Form.Item>
-                                            </Col>
-                                            <Col xs={24} sm={12}>
-                                                <Form.Item label="Phone" name="primaryContactPhone">
-                                                    <Input value="(555) 987-6543" readOnly />
-                                                </Form.Item>
-                                            </Col>
-                                        </Row>
-
-                                        <Row gutter={16}>
-                                            <Col xs={24} sm={12}>
-                                                <Form.Item label="Secondary Contact" name="secondaryContact">
-                                                    <Input value="Sarah Smith (Mother)" readOnly />
-                                                </Form.Item>
-                                            </Col>
-                                            <Col xs={24} sm={12}>
-                                                <Form.Item label="Phone" name="secondaryContactPhone">
-                                                    <Input value="(555) 876-5432" readOnly />
-                                                </Form.Item>
-                                            </Col>
-                                        </Row>
-                                    </Form>
-                                </Card>
+                                <PersonalInfoSection />
 
                                 {/* Medical Information Section */}
-                                <Card
-                                    title={
-                                        <span>
-                                            <MedicineBoxOutlined style={{ marginRight: 8 }} />
-                                            Medical Information
-                                        </span>
-                                    }
-                                    extra={
-                                        <EditOutlined
-                                            style={{ cursor: 'pointer', color: '#1890ff' }}
-                                            onClick={handleEdit}
-                                        />
-                                    }
-                                    style={{ borderRadius: 12 }}
-                                >
-                                    <Tabs
-                                        items={[
-                                            {
-                                                key: 'general',
-                                                label: 'General',
-                                                children: generalTab,
-                                            },
-                                            {
-                                                key: 'providers',
-                                                label: 'Providers',
-                                                children: providersTab,
-                                            },
-                                            {
-                                                key: 'records',
-                                                label: 'Medical Records',
-                                                children: recordsTab,
-                                            },
-                                        ]}
-                                    />
-                                </Card>
 
+                                <MedicalInfoPage />
                                 {/* School & Activities Section */}
                                 <Card
                                     title={

@@ -515,3 +515,58 @@ export async function getUpcomingActivities(userId: string): Promise<any> {
     throw error;
   }
 }
+export async function updatePersonalInfo(params: any): Promise<any> {
+  try {
+    const response = await api.put('/update/personal-info', params, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error updating personal info:', error);
+    throw error;
+  }
+}
+
+export async function addProvider(params: any): Promise<any> {
+  try {
+    const response = await api.post('/add/provider', params, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error adding provider:', error);
+    throw error;
+  }
+}
+
+// GET Providers
+export async function getProviders(params: { userId: string }): Promise<any> {
+  try {
+    const response = await api.get('/get/provider', {
+      params,
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching providers:', error);
+    throw error;
+  }
+}
+
+// UPDATE Provider
+export async function updateProvider(params: any): Promise<any> {
+  try {
+    const response = await api.put('/update/provider', params, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error updating provider:', error);
+    throw error;
+  }
+}

@@ -1494,36 +1494,27 @@ class UpdateTask(Resource):
 class AddPersonalInfo(Resource):
     @auth_required(isOptional=True)
     def post(self, uid, user):
-        # logger.debug(
-        #     f"Received POST /add/personal-info with data: {request.get_json()}"
-        # )
         try:
             inputData = request.get_json(silent=True)
             if not inputData:
-                # logger.error("No input data provided")
                 return {"status": 0, "message": "No input data provided"}, 400
 
             personal_info = inputData.get("personal_info", {})
             if not personal_info:
-                # logger.error("No personal info data provided")
                 return {"status": 0, "message": "No personal info data provided"}, 400
 
-            # Validate required fields
             required_fields = ["addedBy"]
             missing_fields = [
                 field for field in required_fields if field not in personal_info
             ]
             if missing_fields:
-                # logger.error(f"Missing fields: {missing_fields}")
                 return {
                     "status": 0,
                     "message": f"Missing required fields: {', '.join(missing_fields)}",
                 }, 400
 
-            # Validate user_id exists in users table
             user_check = DBHelper.find_one(table_name="users", filters={"uid": uid})
             if not user_check:
-                # logger.error(f"Invalid userId: {uid}")
                 return {"status": 0, "message": f"User with ID {uid} not found"}, 400
 
             current_time = datetime.now().isoformat()
@@ -1532,28 +1523,39 @@ class AddPersonalInfo(Resource):
                 table_name="personal_information",
                 return_column="id",
                 user_id=uid,
+                first_name=personal_info.get("firstName", ""),
+                middle_name=personal_info.get("middleName", ""),
+                last_name=personal_info.get("lastName", ""),
+                preferred_name=personal_info.get("preferredName", ""),
+                nicknames=personal_info.get("nicknames", ""),
+                relationship=personal_info.get("relationship", ""),
+                date_of_birth=personal_info.get("dateOfBirth") or None,
+                age=personal_info.get("age", ""),
+                birthplace=personal_info.get("birthplace", ""),
+                gender=personal_info.get("gender", ""),
+                phone_number=personal_info.get("phoneNumber", ""),
+                primary_email=personal_info.get("primaryEmail", ""),
+                additional_emails=personal_info.get("additionalEmails", ""),
+                same_as_primary=personal_info.get("sameAsPrimary", False),
+                birth_cert_number=personal_info.get("birthCertNumber", ""),
                 state_id=personal_info.get("stateId", ""),
                 passport=personal_info.get("passport", ""),
                 license=personal_info.get("license", ""),
                 birth_cert=personal_info.get("birthCert", ""),
                 primary_contact=personal_info.get("primaryContact", ""),
-                primary_phone=personal_info.get("primaryPhone", ""),
+                primary_phone=personal_info.get("primaryContactPhone", ""),
                 secondary_contact=personal_info.get("secondaryContact", ""),
-                secondary_phone=personal_info.get("secondaryPhone", ""),
+                secondary_phone=personal_info.get("secondaryContactPhone", ""),
                 emergency_contact=personal_info.get("emergencyContact", ""),
                 emergency_phone=personal_info.get("emergencyPhone", ""),
                 blood_type=personal_info.get("bloodType", ""),
                 height=personal_info.get("height", ""),
                 weight=personal_info.get("weight", ""),
                 eye_color=personal_info.get("eyeColor", ""),
-                physician=personal_info.get("physician", ""),
-                physician_phone=personal_info.get("physicianPhone", ""),
-                dentist=personal_info.get("dentist", ""),
-                dentist_phone=personal_info.get("dentistPhone", ""),
                 insurance=personal_info.get("insurance", ""),
                 member_id=personal_info.get("memberId", ""),
                 group_num=personal_info.get("groupNum", ""),
-                last_checkup=personal_info.get("lastCheckup", ""),
+                last_checkup=personal_info.get("lastCheckup") or None,
                 allergies=personal_info.get("allergies", ""),
                 medications=personal_info.get("medications", ""),
                 notes=personal_info.get("notes", ""),
@@ -1566,14 +1568,13 @@ class AddPersonalInfo(Resource):
                 ),
                 updated_at=current_time,
             )
-            # logger.info(f"Personal info added for user_id: {uid}, id: {personal_id}")
+
             return {
                 "status": 1,
                 "message": "Personal information added successfully",
                 "payload": {"id": personal_id},
             }, 200
         except Exception as e:
-            # logger.error(f"Error adding personal info: {str(e)}")
             return {
                 "status": 0,
                 "message": f"Failed to add personal info: {str(e)}",
@@ -1583,12 +1584,26 @@ class AddPersonalInfo(Resource):
 class GetPersonalInfo(Resource):
     @auth_required(isOptional=True)
     def get(self, uid, user):
-        # logger.debug(f"Received GET /get/personal-info for user_id: {uid}")
         try:
             personal_info = DBHelper.find_one(
                 table_name="personal_information",
                 select_fields=[
                     "id",
+                    "first_name",
+                    "middle_name",
+                    "last_name",
+                    "preferred_name",
+                    "nicknames",
+                    "relationship",
+                    "date_of_birth",
+                    "age",
+                    "birthplace",
+                    "gender",
+                    "phone_number",
+                    "primary_email",
+                    "additional_emails",
+                    "same_as_primary",
+                    "birth_cert_number",
                     "state_id",
                     "passport",
                     "license",
@@ -1603,10 +1618,6 @@ class GetPersonalInfo(Resource):
                     "height",
                     "weight",
                     "eye_color",
-                    "physician",
-                    "physician_phone",
-                    "dentist",
-                    "dentist_phone",
                     "insurance",
                     "member_id",
                     "group_num",
@@ -1625,7 +1636,6 @@ class GetPersonalInfo(Resource):
             )
 
             if not personal_info:
-                # logger.info(f"No personal info found for user_id: {uid}")
                 return {
                     "status": 1,
                     "message": "No personal information found",
@@ -1633,32 +1643,48 @@ class GetPersonalInfo(Resource):
                 }, 200
 
             def serialize_datetime(dt):
-                return dt.isoformat() if isinstance(dt, (datetime, date)) else None
+                return dt.isoformat() if isinstance(dt, (datetime, date)) else ""
 
             response_data = {
                 "id": personal_info["id"],
+                "firstName": personal_info["first_name"] or "",
+                "middleName": personal_info["middle_name"] or "",
+                "lastName": personal_info["last_name"] or "",
+                "preferredName": personal_info["preferred_name"] or "",
+                "nicknames": personal_info["nicknames"] or "",
+                "relationship": personal_info["relationship"] or "",
+                "dateOfBirth": (
+                    str(personal_info["date_of_birth"])
+                    if personal_info["date_of_birth"]
+                    else None
+                ),
+                "age": personal_info["age"] or "",
+                "birthplace": personal_info["birthplace"] or "",
+                "gender": personal_info["gender"] or "",
+                "phoneNumber": personal_info["phone_number"] or "",
+                "primaryEmail": personal_info["primary_email"] or "",
+                "additionalEmails": personal_info["additional_emails"] or "",
+                "sameAsPrimary": personal_info["same_as_primary"] or False,
+                "birthCertNumber": personal_info["birth_cert_number"] or "",
                 "stateId": personal_info["state_id"] or "",
                 "passport": personal_info["passport"] or "",
                 "license": personal_info["license"] or "",
                 "birthCert": personal_info["birth_cert"] or "",
                 "primaryContact": personal_info["primary_contact"] or "",
-                "primaryPhone": personal_info["primary_phone"] or "",
+                "primaryContactPhone": personal_info["primary_phone"] or "",
                 "secondaryContact": personal_info["secondary_contact"] or "",
-                "secondaryPhone": personal_info["secondary_phone"] or "",
+                "secondaryContactPhone": personal_info["secondary_phone"] or "",
                 "emergencyContact": personal_info["emergency_contact"] or "",
                 "emergencyPhone": personal_info["emergency_phone"] or "",
                 "bloodType": personal_info["blood_type"] or "",
                 "height": personal_info["height"] or "",
                 "weight": personal_info["weight"] or "",
                 "eyeColor": personal_info["eye_color"] or "",
-                "physician": personal_info["physician"] or "",
-                "physicianPhone": personal_info["physician_phone"] or "",
-                "dentist": personal_info["dentist"] or "",
-                "dentistPhone": personal_info["dentist_phone"] or "",
                 "insurance": personal_info["insurance"] or "",
                 "memberId": personal_info["member_id"] or "",
                 "groupNum": personal_info["group_num"] or "",
-                "lastCheckup": serialize_datetime(personal_info["last_checkup"]),
+                "lastCheckup": serialize_datetime(personal_info["last_checkup"])
+                or None,
                 "allergies": personal_info["allergies"] or "",
                 "medications": personal_info["medications"] or "",
                 "notes": personal_info["notes"] or "",
@@ -1676,7 +1702,6 @@ class GetPersonalInfo(Resource):
                 "payload": response_data,
             }, 200
         except Exception as e:
-            # logger.error(f"Error fetching personal info: {str(e)}")
             return {
                 "status": 0,
                 "message": f"Failed to fetch personal info: {str(e)}",
@@ -1686,97 +1711,101 @@ class GetPersonalInfo(Resource):
 class UpdatePersonalInfo(Resource):
     @auth_required(isOptional=True)
     def put(self, uid, user):
-        # logger.debug(
-        #     f"Received PUT /update/personal-info with data: {request.get_json()}"
-        # )
         try:
             inputData = request.get_json(silent=True)
             if not inputData:
-                # logger.error("No input data provided")
                 return {"status": 0, "message": "No input data provided"}, 400
 
             personal_info = inputData.get("personal_info", {})
             if not personal_info:
-                # logger.error("No personal info data provided")
                 return {"status": 0, "message": "No personal info data provided"}, 400
 
-            # Validate required fields
-            required_fields = ["id", "addedBy"]
+            required_fields = ["addedBy"]
             missing_fields = [
                 field for field in required_fields if field not in personal_info
             ]
             if missing_fields:
-                # logger.error(f"Missing fields: {missing_fields}")
                 return {
                     "status": 0,
                     "message": f"Missing required fields: {', '.join(missing_fields)}",
                 }, 400
 
-            # Validate user_id and record id exist
             user_check = DBHelper.find_one(table_name="users", filters={"uid": uid})
             if not user_check:
-                # logger.error(f"Invalid userId: {uid}")
                 return {"status": 0, "message": f"User with ID {uid} not found"}, 400
 
             record_check = DBHelper.find_one(
                 table_name="personal_information",
-                filters={"id": personal_info["id"], "user_id": uid},
+                filters={"user_id": uid},
             )
             if not record_check:
-                # logger.error(
-                #     f"No personal info record found for id: {personal_info['id']} and user_id: {uid}"
-                # )
                 return {"status": 0, "message": "Personal info record not found"}, 404
 
             current_time = datetime.now().isoformat()
 
+            updates = {}
+            field_map = {
+                "firstName": "first_name",
+                "middleName": "middle_name",
+                "lastName": "last_name",
+                "preferredName": "preferred_name",
+                "nicknames": "nicknames",
+                "relationship": "relationship",
+                "dateOfBirth": "date_of_birth",
+                "age": "age",
+                "birthplace": "birthplace",
+                "gender": "gender",
+                "phoneNumber": "phone_number",
+                "primaryEmail": "primary_email",
+                "additionalEmails": "additional_emails",
+                "sameAsPrimary": "same_as_primary",
+                "birthCertNumber": "birth_cert_number",
+                "stateId": "state_id",
+                "passport": "passport",
+                "license": "license",
+                "birthCert": "birth_cert",
+                "primaryContact": "primary_contact",
+                "primaryContactPhone": "primary_phone",
+                "secondaryContact": "secondary_contact",
+                "secondaryContactPhone": "secondary_phone",
+                "emergencyContact": "emergency_contact",
+                "emergencyPhone": "emergency_phone",
+                "bloodType": "blood_type",
+                "height": "height",
+                "weight": "weight",
+                "eyeColor": "eye_color",
+                "insurance": "insurance",
+                "memberId": "member_id",
+                "groupNum": "group_num",
+                "lastCheckup": "last_checkup",
+                "allergies": "allergies",
+                "medications": "medications",
+                "notes": "notes",
+                "ssn": "ssn",
+                "studentId": "student_id",
+            }
+
+            for input_key, db_key in field_map.items():
+                if input_key in personal_info:
+                    updates[db_key] = personal_info[input_key]
+
+            updates["edited_by"] = personal_info.get(
+                "editedBy", personal_info.get("addedBy", "")
+            )
+            updates["updated_at"] = current_time
+
             DBHelper.update_one(
                 table_name="personal_information",
-                filters={"id": personal_info["id"], "user_id": uid},
-                updates={
-                    "state_id": personal_info.get("stateId", ""),
-                    "passport": personal_info.get("passport", ""),
-                    "license": personal_info.get("license", ""),
-                    "birth_cert": personal_info.get("birthCert", ""),
-                    "primary_contact": personal_info.get("primaryContact", ""),
-                    "primary_phone": personal_info.get("primaryPhone", ""),
-                    "secondary_contact": personal_info.get("secondaryContact", ""),
-                    "secondary_phone": personal_info.get("secondaryPhone", ""),
-                    "emergency_contact": personal_info.get("emergencyContact", ""),
-                    "emergency_phone": personal_info.get("emergencyPhone", ""),
-                    "blood_type": personal_info.get("bloodType", ""),
-                    "height": personal_info.get("height", ""),
-                    "weight": personal_info.get("weight", ""),
-                    "eye_color": personal_info.get("eyeColor", ""),
-                    "physician": personal_info.get("physician", ""),
-                    "physician_phone": personal_info.get("physicianPhone", ""),
-                    "dentist": personal_info.get("dentist", ""),
-                    "dentist_phone": personal_info.get("dentistPhone", ""),
-                    "insurance": personal_info.get("insurance", ""),
-                    "member_id": personal_info.get("memberId", ""),
-                    "group_num": personal_info.get("groupNum", ""),
-                    "last_checkup": personal_info.get("lastCheckup", ""),
-                    "allergies": personal_info.get("allergies", ""),
-                    "medications": personal_info.get("medications", ""),
-                    "notes": personal_info.get("notes", ""),
-                    "ssn": personal_info.get("ssn", ""),
-                    "student_id": personal_info.get("studentId", ""),
-                    "edited_by": personal_info.get(
-                        "editedBy", personal_info.get("addedBy", "")
-                    ),
-                    "updated_at": current_time,
-                },
+                filters={"user_id": uid},
+                updates=updates,
             )
-            # logger.info(
-            #     f"Personal info updated for user_id: {uid}, id: {personal_info['id']}"
-            # )
+
             return {
                 "status": 1,
                 "message": "Personal information updated successfully",
-                "payload": {"id": personal_info["id"]},
+                "payload": {"id": record_check["id"]},
             }, 200
         except Exception as e:
-            # logger.error(f"Error updating personal info: {str(e)}")
             return {
                 "status": 0,
                 "message": f"Failed to update personal info: {str(e)}",
@@ -2019,3 +2048,133 @@ class GetSchoolInfo(Resource):
                 "status": 0,
                 "message": f"Failed to fetch school info: {str(e)}",
             }, 500
+
+
+class AddProvider(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        try:
+            inputData = request.get_json(silent=True)
+            if not inputData:
+                return {"status": 0, "message": "No input data provided"}, 400
+
+            provider = inputData.get("provider", {})
+            if not provider:
+                return {"status": 0, "message": "No provider data provided"}, 400
+
+            required_fields = ["providerTitle", "providerName", "addedBy"]
+            missing_fields = [f for f in required_fields if f not in provider]
+            if missing_fields:
+                return {
+                    "status": 0,
+                    "message": f"Missing fields: {', '.join(missing_fields)}",
+                }, 400
+
+            user_check = DBHelper.find_one("users", {"uid": uid})
+            if not user_check:
+                return {"status": 0, "message": f"User with ID {uid} not found"}, 400
+
+            now = datetime.now().isoformat()
+
+            provider_id = DBHelper.insert(
+                table_name="healthcare_providers",
+                return_column="id",
+                user_id=uid,
+                provider_title=provider["providerTitle"],
+                provider_name=provider["providerName"],
+                provider_phone=provider.get("providerPhone", ""),
+                added_by=provider["addedBy"],
+                added_time=now,
+                edited_by=provider.get("editedBy", provider["addedBy"]),
+                updated_at=now,
+            )
+
+            return {
+                "status": 1,
+                "message": "Provider added",
+                "payload": {"id": provider_id},
+            }, 200
+
+        except Exception as e:
+            return {"status": 0, "message": f"Failed to add provider: {str(e)}"}, 500
+
+
+class GetProviders(Resource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        try:
+            user_id = request.args.get("userId")
+            if not user_id:
+                return {"status": 0, "message": "User ID is required"}, 400
+
+            user_check = DBHelper.find_one("users", {"uid": user_id})
+            if not user_check:
+                return {
+                    "status": 0,
+                    "message": f"User with ID {user_id} not found",
+                }, 400
+
+            providers = DBHelper.find_all(
+                table_name="healthcare_providers", filters={"user_id": user_id}
+            )
+
+            # Convert datetime objects to ISO strings
+            for provider in providers:
+                for key in ["added_time", "updated_at"]:
+                    if provider.get(key) and isinstance(provider[key], datetime):
+                        provider[key] = provider[key].isoformat()
+
+            return {"status": 1, "payload": providers}, 200
+
+        except Exception as e:
+            return {"status": 0, "message": f"Failed to fetch providers: {str(e)}"}, 500
+
+
+class UpdateProvider(Resource):
+    @auth_required(isOptional=True)
+    def put(self, uid, user):
+        try:
+            inputData = request.get_json(silent=True)
+            if not inputData:
+                return {"status": 0, "message": "No input data provided"}, 400
+
+            provider = inputData.get("provider", {})
+            if not provider:
+                return {"status": 0, "message": "No provider data provided"}, 400
+
+            required_fields = ["id", "providerTitle", "providerName", "addedBy"]
+            missing = [f for f in required_fields if f not in provider]
+            if missing:
+                return {
+                    "status": 0,
+                    "message": f"Missing fields: {', '.join(missing)}",
+                }, 400
+
+            record = DBHelper.find_one(
+                "healthcare_providers", {"id": provider["id"], "user_id": uid}
+            )
+            if not record:
+                return {"status": 0, "message": "Provider record not found"}, 404
+
+            now = datetime.now().isoformat()
+
+            DBHelper.update_one(
+                table_name="healthcare_providers",
+                filters={"id": provider["id"], "user_id": uid},
+                updates={
+                    "provider_title": provider["providerTitle"],
+                    "provider_name": provider["providerName"],
+                    "provider_phone": provider.get("providerPhone", ""),
+                    "edited_by": provider.get("editedBy", provider["addedBy"]),
+                    "updated_at": now,
+                },
+            )
+
+            return {
+                "status": 1,
+                "message": "Provider updated",
+                "payload": {"id": provider["id"]},
+            }, 200
+
+        except Exception as e:
+            return {"status": 0, "message": f"Failed to update provider: {str(e)}"}, 500
