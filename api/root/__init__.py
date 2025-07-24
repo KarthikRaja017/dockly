@@ -314,6 +314,9 @@ def create_app(test_config=None):
     from root.home import home_bp
 
     app.register_blueprint(home_bp)
+    from root.files import google_drive_bp
+
+    app.register_blueprint(google_drive_bp)
     app.permanent_session_lifetime = timedelta(minutes=60)
     # initialize_firebase()
 

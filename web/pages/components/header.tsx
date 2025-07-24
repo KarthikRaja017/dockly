@@ -45,7 +45,8 @@ interface ConnectionStatus {
 }
 export function trimGooglePhotoUrl(url: string): string {
   const index = url.indexOf('=');
-  return index !== -1 ? url.substring(0, index) : url;
+  const baseUrl = index !== -1 ? url.substring(0, index) : url;
+  return `${baseUrl}=s4000`;
 }
 const CustomHeader = ({
   isHovered,

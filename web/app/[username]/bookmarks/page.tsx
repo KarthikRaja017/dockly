@@ -52,13 +52,14 @@ const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
 
 const categoryColors: Record<string, string> = {
-    Tech: "#1890ff",
-    Design: "#722ed1",
+    Tech: "#af630bff",
+    Design: "#9f0aaaff",
     News: "#fa541c",
     Social: "#52c41a",
-    Tools: "#faad14",
+    Tools: "#2c0447ff",
     Education: "#13c2c2",
-    Entertainment: "#eb2f96",
+    Entertainment: "#a01010ff",
+    Others: "#3a1e1eff"
 };
 
 const Bookmarks: React.FC = () => {
@@ -80,6 +81,8 @@ const Bookmarks: React.FC = () => {
         null
     );
     const [form] = Form.useForm();
+    // Add new state for favorites filter
+    const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
 
     // Load initial data
     useEffect(() => {
@@ -104,7 +107,14 @@ const Bookmarks: React.FC = () => {
 
             const { status, message: msg, payload } = response.data;
             if (status) {
-                setBookmarks(payload.bookmarks);
+                // Normalize bookmark data to ensure consistent property names
+                const normalizedBookmarks = payload.bookmarks.map((bookmark: any) => ({
+                    ...bookmark,
+                    isFavorite: bookmark.isFavorite ?? bookmark.is_favorite ?? false,
+                    createdAt:
+                        bookmark.createdAt ?? bookmark.created_at ?? bookmark.createdAt,
+                }));
+                setBookmarks(normalizedBookmarks);
             } else {
                 message.error(msg || "Failed to load bookmarks");
             }
@@ -141,8 +151,25 @@ const Bookmarks: React.FC = () => {
     };
 
     const filteredBookmarks = useMemo(() => {
-        return bookmarks; // Filtering is now done on the backend
-    }, [bookmarks]);
+        let filtered = bookmarks;
+
+        // Apply favorites filter if enabled
+        if (showOnlyFavorites) {
+            filtered = filtered.filter((bookmark) => bookmark.isFavorite);
+        }
+
+        return filtered;
+    }, [bookmarks, showOnlyFavorites]);
+
+    // Handle favorites card click
+    const handleFavoritesClick = () => {
+        setShowOnlyFavorites(!showOnlyFavorites);
+        // Reset other filters when showing favorites
+        if (!showOnlyFavorites) {
+            setSearchQuery("");
+            setSelectedCategory("All");
+        }
+    };
 
     const handleToggleFavorite = async (id: string) => {
         // Optimistically update UI first
@@ -171,7 +198,15 @@ const Bookmarks: React.FC = () => {
                 // Update with backend-confirmed bookmark (in case more fields changed)
                 setBookmarks((prev) =>
                     prev.map((bookmark) =>
-                        bookmark.id === id ? updatedBookmark : bookmark
+                        bookmark.id === id
+                            ? {
+                                ...bookmark,
+                                ...updatedBookmark,
+                                // Preserve the original date fields to prevent N/A in table
+                                createdAt: bookmark.createdAt || bookmark.created_at,
+                                created_at: bookmark.created_at || bookmark.createdAt,
+                            }
+                            : bookmark
                     )
                 );
 
@@ -397,7 +432,7 @@ const Bookmarks: React.FC = () => {
                     type="text"
                     icon={
                         bookmark.isFavorite ? (
-                            <HeartFilled style={{ color: "#ff4d4f" }} />
+                            <HeartFilled style={{ color: "#e6357fff" }} />
                         ) : (
                             <HeartOutlined />
                         )
@@ -429,13 +464,13 @@ const Bookmarks: React.FC = () => {
                     >
                         <Avatar
                             src={bookmark.favicon}
-                            size="small"
+                            size="large"
                             style={{ marginRight: "8px", backgroundColor: "#f5f5f5" }}
                             icon={<LinkOutlined />}
                         />
                         <Tag
                             color={categoryColors[bookmark.category] || "#666"}
-                            style={{ margin: 0, borderRadius: "12px", fontSize: "11px" }}
+                            style={{ margin: 0, borderRadius: "12px", fontSize: "12px" }}
                         >
                             {bookmark.category}
                         </Tag>
@@ -464,7 +499,7 @@ const Bookmarks: React.FC = () => {
                         style={{
                             margin: "0 0 12px 0",
                             color: "#595959",
-                            fontSize: "13px",
+                            fontSize: "15px",
                             lineHeight: "1.5",
                         }}
                         ellipsis={{ rows: 2 }}
@@ -478,7 +513,7 @@ const Bookmarks: React.FC = () => {
                     <Text
                         type="secondary"
                         style={{
-                            fontSize: "12px",
+                            fontSize: "15px",
                             display: "block",
                             marginBottom: "8px",
                         }}
@@ -495,7 +530,7 @@ const Bookmarks: React.FC = () => {
                                     backgroundColor: "#f6f8fa",
                                     border: "1px solid #e1e8ed",
                                     borderRadius: "8px",
-                                    fontSize: "10px",
+                                    fontSize: "15px",
                                     color: "#586069",
                                 }}
                             >
@@ -506,7 +541,7 @@ const Bookmarks: React.FC = () => {
                             <Tag
                                 style={{
                                     margin: 0,
-                                    fontSize: "10px",
+                                    fontSize: "15px",
                                     backgroundColor: "#f0f0f0",
                                     color: "#666",
                                 }}
@@ -525,12 +560,12 @@ const Bookmarks: React.FC = () => {
             title: "Bookmark",
             dataIndex: "title",
             key: "title",
-            width: "20%",
+            width: "30%",
             render: (_, bookmark) => (
                 <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
                     <Avatar
                         src={bookmark.favicon}
-                        size="small"
+                        size="large"
                         style={{ backgroundColor: "#f5f5f5", marginTop: "4px" }}
                         icon={<LinkOutlined />}
                     />
@@ -544,7 +579,7 @@ const Bookmarks: React.FC = () => {
                                     color: "#1890ff",
                                     textDecoration: "none",
                                     fontWeight: 500,
-                                    fontSize: "14px",
+                                    fontSize: "15px",
                                 }}
                             >
                                 {bookmark.title}
@@ -554,7 +589,7 @@ const Bookmarks: React.FC = () => {
                             <div
                                 style={{
                                     color: "#666",
-                                    fontSize: "12px",
+                                    fontSize: "15px",
                                     lineHeight: "1.4",
                                     marginBottom: "4px",
                                     overflow: "hidden",
@@ -567,7 +602,7 @@ const Bookmarks: React.FC = () => {
                                 {bookmark.description}
                             </div>
                         )}
-                        <Text type="secondary" style={{ fontSize: "11px" }}>
+                        <Text type="secondary" style={{ fontSize: "13px" }}>
                             {new URL(bookmark.url).hostname}
                         </Text>
                     </div>
@@ -582,75 +617,59 @@ const Bookmarks: React.FC = () => {
             render: (category) => (
                 <Tag
                     color={categoryColors[category] || "#666"}
-                    style={{ borderRadius: "12px", fontSize: "11px" }}
+                    style={{ borderRadius: "12px", fontSize: "13px" }}
                 >
                     {category}
                 </Tag>
             ),
         },
         {
-            title: "Tags",
-            dataIndex: "tags",
-            key: "tags",
-            width: "25%",
-            render: (tags: string[]) => (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
-                    {tags.slice(0, 3).map((tag) => (
-                        <Tag
-                            key={tag}
-                            style={{
-                                margin: 0,
-                                backgroundColor: "#f6f8fa",
-                                border: "1px solid #e1e8ed",
-                                borderRadius: "6px",
-                                fontSize: "10px",
-                                color: "#586069",
-                            }}
-                        >
-                            {tag}
-                        </Tag>
-                    ))}
-                    {tags.length > 3 && (
-                        <Tooltip title={tags.slice(3).join(", ")}>
-                            <Tag
-                                style={{
-                                    margin: 0,
-                                    fontSize: "10px",
-                                    backgroundColor: "#f0f0f0",
-                                    color: "#666",
-                                    cursor: "pointer",
-                                }}
-                            >
-                                +{tags.length - 3}
-                            </Tag>
-                        </Tooltip>
-                    )}
-                </div>
-            ),
-        },
-        {
             title: "Added",
             dataIndex: "createdAt",
             key: "createdAt",
-            width: "12%",
-            render: (created_at) => {
-                console.log("🚀 ~ created_at:", created_at)
-                const date = new Date(created_at);
-                console.log("🚀 ~ date:", date)
+            width: "15%",
+            render: (_, bookmark) => {
+                // Try multiple possible property names for the date
+                const dateValue =
+                    bookmark.createdAt || bookmark.created_at || bookmark.dateAdded;
 
-                return (
-                    <Text type="secondary" style={{ fontSize: "12px" }}>
-                        {date instanceof Date && !isNaN(date.getTime())
-                            ? date.toLocaleDateString()
-                            : "N/A"}
-                    </Text>
-                );
+                if (!dateValue) {
+                    return (
+                        <Text type="secondary" style={{ fontSize: "16px" }}>
+                            N/A
+                        </Text>
+                    );
+                }
+
+                try {
+                    const date = new Date(dateValue);
+                    if (isNaN(date.getTime())) {
+                        return (
+                            <Text type="secondary" style={{ fontSize: "16px" }}>
+                                N/A
+                            </Text>
+                        );
+                    }
+
+                    return (
+                        <Text type="secondary" style={{ fontSize: "14px" }}>
+                            {date.toLocaleDateString()}
+                        </Text>
+                    );
+                } catch (error) {
+                    console.error("Error parsing date:", dateValue, error);
+                    return (
+                        <Text type="secondary" style={{ fontSize: "14px" }}>
+                            N/A
+                        </Text>
+                    );
+                }
             },
         },
         {
             title: "Actions",
             key: "actions",
-            width: "8%",
+            width: "12%",
             render: (_, bookmark) => (
                 <Space>
                     <Tooltip
@@ -660,10 +679,10 @@ const Bookmarks: React.FC = () => {
                     >
                         <Button
                             type="text"
-                            size="small"
+                            size="large"
                             icon={
                                 bookmark.isFavorite ? (
-                                    <HeartFilled style={{ color: "#ff4d4f" }} />
+                                    <HeartFilled style={{ color: "#e6357fff" }} />
                                 ) : (
                                     <HeartOutlined />
                                 )
@@ -672,13 +691,12 @@ const Bookmarks: React.FC = () => {
                         />
                     </Tooltip>
                     <Dropdown menu={getDropdownMenu(bookmark)} trigger={["click"]}>
-                        <Button type="text" size="small" icon={<MoreOutlined />} />
+                        <Button type="text" size="large" icon={<MoreOutlined />} />
                     </Dropdown>
                 </Space>
             ),
         },
     ];
-
 
     return (
         <div
@@ -720,25 +738,41 @@ const Bookmarks: React.FC = () => {
                                 />
                             </Col>
                             <Col>
-                                <Title level={3} style={{ margin: 0 }}>
-                                    My Bookmarks
+                                <Title level={3} style={{ margin: 0, fontSize: 30, }}>
+                                    {showOnlyFavorites ? " Favorites" : " Bookmarks"}
                                 </Title>
-                                <Text type="secondary">{stats.total_bookmarks} bookmarks</Text>
+                                <Text type="secondary">
+                                    {/* {showOnlyFavorites 
+                                        ? `${filteredBookmarks.length} Favorite Bookmarks`
+                                        : `${stats.total_bookmarks} bookmarks`
+                                    } */}
+                                </Text>
                             </Col>
                         </Row>
                     </Col>
                     <Col>
-                        <Button
-                            type="primary"
-                            icon={<PlusOutlined />}
-                            size="large"
-                            style={{
-                                borderRadius: "12px",
-                                background: "#1890ff",
-                                borderColor: "#1890ff",
-                            }}
-                            onClick={openCreateModal}
-                        ></Button>
+                        <Space>
+                            {/* {showOnlyFavorites && (
+                                <Button
+                                    type="default"
+                                    onClick={() => setShowOnlyFavorites(false)}
+                                    style={{ borderRadius: "8px" }}
+                                >
+                                    Show All
+                                </Button>
+                            )} */}
+                            <Button
+                                type="primary"
+                                icon={<PlusOutlined />}
+                                size="large"
+                                style={{
+                                    borderRadius: "12px",
+                                    background: "#1890ff",
+                                    borderColor: "#1890ff",
+                                }}
+                                onClick={openCreateModal}
+                            ></Button>
+                        </Space>
                     </Col>
                 </Row>
 
@@ -752,6 +786,7 @@ const Bookmarks: React.FC = () => {
                             onChange={(e) => setSearchQuery(e.target.value)}
                             size="large"
                             style={{ borderRadius: "8px" }}
+                            disabled={showOnlyFavorites}
                         />
                     </Col>
                     <Col>
@@ -760,6 +795,7 @@ const Bookmarks: React.FC = () => {
                             onChange={setSelectedCategory}
                             size="large"
                             style={{ width: 120 }}
+                            disabled={showOnlyFavorites}
                         >
                             {categories.map((cat) => (
                                 <Option key={cat} value={cat}>
@@ -819,12 +855,33 @@ const Bookmarks: React.FC = () => {
                                 textAlign: "center",
                                 borderRadius: "8px",
                                 backgroundColor: "#ffffff",
+                                cursor: "pointer",
+                                border: showOnlyFavorites
+                                    ? "2px solid #1890ff"
+                                    : "1px solid #f0f0f0",
+                                transition: "all 0.3s ease",
+                            }}
+                            hoverable
+                            onClick={handleFavoritesClick}
+                            onMouseEnter={(e) => {
+                                if (!showOnlyFavorites) {
+                                    e.currentTarget.style.borderColor = "#1890ff";
+                                    e.currentTarget.style.transform = "translateY(-2px)";
+                                }
+                            }}
+                            onMouseLeave={(e) => {
+                                if (!showOnlyFavorites) {
+                                    e.currentTarget.style.borderColor = "#f0f0f0";
+                                    e.currentTarget.style.transform = "translateY(0)";
+                                }
                             }}
                         >
-                            <Title level={3} style={{ margin: 0, color: "#ff4d4f" }}>
+                            <Title level={3} style={{ margin: 0, color: "#ec06b6ff" }}>
                                 {stats.favorite_bookmarks}
                             </Title>
-                            <Text type="secondary">Favorites</Text>
+                            <Text type="secondary">
+                                {showOnlyFavorites ? "Showing Favorites" : "Favorites"}
+                            </Text>
                         </Card>
                     </Col>
                     <Col span={6}>
@@ -870,10 +927,12 @@ const Bookmarks: React.FC = () => {
                     >
                         <Empty
                             description={
-                                <span style={{ fontSize: "16px", color: "#999" }}>
-                                    {searchQuery || selectedCategory !== "All"
-                                        ? "No bookmarks match your current filters"
-                                        : "No bookmarks yet. Add your first bookmark to get started!"}
+                                <span style={{ fontSize: "19px", color: "#999" }}>
+                                    {showOnlyFavorites
+                                        ? "No favorite bookmarks yet. Start adding some bookmarks to favorites!"
+                                        : searchQuery || selectedCategory !== "All"
+                                            ? "No bookmarks match your current filters"
+                                            : "No bookmarks yet. Add your first bookmark to get started!"}
                                 </span>
                             }
                         />
@@ -961,6 +1020,8 @@ const Bookmarks: React.FC = () => {
                                 <Option value="Tools">Tools</Option>
                                 <Option value="Education">Education</Option>
                                 <Option value="Entertainment">Entertainment</Option>
+                                <Option value="Others">Others</Option>
+
                             </Select>
                         </Form.Item>
 
@@ -974,7 +1035,7 @@ const Bookmarks: React.FC = () => {
 
                         <Form.Item style={{ marginBottom: 0, textAlign: "right" }}>
                             <Space>
-                                <Button onClick={closeModal}>Cancel</Button>
+                                {/* <Button onClick={closeModal}>Cancel</Button> */}
                                 <Button type="primary" htmlType="submit">
                                     {modalMode === "create" ? "Add Bookmark" : "Update Bookmark"}
                                 </Button>

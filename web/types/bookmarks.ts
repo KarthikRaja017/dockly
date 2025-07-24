@@ -1,4 +1,6 @@
 export interface Bookmark {
+  created_at: string;
+  dateAdded: any;
   id: string;
   title: string;
   url: string;

@@ -802,9 +802,9 @@ const Utilities: React.FC = () => {
                                         </Text>
                                         <br />
                                         <Text type="secondary">
-                                            <a href={item.isSample ? '#' : item.providerUrl} target={item.isSample ? '_self' : '_blank'} style={{ color: item.isSample ? ASH_COLOR : PRIMARY_COLOR }} onClick={item.isSample ? () => handleAdd() : undefined}>
+                                            {/* <a href={item.isSample ? '#' : item.providerUrl} target={item.isSample ? '_self' : '_blank'} style={{ color: item.isSample ? ASH_COLOR : PRIMARY_COLOR }} onClick={item.isSample ? () => handleAdd() : undefined}>
                                                 {item.providerUrl}
-                                            </a>
+                                            </a> */}
                                         </Text>
                                     </div>
                                 }

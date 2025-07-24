@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, {
@@ -27,8 +28,9 @@ import {
   TwemojiPuzzlePiece,
   RiDashboardFill,
 } from "./icons";
+import { BookOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
-import { CalendarCheckIcon } from "lucide-react";
+import { CalendarCheckIcon, LeafyGreen } from "lucide-react";
 import { getUserHubs } from "../../services/dashboard";
 import { useCurrentUser } from "../../app/userContext";
 import DocklyLoader from "../../utils/docklyLoader";
@@ -89,7 +91,7 @@ const getUtilityIcon = (key: string) => {
     case "notes":
       return <TwemojiPuzzlePiece />;
     case "bookmarks":
-      return <FxemojiCloud />;
+      return <BookOutlined />;
     case "files":
       return <FxemojiCloud />;
     case "vault":
@@ -102,161 +104,165 @@ interface SidebarProps {
   collapsed: boolean;
 }
 
-const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ collapsed }, ref) => {
-  const router = useRouter();
-  const [currentPath, setCurrentPath] = useState<string>("dashboard");
-  const currentUser = useCurrentUser();
-  const username = currentUser?.user_name || "";
-  const [hubs, setHubs] = useState([]);
-  const [utilities, setUtilities] = useState([]);
-  const { loading, setLoading } = useGlobalLoading();
-  const pathname = usePathname();
+const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(
+  ({ collapsed }, ref) => {
+    const router = useRouter();
+    const [currentPath, setCurrentPath] = useState<string>("dashboard");
+    const currentUser = useCurrentUser();
+    const username = currentUser?.user_name || "";
+    const [hubs, setHubs] = useState([]);
+    const [utilities, setUtilities] = useState([]);
+    const { loading, setLoading } = useGlobalLoading();
+    const pathname = usePathname();
 
-  useEffect(() => {
-    const pathSegments = pathname?.split("/") || [];
-    const currentPath = pathSegments[2] || "dashboard";
-    setCurrentPath(currentPath);
-  }, [pathname]);
+    useEffect(() => {
+      const pathSegments = pathname?.split("/") || [];
+      const currentPath = pathSegments[2] || "dashboard";
+      setCurrentPath(currentPath);
+    }, [pathname]);
 
-  const menuGroup = (
-    title: string,
-    items?: { key: string; icon: React.ReactNode; label: string }[]
-  ) => (
-    <div style={{ marginBottom: 16 }}>
-      <Text
-        style={{
-          fontSize: 12,
-          fontWeight: 500,
-          marginLeft: 16,
-          color: "#a0a0a0",
-          textTransform: "uppercase",
-          display: collapsed ? "none" : "block",
-        }}
-      >
-        {title}
-      </Text>
-      <Menu
-        mode="vertical"
-        selectedKeys={[currentPath]}
-        onClick={({ key }) => router.push(`/${username}/${key}`)}
-        style={{
-          backgroundColor: "transparent",
-          color: DEFAULT_TEXT_COLOR,
-          fontSize: "15px",
-          border: "none",
-          marginTop: 8,
-        }}
-        items={(items ?? []).map(({ key, icon, label }) => ({
-          key,
-          icon: <motion.div whileHover={{ scale: 1.1 }}>{icon}</motion.div>,
-          label: collapsed ? (
-            <Tooltip title={label} placement="right">
-              <span>{label}</span>
-            </Tooltip>
-          ) : (
-            label
-          ),
-          style: {
-            padding: 8,
-            backgroundColor:
-              currentPath === key ? ACTIVE_BG_COLOR : "transparent",
-            color:
-              currentPath === key ? ACTIVE_TEXT_COLOR : DEFAULT_TEXT_COLOR,
-            borderRadius: 6,
-            transition: "all 0.2s ease-in-out",
-            marginLeft: 14,
-          },
-        }))}
-      />
-    </div>
-  );
-
-  const getUserMenus = async () => {
-    setLoading(true);
-    const response = await getUserHubs({});
-    const { status, payload } = response.data;
-    if (status) {
-      setHubs(payload.hubs);
-      setUtilities(payload.utilities);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    getUserMenus();
-  }, []);
-
-  const hubMenuItems = hubs?.map((hub: any) => ({
-    key: `${hub.name}-hub`,
-    icon: getHubIcon(hub.name),
-    label: hub.title,
-  }));
-
-  const utilitiesMenuItems = utilities?.map((hub: any) => ({
-    key: `${hub.name}-hub`,
-    icon: getUtilityIcon(hub.name),
-    label: hub.title,
-  }));
-
-  if (loading) {
-    return <DocklyLoader />
-  }
-
-  return (
-    <Sider
-      ref={ref as RefObject<HTMLDivElement>}
-      width={200}
-      collapsedWidth={80}
-      collapsed={collapsed}
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        height: "100vh",
-        backgroundColor: SIDEBAR_BG,
-        padding: "10px",
-        borderRadius: "0 20px 20px 0",
-        overflow: "hidden",
-        transition: "all 0.2s ease-in-out",
-        display: "flex",
-        flexDirection: "column",
-        caretColor: "transparent",
-        zIndex: 1000,
-      }}
-    >
-      <div
-        style={{
-          marginBottom: "20px",
-          display: "flex",
-          cursor: "pointer",
-          alignItems: "center",
-          padding: "10px 20px",
-          borderRadius: "8px",
-          transition: "all 0.3s ease-in-out",
-        }}
-        onClick={() => router.push(`/${username}/dashboard`)}
-      >
-        {collapsed ? <img
-          src="/dockly.png"
-          alt="Logo"
+    const menuGroup = (
+      title: string,
+      items?: { key: string; icon: React.ReactNode; label: string }[]
+    ) => (
+      <div style={{ marginBottom: 16 }}>
+        <Text
           style={{
-            width: "200px",
-            marginLeft: "-80px",
-            marginTop: "-20px",
-            marginBottom: "-30px",
+            fontSize: 12,
+            fontWeight: 500,
+            marginLeft: 16,
+            color: "#a0a0a0",
+            textTransform: "uppercase",
+            display: collapsed ? "none" : "block",
           }}
-        /> :
-          < img
-            src="/dockly-full.png"
-            alt="Logo"
-            style={{
-              width: "200px",
-              marginLeft: "-40px",
-              marginTop: "-20px",
-              marginBottom: "-30px",
-            }}
-          />}
-        {/* {!collapsed && (
+        >
+          {title}
+        </Text>
+        <Menu
+          mode="vertical"
+          selectedKeys={[currentPath]}
+          onClick={({ key }) => router.push(`/${username}/${key}`)}
+          style={{
+            backgroundColor: "transparent",
+            color: DEFAULT_TEXT_COLOR,
+            fontSize: "15px",
+            border: "none",
+            marginTop: 8,
+          }}
+          items={(items ?? []).map(({ key, icon, label }) => ({
+            key,
+            icon: <motion.div whileHover={{ scale: 1.1 }}>{icon}</motion.div>,
+            label: collapsed ? (
+              <Tooltip title={label} placement="right">
+                <span>{label}</span>
+              </Tooltip>
+            ) : (
+              label
+            ),
+            style: {
+              padding: 8,
+              backgroundColor:
+                currentPath === key ? ACTIVE_BG_COLOR : "transparent",
+              color:
+                currentPath === key ? ACTIVE_TEXT_COLOR : DEFAULT_TEXT_COLOR,
+              borderRadius: 6,
+              transition: "all 0.2s ease-in-out",
+              marginLeft: 14,
+            },
+          }))}
+        />
+      </div>
+    );
+
+    const getUserMenus = async () => {
+      setLoading(true);
+      const response = await getUserHubs({});
+      const { status, payload } = response.data;
+      if (status) {
+        setHubs(payload.hubs);
+        setUtilities(payload.utilities);
+      }
+      setLoading(false);
+    };
+
+    useEffect(() => {
+      getUserMenus();
+    }, []);
+
+    const hubMenuItems = hubs?.map((hub: any) => ({
+      key: `${hub.name}-hub`,
+      icon: getHubIcon(hub.name),
+      label: hub.title,
+    }));
+
+    const utilitiesMenuItems = utilities?.map((hub: any) => ({
+      key: `${hub.name}-hub`,
+      icon: getUtilityIcon(hub.name),
+      label: hub.title,
+    }));
+
+    if (loading) {
+      return <DocklyLoader />;
+    }
+
+    return (
+      <Sider
+        ref={ref as RefObject<HTMLDivElement>}
+        width={200}
+        collapsedWidth={80}
+        collapsed={collapsed}
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          height: "100vh",
+          backgroundColor: SIDEBAR_BG,
+          padding: "10px",
+          borderRadius: "0 20px 20px 0",
+          overflow: "hidden",
+          transition: "all 0.2s ease-in-out",
+          display: "flex",
+          flexDirection: "column",
+          caretColor: "transparent",
+          zIndex: 1000,
+        }}
+      >
+        <div
+          style={{
+            marginBottom: "20px",
+            display: "flex",
+            cursor: "pointer",
+            alignItems: "center",
+            padding: "10px 20px",
+            borderRadius: "8px",
+            transition: "all 0.3s ease-in-out",
+          }}
+          onClick={() => router.push(`/${username}/dashboard`)}
+        >
+          {collapsed ? (
+            <img
+              src="/dockly.png"
+              alt="Logo"
+              style={{
+                width: "200px",
+                marginLeft: "-80px",
+                marginTop: "-20px",
+                marginBottom: "-30px",
+              }}
+            />
+          ) : (
+            <img
+              src="/dockly-full.png"
+              alt="Logo"
+              style={{
+                width: "200px",
+                marginLeft: "-40px",
+                marginTop: "-20px",
+                marginBottom: "-30px",
+              }}
+            />
+          )}
+          {/* {!collapsed && (
           // <h2
           //   style={{
           //     margin: 0,
@@ -276,47 +282,105 @@ const Sidebar = forwardRef<HTMLDivElement, SidebarProps>(({ collapsed }, ref) =>
             }}
           />
         )} */}
-      </div>
+        </div>
 
-      {menuGroup("Command Center", [
-        { key: "dashboard", icon: <RiDashboardFill />, label: "Dashboard" },
-        { key: "planner", icon: <CalendarCheckIcon />, label: "Planner" },
-      ])}
+        {menuGroup("Command Center", [
+          { key: "dashboard", icon: <RiDashboardFill />, label: "Dashboard" },
+          { key: "planner", icon: <CalendarCheckIcon />, label: "Planner" },
+        ])}
 
-      {menuGroup("Hubs", hubMenuItems)}
+        {menuGroup("Hubs", hubMenuItems)}
 
-      {menuGroup("Utilities", [
-        { key: "notes", icon: <TwemojiPuzzlePiece />, label: "Notes" },
-        { key: "bookmarks", icon: <FxemojiCloud />, label: "Bookmarks" },
-        { key: "files", icon: <FxemojiCloud />, label: "Files" },
-        { key: "vault", icon: <IconParkFolderLock />, label: "Vault" },
-      ])}
+        {menuGroup("Utilities", [
+          {
+            key: "notes",
+            icon: (
+              <motion.span
+                whileHover={{ rotate: 10, scale: 1.2 }}
+                whileTap={{ scale: 0.9 }}
+                transition={{ type: "spring", stiffness: 300 }}
+                style={{ fontSize: 18, }}
+              >
+                {/* 📒 */}
+                📝
 
-      {!collapsed && (
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          style={{
-            background: "#fff7e6",
-            padding: "12px 20px",
-            margin: "16px 10px",
-            borderRadius: 8,
-            color: "#ad4e00",
-            fontWeight: 600,
-            fontSize: 14,
-            textAlign: "center",
-            cursor: "pointer",
-          }}
-        >
-          Refer Dockly
-        </motion.div>
-      )}
+              </motion.span>
+            ),
+            label: "Notes",
+          },
+          {
+            key: "bookmarks",
+            icon: (
+              <motion.span
+                whileHover={{ rotate: -10, scale: 1.2 }}
+                whileTap={{ scale: 0.9 }}
+                transition={{ type: "spring", stiffness: 300 }}
+                style={{ fontSize: 18 }}
+              >
+                🔖
+              </motion.span>
+            ),
+            label: "Bookmarks",
+          },
+          {
+            key: "files",
+            icon: (
+              <motion.span
+                whileHover={{ rotate: 8, scale: 1.2 }}
+                whileTap={{ scale: 0.9 }}
+                transition={{ type: "spring", stiffness: 300 }}
+                style={{ fontSize: 18 }}
+              >
+                {/* 📂 */}
+                🗂
 
-      <Divider style={{ margin: "12px 0" }} />
-    </Sider>
-  );
-});
+              </motion.span>
+            ),
+            label: "Files",
+          },
+          {
+            key: "vault",
+            icon: (
+              <motion.span
+                whileHover={{ rotate: 15, scale: 1.2 }}
+                whileTap={{ scale: 0.9 }}
+                transition={{ type: "spring", stiffness: 300 }}
+                style={{ fontSize: 18 }}
+              >
+                🔐
+              </motion.span>
+            ),
+            label: "Vault",
+          },
+        ])}
+
+        {!collapsed && (
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            style={{
+              background: "#fff7e6",
+              padding: "12px 20px",
+              margin: "16px 10px",
+              borderRadius: 8,
+              color: "#ad4e00",
+              fontWeight: 600,
+              fontSize: 14,
+              textAlign: "center",
+              cursor: "pointer",
+            }}
+          >
+            Refer Dockly
+          </motion.div>
+        )}
+
+        <Divider style={{ margin: "12px 0" }} />
+      </Sider>
+    );
+  }
+);
 
 Sidebar.displayName = "Sidebar";
 
 export default Sidebar;
+
