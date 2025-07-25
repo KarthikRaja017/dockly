@@ -1,13 +1,8 @@
-const fs = require('fs');
-require('graceful-fs').gracefulify(fs);
 /** @type {import('next').NextConfig} */
 const path = require('path');
 
 const nextConfig = {
   reactStrictMode: true,
-  experimental: {
-    cpus: 2, // Reduce CPU parallelism
-  },
   webpack: (config) => {
     // Fix missing .js extensions in imports
     config.resolve.alias['rc-util/es/React/isFragment'] = path.resolve(

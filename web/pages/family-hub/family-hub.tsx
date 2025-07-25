@@ -17,7 +17,7 @@ const FamilyHubPage: React.FC = () => {
     const { loading, setLoading } = useGlobalLoading();
     const [profileVisible, setProfileVisible] = useState(false);
     const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
-    console.log("🚀 ~ familyMembers:", familyMembers)
+    // console.log("🚀 ~ familyMembers:", familyMembers)
     const [view, setView] = useState<"Day" | "Week" | "Month" | "Year">("Month")
     const handleViewChange = (newView: "Day" | "Week" | "Month" | "Year") => {
         setView(newView);

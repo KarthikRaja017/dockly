@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node --max_old_space_size=4096 node_modules/next/dist/bin/next build",
+    "build": "next build",
     "start": "next start",
     "graphql:generate": "graphql-codegen",
     "lint": "next lint"
