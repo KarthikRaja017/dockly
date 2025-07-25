@@ -61,12 +61,12 @@ import {
     UpOutlined,
     CloseOutlined,
     UploadOutlined,
-    FolderAddOutlined
+    FolderAddOutlined,
+    UserOutlined
 } from '@ant-design/icons';
 import { createDriveFolder, deleteDriveFile, downloadDriveFile, listDriveFiles, shareDriveFile, uploadDriveFile } from '../../../services/files';
 import { PRIMARY_COLOR } from '../../comman';
 import { trimGooglePhotoUrl } from '../../../pages/components/header';
-
 
 interface DriveFile {
     id: string;
@@ -74,7 +74,7 @@ interface DriveFile {
     mimeType: string;
     size?: number;
     modifiedTime: string;
-    owners: Array<{ displayName?: string; photoLink?: string }>;
+    owners: Array<{ displayName?: string; photoLink?: string; emailAddress?: string }>;
     webViewLink?: string;
     thumbnailLink?: string;
     shared?: boolean;
@@ -86,6 +86,7 @@ interface DriveFolder {
     name: string;
     modifiedTime: string;
     shared?: boolean;
+    owners?: Array<{ displayName?: string; photoLink?: string; emailAddress?: string }>;
 }
 
 interface UploadProgress {
@@ -93,6 +94,12 @@ interface UploadProgress {
         progress: number;
         status: 'uploading' | 'completed' | 'error';
     };
+}
+
+interface AccountFilter {
+    email: string;
+    displayName: string;
+    photoLink?: string;
 }
 
 const { Content } = Layout;
@@ -199,6 +206,7 @@ const UploadArea: React.FC<{
         </div>
     );
 };
+
 const HeaderBar: React.FC<{
     breadcrumbs: Array<{ id: string; name: string }>;
     onNavigate: (index: number) => void;
@@ -213,6 +221,9 @@ const HeaderBar: React.FC<{
     onRefresh: () => void;
     loading: boolean;
     extraIcon?: React.ReactNode;
+    selectedAccount: string | null;
+    onAccountChange: (accountEmail: string | null) => void;
+    availableAccounts: AccountFilter[];
 }> = ({
     breadcrumbs,
     onNavigate,
@@ -227,8 +238,69 @@ const HeaderBar: React.FC<{
     onRefresh,
     loading,
     extraIcon,
+    selectedAccount,
+    onAccountChange,
+    availableAccounts,
 }) => {
         const [showSearch, setShowSearch] = useState(false);
+
+        const accountFilterOptions = [
+            {
+                value: null,
+                label: (
+                    <div style={{ display: 'flex', alignItems: 'center', padding: '4px 0' }}>
+                        <div style={{
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '50%',
+                            backgroundColor: '#e8f0fe',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginRight: '8px'
+                        }}>
+                            <UserOutlined style={{ color: PRIMARY_COLOR, fontSize: '12px' }} />
+                        </div>
+                        <span style={{ fontSize: '13px', color: '#202124', fontWeight: 500 }}>All Accounts</span>
+                    </div>
+                )
+            },
+            ...availableAccounts.map(account => ({
+                value: account.email,
+                label: (
+                    <div style={{ display: 'flex', alignItems: 'center', padding: '4px 0' }}>
+                        {account.photoLink ? (
+                            <Avatar
+                                size={24}
+                                src={account.photoLink}
+                                style={{ marginRight: '8px' }}
+                            />
+                        ) : (
+                            <Avatar
+                                size={24}
+                                style={{
+                                    marginRight: '8px',
+                                    backgroundColor: PRIMARY_COLOR,
+                                    fontSize: '12px'
+                                }}
+                            >
+                                {(account.displayName || account.email)[0].toUpperCase()}
+                            </Avatar>
+                        )}
+                        <div>
+                            <div style={{ fontSize: '13px', color: '#202124', fontWeight: 500 }}>
+                                {account.displayName || 'Unknown'}
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#5f6368' }}>
+                                {account.email}
+                            </div>
+                        </div>
+                    </div>
+                )
+            }))
+        ];
+
+        const selectedAccountData = availableAccounts.find(acc => acc.email === selectedAccount);
 
         return (
             <div
@@ -315,6 +387,62 @@ const HeaderBar: React.FC<{
 
                     {/* Filters */}
                     <Space size="small">
+                        {/* Account Filter */}
+                        <Tooltip title="Filter by account">
+                            <Select
+                                value={selectedAccount}
+                                onChange={onAccountChange}
+                                style={{
+                                    minWidth: 180,
+                                    borderRadius: '8px'
+                                }}
+                                size="middle"
+                                placeholder="All Accounts"
+                                optionLabelProp="label"
+                                dropdownStyle={{
+                                    borderRadius: '12px',
+                                    boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                                    border: '1px solid #e8eaed',
+                                    padding: '4px 0'
+                                }}
+                                suffixIcon={
+                                    selectedAccount ? (
+                                        selectedAccountData?.photoLink ? (
+                                            <Avatar size={18} src={selectedAccountData.photoLink} />
+                                        ) : (
+                                            <Avatar
+                                                size={18}
+                                                style={{
+                                                    backgroundColor: PRIMARY_COLOR,
+                                                    fontSize: '10px'
+                                                }}
+                                            >
+                                                {(selectedAccountData?.displayName || selectedAccountData?.email || 'U')[0].toUpperCase()}
+                                            </Avatar>
+                                        )
+                                    ) : (
+                                        <div style={{
+                                            width: '18px',
+                                            height: '18px',
+                                            borderRadius: '50%',
+                                            backgroundColor: '#e8f0fe',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center'
+                                        }}>
+                                            <UserOutlined style={{ color: PRIMARY_COLOR, fontSize: '10px' }} />
+                                        </div>
+                                    )
+                                }
+                            >
+                                {accountFilterOptions.map(option => (
+                                    <Select.Option key={option.value || 'all'} value={option.value}>
+                                        {option.label}
+                                    </Select.Option>
+                                ))}
+                            </Select>
+                        </Tooltip>
+
                         <Select
                             value={sortBy}
                             onChange={onSortByChange}
@@ -1018,10 +1146,49 @@ const GoogleDriveManager: React.FC = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(16);
     const [showUploadArea, setShowUploadArea] = useState(true);
+    const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
+    const [availableAccounts, setAvailableAccounts] = useState<AccountFilter[]>([]);
+
     const handleToggleUpload = () => setShowUploadArea(true);
     const handleAddFolder = () => setShowCreateFolder(true);
     const [form] = Form.useForm();
     const [shareForm] = Form.useForm();
+
+    // Extract unique accounts from files and folders
+    const extractAvailableAccounts = useCallback((files: DriveFile[], folders: DriveFolder[]) => {
+        const accountsMap = new Map<string, AccountFilter>();
+
+        // Extract from files
+        files.forEach(file => {
+            file.owners?.forEach(owner => {
+                if (owner.emailAddress) {
+                    accountsMap.set(owner.emailAddress, {
+                        email: owner.emailAddress,
+                        displayName: owner.displayName || owner.emailAddress,
+                        photoLink: owner.photoLink
+                    });
+                }
+            });
+        });
+
+        // Extract from folders
+        folders.forEach(folder => {
+            folder.owners?.forEach(owner => {
+                if (owner.emailAddress) {
+                    accountsMap.set(owner.emailAddress, {
+                        email: owner.emailAddress,
+                        displayName: owner.displayName || owner.emailAddress,
+                        photoLink: owner.photoLink
+                    });
+                }
+            });
+        });
+
+        return Array.from(accountsMap.values()).sort((a, b) =>
+            a.displayName.localeCompare(b.displayName)
+        );
+    }, []);
+
     const fetchFiles = async () => {
         try {
             setLoading(true);
@@ -1033,8 +1200,15 @@ const GoogleDriveManager: React.FC = () => {
             });
 
             if (response?.data) {
-                setFiles(response.data.payload.files || []);
-                setFolders(response.data.payload.folders || []);
+                const fetchedFiles = response.data.payload.files || [];
+                const fetchedFolders = response.data.payload.folders || [];
+
+                setFiles(fetchedFiles);
+                setFolders(fetchedFolders);
+
+                // Extract available accounts
+                const accounts = extractAvailableAccounts(fetchedFiles, fetchedFolders);
+                setAvailableAccounts(accounts);
             }
         } catch (error: any) {
             console.error('Error fetching files:', error);
@@ -1183,18 +1357,27 @@ const GoogleDriveManager: React.FC = () => {
         setCurrentPage(1);
     };
 
-    const filteredFiles = files.filter(file =>
-        file.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    // Filter files and folders by search query and selected account
+    const filteredFiles = files.filter(file => {
+        const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesAccount = !selectedAccount ||
+            file.owners?.some(owner => owner.emailAddress === selectedAccount);
+        return matchesSearch && matchesAccount;
+    });
 
-    const filteredFolders = folders.filter(folder =>
-        folder.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredFolders = folders.filter(folder => {
+        const matchesSearch = folder.name.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesAccount = !selectedAccount ||
+            folder.owners?.some(owner => owner.emailAddress === selectedAccount);
+        return matchesSearch && matchesAccount;
+    });
+
     const handleSortByChange = (value: string) => {
         if (value === "name" || value === "size" || value === "modifiedTime") {
             setSortBy(value as "name" | "size" | "modifiedTime");
         }
     };
+
     const items: MenuProps['items'] = [
         {
             key: 'upload',
@@ -1274,6 +1457,9 @@ const GoogleDriveManager: React.FC = () => {
                     loading={loading}
                     breadcrumbs={breadcrumbs}
                     onNavigate={navigateToBreadcrumb}
+                    selectedAccount={selectedAccount}
+                    onAccountChange={setSelectedAccount}
+                    availableAccounts={availableAccounts}
                     extraIcon={ // <-- Pass icon as extra prop
                         <Button
                             type="text"
@@ -1348,10 +1534,10 @@ const GoogleDriveManager: React.FC = () => {
                                     description={
                                         <div>
                                             <Text style={{ fontSize: '18px', color: '#5f6368', display: 'block', marginBottom: '8px' }}>
-                                                {searchQuery ? 'No files found' : 'Your Drive is empty'}
+                                                {searchQuery || selectedAccount ? 'No files found' : 'Your Drive is empty'}
                                             </Text>
                                             <Text style={{ fontSize: '14px', color: '#9aa0a6' }}>
-                                                {searchQuery ? 'Try different search terms' : 'Upload files to get started'}
+                                                {searchQuery || selectedAccount ? 'Try different search terms or account filter' : 'Upload files to get started'}
                                             </Text>
                                         </div>
                                     }
@@ -1543,6 +1729,25 @@ const GoogleDriveManager: React.FC = () => {
                 .ant-input:focus {
                     border-color: ${PRIMARY_COLOR} !important;
                     box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2) !important;
+                }
+
+                .ant-select-dropdown {
+                    border-radius: 12px !important;
+                    padding: 4px 0 !important;
+                }
+
+                .ant-select-item {
+                    border-radius: 8px !important;  
+                    margin: 2px 8px !important;
+                }
+
+                .ant-select-item-option-selected {
+                    background-color: #e8f0fe !important;
+                    color: ${PRIMARY_COLOR} !important;
+                }
+
+                .ant-select-item:hover {
+                    background-color: #f8f9fa !important;
                 }
             `}</style>
         </Layout>

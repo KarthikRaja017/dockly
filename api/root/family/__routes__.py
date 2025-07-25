@@ -60,7 +60,11 @@ family_api.add_resource(AddSchoolInfo, "/add/school-info")
 family_api.add_resource(AddActivities, "/add/activities")
 family_api.add_resource(GetSchoolInfo, "/get/school-info")
 
-
 family_api.add_resource(AddProvider, "/add/provider")
 family_api.add_resource(GetProviders, "/get/provider")
 family_api.add_resource(UpdateProvider, "/update/provider")
+family_api.add_resource(GetFamilyMemberUserId, "/get/fam-id")
+
+family_api.add_resource(AddAccountPassword, "/add/account-passwords")
+family_api.add_resource(GetAccountPasswords, "/get/account-passwords")
+family_api.add_resource(UpdateAccountPassword, "/update/account-passwords")

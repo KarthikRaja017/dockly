@@ -7,37 +7,23 @@ import {
   Button,
   Typography,
   Result,
-  message,
-  Spin,
 } from "antd";
 import Link from "next/link";
 import { getBankAccount } from "../../services/apiConfig";
 import {
-  ConnectorSDKCallbackMetadata,
   QuilttButton,
   useQuilttSession,
 } from "@quiltt/react";
-import FinanceIntroBoard from "./financeBoard";
 import BankPage from "./bankPage";
 import { useRouter } from "next/navigation";
-import DocklyLoader from "../../utils/docklyLoader";
 import { useGlobalLoading } from "../../app/loadingContext";
+import { useCurrentUser } from "../../app/userContext";
 
 const { Title } = Typography;
 export default function BankBoardPage() {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [profileId, setProfileId] = useState("");
-  const [emailId, setEmailId] = useState("");
-  const [isFinanceAccount, setIsFinanceAccount] = useState(false);
   const [bankDetails, setBankDetails] = useState<any>(null);
   const { loading, setLoading } = useGlobalLoading();
-  const [connectionId, setConnectionId] = useState<string>();
-  const [username, setUsername] = useState<string>("");
-
-  useEffect(() => {
-    const username = localStorage.getItem("username") || "";
-    setUsername(username);
-  }, []);
+  const username = useCurrentUser()?.user_name || "";
 
   const { session } = useQuilttSession();
   const router = useRouter();

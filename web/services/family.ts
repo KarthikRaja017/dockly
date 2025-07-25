@@ -570,3 +570,64 @@ export async function updateProvider(params: any): Promise<any> {
     throw error;
   }
 }
+export const resolveFamilyMemberUserId = async (memberId: string) => {
+  try {
+    const res = await api.get('/get/fam-id', {
+      params: { memberId },
+    });
+    return res.data;
+  } catch (error) {
+    console.error('Failed to resolve user ID:', error);
+    return { status: 0, message: 'Failed to resolve user ID' };
+  }
+};
+
+export async function addAccountPassword(payload: any): Promise<any> {
+  try {
+    const response = await api.post(
+      '/add/account-passwords',
+      { account: payload },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error adding account password:', error);
+    throw error;
+  }
+}
+
+export async function getAccountPasswords(params: {
+  userId: string;
+}): Promise<any> {
+  try {
+    const response = await api.get('/get/account-passwords', {
+      params,
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching account passwords:', error);
+    throw error;
+  }
+}
+
+export async function updateAccountPassword(payload: any): Promise<any> {
+  try {
+    const response = await api.put(
+      '/update/account-passwords',
+      { account: payload },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error updating account password:', error);
+    throw error;
+  }
+}

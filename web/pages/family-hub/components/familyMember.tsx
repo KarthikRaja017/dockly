@@ -16,9 +16,10 @@ interface FamilyMembersProps {
     setProfileVisible: React.Dispatch<React.SetStateAction<boolean>>;
     setFamilyMembers: React.Dispatch<React.SetStateAction<any[]>>;
     familyMembers?: any[];
+    onProfileClick: (id: number) => void;
 }
 
-const FamilyMembers: React.FC<FamilyMembersProps> = ({ profileVisible, setProfileVisible, setFamilyMembers, familyMembers }) => {
+const FamilyMembers: React.FC<FamilyMembersProps> = ({ profileVisible, setProfileVisible, setFamilyMembers, familyMembers, onProfileClick }) => {
     const [activeFilter, setActiveFilter] = useState<'all' | 'family' | 'pets'>('all');
     const [isFamilyModalVisible, setIsFamilyModalVisible] = useState(false);
     const [isPetModalVisible, setIsPetModalVisible] = useState(false)
@@ -189,7 +190,11 @@ const FamilyMembers: React.FC<FamilyMembersProps> = ({ profileVisible, setProfil
                         <Card
                             size="small"
                             hoverable
-                            onClick={() => setProfileVisible(true)}
+                            onClick={() => {
+                                if (member.type === 'family') {
+                                    onProfileClick?.(member.id);
+                                }
+                            }}
                             style={{
                                 textAlign: 'center',
                                 height: '160px',

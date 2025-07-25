@@ -6,6 +6,7 @@ from datetime import datetime, date
 from decimal import Decimal
 import json
 import statistics
+import time
 from venv import logger
 from root.db.dbHelper import DBHelper
 from flask import request
@@ -156,7 +157,7 @@ query SpendingAccountsWithTransactionsQuery {
       status
       currencyCode
       entryType
-      
+
       remoteData {
         mx {
           transaction {
@@ -240,18 +241,20 @@ query SpendingAccountsWithTransactionsQuery {
 
 class GetBankAccount(Resource):
     def post(self):
-        # Get token from qu ery params or headers
         data = request.get_json()
         session = data.get("session")
-        token = session.get("token") if session else None  # e.g., "Bearer <user_token>"
+        token = session.get("token") if session else None
         if not token:
             return {"error": "Missing Authorization header"}, 401
 
-        data = getBankData(token)
-        if "errors" in data:
-            return {"error": data["errors"]}, 400
-        # print("data :", data)
-        return data
+        try:
+            data = wait_for_balances(token)
+            return data
+        except TimeoutError:
+            return {
+                "status": "PENDING",
+                "message": "Still syncing, try again shortly",
+            }, 202
 
 
 class SaveBankAccount(Resource):
@@ -268,7 +271,28 @@ def getBankData(token):
     response = requests.post(GRAPHQL_ENDPOINT, json={"query": query}, headers=headers)
 
     data = response.json()
+    print(f"data: {data}")
     return data
+
+
+def wait_for_balances(token, timeout=10, max_sleep=4):
+    start = time.time()
+    sleep = 1
+    while time.time() - start < timeout:
+        data = getBankData(token)
+        conn = data["data"]["connections"][0]
+        status = conn["status"]
+        accounts = conn.get("accounts", [])
+        has_balances = any(
+            a.get("balance") and a["balance"].get("current") is not None
+            for a in accounts
+        )
+        if status != "SYNCING" and has_balances:
+            return data
+
+        time.sleep(sleep)
+        sleep = min(max_sleep, sleep * 2)
+    return {"status": "PENDING", "message": "Still syncing, try again shortly"}
 
 
 class SaveBankTransactions(Resource):
@@ -940,3 +964,722 @@ class UpdateMonthlyBudget(Resource):
         except Exception as e:
             logger.error(f"Error updating budget for user {uid}: {str(e)}")
             return {"error": "Internal server error"}
+
+
+# from flask_restful import Resource
+# import requests
+# import json
+# from datetime import datetime
+# import logging
+# from root.db.dbHelper import DBHelper
+# from root.utilis import uniqueId
+
+# # Configuration
+# API_SECRET_KEY = (
+#     "qltt_04b9cfce7233a7d46d38f12d4d51e4b3497aa5e4e4c391741d3c7df0d775874b7dd8a0f2d"
+# )
+# GRAPHQL_ENDPOINT = "https://api.quiltt.io/v1/graphql"
+
+
+# def auth_required(isOptional=False):
+#     """Authentication decorator"""
+
+#     def decorator(f):
+#         def decorated_function(*args, **kwargs):
+#             # Implement your auth logic here
+#             return f(*args, **kwargs)
+
+#         return decorated_function
+
+#     return decorator
+
+
+# # GraphQL Queries
+# SPENDING_ACCOUNTS_QUERY = """
+# query SpendingAccountsWithTransactionsQuery {
+#   connections {
+#     id
+#     status
+#     institution {
+#       id
+#       name
+#       logo {
+#         url
+#       }
+#     }
+#     accounts(sort: LAST_TRANSACTED_ON_ASC) {
+#       balance {
+#         at
+#         current
+#         id
+#         available
+#         source
+#       }
+#       currencyCode
+#       name
+#       id
+#       provider
+#       transactedFirstOn
+#       transactedLastOn
+#       verified
+#     }
+#     features
+#     externallyManaged
+#   }
+#   transactions {
+#     nodes {
+#       id
+#       date
+#       description
+#       amount
+#       status
+#       currencyCode
+#       entryType
+#       remoteData {
+#         mx {
+#           transaction {
+#             timestamp
+#             response {
+#               id
+#             }
+#           }
+#         }
+#         fingoal {
+#           enrichment {
+#             id
+#             timestamp
+#             response {
+#               accountid
+#               amountnum
+#               category
+#               categoryId
+#               clientId
+#               container
+#               date
+#               detailCategoryId
+#               guid
+#               highLevelCategoryId
+#               isPhysical
+#               isRecurring
+#               merchantAddress1
+#               merchantCity
+#               merchantCountry
+#               merchantLatitude
+#               merchantLogoUrl
+#               merchantLongitude
+#               merchantName
+#               merchantPhoneNumber
+#               merchantState
+#               merchantType
+#               merchantZip
+#               originalDescription
+#               type
+#               transactionid
+#               transactionTags
+#               subType
+#               simpleDescription
+#               receiptDate
+#               requestId
+#               sourceId
+#               uid
+#             }
+#           }
+#         }
+#         finicity {
+#           transaction {
+#             id
+#             timestamp
+#             response {
+#               accountId
+#               amount
+#               checkNum
+#               commissionAmount
+#               createdDate
+#               currencySymbol
+#               customerId
+#               description
+#               effectiveDate
+#               escrowAmount
+#               feeAmount
+#               firstEffectiveDate
+#               id
+#               incomeType
+#               investmentTransactionType
+#               interestAmount
+#             }
+#           }
+#         }
+#       }
+#     }
+#   }
+# }
+# """
+
+
+# def execute_graphql_query(token, query, variables=None):
+#     """Execute GraphQL query against Quiltt API"""
+#     headers = {
+#         "Authorization": f"Bearer {token}",
+#         "Content-Type": "application/json",
+#     }
+
+#     payload = {"query": query, "variables": variables or {}}
+
+#     response = requests.post(GRAPHQL_ENDPOINT, headers=headers, json=payload)
+
+#     if response.status_code == 200:
+#         return response.json()
+#     else:
+#         raise Exception(f"GraphQL query failed: {response.status_code} {response.text}")
+
+
+# def wait_for_balances(token, max_attempts=30, delay=2):
+#     """Wait for account balances to be available"""
+#     for attempt in range(max_attempts):
+#         try:
+#             result = execute_graphql_query(token, SPENDING_ACCOUNTS_QUERY)
+
+#             if result.get("data"):
+#                 connections = result["data"].get("connections", [])
+
+#                 # Check if we have connections with accounts
+#                 if connections:
+#                     for connection in connections:
+#                         if connection.get("accounts"):
+#                             return result
+
+#             # If no data yet, wait and retry
+#             if attempt < max_attempts - 1:
+#                 import time
+
+#                 time.sleep(delay)
+
+#         except Exception as e:
+#             logging.error(f"Error waiting for balances: {str(e)}")
+#             if attempt < max_attempts - 1:
+#                 import time
+
+#                 time.sleep(delay)
+
+#     raise TimeoutError("Timeout waiting for account balances")
+
+
+# def store_enriched_data(user_id, data):
+#     """Store enriched transaction and account data"""
+#     try:
+#         connections = data.get("data", {}).get("connections", [])
+#         transactions = data.get("data", {}).get("transactions", {}).get("nodes", [])
+
+#         # Store connections and institutions
+#         for connection in connections:
+#             institution = connection.get("institution", {})
+
+#             # Store institution
+#             if institution:
+#                 DBHelper.insert(
+#                     "institutions",
+#                     id=institution.get("id"),
+#                     name=institution.get("name"),
+#                     logo_url=institution.get("logo", {}).get("url"),
+#                 )
+
+#             # Store connection
+#             DBHelper.insert(
+#                 "connections",
+#                 id=connection.get("id"),
+#                 user_id=user_id,
+#                 institution_id=institution.get("id"),
+#                 status=connection.get("status"),
+#                 features=connection.get("features", []),
+#                 externally_managed=connection.get("externallyManaged", False),
+#             )
+
+#             # Store accounts
+#             for account in connection.get("accounts", []):
+#                 DBHelper.insert(
+#                     "accounts",
+#                     id=account.get("id"),
+#                     user_id=user_id,
+#                     connection_id=connection.get("id"),
+#                     name=account.get("name"),
+#                     provider=account.get("provider"),
+#                     currency_code=account.get("currencyCode", "USD"),
+#                     verified=account.get("verified", False),
+#                     transacted_first_on=account.get("transactedFirstOn"),
+#                     transacted_last_on=account.get("transactedLastOn"),
+#                 )
+
+#                 # Store balance
+#                 balance = account.get("balance", {})
+#                 if balance:
+#                     DBHelper.insert(
+#                         "account_balances",
+#                         account_id=account.get("id"),
+#                         balance_at=balance.get("at"),
+#                         current_balance=balance.get("current"),
+#                         available_balance=balance.get("available"),
+#                         source=balance.get("source", "quiltt"),
+#                     )
+
+#         # Store transactions with enrichment data
+#         for transaction in transactions:
+#             # Store main transaction
+#             DBHelper.insert(
+#                 "transactions",
+#                 id=transaction.get("id"),
+#                 user_id=user_id,
+#                 amount=transaction.get("amount"),
+#                 date=transaction.get("date"),
+#                 description=transaction.get("description"),
+#                 status=transaction.get("status"),
+#                 currency_code=transaction.get("currencyCode", "USD"),
+#                 entry_type=transaction.get("entryType"),
+#             )
+
+#             # Store enrichment data
+#             remote_data = transaction.get("remoteData", {})
+
+#             # Fingoal enrichment
+#             if remote_data.get("fingoal", {}).get("enrichment"):
+#                 enrichment = remote_data["fingoal"]["enrichment"]
+#                 response = enrichment.get("response", {})
+
+#                 DBHelper.insert(
+#                     "transaction_enrichments",
+#                     transaction_id=transaction.get("id"),
+#                     provider="fingoal",
+#                     enrichment_data=json.dumps(response),
+#                     merchant_name=response.get("merchantName"),
+#                     merchant_logo_url=response.get("merchantLogoUrl"),
+#                     merchant_address=response.get("merchantAddress1"),
+#                     merchant_city=response.get("merchantCity"),
+#                     merchant_state=response.get("merchantState"),
+#                     merchant_country=response.get("merchantCountry"),
+#                     merchant_zip=response.get("merchantZip"),
+#                     merchant_phone=response.get("merchantPhoneNumber"),
+#                     merchant_latitude=response.get("merchantLatitude"),
+#                     merchant_longitude=response.get("merchantLongitude"),
+#                     merchant_type=response.get("merchantType"),
+#                     is_physical=response.get("isPhysical", False),
+#                 )
+
+#         logging.info(f"Stored enriched data for user {user_id}")
+
+#     except Exception as e:
+#         logging.error(f"Error storing enriched data: {str(e)}")
+
+
+# class BankConnect(Resource):
+#     @auth_required(isOptional=True)
+#     def post(self, uid, user):
+#         data = request.get_json()
+#         currentUser = data.get("currentUser")
+#         userId = currentUser.get("uid")
+#         email = currentUser.get("email")
+
+#         if not userId:
+#             return {"error": "Missing userId"}, 400
+
+#         existing_user = DBHelper.find_one(
+#             "user_finance_details",
+#             filters={"user_id": uid},
+#             select_fields=["profile_id", "isfinanceuser"],
+#         )
+
+#         if existing_user:
+#             profile_id = existing_user.get("profile_id")
+
+#             response = requests.post(
+#                 "https://auth.quiltt.io/v1/users/sessions",
+#                 headers={
+#                     "Authorization": f"Bearer {API_SECRET_KEY}",
+#                     "Content-Type": "application/json",
+#                 },
+#                 json={"userId": profile_id},
+#             )
+
+#             if response.status_code in [200, 201, 202]:
+#                 result = response.json()
+#                 return {
+#                     "uid": existing_user.get("user_id"),
+#                     "token": result.get("token"),
+#                     "userId": result.get("userId"),
+#                     "expiresAt": result.get("expiresAt"),
+#                     "is_finance_user": True,
+#                 }
+#             else:
+#                 error_data = response.json()
+#                 return {
+#                     "error": error_data.get("message", "Authentication failed")
+#                 }, response.status_code
+#         else:
+#             response = requests.post(
+#                 "https://auth.quiltt.io/v1/users/sessions",
+#                 headers={
+#                     "Authorization": f"Bearer {API_SECRET_KEY}",
+#                     "Content-Type": "application/json",
+#                 },
+#                 json={"email": email},
+#             )
+
+#             if response.status_code in [200, 201, 202]:
+#                 result = response.json()
+#                 token = result.get("token")
+#                 profile_id = result.get("userId")
+#                 expires_at = result.get("expiresAt")
+
+#                 userId = DBHelper.insert(
+#                     "user_finance_details",
+#                     return_column="user_id",
+#                     user_id=uid,
+#                     expiresat=expires_at,
+#                     profile_id=profile_id,
+#                     isfinanceuser=1,
+#                 )
+
+#                 return {
+#                     "uid": userId,
+#                     "token": token,
+#                     "profile_id": profile_id,
+#                     "expiresAt": expires_at,
+#                     "is_finance_user": True,
+#                 }
+#             else:
+#                 error_data = response.json()
+#                 logging.error("Quiltt API error:", error_data)
+#                 return {
+#                     "error": error_data.get("message", "Authentication failed")
+#                 }, response.status_code
+
+
+# class GetBankAccount(Resource):
+#     def post(self):
+#         data = request.get_json()
+#         session = data.get("session")
+#         token = session.get("token") if session else None
+
+#         if not token:
+#             return {"error": "Missing Authorization header"}, 401
+
+#         try:
+#             result = wait_for_balances(token)
+
+#             # Store enriched data in database
+#             user_data = DBHelper.find_one(
+#                 "user_finance_details",
+#                 filters={"profile_id": session.get("userId")},
+#                 select_fields=["user_id"],
+#             )
+
+#             if user_data:
+#                 store_enriched_data(user_data.get("user_id"), result)
+
+#             return result
+
+#         except TimeoutError:
+#             return {
+#                 "status": "PENDING",
+#                 "message": "Still syncing, try again shortly",
+#             }, 202
+#         except Exception as e:
+#             logging.error(f"Error getting bank account: {str(e)}")
+#             return {"error": "Internal server error"}, 500
+
+
+# class GetTransactions(Resource):
+#     def post(self):
+#         data = request.get_json()
+#         session = data.get("session")
+#         filters = data.get("filters", {})
+
+#         token = session.get("token") if session else None
+#         if not token:
+#             return {"error": "Missing Authorization header"}, 401
+
+#         try:
+#             # Build dynamic GraphQL query based on filters
+#             query = """
+#             query GetTransactions($first: Int, $after: String, $accountIds: [ID!]) {
+#               transactions(first: $first, after: $after, accountIds: $accountIds) {
+#                 nodes {
+#                   id
+#                   date
+#                   description
+#                   amount
+#                   status
+#                   currencyCode
+#                   entryType
+#                   account {
+#                     id
+#                     name
+#                   }
+#                   remoteData {
+#                     fingoal {
+#                       enrichment {
+#                         response {
+#                           category
+#                           merchantName
+#                           merchantLogoUrl
+#                           isRecurring
+#                         }
+#                       }
+#                     }
+#                   }
+#                 }
+#                 pageInfo {
+#                   hasNextPage
+#                   endCursor
+#                 }
+#               }
+#             }
+#             """
+
+#             variables = {
+#                 "first": filters.get("limit", 50),
+#                 "after": filters.get("cursor"),
+#                 "accountIds": filters.get("accountIds"),
+#             }
+
+#             result = execute_graphql_query(token, query, variables)
+#             return result
+
+#         except Exception as e:
+#             logging.error(f"Error getting transactions: {str(e)}")
+#             return {"error": "Internal server error"}, 500
+
+
+# class GetBudgets(Resource):
+#     def post(self):
+#         data = request.get_json()
+#         session = data.get("session")
+
+#         token = session.get("token") if session else None
+#         if not token:
+#             return {"error": "Missing Authorization header"}, 401
+
+#         try:
+#             # Get user ID from session
+#             user_data = DBHelper.find_one(
+#                 "user_finance_details",
+#                 filters={"profile_id": session.get("userId")},
+#                 select_fields=["user_id"],
+#             )
+
+#             if not user_data:
+#                 return {"error": "User not found"}, 404
+
+#             user_id = user_data.get("user_id")
+
+#             # Get current month's budget data
+#             current_date = datetime.now()
+#             month_start = current_date.replace(day=1)
+
+#             # This would be implemented based on your database structure
+#             # Return budget summary with spending by category
+#             return {
+#                 "budget_summary": {
+#                     "total_income": 2500.00,
+#                     "needs_budget": 1250.00,
+#                     "wants_budget": 750.00,
+#                     "savings_budget": 500.00,
+#                     "needs_spent": 1078.00,
+#                     "wants_spent": 645.00,
+#                     "savings_achieved": 433.00,
+#                 },
+#                 "categories": [
+#                     {"name": "Housing", "budget": 900, "spent": 850, "type": "needs"},
+#                     {"name": "Groceries", "budget": 250, "spent": 228, "type": "needs"},
+#                     {
+#                         "name": "Dining Out",
+#                         "budget": 300,
+#                         "spent": 245,
+#                         "type": "wants",
+#                     },
+#                     {
+#                         "name": "Entertainment",
+#                         "budget": 150,
+#                         "spent": 125,
+#                         "type": "wants",
+#                     },
+#                     {"name": "Shopping", "budget": 300, "spent": 275, "type": "wants"},
+#                 ],
+#             }
+
+#         except Exception as e:
+#             logging.error(f"Error getting budgets: {str(e)}")
+#             return {"error": "Internal server error"}, 500
+
+
+# class GetFinancialGoals(Resource):
+#     def post(self):
+#         data = request.get_json()
+#         session = data.get("session")
+
+#         token = session.get("token") if session else None
+#         if not token:
+#             return {"error": "Missing Authorization header"}, 401
+
+#         try:
+#             # Get user ID from session
+#             user_data = DBHelper.find_one(
+#                 "user_finance_details",
+#                 filters={"profile_id": session.get("userId")},
+#                 select_fields=["user_id"],
+#             )
+
+#             if not user_data:
+#                 return {"error": "User not found"}, 404
+
+#             # Return financial goals data
+#             return {
+#                 "goals": [
+#                     {
+#                         "id": "emergency-fund",
+#                         "name": "Emergency Fund",
+#                         "target_amount": 25000.00,
+#                         "current_amount": 18500.00,
+#                         "progress_percentage": 74,
+#                         "status": "ongoing",
+#                         "target_date": None,
+#                     },
+#                     {
+#                         "id": "vacation-fund",
+#                         "name": "Vacation Fund",
+#                         "target_amount": 3000.00,
+#                         "current_amount": 1800.00,
+#                         "progress_percentage": 60,
+#                         "status": "ongoing",
+#                         "target_date": "2025-06-01",
+#                     },
+#                     {
+#                         "id": "student-loan",
+#                         "name": "Student Loan",
+#                         "target_amount": 25000.00,
+#                         "current_amount": 8750.00,
+#                         "remaining_amount": 16250.00,
+#                         "progress_percentage": 35,
+#                         "status": "debt",
+#                         "goal_type": "debt_payoff",
+#                     },
+#                 ]
+#             }
+
+#         except Exception as e:
+#             logging.error(f"Error getting financial goals: {str(e)}")
+#             return {"error": "Internal server error"}, 500
+
+
+# class GetAccountsSummary(Resource):
+#     def post(self):
+#         data = request.get_json()
+#         session = data.get("session")
+
+#         token = session.get("token") if session else None
+#         if not token:
+#             return {"error": "Missing Authorization header"}, 401
+
+#         try:
+#             # Get user ID from session
+#             user_data = DBHelper.find_one(
+#                 "user_finance_details",
+#                 filters={"profile_id": session.get("userId")},
+#                 select_fields=["user_id"],
+#             )
+
+#             if not user_data:
+#                 return {"error": "User not found"}, 404
+
+#             # Return accounts summary
+#             return {
+#                 "net_worth": {
+#                     "total_assets": 72543.87,
+#                     "total_liabilities": 25000.00,
+#                     "net_worth": 47543.87,
+#                     "monthly_cash_flow": -506.55,
+#                 },
+#                 "account_categories": [
+#                     {
+#                         "category": "cash",
+#                         "name": "Cash Accounts",
+#                         "total": 12543.87,
+#                         "accounts": [
+#                             {
+#                                 "id": "chase-checking",
+#                                 "name": "Chase Checking",
+#                                 "balance": 4856.23,
+#                                 "type": "Checking Account",
+#                             },
+#                             {
+#                                 "id": "chase-savings",
+#                                 "name": "Chase Savings",
+#                                 "balance": 7687.64,
+#                                 "type": "Savings Account",
+#                             },
+#                         ],
+#                     },
+#                     {
+#                         "category": "credit",
+#                         "name": "Credit Cards",
+#                         "total": -3250.00,
+#                         "accounts": [
+#                             {
+#                                 "id": "visa-card",
+#                                 "name": "Visa Card",
+#                                 "balance": -1414.58,
+#                                 "type": "Credit Card",
+#                             },
+#                             {
+#                                 "id": "amex-card",
+#                                 "name": "Amex Card",
+#                                 "balance": -1835.42,
+#                                 "type": "Credit Card",
+#                             },
+#                         ],
+#                     },
+#                     {
+#                         "category": "investment",
+#                         "name": "Investments",
+#                         "total": 60000.00,
+#                         "accounts": [
+#                             {
+#                                 "id": "fidelity-401k",
+#                                 "name": "Fidelity 401(k)",
+#                                 "balance": 42350.00,
+#                                 "type": "Retirement",
+#                             },
+#                             {
+#                                 "id": "vanguard-ira",
+#                                 "name": "Vanguard IRA",
+#                                 "balance": 17650.00,
+#                                 "type": "Retirement",
+#                             },
+#                         ],
+#                     },
+#                     {
+#                         "category": "loans",
+#                         "name": "Loans",
+#                         "total": -21750.00,
+#                         "accounts": [
+#                             {
+#                                 "id": "student-loan",
+#                                 "name": "Student Loan",
+#                                 "balance": -16250.00,
+#                                 "type": "Sallie Mae",
+#                             },
+#                             {
+#                                 "id": "auto-loan",
+#                                 "name": "Auto Loan",
+#                                 "balance": -5500.00,
+#                                 "type": "Toyota Financial",
+#                             },
+#                         ],
+#                     },
+#                 ],
+#             }
+
+#         except Exception as e:
+#             logging.error(f"Error getting accounts summary: {str(e)}")
+#             return {"error": "Internal server error"}, 500
+
+
+# Register API resources

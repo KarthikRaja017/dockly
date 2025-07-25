@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node --max_old_space_size=4096 node_modules/next/dist/bin/next build",
     "start": "next start",
     "graphql:generate": "graphql-codegen",
     "lint": "next lint"
@@ -53,6 +53,7 @@
     "@types/react-big-calendar": "^1.16.2",
     "eslint": "latest",
     "eslint-config-next": "latest",
+    "graceful-fs": "^4.2.11",
     "typescript": "latest"
   },
   "resolutions": {

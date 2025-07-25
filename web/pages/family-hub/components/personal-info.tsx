@@ -7,7 +7,6 @@ import {
     EditOutlined
 } from '@ant-design/icons';
 import { addPersonalInfo, getPersonalInfo, updatePersonalInfo } from '../../../services/family';
-import { useCurrentUser } from '../../../app/userContext';
 
 const { Title } = Typography;
 
@@ -37,12 +36,14 @@ interface FormValues {
     secondaryContact: string;
     secondaryContactPhone: string;
 }
+interface PersonalInfoSectionProps {
+    memberId?: string | string[];
+}
 
-const PersonalInfoSection: React.FC = () => {
+const PersonalInfoSection: React.FC<PersonalInfoSectionProps> = ({ memberId }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [form] = Form.useForm<FormValues>();
-    const currentUser = useCurrentUser();
-    const userId = currentUser?.userId;
+    const userId = Array.isArray(memberId) ? memberId[0] : memberId || '';
     const [personalId, setPersonalId] = useState<string | null>(null);
 
     useEffect(() => {
@@ -70,6 +71,7 @@ const PersonalInfoSection: React.FC = () => {
                 ...values,
                 addedBy: userId,
                 editedBy: userId,
+                userId: userId,
                 ...(personalId && { id: personalId })  // include `id` only if it exists
             };
 

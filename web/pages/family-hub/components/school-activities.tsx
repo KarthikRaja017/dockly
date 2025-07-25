@@ -1,513 +1,390 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
-    Form,
-    Input,
     Button,
     Card,
     Typography,
+    Tabs,
     Row,
     Col,
+    Input,
+    Space,
+    Modal,
     message,
-    Tabs,
-    Badge,
-    Progress,
 } from 'antd';
 import {
     EditOutlined,
-    SaveOutlined,
-    CloseOutlined,
     PlusOutlined,
+    BookOutlined,
 } from '@ant-design/icons';
-import {
-    addSchoolInfo,
-    addActivities,
-    getSchoolInfo,
-} from '../../../services/family';
 
-const { Title } = Typography;
-const { TabPane } = Tabs;
+const { Title, Text } = Typography;
+
+interface CustomField {
+    label: string;
+    value: string;
+}
+
+interface ResourceLink {
+    label: string;
+    url: string;
+}
 
 interface SchoolInfo {
-    schoolName: string;
-    gradeLevel: string;
-    studentId: string;
-    graduationYear: string;
-    homeroomTeacher: string;
-    guidanceCounselor: string;
-    currentGpa: string;
-    attendanceRate: string;
-    schoolAddress: string;
-    notes: string;
+    id?: string;
+    name: string;
+    grade: string;
+    studentId?: string;
+    customFields: CustomField[];
+    links: ResourceLink[];
 }
 
 interface Activity {
+    id?: string;
+    emoji: string;
     title: string;
     schedule: string;
-    details: { label: string; value: string }[];
-    links: { label: string; url: string }[];
+    customFields: CustomField[];
+    links: ResourceLink[];
 }
 
-// Reusable field renderer
-const RenderField = ({
-    isEditing,
-    value,
-    onChange,
-}: {
-    isEditing: boolean;
-    value: string;
-    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-}) => (isEditing ? <Input value={value} onChange={onChange} /> : <div>{value}</div>);
+export default function SchoolActivities() {
+    const [schools, setSchools] = useState<SchoolInfo[]>([]);
+    const [activities, setActivities] = useState<Activity[]>([]);
 
-const SchoolActivitiesForm: React.FC = () => {
-    const [isEditing, setIsEditing] = useState(false);
-    const [schoolInfo, setSchoolInfo] = useState<SchoolInfo>({
-        schoolName: '',
-        gradeLevel: '',
-        studentId: '',
-        graduationYear: '',
-        homeroomTeacher: '',
-        guidanceCounselor: '',
-        currentGpa: '',
-        attendanceRate: '',
-        schoolAddress: '',
-        notes: '',
-    });
+    const [schoolModalVisible, setSchoolModalVisible] = useState(false);
+    const [activityModalVisible, setActivityModalVisible] = useState(false);
+    const [customFieldModalVisible, setCustomFieldModalVisible] = useState<null | string>(null);
+    const [linkModalVisible, setLinkModalVisible] = useState<null | string>(null);
 
-    const [activities, setActivities] = useState<Activity[]>([
-        {
-            title: '',
-            schedule: '',
-            details: [
-                { label: 'Coach', value: '' },
-                { label: 'Position', value: '' },
-                { label: 'Season', value: '' },
-                { label: 'Location', value: '' },
-            ],
-            links: [],
-        },
-    ]);
+    const [newSchool, setNewSchool] = useState({ name: '', grade: '', studentId: '' });
+    const [newActivity, setNewActivity] = useState({ emoji: '🎯', title: '', schedule: '' });
+    const [fieldInput, setFieldInput] = useState({ label: '', value: '' });
+    const [linkInput, setLinkInput] = useState({ label: '', url: '' });
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const response = await getSchoolInfo({ userId: 'currentUserId' });
-                if (response.status === 1 && response.payload.schoolInfo) {
-                    setSchoolInfo(response.payload.schoolInfo);
-                }
-                if (response.status === 1 && response.payload.activities) {
-                    setActivities(response.payload.activities);
-                }
-            } catch (error) {
-                message.error('Failed to fetch data');
-                console.error('Fetch error:', error);
-            }
-        };
-        fetchData();
-    }, []);
-
-    const handleSchoolInfoChange = (field: keyof SchoolInfo, value: string) => {
-        setSchoolInfo((prev) => ({ ...prev, [field]: value }));
-    };
-
-    const handleActivityChange = (
-        index: number,
-        field: keyof Activity,
-        value:
-            | string
-            | { label: string; value: string }[]
-            | { label: string; url: string }[]
-    ) => {
-        const updated = [...activities];
-        updated[index] = { ...updated[index], [field]: value };
-        setActivities(updated);
-    };
-
-    const handleLinkChange = (
-        activityIndex: number,
-        linkIndex: number,
-        field: 'label' | 'url',
-        value: string
-    ) => {
-        const updated = [...activities];
-        updated[activityIndex].links[linkIndex][field] = value;
-        setActivities(updated);
-    };
-
-    const addNewLink = (index: number) => {
-        const updated = [...activities];
-        updated[index].links.push({ label: '', url: '' });
-        setActivities(updated);
-    };
-
-    const handleSave = async () => {
-        try {
-            await addSchoolInfo({ school_info: schoolInfo });
-            for (const activity of activities) {
-                await addActivities({ activity });
-            }
-            message.success('Saved successfully');
-            setIsEditing(false);
-        } catch (err) {
-            message.error('Failed to save');
-            console.error('Save error:', err);
+    const addSchool = () => {
+        if (!newSchool.name || !newSchool.grade) {
+            message.error('School name and grade are required');
+            return;
         }
+        setSchools(prev => [
+            ...prev,
+            {
+                name: newSchool.name,
+                grade: newSchool.grade,
+                studentId: newSchool.studentId,
+                customFields: [],
+                links: [],
+            },
+        ]);
+        setNewSchool({ name: '', grade: '', studentId: '' });
+        setSchoolModalVisible(false);
     };
 
-    const handleCancel = () => {
-        window.location.reload();
+    const addActivity = () => {
+        if (!newActivity.title || !newActivity.schedule) {
+            message.error('Activity title and schedule are required');
+            return;
+        }
+        setActivities(prev => [
+            ...prev,
+            {
+                emoji: newActivity.emoji,
+                title: newActivity.title,
+                schedule: newActivity.schedule,
+                customFields: [],
+                links: [],
+            },
+        ]);
+        setNewActivity({ emoji: '🎯', title: '', schedule: '' });
+        setActivityModalVisible(false);
     };
+
+    const handleAddCustomField = (target: 'school' | 'activity', index: number) => {
+        const field = { ...fieldInput };
+        if (!field.label) return message.error('Label is required');
+
+        if (target === 'school') {
+            const updated = [...schools];
+            updated[index].customFields.push(field);
+            setSchools(updated);
+        } else {
+            const updated = [...activities];
+            updated[index].customFields.push(field);
+            setActivities(updated);
+        }
+        setFieldInput({ label: '', value: '' });
+        setCustomFieldModalVisible(null);
+    };
+
+    const handleAddLink = (target: 'school' | 'activity', index: number) => {
+        const link = { ...linkInput };
+        if (!link.label || !link.url) return message.error('Link title and URL are required');
+
+        if (target === 'school') {
+            const updated = [...schools];
+            updated[index].links.push(link);
+            setSchools(updated);
+        } else {
+            const updated = [...activities];
+            updated[index].links.push(link);
+            setActivities(updated);
+        }
+        setLinkInput({ label: '', url: '' });
+        setLinkModalVisible(null);
+    };
+
+    const schoolInfoTab = (
+        <>
+            {schools.map((school, index) => (
+                <Card key={index} style={{ marginBottom: 16, border: '1px solid #d1d5db' }}>
+                    <div style={{ display: 'flex', gap: 16 }}>
+                        <div style={{
+                            width: 60, height: 60, borderRadius: 8,
+                            backgroundColor: '#4338ca', color: 'white',
+                            fontSize: 24, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                            🏫
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <Title level={4} style={{ margin: '0 0 8px 0' }}>{school.name}</Title>
+                            <Text type="secondary">
+                                {school.grade} {school.studentId && `• Student ID: ${school.studentId}`}
+                            </Text>
+
+                            <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+                                {school.customFields.map((field, i) => (
+                                    <Col xs={24} sm={6} key={i}>
+                                        <div>
+                                            <Text type="secondary" style={{ fontSize: 12 }}>{field.label}</Text>
+                                            <Input value={field.value} onChange={(e) => {
+                                                const updated = [...schools];
+                                                updated[index].customFields[i].value = e.target.value;
+                                                setSchools(updated);
+                                            }} />
+                                        </div>
+                                    </Col>
+                                ))}
+                            </Row>
+
+                            {school.links.length > 0 && (
+                                <div style={{ marginTop: 16 }}>
+                                    <Text strong style={{ fontSize: 13 }}>Resources & Links</Text>
+                                    <Space wrap style={{ marginTop: 8 }}>
+                                        {school.links.map((link, i) => (
+                                            <a key={i} href={link.url} style={{ fontSize: 13 }} target="_blank" rel="noreferrer">
+                                                {link.label}
+                                            </a>
+                                        ))}
+                                    </Space>
+                                </div>
+                            )}
+
+                            <div style={{ marginTop: 16 }}>
+                                <span
+                                    style={{ fontSize: 13, color: '#3355ff', cursor: 'pointer' }}
+                                    onClick={() => setCustomFieldModalVisible(`school-${index}`)}
+                                >
+                                    + Add custom field
+                                </span>
+                                <span
+                                    style={{ fontSize: 16, marginLeft: 16, color: '#1890ff', cursor: 'pointer' }}
+                                    onClick={() => setLinkModalVisible(`school-${index}`)}
+                                >
+                                    + Link
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </Card>
+            ))}
+
+            <Button type="dashed" block onClick={() => setSchoolModalVisible(true)}>
+                + Add School
+            </Button>
+        </>
+    );
+
+    const activitiesTab = (
+        <>
+            {activities.map((activity, index) => (
+                <Card key={index} style={{ marginBottom: 16, border: '1px solid #d1d5db' }}>
+                    <div style={{ display: 'flex', gap: 16 }}>
+                        <div style={{
+                            width: 60, height: 60, borderRadius: 8,
+                            backgroundColor: '#10b981', color: 'white',
+                            fontSize: 24, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                            {activity.emoji}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <Title level={4} style={{ margin: '0 0 8px 0' }}>{activity.title}</Title>
+                            <Text type="secondary">{activity.schedule}</Text>
+
+                            <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+                                {activity.customFields.map((field, i) => (
+                                    <Col xs={24} sm={6} key={i}>
+                                        <div>
+                                            <Text type="secondary" style={{ fontSize: 12 }}>{field.label}</Text>
+                                            <Input value={field.value} onChange={(e) => {
+                                                const updated = [...activities];
+                                                updated[index].customFields[i].value = e.target.value;
+                                                setActivities(updated);
+                                            }} />
+                                        </div>
+                                    </Col>
+                                ))}
+                            </Row>
+
+                            {activity.links.length > 0 && (
+                                <div style={{ marginTop: 16 }}>
+                                    <Text strong style={{ fontSize: 13 }}>Resources & Links</Text>
+                                    <Space wrap style={{ marginTop: 8 }}>
+                                        {activity.links.map((link, i) => (
+                                            <a key={i} href={link.url} style={{ fontSize: 13 }} target="_blank" rel="noreferrer">
+                                                {link.label}
+                                            </a>
+                                        ))}
+                                    </Space>
+                                </div>
+                            )}
+
+                            <div style={{ marginTop: 16 }}>
+                                <span
+                                    style={{ fontSize: 13, color: '#3355ff', cursor: 'pointer' }}
+                                    onClick={() => setCustomFieldModalVisible(`activity-${index}`)}
+                                >
+                                    + Add custom field
+                                </span>
+                                <span
+                                    style={{ fontSize: 16, marginLeft: 16, color: '#1890ff', cursor: 'pointer' }}
+                                    onClick={() => setLinkModalVisible(`activity-${index}`)}
+                                >
+                                    + Link
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </Card>
+            ))}
+
+            <Button type="dashed" block onClick={() => setActivityModalVisible(true)}>
+                + Add Activity
+            </Button>
+        </>
+    );
 
     return (
-        <Card style={{ marginTop: 32 }} bodyStyle={{ padding: 24 }}>
-            <div
-                style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    marginBottom: 16,
-                }}
+        <>
+            <Card
+                title={
+                    <span>
+                        <BookOutlined style={{ marginRight: 8 }} />
+                        School & Activities
+                    </span>
+                }
+                extra={
+                    <EditOutlined style={{ cursor: 'pointer', color: '#1890ff' }} />
+                }
+                style={{ borderRadius: 12 }}
             >
-                <Title level={4}>🎓 School & Activities</Title>
-                <Button
-                    icon={<EditOutlined />}
-                    onClick={() => setIsEditing(true)}
-                    disabled={isEditing}
-                >
-                    Edit
-                </Button>
-            </div>
+                <Tabs
+                    items={[
+                        {
+                            key: 'school-info',
+                            label: 'School Info',
+                            children: schoolInfoTab,
+                        },
+                        {
+                            key: 'activities',
+                            label: 'Activities',
+                            children: activitiesTab,
+                        },
+                    ]}
+                />
+            </Card>
 
-            <Tabs defaultActiveKey="school">
-                {/* ---------------- SCHOOL INFO TAB ---------------- */}
-                <TabPane tab="🏫 School Info" key="school">
-                    <Form layout="vertical">
-                        <Row gutter={16}>
-                            <Col span={12}>
-                                <Form.Item label="School Name">
-                                    <RenderField
-                                        isEditing={isEditing}
-                                        value={schoolInfo.schoolName}
-                                        onChange={(e) => handleSchoolInfoChange('schoolName', e.target.value)}
-                                    />
-                                </Form.Item>
-                            </Col>
-                            <Col span={12}>
-                                <Form.Item label="Grade Level">
-                                    <RenderField
-                                        isEditing={isEditing}
-                                        value={schoolInfo.gradeLevel}
-                                        onChange={(e) => handleSchoolInfoChange('gradeLevel', e.target.value)}
-                                    />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-                        <Row gutter={16}>
-                            <Col span={12}>
-                                <Form.Item label="Student ID">
-                                    <RenderField
-                                        isEditing={isEditing}
-                                        value={schoolInfo.studentId}
-                                        onChange={(e) => handleSchoolInfoChange('studentId', e.target.value)}
-                                    />
-                                </Form.Item>
-                            </Col>
-                            <Col span={12}>
-                                <Form.Item label="Graduation Year">
-                                    <RenderField
-                                        isEditing={isEditing}
-                                        value={schoolInfo.graduationYear}
-                                        onChange={(e) => handleSchoolInfoChange('graduationYear', e.target.value)}
-                                    />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-                        <Row gutter={16}>
-                            <Col span={12}>
-                                <Form.Item label="Homeroom Teacher">
-                                    <RenderField
-                                        isEditing={isEditing}
-                                        value={schoolInfo.homeroomTeacher}
-                                        onChange={(e) => handleSchoolInfoChange('homeroomTeacher', e.target.value)}
-                                    />
-                                </Form.Item>
-                            </Col>
-                            <Col span={12}>
-                                <Form.Item label="Guidance Counselor">
-                                    <RenderField
-                                        isEditing={isEditing}
-                                        value={schoolInfo.guidanceCounselor}
-                                        onChange={(e) =>
-                                            handleSchoolInfoChange('guidanceCounselor', e.target.value)
-                                        }
-                                    />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-                        <Row gutter={16}>
-                            <Col span={12}>
-                                <Form.Item label="Current GPA">
-                                    {isEditing ? (
-                                        <Input
-                                            value={schoolInfo.currentGpa}
-                                            onChange={(e) => handleSchoolInfoChange('currentGpa', e.target.value)}
-                                        />
-                                    ) : (
-                                        <Badge count={schoolInfo.currentGpa} style={{ backgroundColor: '#52c41a' }} />
-                                    )}
-                                </Form.Item>
-                            </Col>
-                            <Col span={12}>
-                                <Form.Item label="Attendance Rate">
-                                    {isEditing ? (
-                                        <Input
-                                            value={schoolInfo.attendanceRate}
-                                            onChange={(e) =>
-                                                handleSchoolInfoChange('attendanceRate', e.target.value)
-                                            }
-                                        />
-                                    ) : (
-                                        <Progress
-                                            type="circle"
-                                            percent={parseFloat(schoolInfo.attendanceRate)}
-                                            width={80}
-                                        />
-                                    )}
-                                </Form.Item>
-                            </Col>
-                        </Row>
-                        <Form.Item label="School Address">
-                            {isEditing ? (
-                                <Input.TextArea
-                                    value={schoolInfo.schoolAddress}
-                                    onChange={(e) => handleSchoolInfoChange('schoolAddress', e.target.value)}
-                                    autoSize={{ minRows: 3 }}
-                                />
-                            ) : (
-                                <div
-                                    style={{
-                                        // background: '#f5f5f5',
-                                        padding: '12px',
-                                        borderRadius: '4px',
-                                        whiteSpace: 'pre-wrap',
-                                    }}
-                                >
-                                    {schoolInfo.schoolAddress || '—'}
-                                </div>
-                            )}
-                        </Form.Item>
+            {/* Add School Modal */}
+            <Modal open={schoolModalVisible} title="Add School" onOk={addSchool} onCancel={() => setSchoolModalVisible(false)}>
+                <Input
+                    placeholder="School Name"
+                    value={newSchool.name}
+                    onChange={(e) => setNewSchool({ ...newSchool, name: e.target.value })}
+                    style={{ marginBottom: 8 }}
+                />
+                <Input
+                    placeholder="Grade"
+                    value={newSchool.grade}
+                    onChange={(e) => setNewSchool({ ...newSchool, grade: e.target.value })}
+                    style={{ marginBottom: 8 }}
+                />
+                <Input
+                    placeholder="Student ID (optional)"
+                    value={newSchool.studentId}
+                    onChange={(e) => setNewSchool({ ...newSchool, studentId: e.target.value })}
+                />
+            </Modal>
 
-                        <Form.Item label="Notes">
-                            {isEditing ? (
-                                <Input.TextArea
-                                    value={schoolInfo.notes}
-                                    onChange={(e) => handleSchoolInfoChange('notes', e.target.value)}
-                                    autoSize={{ minRows: 2 }}
-                                />
-                            ) : (
-                                <div
-                                    style={{
-                                        // background: '#f5f5f5',
-                                        padding: '12px',
-                                        borderRadius: '4px',
-                                        whiteSpace: 'pre-wrap',
-                                    }}
-                                >
-                                    {schoolInfo.notes || '—'}
-                                </div>
-                            )}
-                        </Form.Item>
+            {/* Add Activity Modal */}
+            <Modal open={activityModalVisible} title="Add Activity" onOk={addActivity} onCancel={() => setActivityModalVisible(false)}>
+                <Input
+                    placeholder="Activity Title"
+                    value={newActivity.title}
+                    onChange={(e) => setNewActivity({ ...newActivity, title: e.target.value })}
+                    style={{ marginBottom: 8 }}
+                />
+                <Input
+                    placeholder="Schedule"
+                    value={newActivity.schedule}
+                    onChange={(e) => setNewActivity({ ...newActivity, schedule: e.target.value })}
+                />
+            </Modal>
 
+            {/* Add Custom Field Modal */}
+            <Modal
+                open={customFieldModalVisible !== null}
+                title="Add Custom Field"
+                onOk={() => {
+                    const [type, indexStr] = (customFieldModalVisible ?? '').split('-');
+                    handleAddCustomField(type as 'school' | 'activity', parseInt(indexStr));
+                }}
+                onCancel={() => setCustomFieldModalVisible(null)}
+            >
+                <Input
+                    placeholder="Label"
+                    value={fieldInput.label}
+                    onChange={(e) => setFieldInput(prev => ({ ...prev, label: e.target.value }))}
+                    style={{ marginBottom: 8 }}
+                />
+                <Input
+                    placeholder="Value"
+                    value={fieldInput.value}
+                    onChange={(e) => setFieldInput(prev => ({ ...prev, value: e.target.value }))}
+                />
+            </Modal>
 
-                    </Form>
-                </TabPane>
-
-                {/* ---------------- ACTIVITIES TAB ---------------- */}
-                <TabPane tab="🎯 Activities" key="activities">
-                    <div style={{ marginBottom: 16, display: 'flex', flexWrap: 'wrap' }}>
-                        {activities.map((activity, idx) => (
-                            <Button
-                                key={idx}
-                                size="small"
-                                onClick={() =>
-                                    document
-                                        .getElementById(`activity-${idx}`)
-                                        ?.scrollIntoView({ behavior: 'smooth' })
-                                }
-                                style={{ marginRight: 8, marginBottom: 8 }}
-                            >
-                                {activity.title || `Activity ${idx + 1}`}
-                            </Button>
-                        ))}
-                    </div>
-
-                    {activities.map((activity, index) => (
-                        <div
-                            key={index}
-                            id={`activity-${index}`}
-                            style={{
-                                marginBottom: 24,
-                                border: '1px solid #e2e8f0',
-                                padding: 16,
-                                borderRadius: 8,
-                            }}
-                        >
-                            <Title level={5}>{activity.title || `Activity ${index + 1}`}</Title>
-                            <Row gutter={16}>
-                                <Col span={12}>
-                                    <Form.Item label="Title">
-                                        <RenderField
-                                            isEditing={isEditing}
-                                            value={activity.title}
-                                            onChange={(e) =>
-                                                handleActivityChange(index, 'title', e.target.value)
-                                            }
-                                        />
-                                    </Form.Item>
-                                    <Form.Item label="Coach">
-                                        <RenderField
-                                            isEditing={isEditing}
-                                            value={activity.details[0].value}
-                                            onChange={(e) => {
-                                                const updated = [...activity.details];
-                                                updated[0].value = e.target.value;
-                                                handleActivityChange(index, 'details', updated);
-                                            }}
-                                        />
-                                    </Form.Item>
-                                    <Form.Item label="Season">
-                                        <RenderField
-                                            isEditing={isEditing}
-                                            value={activity.details[2].value}
-                                            onChange={(e) => {
-                                                const updated = [...activity.details];
-                                                updated[2].value = e.target.value;
-                                                handleActivityChange(index, 'details', updated);
-                                            }}
-                                        />
-                                    </Form.Item>
-                                </Col>
-                                <Col span={12}>
-                                    <Form.Item label="Schedule">
-                                        <RenderField
-                                            isEditing={isEditing}
-                                            value={activity.schedule}
-                                            onChange={(e) =>
-                                                handleActivityChange(index, 'schedule', e.target.value)
-                                            }
-                                        />
-                                    </Form.Item>
-                                    <Form.Item label="Position">
-                                        <RenderField
-                                            isEditing={isEditing}
-                                            value={activity.details[1].value}
-                                            onChange={(e) => {
-                                                const updated = [...activity.details];
-                                                updated[1].value = e.target.value;
-                                                handleActivityChange(index, 'details', updated);
-                                            }}
-                                        />
-                                    </Form.Item>
-                                    <Form.Item label="Location">
-                                        <RenderField
-                                            isEditing={isEditing}
-                                            value={activity.details[3].value}
-                                            onChange={(e) => {
-                                                const updated = [...activity.details];
-                                                updated[3].value = e.target.value;
-                                                handleActivityChange(index, 'details', updated);
-                                            }}
-                                        />
-                                    </Form.Item>
-                                </Col>
-                            </Row>
-                            <Form.Item label="Links">
-                                {activity.links.map((link, i) => (
-                                    <Row gutter={8} key={i} style={{ marginBottom: 8 }}>
-                                        {isEditing ? (
-                                            <>
-                                                <Col span={10}>
-                                                    <Input
-                                                        value={link.label}
-                                                        onChange={(e) =>
-                                                            handleLinkChange(index, i, 'label', e.target.value)
-                                                        }
-                                                        placeholder="Link Label"
-                                                    />
-                                                </Col>
-                                                <Col span={14}>
-                                                    <Input
-                                                        value={link.url}
-                                                        onChange={(e) =>
-                                                            handleLinkChange(index, i, 'url', e.target.value)
-                                                        }
-                                                        placeholder="Link URL"
-                                                    />
-                                                </Col>
-                                            </>
-                                        ) : (
-                                            <Button
-                                                size="small"
-                                                type="default"
-                                                onClick={() => window.open(link.url, '_blank')}
-                                                style={{ marginRight: 8 }}
-                                            >
-                                                {link.label}
-                                            </Button>
-                                        )}
-                                    </Row>
-                                ))}
-                                {isEditing && (
-                                    <Button
-                                        icon={<PlusOutlined />}
-                                        onClick={() => addNewLink(index)}
-                                        style={{ marginTop: 8 }}
-                                    >
-                                        Add Link
-                                    </Button>
-                                )}
-                            </Form.Item>
-                        </div>
-                    ))}
-
-                    {isEditing && (
-                        <Button
-                            type="dashed"
-                            onClick={() =>
-                                setActivities((prev) => [
-                                    ...prev,
-                                    {
-                                        title: '',
-                                        schedule: '',
-                                        details: [
-                                            { label: 'Coach', value: '' },
-                                            { label: 'Position', value: '' },
-                                            { label: 'Season', value: '' },
-                                            { label: 'Location', value: '' },
-                                        ],
-                                        links: [],
-                                    },
-                                ])
-                            }
-                            style={{ width: '100%', marginBottom: 16 }}
-                        >
-                            + Add Activity
-                        </Button>
-                    )}
-                </TabPane>
-            </Tabs>
-
-            {isEditing && (
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                    <Button type="primary" icon={<SaveOutlined />} onClick={handleSave}>
-                        Save
-                    </Button>
-                    <Button icon={<CloseOutlined />} onClick={handleCancel}>
-                        Cancel
-                    </Button>
-                </div>
-            )}
-        </Card>
+            {/* Add Link Modal */}
+            <Modal
+                open={linkModalVisible !== null}
+                title="Add Link"
+                onOk={() => {
+                    const [type, indexStr] = (linkModalVisible ?? '').split('-');
+                    handleAddLink(type as 'school' | 'activity', parseInt(indexStr));
+                }}
+                onCancel={() => setLinkModalVisible(null)}
+            >
+                <Input
+                    placeholder="Link Title"
+                    value={linkInput.label}
+                    onChange={(e) => setLinkInput(prev => ({ ...prev, label: e.target.value }))}
+                    style={{ marginBottom: 8 }}
+                />
+                <Input
+                    placeholder="URL"
+                    value={linkInput.url}
+                    onChange={(e) => setLinkInput(prev => ({ ...prev, url: e.target.value }))}
+                />
+            </Modal>
+        </>
     );
-};
-
-export default SchoolActivitiesForm;
+}

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -21,7 +20,13 @@ import {
     MedicineBoxOutlined,
     SafetyCertificateOutlined,
 } from '@ant-design/icons';
-import { getPersonalInfo, addPersonalInfo, getProviders, updatePersonalInfo, updateProvider, addProvider } from '../../../services/family';
+import {
+    getPersonalInfo,
+    getProviders,
+    updatePersonalInfo,
+    updateProvider,
+    addProvider,
+} from '../../../services/family';
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -37,86 +42,85 @@ type ProviderField = {
     initialPhone: string;
 };
 
-const MedicalInfoPage: React.FC = () => {
+interface MedicalInfoSectionProps {
+    memberId?: string | string[];
+}
+
+const MedicalInfoPage: React.FC<MedicalInfoSectionProps> = ({ memberId }) => {
     const [form] = Form.useForm();
     const [isEditing, setIsEditing] = useState(false);
     const [providerModalVisible, setProviderModalVisible] = useState(false);
     const [providerFields, setProviderFields] = useState<ProviderField[]>([]);
     const [providerForm] = Form.useForm();
     const [personalInfoId, setPersonalInfoId] = useState<string | null>(null);
-    const [userId, setUserId] = useState('');
 
+    // Coerce memberId prop to a flat string userId
+    const userId = Array.isArray(memberId) ? memberId[0] : memberId ?? '';
+
+    // Fetch both personal info and providers when userId changes
     useEffect(() => {
-        const id = localStorage.getItem('userId') || '';
-        setUserId(id);
-    }, []);
-
-    const vaccinationRecords = [
-        { name: 'COVID-19 (Pfizer)', date: 'Full series completed: June 15, 2024', status: 'Up to date', statusColor: 'green' },
-        { name: 'Flu Shot', date: 'Last dose: October 10, 2024', status: 'Current', statusColor: 'blue' },
-        { name: 'Tdap', date: 'Last booster: August 5, 2023', status: 'Current', statusColor: 'blue' },
-        { name: 'MMR', date: 'Completed series: Age 4', status: 'Complete', statusColor: 'green' },
-        { name: 'HPV', date: 'Series started: January 2024', status: 'In progress', statusColor: 'orange' },
-    ];
-
-    const medicalExams = [
-        { name: 'Annual Physical', date: 'March 3, 2024', icon: '🩺' },
-        { name: 'Vision Test', date: 'May 20, 2024', icon: '👁' },
-    ];
-
-    const fetchInfo = async () => {
         if (!userId) return;
-        try {
-            const [personalRes, providerRes] = await Promise.all([
-                getPersonalInfo({ userId }),
-                getProviders({ userId }),
-            ]);
 
-            if (personalRes.status === 1 && personalRes.payload) {
-                form.setFieldsValue(personalRes.payload);
-                setPersonalInfoId(personalRes.payload.id);
+        const fetchInfo = async () => {
+            try {
+                const [personalRes, providerRes] = await Promise.all([
+                    getPersonalInfo({ userId }),
+                    getProviders({ userId }),
+                ]);
+
+                // Populate personal info form
+                if (personalRes.status === 1 && personalRes.payload) {
+                    form.setFieldsValue(personalRes.payload);
+                    setPersonalInfoId(personalRes.payload.id);
+                }
+
+                // Build dynamic provider fields
+                if (providerRes.status === 1 && providerRes.payload?.length) {
+                    const fields = providerRes.payload.map((prov: any) => {
+                        const key = prov.provider_title.replace(/\s+/g, '').toLowerCase();
+                        return {
+                            id: prov.id,
+                            title: prov.provider_title,
+                            name: key,
+                            phoneName: `${key}Phone`,
+                            label: prov.provider_title,
+                            phoneLabel: 'Phone',
+                            initialName: prov.provider_name,
+                            initialPhone: prov.provider_phone,
+                        };
+                    });
+                    setProviderFields(fields);
+                }
+            } catch (err) {
+                message.error('Failed to load medical information');
             }
+        };
 
-            if (providerRes.status === 1 && providerRes.payload?.length) {
-                const fields = providerRes.payload.map((prov: any) => {
-                    const key = prov.provider_title.replace(/\s+/g, '').toLowerCase();
-                    return {
-                        id: prov.id,
-                        title: prov.provider_title,
-                        name: key,
-                        phoneName: `${key}Phone`,
-                        label: prov.provider_title,
-                        phoneLabel: 'Phone',
-                        initialName: prov.provider_name,
-                        initialPhone: prov.provider_phone,
-                    };
-                });
-                setProviderFields(fields);
-            }
-        } catch (err) {
-            message.error('Failed to load medical information');
-        }
-    };
+        fetchInfo();
+    }, [form, userId]);
 
+    // When providerFields load, set their initial values
     useEffect(() => {
-        if (providerFields.length) {
-            const values: Record<string, any> = {};
-            providerFields.forEach((field) => {
-                values[field.name] = field.initialName;
-                values[field.phoneName] = field.initialPhone;
-            });
-            form.setFieldsValue(values);
-        }
-    }, [providerFields]);
+        if (!providerFields.length) return;
+        const vals: Record<string, any> = {};
+        providerFields.forEach(f => {
+            vals[f.name] = f.initialName;
+            vals[f.phoneName] = f.initialPhone;
+        });
+        form.setFieldsValue(vals);
+    }, [form, providerFields]);
 
+    // Handle the main Save
     const handleSave = async () => {
         try {
+            // Ensure the hidden id field is included
             if (personalInfoId) {
                 form.setFieldValue('id', personalInfoId);
             }
 
             const values = await form.validateFields();
 
+            // Update personal info
             const personalRes = await updatePersonalInfo({
                 personal_info: {
                     ...values,
@@ -126,18 +130,17 @@ const MedicalInfoPage: React.FC = () => {
                 },
             });
 
-            const updatedProviders = providerFields.map(field => ({
-                id: field.id,
-                providerTitle: field.title,
-                providerName: values[field.name],
-                providerPhone: values[field.phoneName],
-                userId,
-                editedBy: userId,
-            }));
-
-            for (const p of updatedProviders) {
-                await updateProvider(p);
-            }
+            // Update each provider
+            await Promise.all(providerFields.map(f =>
+                updateProvider({
+                    id: f.id,
+                    providerTitle: f.title,
+                    providerName: values[f.name],
+                    providerPhone: values[f.phoneName],
+                    userId,
+                    editedBy: userId,
+                })
+            ));
 
             if (personalRes.status === 1) {
                 message.success('Medical information saved');
@@ -145,21 +148,68 @@ const MedicalInfoPage: React.FC = () => {
             } else {
                 message.error(personalRes.message);
             }
-
-        } catch (err) {
+        } catch {
             message.error('Validation or save failed');
         }
     };
 
-    useEffect(() => {
-        fetchInfo();
-    }, [userId]);
+    // Add a new provider from the modal
+    const handleAddProvider = async () => {
+        try {
+            const vals = await providerForm.validateFields();
+            const key = vals.providerTitle.replace(/\s+/g, '').toLowerCase();
 
+            const res = await addProvider({
+                provider: {
+                    providerTitle: vals.providerTitle,
+                    providerName: vals.providerName,
+                    providerPhone: vals.providerPhone,
+                    userId,
+                    addedBy: userId,
+                },
+            });
+
+            if (res.status !== 1) {
+                return message.error(res.message || 'Failed to add provider');
+            }
+
+            const newField: ProviderField = {
+                id: res.payload.id,
+                title: vals.providerTitle,
+                name: key,
+                phoneName: `${key}Phone`,
+                label: vals.providerTitle,
+                phoneLabel: 'Phone',
+                initialName: vals.providerName,
+                initialPhone: vals.providerPhone,
+            };
+            setProviderFields(prev => [...prev, newField]);
+
+            // Immediately show the new provider in the form
+            form.setFieldsValue({ [key]: vals.providerName, [`${key}Phone`]: vals.providerPhone });
+
+            setProviderModalVisible(false);
+            providerForm.resetFields();
+        } catch {
+            message.error('Error adding provider');
+        }
+    };
+
+    // Static data examples
+    const vaccinationRecords = [
+        { name: 'COVID-19 (Pfizer)', date: 'June 15, 2024', status: 'Up to date', statusColor: 'green' },
+        { name: 'Flu Shot', date: 'Oct 10, 2024', status: 'Current', statusColor: 'blue' },
+        // …etc
+    ];
+    const medicalExams = [
+        { name: 'Annual Physical', date: 'Mar 3, 2024', icon: '🩺' },
+        { name: 'Vision Test', date: 'May 20, 2024', icon: '👁' },
+    ];
+
+    // Tab contents
     const generalTab = (
         <>
-            <Form.Item name="id" hidden>
-                <Input type="hidden" />
-            </Form.Item>
+            <Form.Item name="id" hidden><Input /></Form.Item>
             <Title level={5}>Basic Medical Information</Title>
             <Row gutter={16}>
                 <Col span={12}><Form.Item label="Blood Type" name="bloodType"><Input readOnly={!isEditing} /></Form.Item></Col>
@@ -169,7 +219,6 @@ const MedicalInfoPage: React.FC = () => {
                 <Col span={12}><Form.Item label="Weight" name="weight"><Input readOnly={!isEditing} /></Form.Item></Col>
                 <Col span={12}><Form.Item label="Eye Color" name="eyeColor"><Input readOnly={!isEditing} /></Form.Item></Col>
             </Row>
-
             <Title level={5} style={{ marginTop: 24 }}>Insurance Information</Title>
             <Row gutter={16}>
                 <Col span={12}><Form.Item label="Insurance Provider" name="insurance"><Input readOnly={!isEditing} /></Form.Item></Col>
@@ -179,7 +228,6 @@ const MedicalInfoPage: React.FC = () => {
                 <Col span={12}><Form.Item label="Group Number" name="groupNum"><Input readOnly={!isEditing} /></Form.Item></Col>
                 <Col span={12}><Form.Item label="Last Checkup" name="lastCheckup"><Input type="date" readOnly={!isEditing} /></Form.Item></Col>
             </Row>
-
             <Title level={5} style={{ marginTop: 24 }}>Allergies & Medications</Title>
             <Form.Item label="Known Allergies" name="allergies"><TextArea readOnly={!isEditing} /></Form.Item>
             <Form.Item label="Current Medications" name="medications"><TextArea readOnly={!isEditing} /></Form.Item>
@@ -187,61 +235,21 @@ const MedicalInfoPage: React.FC = () => {
         </>
     );
 
-    const HandleAddProvider = async () => {
-        try {
-            const values = await providerForm.validateFields();
-            const key = values.providerTitle.replace(/\s+/g, '').toLowerCase();
-
-            const res = await addProvider({
-                provider: {
-                    providerTitle: values.providerTitle,
-                    providerName: values.providerName,
-                    providerPhone: values.providerPhone,
-                    userId,
-                    addedBy: userId,
-                }
-            });
-
-            if (res.status !== 1) {
-                return message.error(res.message || 'Failed to add provider');
-            }
-
-            const newField: ProviderField = {
-                id: res.payload?.id,
-                title: values.providerTitle,
-                name: key,
-                phoneName: `${key}Phone`,
-                label: values.providerTitle,
-                phoneLabel: 'Phone',
-                initialName: values.providerName,
-                initialPhone: values.providerPhone,
-            };
-
-            form.setFieldValue(key, values.providerName);
-            form.setFieldValue(`${key}Phone`, values.providerPhone);
-            setProviderFields(prev => [...prev, newField]);
-            setProviderModalVisible(false);
-            providerForm.resetFields();
-        } catch (err) {
-            message.error('Error adding provider');
-        }
-    };
-
     const providersTab = (
         <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <Title level={5} style={{ margin: 0 }}>Healthcare Providers</Title>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+                <Title level={5}>Healthcare Providers</Title>
                 <Button type="dashed" onClick={() => setProviderModalVisible(true)}>+ Add Provider</Button>
             </div>
-            {providerFields.map((field, idx) => (
-                <Row gutter={16} key={idx}>
+            {providerFields.map((f, i) => (
+                <Row gutter={16} key={i}>
                     <Col span={12}>
-                        <Form.Item label={field.label} name={field.name}>
+                        <Form.Item label={f.label} name={f.name}>
                             <Input readOnly={!isEditing} />
                         </Form.Item>
                     </Col>
                     <Col span={12}>
-                        <Form.Item label={field.phoneLabel} name={field.phoneName}>
+                        <Form.Item label={f.phoneLabel} name={f.phoneName}>
                             <Input readOnly={!isEditing} />
                         </Form.Item>
                     </Col>
@@ -286,15 +294,14 @@ const MedicalInfoPage: React.FC = () => {
     return (
         <>
             <Card
-                title={<span><MedicineBoxOutlined style={{ marginRight: 8 }} />Medical Information</span>}
-                extra={isEditing ? (
-                    <Button type="primary" onClick={handleSave}>Save</Button>
-                ) : (
-                    <EditOutlined style={{ cursor: 'pointer', color: '#1890ff' }} onClick={() => setIsEditing(true)} />
-                )}
+                title={<><MedicineBoxOutlined /> Medical Information</>}
+                extra={isEditing
+                    ? <Button type="primary" onClick={handleSave}>Save</Button>
+                    : <EditOutlined onClick={() => setIsEditing(true)} style={{ color: '#1890ff', cursor: 'pointer' }} />
+                }
                 style={{ borderRadius: 12 }}
             >
-                <Form layout="vertical" form={form}>
+                <Form form={form} layout="vertical">
                     <Tabs
                         destroyInactiveTabPane={false}
                         items={[
@@ -305,34 +312,23 @@ const MedicalInfoPage: React.FC = () => {
                     />
                 </Form>
             </Card>
+
             <Modal
                 title="Add Provider"
                 open={providerModalVisible}
                 onCancel={() => setProviderModalVisible(false)}
-                onOk={HandleAddProvider}
+                onOk={handleAddProvider}
                 okText="Add"
             >
                 <Form form={providerForm} layout="vertical">
-                    <Form.Item
-                        name="providerTitle"
-                        label="Provider Title"
-                        rules={[{ required: true, message: 'Please enter provider title' }]}
-                    >
-                        <Input placeholder="e.g., Dentist" />
+                    <Form.Item name="providerTitle" label="Provider Title" rules={[{ required: true }]}>
+                        <Input placeholder="e.g. Dentist" />
                     </Form.Item>
-                    <Form.Item
-                        name="providerName"
-                        label="Provider Name"
-                        rules={[{ required: true, message: 'Please enter provider name' }]}
-                    >
-                        <Input placeholder="e.g., Dr. Joel" />
+                    <Form.Item name="providerName" label="Provider Name" rules={[{ required: true }]}>
+                        <Input placeholder="e.g. Dr. Smith" />
                     </Form.Item>
-                    <Form.Item
-                        name="providerPhone"
-                        label="Phone Number"
-                        rules={[{ required: true, message: 'Please enter phone number' }]}
-                    >
-                        <Input placeholder="e.g., 9876543210" />
+                    <Form.Item name="providerPhone" label="Phone" rules={[{ required: true }]}>
+                        <Input placeholder="e.g. 5551234567" />
                     </Form.Item>
                 </Form>
             </Modal>

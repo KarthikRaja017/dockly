@@ -14,7 +14,6 @@ import { useQuilttSession } from "@quiltt/react";
 import { showNotification } from "../../utils/notification";
 import { useCurrentUser } from "../../app/userContext";
 import SetupFinanceBoard from "./setUpFinanceboard";
-import AuthProvider from "../components/authProvider";
 import { useGlobalLoading } from "../../app/loadingContext";
 
 const { Title, Paragraph, Text } = Typography;

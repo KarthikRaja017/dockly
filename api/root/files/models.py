@@ -66,6 +66,16 @@ class DriveBaseResource(Resource):
                     creds.refresh(Request())
 
                     # Update DB with new token if refresh succeeded
+                    # DBHelper.update_one(
+                    #     "connected_accounts",
+                    #     filters={"id": account["id"]},
+                    # updates={
+                    #     "access_token": creds.token,
+                    #     "expires_at": (
+                    #         datetime.utcnow()  timedelta(seconds=3500)
+                    #     ).isoformat(),
+                    # },
+                    # )
                     DBHelper.update_one(
                         "connected_accounts",
                         filters={"id": account["id"]},
@@ -154,8 +164,14 @@ class ListDriveFiles(DriveBaseResource):
             connected_accounts = []
             errors = []
 
+            # Track processed files to avoid duplicates
+            processed_file_ids = set()
+            processed_folder_ids = set()
+
             for account in all_accounts:
                 email = account.get("email")
+                access_token = account.get("access_token")
+                refresh_token = account.get("refresh_token")
                 user_object = account.get("user_object")
 
                 try:
@@ -164,7 +180,10 @@ class ListDriveFiles(DriveBaseResource):
                     user_object_data = {}
 
                 try:
-                    service = self.get_drive_service(uid)
+                    # Create account-specific Drive service
+                    service = self.get_drive_service_for_account(
+                        access_token, refresh_token, email
+                    )
                     if not service:
                         errors.append(
                             {
@@ -205,11 +224,22 @@ class ListDriveFiles(DriveBaseResource):
                     account_folders = []
 
                     for item in items:
+                        item_id = item.get("id")
                         mime_type = item.get("mimeType", "")
                         is_folder = mime_type == "application/vnd.google-apps.folder"
 
+                        # Skip if we've already processed this file/folder
+                        if is_folder:
+                            if item_id in processed_folder_ids:
+                                continue
+                            processed_folder_ids.add(item_id)
+                        else:
+                            if item_id in processed_file_ids:
+                                continue
+                            processed_file_ids.add(item_id)
+
                         base_info = {
-                            "id": item.get("id"),
+                            "id": item_id,
                             "name": item.get("name"),
                             "modifiedTime": item.get("modifiedTime"),
                             "shared": item.get("shared", False),
@@ -327,6 +357,29 @@ class ListDriveFiles(DriveBaseResource):
                     "errors": [{"error": str(e)}],
                 },
             }
+
+    def get_drive_service_for_account(self, access_token, refresh_token, email):
+        """Create a Drive service for a specific account using its tokens"""
+        try:
+            from google.oauth2.credentials import Credentials
+            from googleapiclient.discovery import build
+
+            # Create credentials from the account's tokens
+            credentials = Credentials(
+                token=access_token,
+                refresh_token=refresh_token,
+                token_uri="https://oauth2.googleapis.com/token",
+                client_id=CLIENT_ID,  # You'll need to implement this
+                client_secret=CLIENT_SECRET,  # You'll need to implement this
+            )
+
+            # Build the Drive service
+            service = build("drive", "v3", credentials=credentials)
+            return service
+
+        except Exception as e:
+            print(f"Error creating Drive service for {email}: {str(e)}")
+            return None
 
 
 class UploadDriveFile(DriveBaseResource):
@@ -688,8 +741,8 @@ class GetDriveStorage(DriveBaseResource):
                         }
                     )
 
-                    total_used += used
-                    total_limit += limit
+                    total_used = used
+                    total_limit = limit
 
                 except Exception as e:
                     print(f"Error getting storage info for {email}: {str(e)}")
@@ -734,6 +787,1035 @@ class GetDriveStorage(DriveBaseResource):
         i = 0
         while bytes_value >= 1024 and i < len(sizes) - 1:
             bytes_value /= 1024
-            i += 1
+            i = 1
 
         return f"{bytes_value:.1f} {sizes[i]}"
+
+
+class GetDriveStorage(DriveBaseResource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        """Get storage information for all connected Google accounts"""
+        try:
+            # Get all Google accounts for the user
+            all_accounts = DBHelper.find(
+                "connected_accounts",
+                filters={
+                    "user_id": uid,
+                    "provider": "google",
+                    "is_active": Status.ACTIVE.value,
+                },
+                select_fields=["email", "user_object"],
+            )
+
+            if not all_accounts:
+                return {
+                    "status": 0,
+                    "message": "No Google Drive accounts connected.",
+                    "payload": {
+                        "storage_info": [],
+                        "total_storage": {"used": 0, "limit": 0},
+                    },
+                }
+
+            storage_info = []
+            total_used = 0
+            total_limit = 0
+
+            for account in all_accounts:
+                email = account.get("email")
+
+                try:
+                    service = self.get_drive_service(uid)
+                    if not service:
+                        continue
+
+                    # Get storage info
+                    about = service.about().get(fields="storageQuota, user").execute()
+                    storage_quota = about.get("storageQuota", {})
+                    user_info = about.get("user", {})
+
+                    used = int(storage_quota.get("usage", 0))
+                    limit = int(storage_quota.get("limit", 0))
+
+                    storage_info.append(
+                        {
+                            "email": email,
+                            "displayName": user_info.get(
+                                "displayName", email.split("@")[0]
+                            ),
+                            "photoLink": user_info.get("photoLink", ""),
+                            "used": used,
+                            "limit": limit,
+                            "usage_percentage": (
+                                round((used / limit * 100), 2) if limit > 0 else 0
+                            ),
+                            "used_formatted": self.format_bytes(used),
+                            "limit_formatted": self.format_bytes(limit),
+                        }
+                    )
+
+                    total_used = used
+                    total_limit = limit
+
+                except Exception as e:
+                    print(f"Error getting storage info for {email}: {str(e)}")
+                    continue
+
+            return {
+                "status": 1,
+                "message": f"Storage information retrieved for {len(storage_info)} accounts",
+                "payload": {
+                    "storage_info": storage_info,
+                    "total_storage": {
+                        "used": total_used,
+                        "limit": total_limit,
+                        "usage_percentage": (
+                            round((total_used / total_limit * 100), 2)
+                            if total_limit > 0
+                            else 0
+                        ),
+                        "used_formatted": self.format_bytes(total_used),
+                        "limit_formatted": self.format_bytes(total_limit),
+                    },
+                },
+            }
+
+        except Exception as e:
+            traceback.print_exc()
+            return {
+                "status": 0,
+                "message": f"Failed to get storage info: {str(e)}",
+                "payload": {
+                    "storage_info": [],
+                    "total_storage": {"used": 0, "limit": 0},
+                },
+            }
+
+    def format_bytes(self, bytes_value):
+        """Format bytes to human readable format"""
+        if bytes_value == 0:
+            return "0 B"
+
+        sizes = ["B", "KB", "MB", "GB", "TB"]
+        i = 0
+        while bytes_value >= 1024 and i < len(sizes) - 1:
+            bytes_value /= 1024
+            i = 1
+
+        return f"{bytes_value:.1f} {sizes[i]}"
+
+
+# Bulk Operations
+class BulkDownloadFiles(DriveBaseResource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        try:
+            data = request.get_json() or {}
+            file_ids = data.get("fileIds", [])
+
+            if not file_ids:
+                return {"status": 0, "message": "File IDs required", "payload": {}}
+
+            service = self.get_drive_service(uid)
+            if not service:
+                return {
+                    "status": 0,
+                    "message": "Google Drive not connected or token expired",
+                    "payload": {},
+                }
+
+            # Create a zip file in memory
+            import zipfile
+
+            zip_buffer = io.BytesIO()
+
+            with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+                for file_id in file_ids:
+                    try:
+                        # Get file metadata
+                        file_metadata = service.files().get(fileId=file_id).execute()
+                        file_name = file_metadata["name"]
+
+                        # Download file
+                        request_download = service.files().get_media(fileId=file_id)
+                        file_buffer = io.BytesIO()
+                        downloader = MediaIoBaseDownload(file_buffer, request_download)
+
+                        done = False
+                        while done is False:
+                            status, done = downloader.next_chunk()
+
+                        file_buffer.seek(0)
+                        zip_file.writestr(file_name, file_buffer.read())
+
+                    except Exception as e:
+                        print(f"Error downloading file {file_id}: {str(e)}")
+                        continue
+
+            zip_buffer.seek(0)
+
+            return send_file(
+                zip_buffer,
+                as_attachment=True,
+                download_name="bulk_download.zip",
+                mimetype="application/zip",
+            )
+
+        except Exception as e:
+            traceback.print_exc()
+            return {
+                "status": 0,
+                "message": f"Failed to bulk download files: {str(e)}",
+                "payload": {},
+            }
+
+
+class BulkDeleteFiles(DriveBaseResource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        try:
+            data = request.get_json() or {}
+            file_ids = data.get("fileIds", [])
+
+            if not file_ids:
+                return {"status": 0, "message": "File IDs required", "payload": {}}
+
+            service = self.get_drive_service(uid)
+            if not service:
+                return {
+                    "status": 0,
+                    "message": "Google Drive not connected or token expired",
+                    "payload": {},
+                }
+
+            deleted_files = []
+            errors = []
+
+            for file_id in file_ids:
+                try:
+                    # Get file name before deletion
+                    file_metadata = (
+                        service.files().get(fileId=file_id, fields="name").execute()
+                    )
+                    file_name = file_metadata.get("name", "Unknown file")
+
+                    # Delete file
+                    service.files().delete(fileId=file_id).execute()
+                    deleted_files.append({"id": file_id, "name": file_name})
+
+                except Exception as e:
+                    errors.append({"id": file_id, "error": str(e)})
+
+            return {
+                "status": 1,
+                "message": f"Bulk delete completed. {len(deleted_files)} files deleted, {len(errors)} errors",
+                "payload": {
+                    "deleted_files": deleted_files,
+                    "errors": errors,
+                    "success_count": len(deleted_files),
+                    "error_count": len(errors),
+                },
+            }
+
+        except Exception as e:
+            traceback.print_exc()
+            return {
+                "status": 0,
+                "message": f"Failed to bulk delete files: {str(e)}",
+                "payload": {},
+            }
+
+
+class BulkMoveFiles(DriveBaseResource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        try:
+            data = request.get_json() or {}
+            file_ids = data.get("fileIds", [])
+            target_folder_id = data.get("targetFolderId")
+
+            if not file_ids or not target_folder_id:
+                return {
+                    "status": 0,
+                    "message": "File IDs and target folder ID required",
+                    "payload": {},
+                }
+
+            service = self.get_drive_service(uid)
+            if not service:
+                return {
+                    "status": 0,
+                    "message": "Google Drive not connected or token expired",
+                    "payload": {},
+                }
+
+            moved_files = []
+            errors = []
+
+            for file_id in file_ids:
+                try:
+                    # Get current parents
+                    file_metadata = (
+                        service.files()
+                        .get(fileId=file_id, fields="parents,name")
+                        .execute()
+                    )
+                    previous_parents = ",".join(file_metadata.get("parents", []))
+
+                    # Move file
+                    service.files().update(
+                        fileId=file_id,
+                        addParents=target_folder_id,
+                        removeParents=previous_parents,
+                        fields="id,parents",
+                    ).execute()
+
+                    moved_files.append(
+                        {
+                            "id": file_id,
+                            "name": file_metadata.get("name", "Unknown file"),
+                        }
+                    )
+
+                except Exception as e:
+                    errors.append({"id": file_id, "error": str(e)})
+
+            return {
+                "status": 1,
+                "message": f"Bulk move completed. {len(moved_files)} files moved, {len(errors)} errors",
+                "payload": {
+                    "moved_files": moved_files,
+                    "errors": errors,
+                    "success_count": len(moved_files),
+                    "error_count": len(errors),
+                },
+            }
+
+        except Exception as e:
+            traceback.print_exc()
+            return {
+                "status": 0,
+                "message": f"Failed to bulk move files: {str(e)}",
+                "payload": {},
+            }
+
+
+class BulkCopyFiles(DriveBaseResource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        try:
+            data = request.get_json() or {}
+            file_ids = data.get("fileIds", [])
+            target_folder_id = data.get("targetFolderId")
+
+            if not file_ids or not target_folder_id:
+                return {
+                    "status": 0,
+                    "message": "File IDs and target folder ID required",
+                    "payload": {},
+                }
+
+            service = self.get_drive_service(uid)
+            if not service:
+                return {
+                    "status": 0,
+                    "message": "Google Drive not connected or token expired",
+                    "payload": {},
+                }
+
+            copied_files = []
+            errors = []
+
+            for file_id in file_ids:
+                try:
+                    # Get original file metadata
+                    original_file = (
+                        service.files().get(fileId=file_id, fields="name").execute()
+                    )
+
+                    # Copy file
+                    copied_file = (
+                        service.files()
+                        .copy(
+                            fileId=file_id,
+                            body={
+                                "name": f"Copy of {original_file['name']}",
+                                "parents": [target_folder_id],
+                            },
+                        )
+                        .execute()
+                    )
+
+                    copied_files.append(
+                        {
+                            "original_id": file_id,
+                            "copy_id": copied_file["id"],
+                            "name": copied_file["name"],
+                        }
+                    )
+
+                except Exception as e:
+                    errors.append({"id": file_id, "error": str(e)})
+
+            return {
+                "status": 1,
+                "message": f"Bulk copy completed. {len(copied_files)} files copied, {len(errors)} errors",
+                "payload": {
+                    "copied_files": copied_files,
+                    "errors": errors,
+                    "success_count": len(copied_files),
+                    "error_count": len(errors),
+                },
+            }
+
+        except Exception as e:
+            traceback.print_exc()
+            return {
+                "status": 0,
+                "message": f"Failed to bulk copy files: {str(e)}",
+                "payload": {},
+            }
+
+
+class BulkShareFiles(DriveBaseResource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        try:
+            data = request.get_json() or {}
+            file_ids = data.get("fileIds", [])
+            email = data.get("email")
+            role = data.get("role", "reader")
+
+            if not file_ids or not email:
+                return {
+                    "status": 0,
+                    "message": "File IDs and email required",
+                    "payload": {},
+                }
+
+            service = self.get_drive_service(uid)
+            if not service:
+                return {
+                    "status": 0,
+                    "message": "Google Drive not connected or token expired",
+                    "payload": {},
+                }
+
+            shared_files = []
+            errors = []
+
+            for file_id in file_ids:
+                try:
+                    # Get file name
+                    file_metadata = (
+                        service.files().get(fileId=file_id, fields="name").execute()
+                    )
+
+                    # Create permission
+                    permission = {"type": "user", "role": role, "emailAddress": email}
+                    service.permissions().create(
+                        fileId=file_id, body=permission, sendNotificationEmail=True
+                    ).execute()
+
+                    shared_files.append(
+                        {
+                            "id": file_id,
+                            "name": file_metadata.get("name", "Unknown file"),
+                        }
+                    )
+
+                except Exception as e:
+                    errors.append({"id": file_id, "error": str(e)})
+
+            return {
+                "status": 1,
+                "message": f"Bulk share completed. {len(shared_files)} files shared, {len(errors)} errors",
+                "payload": {
+                    "shared_files": shared_files,
+                    "errors": errors,
+                    "success_count": len(shared_files),
+                    "error_count": len(errors),
+                    "shared_with": email,
+                    "role": role,
+                },
+            }
+
+        except Exception as e:
+            traceback.print_exc()
+            return {
+                "status": 0,
+                "message": f"Failed to bulk share files: {str(e)}",
+                "payload": {},
+            }
+
+
+# File Operations
+class RenameDriveFile(DriveBaseResource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        try:
+            data = request.get_json() or {}
+            file_id = data.get("fileId")
+            new_name = data.get("newName")
+
+            if not file_id or not new_name:
+                return {
+                    "status": 0,
+                    "message": "File ID and new name required",
+                    "payload": {},
+                }
+
+            service = self.get_drive_service(uid)
+            if not service:
+                return {
+                    "status": 0,
+                    "message": "Google Drive not connected or token expired",
+                    "payload": {},
+                }
+
+            # Rename file
+            updated_file = (
+                service.files()
+                .update(
+                    fileId=file_id,
+                    body={"name": new_name},
+                    fields="id,name,modifiedTime",
+                )
+                .execute()
+            )
+
+            return {
+                "status": 1,
+                "message": f"File renamed to '{new_name}' successfully",
+                "payload": {"file": updated_file},
+            }
+
+        except Exception as e:
+            traceback.print_exc()
+            return {
+                "status": 0,
+                "message": f"Failed to rename file: {str(e)}",
+                "payload": {},
+            }
+
+
+class CopyDriveFile(DriveBaseResource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        try:
+            data = request.get_json() or {}
+            file_id = data.get("fileId")
+            parent_id = data.get("parentId")
+            name = data.get("name")
+
+            if not file_id:
+                return {"status": 0, "message": "File ID required", "payload": {}}
+
+            service = self.get_drive_service(uid)
+            if not service:
+                return {
+                    "status": 0,
+                    "message": "Google Drive not connected or token expired",
+                    "payload": {},
+                }
+
+            # Get original file name if no name provided
+            if not name:
+                original_file = (
+                    service.files().get(fileId=file_id, fields="name").execute()
+                )
+                name = f"Copy of {original_file['name']}"
+
+            # Prepare copy metadata
+            copy_metadata = {"name": name}
+            if parent_id:
+                copy_metadata["parents"] = [parent_id]
+
+            # Copy file
+            copied_file = (
+                service.files()
+                .copy(
+                    fileId=file_id,
+                    body=copy_metadata,
+                    fields="id,name,mimeType,modifiedTime,webViewLink",
+                )
+                .execute()
+            )
+
+            return {
+                "status": 1,
+                "message": f"File copied successfully as '{name}'",
+                "payload": {"file": copied_file},
+            }
+
+        except Exception as e:
+            traceback.print_exc()
+            return {
+                "status": 0,
+                "message": f"Failed to copy file: {str(e)}",
+                "payload": {},
+            }
+
+
+class MoveDriveFile(DriveBaseResource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        try:
+            data = request.get_json() or {}
+            file_id = data.get("fileId")
+            target_folder_id = data.get("targetFolderId")
+
+            if not file_id or not target_folder_id:
+                return {
+                    "status": 0,
+                    "message": "File ID and target folder ID required",
+                    "payload": {},
+                }
+
+            service = self.get_drive_service(uid)
+            if not service:
+                return {
+                    "status": 0,
+                    "message": "Google Drive not connected or token expired",
+                    "payload": {},
+                }
+
+            # Get current parents
+            file_metadata = (
+                service.files().get(fileId=file_id, fields="parents,name").execute()
+            )
+            previous_parents = ",".join(file_metadata.get("parents", []))
+
+            # Move file
+            updated_file = (
+                service.files()
+                .update(
+                    fileId=file_id,
+                    addParents=target_folder_id,
+                    removeParents=previous_parents,
+                    fields="id,name,parents,modifiedTime",
+                )
+                .execute()
+            )
+
+            return {
+                "status": 1,
+                "message": f"File '{file_metadata['name']}' moved successfully",
+                "payload": {"file": updated_file},
+            }
+
+        except Exception as e:
+            traceback.print_exc()
+            return {
+                "status": 0,
+                "message": f"Failed to move file: {str(e)}",
+                "payload": {},
+            }
+
+
+class StarDriveFile(DriveBaseResource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        try:
+            data = request.get_json() or {}
+            file_id = data.get("fileId")
+            starred = data.get("starred", True)
+
+            if not file_id:
+                return {"status": 0, "message": "File ID required", "payload": {}}
+
+            service = self.get_drive_service(uid)
+            if not service:
+                return {
+                    "status": 0,
+                    "message": "Google Drive not connected or token expired",
+                    "payload": {},
+                }
+
+            # Update starred status
+            updated_file = (
+                service.files()
+                .update(
+                    fileId=file_id, body={"starred": starred}, fields="id,name,starred"
+                )
+                .execute()
+            )
+
+            action = "starred" if starred else "unstarred"
+            return {
+                "status": 1,
+                "message": f"File {action} successfully",
+                "payload": {"file": updated_file},
+            }
+
+        except Exception as e:
+            traceback.print_exc()
+            return {
+                "status": 0,
+                "message": f"Failed to update star status: {str(e)}",
+                "payload": {},
+            }
+
+
+# Advanced Search
+class AdvancedSearch(DriveBaseResource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        try:
+            data = request.get_json() or {}
+            query = data.get("query", "")
+            mime_type = data.get("mimeType")
+            modified_time_range = data.get("modifiedTimeRange")
+            size_range = data.get("sizeRange")
+            starred = data.get("starred")
+            shared = data.get("shared")
+            owned_by_me = data.get("ownedByMe")
+            parent_id = data.get("parentId")
+
+            service = self.get_drive_service(uid)
+            if not service:
+                return {
+                    "status": 0,
+                    "message": "Google Drive not connected or token expired",
+                    "payload": {},
+                }
+
+            # Build search query
+            search_parts = []
+
+            if query:
+                search_parts.append(f"name contains '{query}'")
+
+            if mime_type:
+                search_parts.append(f"mimeType='{mime_type}'")
+
+            if modified_time_range:
+                if modified_time_range.get("start"):
+                    search_parts.append(
+                        f"modifiedTime >= '{modified_time_range['start']}'"
+                    )
+                if modified_time_range.get("end"):
+                    search_parts.append(
+                        f"modifiedTime <= '{modified_time_range['end']}'"
+                    )
+
+            if starred is not None:
+                search_parts.append(f"starred = {str(starred).lower()}")
+
+            if shared is not None:
+                search_parts.append(f"shared = {str(shared).lower()}")
+
+            if owned_by_me is not None:
+                search_parts.append(
+                    "'me' in owners" if owned_by_me else "not 'me' in owners"
+                )
+
+            if parent_id:
+                search_parts.append(f"'{parent_id}' in parents")
+
+            # Always exclude trashed files
+            search_parts.append("trashed = false")
+
+            search_query = (
+                " and ".join(search_parts) if search_parts else "trashed = false"
+            )
+
+            # Execute search
+            results = (
+                service.files()
+                .list(
+                    q=search_query,
+                    pageSize=100,
+                    fields="nextPageToken, files(id, name, mimeType, size, modifiedTime, createdTime, thumbnailLink, webViewLink, owners, shared, starred, parents)",
+                )
+                .execute()
+            )
+
+            files = results.get("files", [])
+
+            # Filter by size if specified
+            if size_range:
+                min_size = size_range.get("min")
+                max_size = size_range.get("max")
+
+                if min_size is not None or max_size is not None:
+                    filtered_files = []
+                    for file in files:
+                        file_size = int(file.get("size", 0)) if file.get("size") else 0
+
+                        if (
+                            min_size is not None and file_size < min_size * 1024 * 1024
+                        ):  # Convert MB to bytes
+                            continue
+                        if (
+                            max_size is not None and file_size > max_size * 1024 * 1024
+                        ):  # Convert MB to bytes
+                            continue
+
+                        filtered_files.append(file)
+
+                    files = filtered_files
+
+            return {
+                "status": 1,
+                "message": f"Advanced search completed. Found {len(files)} files",
+                "payload": {
+                    "files": files,
+                    "search_query": search_query,
+                    "total_results": len(files),
+                },
+            }
+
+        except Exception as e:
+            traceback.print_exc()
+            return {
+                "status": 0,
+                "message": f"Advanced search failed: {str(e)}",
+                "payload": {},
+            }
+
+
+# Duplicate Detection
+class FindDuplicateFiles(DriveBaseResource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        try:
+            data = request.get_json() or {}
+            folder_id = data.get("folderId", "root")
+
+            service = self.get_drive_service(uid)
+            if not service:
+                return {
+                    "status": 0,
+                    "message": "Google Drive not connected or token expired",
+                    "payload": {},
+                }
+
+            # Get all files in the specified folder
+            query = f"'{folder_id}' in parents and trashed=false and mimeType != 'application/vnd.google-apps.folder'"
+
+            results = (
+                service.files()
+                .list(
+                    q=query,
+                    pageSize=1000,
+                    fields="files(id, name, size, md5Checksum, modifiedTime)",
+                )
+                .execute()
+            )
+
+            files = results.get("files", [])
+
+            # Group files by name and size
+            file_groups = {}
+            for file in files:
+                key = f"{file['name']}_{file.get('size', 0)}"
+                if key not in file_groups:
+                    file_groups[key] = []
+                file_groups[key].append(file)
+
+            # Find duplicates
+            duplicates = []
+            for group in file_groups.values():
+                if len(group) > 1:
+                    duplicates.append(
+                        {
+                            "name": group[0]["name"],
+                            "size": group[0].get("size", 0),
+                            "files": group,
+                            "count": len(group),
+                            "total_size": sum(int(f.get("size", 0)) for f in group),
+                        }
+                    )
+
+            return {
+                "status": 1,
+                "message": f"Found {len(duplicates)} sets of duplicate files",
+                "payload": {
+                    "duplicates": duplicates,
+                    "total_duplicate_sets": len(duplicates),
+                    "total_files_scanned": len(files),
+                },
+            }
+
+        except Exception as e:
+            traceback.print_exc()
+            return {
+                "status": 0,
+                "message": f"Failed to find duplicates: {str(e)}",
+                "payload": {},
+            }
+
+
+# Storage Analytics
+class GetStorageAnalytics(DriveBaseResource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        try:
+            service = self.get_drive_service(uid)
+            if not service:
+                return {
+                    "status": 0,
+                    "message": "Google Drive not connected or token expired",
+                    "payload": {},
+                }
+
+            # Get storage quota
+            about = service.about().get(fields="storageQuota").execute()
+            storage_quota = about.get("storageQuota", {})
+
+            # Get file type breakdown
+            results = (
+                service.files()
+                .list(q="trashed=false", pageSize=1000, fields="files(mimeType, size)")
+                .execute()
+            )
+
+            files = results.get("files", [])
+
+            # Analyze by file type
+            type_analysis = {}
+            total_files = len(files)
+
+            for file in files:
+                mime_type = file.get("mimeType", "unknown")
+                size = int(file.get("size", 0)) if file.get("size") else 0
+
+                # Group by main type
+                main_type = mime_type.split("/")[0] if "/" in mime_type else mime_type
+
+                if main_type not in type_analysis:
+                    type_analysis[main_type] = {
+                        "count": 0,
+                        "total_size": 0,
+                        "percentage": 0,
+                    }
+
+                type_analysis[main_type]["count"] = 1
+                type_analysis[main_type]["total_size"] = size
+
+            # Calculate percentages
+            total_size = sum(data["total_size"] for data in type_analysis.values())
+            for data in type_analysis.values():
+                data["percentage"] = (
+                    (data["total_size"] / total_size * 100) if total_size > 0 else 0
+                )
+
+            return {
+                "status": 1,
+                "message": "Storage analytics retrieved successfully",
+                "payload": {
+                    "storage_quota": {
+                        "used": int(storage_quota.get("usage", 0)),
+                        "limit": int(storage_quota.get("limit", 0)),
+                        "usage_percentage": (
+                            int(storage_quota.get("usage", 0))
+                            / int(storage_quota.get("limit", 1))
+                            * 100
+                            if storage_quota.get("limit")
+                            else 0
+                        ),
+                    },
+                    "file_type_analysis": type_analysis,
+                    "total_files": total_files,
+                    "total_size": total_size,
+                },
+            }
+
+        except Exception as e:
+            traceback.print_exc()
+            return {
+                "status": 0,
+                "message": f"Failed to get storage analytics: {str(e)}",
+                "payload": {},
+            }
+
+
+# Activity Tracking
+class GetActivityLog(DriveBaseResource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        try:
+            limit = request.args.get("limit", 50, type=int)
+            offset = request.args.get("offset", 0, type=int)
+
+            # Get activity from database (you'll need to create this table)
+            activities = DBHelper.find(
+                "drive_activity_log",
+                filters={"user_id": uid},
+                select_fields=[
+                    "id",
+                    "action",
+                    "file_name",
+                    "file_id",
+                    "timestamp",
+                    "details",
+                ],
+                order_by="timestamp DESC",
+                limit=limit,
+                offset=offset,
+            )
+
+            return {
+                "status": 1,
+                "message": f"Retrieved {len(activities)} activity records",
+                "payload": {
+                    "activities": activities,
+                    "limit": limit,
+                    "offset": offset,
+                },
+            }
+
+        except Exception as e:
+            traceback.print_exc()
+            return {
+                "status": 0,
+                "message": f"Failed to get activity log: {str(e)}",
+                "payload": {},
+            }
+
+
+class LogActivity(DriveBaseResource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        try:
+            data = request.get_json() or {}
+            action = data.get("action")
+            file_id = data.get("fileId")
+            file_name = data.get("fileName")
+            details = data.get("details")
+
+            if not action or not file_name:
+                return {
+                    "status": 0,
+                    "message": "Action and file name required",
+                    "payload": {},
+                }
+
+            # Insert activity log
+            activity_id = DBHelper.insert_one(
+                "drive_activity_log",
+                {
+                    "user_id": uid,
+                    "action": action,
+                    "file_id": file_id,
+                    "file_name": file_name,
+                    "details": details,
+                    "timestamp": datetime.utcnow().isoformat(),
+                },
+            )
+
+            return {
+                "status": 1,
+                "message": "Activity logged successfully",
+                "payload": {"activity_id": activity_id},
+            }
+
+        except Exception as e:
+            traceback.print_exc()
+            return {
+                "status": 0,
+                "message": f"Failed to log activity: {str(e)}",
+                "payload": {},
+            }

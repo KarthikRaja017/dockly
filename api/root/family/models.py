@@ -5,6 +5,7 @@ from email.message import EmailMessage
 import json
 import re
 import smtplib
+import traceback
 
 # from root.planner.models import create_calendar_event, update_calendar_event
 from root.common import DocklyUsers, HubsEnum, Permissions, Status
@@ -242,7 +243,11 @@ class GetFamilyMembers(Resource):
                 "message": "No family group found",
                 "payload": {
                     "members": [
-                        {"name": user.get("user_name", "User"), "relationship": "me"}
+                        {
+                            "name": user.get("user_name", "User"),
+                            "relationship": "me",
+                            "id": uid,
+                        }
                     ]
                 },
             }
@@ -250,7 +255,7 @@ class GetFamilyMembers(Resource):
         # Step 2: Get all members in that group
         group_members = DBHelper.find_all(
             table_name="family_members",
-            select_fields=["name", "relationship", "fm_user_id", "email"],
+            select_fields=["name", "relationship", "fm_user_id", "email", "id"],
             filters={"family_group_id": group_id},
         )
 
@@ -265,6 +270,7 @@ class GetFamilyMembers(Resource):
                     "name": member["name"],
                     "relationship": relationship,
                     "email": member.get("email", ""),
+                    "id": member.get("id", ""),
                 }
             )
 
@@ -273,7 +279,7 @@ class GetFamilyMembers(Resource):
             fuserMember = DBHelper.find_one(
                 table_name="users",
                 filters={"uid": fuser},
-                select_fields=["user_name", "email"],
+                select_fields=["user_name", "email", "id"],
             )
             if fuserMember:
                 familyMembers.append(
@@ -281,6 +287,7 @@ class GetFamilyMembers(Resource):
                         "name": fuserMember.get("user_name", "User"),
                         "relationship": "Owner",
                         "email": fuserMember.get("email", ""),
+                        "id": fuserMember.get("id", ""),
                     }
                 )
 
@@ -303,6 +310,7 @@ class GetFamilyMembers(Resource):
                         ),
                         "status": "pending",
                         "email": input_data.get("email", ""),
+                        "id": input_data.get("id", ""),
                     }
                 )
 
@@ -316,6 +324,7 @@ class GetFamilyMembers(Resource):
                 # Remove email from final output if you don't want to expose it
                 member.pop("email", None)
                 unique_members.append(member)
+        # print(f"==>> unique_members: {unique_members}")
 
         # Step 6: Fallback - if no members found, return the current user
         # print(f"unique_membyyyyyyyyyyyyyyyyyyyers: {unique_members}")
@@ -330,6 +339,38 @@ class GetFamilyMembers(Resource):
             "message": "Family members fetched successfully",
             "payload": {"members": unique_members},
         }
+
+
+def send_pet_email(
+    email, pet_name, species, breed, contact, added_by="Family Hub Team"
+):
+    try:
+        msg = EmailMessage()
+        msg["Subject"] = f"Pet Addition Notification for {pet_name}"
+        msg["From"] = EMAIL_SENDER
+        msg["To"] = email
+
+        message_body = f"""
+Dear Guardian,
+
+{pet_name} ({species}, {breed}) has been added to our Family Hub.
+Contact: {contact}
+Email: {email}
+
+Best regards,
+{added_by}
+        """.strip()
+
+        msg.set_content(message_body)
+
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(EMAIL_SENDER, EMAIL_PASSWORD)
+            server.send_message(msg)
+
+        return {"status": 1, "email": email}
+    except Exception as e:
+        return {"status": 0, "email": email, "error": str(e)}
 
 
 class AddPet(Resource):
@@ -355,7 +396,6 @@ class AddPet(Resource):
 
         family_group_id = inputData.get("family_group_id")
         if not family_group_id:
-            # Fallback: try to get from user's family mapping
             gid = DBHelper.find_one(
                 "family_members",
                 filters={"user_id": uid},
@@ -378,9 +418,26 @@ class AddPet(Resource):
             family_group_id=family_group_id,
         )
 
+        # Send email to guardian
+        email_result = send_pet_email(
+            email=inputData.get("guardian_email", ""),
+            pet_name=inputData.get("name", ""),
+            species=inputData.get("species", ""),
+            breed=inputData.get("breed", ""),
+            contact=inputData.get("guardian_contact", ""),
+            added_by=user.get("name") if user else "Family Hub Team",
+        )
+
+        if email_result.get("status") != 1:
+            return {
+                "status": 1,
+                "message": f"Pet added successfully, but failed to send email: {email_result.get('error')}",
+                "payload": {"userId": pet_id},
+            }
+
         return {
             "status": 1,
-            "message": "Pet added successfully",
+            "message": "Pet added successfully and email sent.",
             "payload": {"userId": pet_id},
         }
 
@@ -1503,7 +1560,7 @@ class AddPersonalInfo(Resource):
             if not personal_info:
                 return {"status": 0, "message": "No personal info data provided"}, 400
 
-            required_fields = ["addedBy"]
+            required_fields = ["addedBy", "userId"]
             missing_fields = [
                 field for field in required_fields if field not in personal_info
             ]
@@ -1513,16 +1570,14 @@ class AddPersonalInfo(Resource):
                     "message": f"Missing required fields: {', '.join(missing_fields)}",
                 }, 400
 
-            user_check = DBHelper.find_one(table_name="users", filters={"uid": uid})
-            if not user_check:
-                return {"status": 0, "message": f"User with ID {uid} not found"}, 400
-
             current_time = datetime.now().isoformat()
+            fm_user_id = personal_info["userId"]
 
             personal_id = DBHelper.insert(
                 table_name="personal_information",
                 return_column="id",
                 user_id=uid,
+                family_member_user_id=fm_user_id,
                 first_name=personal_info.get("firstName", ""),
                 middle_name=personal_info.get("middleName", ""),
                 last_name=personal_info.get("lastName", ""),
@@ -1585,6 +1640,7 @@ class GetPersonalInfo(Resource):
     @auth_required(isOptional=True)
     def get(self, uid, user):
         try:
+            fm_user_id = request.args.get("userId") or uid
             personal_info = DBHelper.find_one(
                 table_name="personal_information",
                 select_fields=[
@@ -1632,7 +1688,7 @@ class GetPersonalInfo(Resource):
                     "edited_by",
                     "updated_at",
                 ],
-                filters={"user_id": uid},
+                filters={"family_member_user_id": fm_user_id},
             )
 
             if not personal_info:
@@ -1712,6 +1768,7 @@ class UpdatePersonalInfo(Resource):
     @auth_required(isOptional=True)
     def put(self, uid, user):
         try:
+            fm_user_id = request.args.get("userId") or uid
             inputData = request.get_json(silent=True)
             if not inputData:
                 return {"status": 0, "message": "No input data provided"}, 400
@@ -1734,9 +1791,10 @@ class UpdatePersonalInfo(Resource):
             if not user_check:
                 return {"status": 0, "message": f"User with ID {uid} not found"}, 400
 
+            personal_id = personal_info["id"]
             record_check = DBHelper.find_one(
                 table_name="personal_information",
-                filters={"user_id": uid},
+                filters={"id": personal_id, "user_id": uid},
             )
             if not record_check:
                 return {"status": 0, "message": "Personal info record not found"}, 404
@@ -1796,16 +1854,17 @@ class UpdatePersonalInfo(Resource):
 
             DBHelper.update_one(
                 table_name="personal_information",
-                filters={"user_id": uid},
+                filters={"id": personal_id},
                 updates=updates,
             )
 
             return {
                 "status": 1,
                 "message": "Personal information updated successfully",
-                "payload": {"id": record_check["id"]},
+                "payload": {"id": personal_id},
             }, 200
         except Exception as e:
+            print(traceback.format_exc())
             return {
                 "status": 0,
                 "message": f"Failed to update personal info: {str(e)}",
@@ -2178,3 +2237,262 @@ class UpdateProvider(Resource):
 
         except Exception as e:
             return {"status": 0, "message": f"Failed to update provider: {str(e)}"}, 500
+
+
+class AddProvider(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        try:
+            inputData = request.get_json(silent=True)
+            if not inputData:
+                return {"status": 0, "message": "No input data provided"}, 400
+
+            provider = inputData.get("provider", {})
+            if not provider:
+                return {"status": 0, "message": "No provider data provided"}, 400
+
+            required_fields = ["providerTitle", "providerName", "addedBy", "userId"]
+            missing_fields = [f for f in required_fields if f not in provider]
+            if missing_fields:
+                return {
+                    "status": 0,
+                    "message": f"Missing fields: {', '.join(missing_fields)}",
+                }, 400
+
+            now = datetime.now().isoformat()
+
+            provider_id = DBHelper.insert(
+                table_name="healthcare_providers",
+                return_column="id",
+                user_id=uid,
+                family_member_user_id=provider["userId"],
+                provider_title=provider["providerTitle"],
+                provider_name=provider["providerName"],
+                provider_phone=provider.get("providerPhone", ""),
+                added_by=provider["addedBy"],
+                added_time=now,
+                edited_by=provider.get("editedBy", provider["addedBy"]),
+                updated_at=now,
+            )
+
+            return {
+                "status": 1,
+                "message": "Provider added",
+                "payload": {"id": provider_id},
+            }, 200
+
+        except Exception as e:
+            return {"status": 0, "message": f"Failed to add provider: {str(e)}"}, 500
+
+
+class GetProviders(Resource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        try:
+            user_id = request.args.get("userId")
+            if not user_id:
+                return {"status": 0, "message": "User ID is required"}, 400
+
+            providers = DBHelper.find_all(
+                table_name="healthcare_providers",
+                filters={"family_member_user_id": user_id},
+            )
+
+            # Convert datetime objects to ISO strings
+            for provider in providers:
+                for key in ["added_time", "updated_at"]:
+                    if provider.get(key) and isinstance(provider[key], datetime):
+                        provider[key] = provider[key].isoformat()
+
+            return {"status": 1, "payload": providers}, 200
+
+        except Exception as e:
+            return {"status": 0, "message": f"Failed to fetch providers: {str(e)}"}, 500
+
+
+class UpdateProvider(Resource):
+    @auth_required(isOptional=True)
+    def put(self, uid, user):
+        try:
+            inputData = request.get_json(silent=True)
+            if not inputData:
+                return {"status": 0, "message": "No input data provided"}, 400
+
+            provider = inputData.get("provider", {})
+            if not provider:
+                return {"status": 0, "message": "No provider data provided"}, 400
+
+            required_fields = [
+                "id",
+                "providerTitle",
+                "providerName",
+                "addedBy",
+                "userId",
+            ]
+            missing = [f for f in required_fields if f not in provider]
+            if missing:
+                return {
+                    "status": 0,
+                    "message": f"Missing fields: {', '.join(missing)}",
+                }, 400
+
+            record = DBHelper.find_one(
+                "healthcare_providers",
+                {"id": provider["id"], "family_member_user_id": provider["userId"]},
+            )
+            if not record:
+                return {"status": 0, "message": "Provider record not found"}, 404
+
+            now = datetime.now().isoformat()
+
+            DBHelper.update_one(
+                table_name="healthcare_providers",
+                filters={"id": provider["id"]},
+                updates={
+                    "provider_title": provider["providerTitle"],
+                    "provider_name": provider["providerName"],
+                    "provider_phone": provider.get("providerPhone", ""),
+                    "edited_by": provider.get("editedBy", provider["addedBy"]),
+                    "updated_at": now,
+                },
+            )
+
+            return {
+                "status": 1,
+                "message": "Provider updated",
+                "payload": {"id": provider["id"]},
+            }, 200
+
+        except Exception as e:
+            return {"status": 0, "message": f"Failed to update provider: {str(e)}"}, 500
+
+
+class GetFamilyMemberUserId(Resource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        member_id = request.args.get("memberId")
+        if not member_id:
+            return {"status": 0, "message": "Missing memberId"}, 400
+
+        member = DBHelper.find_one(
+            table_name="family_members",
+            filters={"id": member_id},
+            select_fields=["fm_user_id"],
+        )
+
+        if not member:
+            return {"status": 0, "message": "Family member not found"}, 404
+
+        return {"status": 1, "payload": {"userId": member["fm_user_id"]}}
+
+
+class AddAccountPassword(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        try:
+            inputData = request.get_json(silent=True)
+            if not inputData:
+                return {"status": 0, "message": "No input data provided"}, 400
+
+            account = inputData.get("account", {})
+            if not account:
+                return {"status": 0, "message": "No account data provided"}, 400
+
+            required_fields = ["category", "title", "addedBy", "userId"]
+            missing_fields = [f for f in required_fields if f not in account]
+            if missing_fields:
+                return {
+                    "status": 0,
+                    "message": f"Missing fields: {', '.join(missing_fields)}",
+                }, 400
+
+            now = datetime.now().isoformat()
+
+            account_id = DBHelper.insert(
+                table_name="account_passwords",
+                return_column="id",
+                user_id=uid,
+                family_member_user_id=account["userId"],
+                category=account["category"],
+                title=account["title"],
+                username=account.get("username", ""),
+                password=account.get("password", ""),
+                url=account.get("url", ""),
+                added_by=account["addedBy"],
+                added_time=now,
+                edited_by=account.get("editedBy", account["addedBy"]),
+                updated_at=now,
+            )
+
+            return {
+                "status": 1,
+                "message": "Account added successfully",
+                "payload": {"id": account_id},
+            }, 200
+
+        except Exception as e:
+            return {"status": 0, "message": f"Failed to add account: {str(e)}"}, 500
+
+
+class GetAccountPasswords(Resource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        try:
+            user_id = request.args.get("userId")
+            if not user_id:
+                return {"status": 0, "message": "Missing userId"}, 400
+
+            results = DBHelper.find_all(
+                table_name="account_passwords",
+                filters={"family_member_user_id": user_id},
+            )
+            for r in results:
+                for key in r:
+                    if isinstance(r[key], datetime):
+                        r[key] = r[key].isoformat()
+
+            return {
+                "status": 1,
+                "message": "Accounts fetched successfully",
+                "payload": results,
+            }, 200
+
+        except Exception as e:
+            return {"status": 0, "message": f"Failed to fetch accounts: {str(e)}"}, 500
+
+
+class UpdateAccountPassword(Resource):
+    @auth_required(isOptional=True)
+    def put(self, uid, user):
+        try:
+            inputData = request.get_json(silent=True)
+            if not inputData:
+                return {"status": 0, "message": "No input data provided"}, 400
+
+            account = inputData.get("account", {})
+            if not account or "id" not in account:
+                return {"status": 0, "message": "Missing account ID or data"}, 400
+
+            update_fields = {
+                "category": account.get("category"),
+                "title": account.get("title"),
+                "username": account.get("username"),
+                "password": account.get("password"),
+                "url": account.get("url"),
+                "edited_by": account.get("editedBy", uid),
+                "updated_at": datetime.now().isoformat(),
+            }
+
+            # Remove any None values (e.g., if field wasn't updated)
+            update_fields = {k: v for k, v in update_fields.items() if v is not None}
+
+            DBHelper.update_one(
+                table_name="account_passwords",
+                filters={"id": account["id"]},
+                updates=update_fields,
+            )
+
+            return {"status": 1, "message": "Account updated successfully"}, 200
+
+        except Exception as e:
+            return {"status": 0, "message": f"Failed to update account: {str(e)}"}, 500

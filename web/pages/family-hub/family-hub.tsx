@@ -2,7 +2,6 @@
 import { ArrowLeft, ArrowRightCircle, BoxSelect, Heart, LayoutPanelLeft, Plus, Search, Share, Users } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import DocklyLoader from '../../utils/docklyLoader';
-
 interface FamilyMember {
     id: number;
     name: string;
@@ -13,13 +12,29 @@ interface FamilyMember {
     status?: 'pending' | 'accepted';
 }
 
+
 const FamilyHubPage: React.FC = () => {
     const { loading, setLoading } = useGlobalLoading();
     const [profileVisible, setProfileVisible] = useState(false);
     const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
+    console.log("🚀 ~ familyMembers:", familyMembers)
     const [view, setView] = useState<"Day" | "Week" | "Month" | "Year">("Month")
     const handleViewChange = (newView: "Day" | "Week" | "Month" | "Year") => {
         setView(newView);
+    };
+    const [username, setUsername] = useState<string>("");
+    useEffect(() => {
+        const username = localStorage.getItem("username") || "";
+        setUsername(username);
+    }, []);
+    const router = useRouter();
+    const handleClick = (id: number) => {
+        const member = familyMembers.find((m) => m.id === id);
+        if (member?.type === 'family') {
+            router.push(`/${username}/family-hub/profile/${id}`);
+        } else {
+            console.log("Click blocked: This is a pet, not a family member.");
+        }
     };
 
     return (
@@ -47,7 +62,7 @@ const FamilyHubPage: React.FC = () => {
                     }}
                 >
                     <BoardTitle />
-                    <FamilyMembers profileVisible={profileVisible} setProfileVisible={setProfileVisible} setFamilyMembers={setFamilyMembers} familyMembers={familyMembers} />
+                    <FamilyMembers profileVisible={profileVisible} setProfileVisible={setProfileVisible} setFamilyMembers={setFamilyMembers} familyMembers={familyMembers} onProfileClick={handleClick} />
                     <div
                         style={{
                             display: 'grid',
@@ -78,14 +93,15 @@ const FamilyHubPage: React.FC = () => {
 
                     <div
                         style={{
-                            display: 'grid',
-                            gridTemplateColumns: '1fr 1fr',
+                            width: '100%',
+                            height: '100%',
                             gap: '24px',
                             marginBottom: '24px',
                         }}
                     >
-                        <GuardiansEmergencyInfo />
-                        <ImportantContacts />
+                        <GuardianSection />
+                        {/* <GuardiansEmergencyInfo />
+                        <ImportantContacts /> */}
                     </div>
                 </div>
             )}
@@ -95,1206 +111,1206 @@ const FamilyHubPage: React.FC = () => {
 
 export default FamilyHubPage;
 
-import { DeleteOutlined, EditOutlined, ExportOutlined, EyeInvisibleOutlined, EyeOutlined, PhoneOutlined, PlusOutlined, SafetyOutlined } from '@ant-design/icons';
-import { Input as AntInput, Avatar, Button, Col, Form, Input, message, Modal, Popconfirm, Row, Select, Space } from 'antd';
+// import { DeleteOutlined, EditOutlined, ExportOutlined, EyeInvisibleOutlined, EyeOutlined, PhoneOutlined, PlusOutlined, SafetyOutlined } from '@ant-design/icons';
+// import { Input as AntInput, Avatar, Button, Col, Form, Input, message, Modal, Popconfirm, Row, Select, Space } from 'antd';
 
 import { addContacts, addGuardians, addNote, addProject, addTask, getAllNotes, getGuardians, getPets, getProjects, getTasks, getUserContacts, updateNote, updateTask } from '../../services/family'; // Adjust import based on your setup
 
-const { TextArea } = AntInput;
-
-// Define GuardianItem and GuardianSection types for Guardians
-interface GuardianItem {
-    name: string;
-    relationship: string;
-    phone: string;
-    details?: string;
-}
-
-interface GuardianSection {
-    title: string;
-    type: string;
-    items: GuardianItem[];
-}
-
-// Define ContactItem and ContactSection types for Guardians
-interface ContactItem {
-    icon: string;
-    name: string;
-    role: string;
-    phone: string;
-    bgColor: string;
-    textColor: string;
-    details?: string;
-}
-
-interface ContactSection {
-    title: string;
-    type: string;
-    items: ContactItem[];
-}// page.tsx (Update GuardiansEmergencyInfo)
-
-const GuardiansEmergencyInfo: React.FC = () => {
-    const [guardianInfo, setGuardianInfo] = useState<GuardianSection[]>([]);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [modalType, setModalType] = useState<'guardian' | 'section-edit' | 'new-section'>('guardian');
-    const [currentSectionIndex, setCurrentSectionIndex] = useState<number | null>(null);
-    const [currentItemIndex, setCurrentItemIndex] = useState<number | null>(null);
-    const [form] = Form.useForm();
-    const [sectionItems, setSectionItems] = useState<GuardianItem[]>([]);
-    const { loading, setLoading } = useGlobalLoading();
-    const [error, setError] = useState<string | null>(null);
-    const [expandedSections, setExpandedSections] = useState<{ [key: number]: boolean }>({});
-
-    const guardianRelations = [
-        'Grandmother', 'Grandfather', 'Uncle', 'Aunt', 'Family Friend',
-        'Sibling', 'Cousin', 'Neighbor', 'Other Family Member', 'Policy ',
-        'Family Doctor', 'Insurance ', 'Specialist', 'health', 'provider',
-    ];
-
-    const getGuardian = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const response = await getGuardians({});
-            const { status, payload } = response;
-            if (status) {
-                const groupedByType: Record<string, GuardianItem[]> = {
-                    guardian: [],
-                    insurance: [],
-                    medical: [],
-                };
-
-                payload.emergencyInfo.forEach((info: GuardianItem) => {
-                    const relLower = info.relationship.toLowerCase();
-                    if (relLower.includes('policy') || relLower.includes('insurance') || relLower.includes('provider')) {
-                        groupedByType['insurance'].push(info);
-                    } else if (relLower.includes('doctor') || relLower.includes('health') || relLower.includes('pediatrician') || relLower.includes('specialist')) {
-                        groupedByType['medical'].push(info);
-                    } else {
-                        groupedByType['guardian'].push(info);
-                    }
-                });
-
-                const formattedSections: GuardianSection[] = [
-                    { title: 'Emergency Guardians', type: 'guardian', items: groupedByType['guardian'] },
-                    { title: 'Life Insurance', type: 'insurance', items: groupedByType['insurance'] },
-                    { title: 'Medical Information', type: 'medical', items: groupedByType['medical'] },
-                ];
-
-                setGuardianInfo(formattedSections);
-            } else {
-                setError('Failed to fetch guardian info');
-                message.error('Failed to fetch guardian info');
-            }
-        } catch (err) {
-            setError('Error fetching guardian info');
-            message.error('Error fetching guardian info');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        getGuardian();
-    }, []);
-
-    const showModal = (
-        type: 'guardian' | 'section-edit' | 'new-section',
-        sectionIndex: number | null = null,
-        itemIndex: number | null = null
-    ) => {
-        setModalType(type);
-        setCurrentSectionIndex(sectionIndex);
-        setCurrentItemIndex(itemIndex);
-
-        if (type === 'section-edit' && sectionIndex !== null) {
-            setSectionItems(guardianInfo[sectionIndex].items);
-        } else if (type === 'guardian' && sectionIndex !== null && itemIndex !== null) {
-            form.setFieldsValue(guardianInfo[sectionIndex].items[itemIndex]);
-        } else {
-            form.resetFields();
-        }
-        setIsModalOpen(true);
-    };
-
-    const handleOk = async () => {
-        try {
-            await form.validateFields();
-            const values = form.getFieldsValue();
-
-            if (modalType === 'new-section') {
-                const newSection: GuardianSection = {
-                    title: values.sectionName,
-                    type: 'other',
-                    items: [],
-                };
-                setGuardianInfo([...guardianInfo, newSection]);
-                message.success('New section created!');
-                setIsModalOpen(false);
-                form.resetFields();
-            } else if (modalType === 'guardian' && currentSectionIndex !== null) {
-                setLoading(true);
-                const payload = {
-                    name: values.name,
-                    relationship: values.relation,
-                    phone: values.phone,
-                    details: values.details || '',
-                    addedBy: localStorage.getItem('userId') || 'current_user',
-                };
-
-                const response = await addGuardians(payload);
-                if (response.status) {
-                    const updatedGuardianInfo = [...guardianInfo];
-                    const newItem: GuardianItem = {
-                        name: values.name,
-                        relationship: values.relation,
-                        phone: values.phone,
-                        details: values.details,
-                    };
-
-                    if (currentItemIndex !== null) {
-                        updatedGuardianInfo[currentSectionIndex].items[currentItemIndex] = newItem;
-                        message.success('Guardian info updated!');
-                    } else {
-                        updatedGuardianInfo[currentSectionIndex].items.push(newItem);
-                        message.success('Guardian info added!');
-                    }
-
-                    setGuardianInfo(updatedGuardianInfo);
-                    setIsModalOpen(false);
-                    form.resetFields();
-                } else {
-                    message.error('Failed to save guardian info');
-                }
-            }
-        } catch (error) {
-            console.error('Error in handleOk:', error);
-            message.error('Failed to save guardian info. Please try again.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleItemDelete = async (sectionIndex: number, itemIndex: number) => {
-        const updatedGuardianInfo = [...guardianInfo];
-        updatedGuardianInfo[sectionIndex].items.splice(itemIndex, 1);
-        setGuardianInfo(updatedGuardianInfo);
-        setSectionItems(updatedGuardianInfo[sectionIndex].items);
-        message.success('Item deleted successfully!');
-    };
-
-    const handleCancel = () => {
-        setIsModalOpen(false);
-        form.resetFields();
-    };
-
-    const toggleSectionExpand = (index: number) => {
-        setExpandedSections((prev) => ({
-            ...prev,
-            [index]: !prev[index],
-        }));
-    };
-
-    const renderFormFields = () => {
-        switch (modalType) {
-            case 'new-section':
-                return (
-                    <Form.Item
-                        name="sectionName"
-                        label="Section Name"
-                        rules={[{ required: true, message: 'Please enter section name!' }]}
-                    >
-                        <Input placeholder="Enter section name (e.g., 'Family Friends')" style={{ width: '100%' }} />
-                    </Form.Item>
-                );
-
-            case 'guardian':
-                return (
-                    <>
-                        <Row gutter={16}>
-                            <Col span={12}>
-                                <Form.Item
-                                    name="name"
-                                    label="Full Name"
-                                    rules={[{ required: true, message: 'Please input the name!' }]}
-                                >
-                                    <Input placeholder="Enter full name" />
-                                </Form.Item>
-                            </Col>
-                            <Col span={12}>
-                                <Form.Item
-                                    name="relation"
-                                    label="Relationship/Role"
-                                    rules={[{ required: true, message: 'Please select or input the relationship!' }]}
-                                >
-                                    <Select
-                                        placeholder="Select or type relationship"
-                                        showSearch
-                                        allowClear
-                                        options={guardianRelations.map((rel) => ({ label: rel, value: rel }))}
-                                    />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-                        <Form.Item
-                            name="phone"
-                            label="Phone Number"
-                            rules={[{ required: true, message: 'Please input the phone number!' }]}
-                        >
-                            <Input placeholder="Enter phone number" />
-                        </Form.Item>
-                        <Form.Item name="details" label="Additional Details">
-                            <Input.TextArea placeholder="Enter additional details" rows={3} />
-                        </Form.Item>
-                    </>
-                );
-
-            case 'section-edit':
-                return (
-                    <div style={{ maxHeight: '500px', overflowY: 'auto', padding: '16px' }}>
-                        {sectionItems.map((item, index) => (
-                            <div
-                                key={index}
-                                style={{
-                                    marginBottom: '16px',
-                                    padding: '16px',
-                                    backgroundColor: '#f8fafc',
-                                    borderRadius: '8px',
-                                    border: '1px solid #e2e8f0',
-                                    position: 'relative',
-                                }}
-                            >
-                                <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', gap: '8px' }}>
-                                    <Button
-                                        type="text"
-                                        size="small"
-                                        icon={<EditOutlined />}
-                                        onClick={() => {
-                                            setIsModalOpen(false);
-                                            setTimeout(() => {
-                                                showModal('guardian', currentSectionIndex, index);
-                                            }, 100);
-                                        }}
-                                        style={{ color: '#3b82f6' }}
-                                    />
-                                    <Popconfirm
-                                        title="Are you sure to delete this item?"
-                                        onConfirm={() => handleItemDelete(currentSectionIndex!, index)}
-                                        okText="Yes"
-                                        cancelText="No"
-                                    >
-                                        <Button type="text" size="small" icon={<DeleteOutlined />} style={{ color: '#dc2626' }} />
-                                    </Popconfirm>
-                                </div>
-                                <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px', paddingRight: '80px' }}>
-                                    {item.name}
-                                </div>
-                                <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: '4px' }}>
-                                    {item.relationship} • {item.phone}
-                                </div>
-                                {item.details && <div style={{ color: '#9ca3af', fontSize: '11px' }}>{item.details}</div>}
-                            </div>
-                        ))}
-                        <Button
-                            type="dashed"
-                            size="small"
-                            icon={<PlusOutlined />}
-                            onClick={() => showModal('guardian', currentSectionIndex, null)}
-                            style={{ width: '100%', marginTop: '16px', borderRadius: '6px' }}
-                        >
-                            Add
-                        </Button>
-                    </div>
-                );
-
-            default:
-                return null;
-        }
-    };
-
-    return (
-        <Card className="modern-card fade-in" style={{ height: '100%', padding: '24px' }}>
-            <div className="modern-card-header">
-                <h2 className="modern-card-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <SafetyOutlined style={{ color: '#dc2626' }} />
-                    Guardians & Emergency Info
-                </h2>
-            </div>
-
-            {loading ? (
-                <div>Loading...</div>
-            ) : error ? (
-                <div style={{ color: '#dc2626' }}>{error}</div>
-            ) : guardianInfo.length === 0 ? (
-                <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: '14px', padding: '20px 0' }}>
-                    No guardian info available.
-                </div>
-            ) : (
-                guardianInfo.map((section, sectionIndex) => {
-                    const isExpanded = expandedSections[sectionIndex];
-                    const itemsToShow = isExpanded ? section.items : section.items.slice(0, 2);
-                    const bgColor =
-                        section.type === 'guardian' ? '#fef2f2' : section.type === 'insurance' ? '#eff6ff' : '#fefce8';
-                    const borderColor =
-                        section.type === 'guardian' ? '#fecaca' : section.type === 'insurance' ? '#bfdbfe' : '#fde68a';
-                    const headerColor =
-                        section.type === 'guardian' ? '#dc2626' : section.type === 'insurance' ? '#2563eb' : '#ca8a04';
-
-                    return (
-                        <div key={sectionIndex} style={{ marginBottom: 32 }}>
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    marginBottom: 16,
-                                    padding: '12px 16px',
-                                    background: `linear-gradient(135deg, ${bgColor} 0%, ${bgColor} 100%)`,
-                                    borderRadius: '8px',
-                                    border: `1px solid ${borderColor}`,
-                                }}
-                            >
-                                <h4
-                                    style={{
-                                        margin: 0,
-                                        fontSize: '13px',
-                                        fontWeight: 700,
-                                        color: headerColor,
-                                        letterSpacing: '0.5px',
-                                        textTransform: 'uppercase',
-                                    }}
-                                >
-                                    {section.title}
-                                </h4>
-                                <Button
-                                    type="text"
-                                    size="small"
-                                    icon={<Plus size={16} />}
-                                    onClick={() => showModal('section-edit', sectionIndex, null)}
-                                    style={{ color: headerColor }}
-                                />
-                            </div>
-
-                            <List
-                                size="small"
-                                dataSource={itemsToShow}
-                                renderItem={(item) => (
-                                    <List.Item
-                                        style={{
-                                            padding: '12px 16px',
-                                            background: 'white',
-                                            borderRadius: '8px',
-                                            marginBottom: '8px',
-                                            border: '1px solid #f1f5f9',
-                                        }}
-                                        actions={[
-                                            <Button
-                                                type="text"
-                                                icon={<PhoneOutlined />}
-                                                size="small"
-                                                style={{ color: '#10b981', borderRadius: '6px' }}
-                                            />,
-                                        ]}
-                                    >
-                                        <List.Item.Meta
-                                            avatar={
-                                                <Avatar
-                                                    style={{
-                                                        background:
-                                                            section.type === 'insurance'
-                                                                ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
-                                                                : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                                                        fontWeight: 600,
-                                                    }}
-                                                >
-                                                    {item.name?.charAt(0) || 'G'}
-                                                </Avatar>
-                                            }
-                                            title={
-                                                <span style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>
-                                                    {item.name}
-                                                </span>
-                                            }
-                                            description={
-                                                <div style={{ fontSize: '12px' }}>
-                                                    <div style={{ color: '#64748b', fontWeight: 500 }}>
-                                                        {item.relationship} • {item.phone}
-                                                    </div>
-                                                    {item.details && (
-                                                        <div style={{ color: '#94a3b8', marginTop: 2 }}>{item.details}</div>
-                                                    )}
-                                                </div>
-                                            }
-                                        />
-                                    </List.Item>
-                                )}
-                            />
-                            {section.items.length > 2 && (
-                                <div style={{ textAlign: 'center', marginTop: '4px' }}>
-                                    <Button
-                                        type="link"
-                                        size="small"
-                                        icon={isExpanded ? <EyeInvisibleOutlined /> : <EyeOutlined />}
-                                        onClick={() => toggleSectionExpand(sectionIndex)}
-                                        style={{ color: headerColor, fontWeight: 500 }}
-                                    >
-                                        {isExpanded ? 'Show Less' : `View All (${section.items.length})`}
-                                    </Button>
-                                </div>
-                            )}
-                        </div>
-                    );
-                })
-            )}
-
-            <Modal
-                open={isModalOpen}
-                onOk={modalType !== 'section-edit' ? handleOk : () => setIsModalOpen(false)}
-                onCancel={handleCancel}
-                footer={null}
-                width={700}
-                closable={false}
-                style={{ borderRadius: 12, overflow: 'hidden', top: 20 }}
-                confirmLoading={loading}
-            >
-                {/* Modal Header */}
-                <div
-                    style={{
-                        background: 'linear-gradient(90deg, #3b82f6, #6366f1)',
-                        padding: '18px 24px',
-                        color: 'white',
-                        fontSize: '18px',
-                        fontWeight: 600,
-                    }}
-                >
-                    {modalType === 'new-section'
-                        ? 'Add New Guardian Section'
-                        : modalType === 'guardian'
-                            ? currentItemIndex !== null
-                                ? 'Edit Guardian Info'
-                                : 'Add New Guardian'
-                            : 'Manage Guardian Section'}
-                </div>
-
-                {/* Modal Body */}
-                <div style={{ backgroundColor: '#fff', padding: '24px' }}>
-                    <Form
-                        form={form}
-                        layout="vertical"
-                        style={{
-                            marginTop: '0px',
-                            paddingBottom: modalType === 'section-edit' ? 0 : 24,
-                        }}
-                    >
-                        {renderFormFields()}
-                    </Form>
-
-                    {/* Footer Buttons */}
-                    {modalType !== 'section-edit' && (
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 20 }}>
-                            <Button
-                                onClick={handleCancel}
-                                style={{ borderRadius: 8, padding: '6px 20px' }}
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                type="primary"
-                                onClick={handleOk}
-                                loading={loading}
-                                style={{
-                                    borderRadius: 8,
-                                    padding: '6px 20px',
-                                    background: 'linear-gradient(90deg, #3b82f6, #6366f1)',
-                                    border: 'none',
-                                    fontWeight: 500,
-                                }}
-                            >
-                                {currentItemIndex !== null
-                                    ? 'Update'
-                                    : modalType === 'new-section'
-                                        ? 'Create Section'
-                                        : 'Add'}
-                            </Button>
-                        </div>
-                    )}
-
-                    {modalType === 'section-edit' && (
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
-                            <Button
-                                type="primary"
-                                onClick={() => setIsModalOpen(false)}
-                                style={{
-                                    borderRadius: 8,
-                                    padding: '6px 20px',
-                                    background: 'linear-gradient(90deg, #3b82f6, #6366f1)',
-                                    border: 'none',
-                                    fontWeight: 500,
-                                }}
-                            >
-                                Close
-                            </Button>
-                        </div>
-                    )}
-                </div>
-            </Modal>
-
-        </Card>
-    );
-};
-
-
-
-
-
-// page.tsx (Update ImportantContacts)
-// Define ContactItem and ContactSection types
-interface ContactItem {
-    icon: string;
-    name: string;
-    role: string;
-    phone: string;
-    bgColor: string;
-    textColor: string;
-}
-
-interface ContactSection {
-    title: string;
-    type: string;
-    items: ContactItem[];
-}
-
-const ImportantContacts: React.FC = () => {
-    const [contacts, setContacts] = useState<ContactSection[]>([]);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [modalType, setModalType] = useState<'contact' | 'section-edit' | 'new-section'>('contact');
-    const [currentSectionIndex, setCurrentSectionIndex] = useState<number | null>(null);
-    const [currentItemIndex, setCurrentItemIndex] = useState<number | null>(null);
-    const [form] = Form.useForm();
-    const [sectionItems, setSectionItems] = useState<ContactItem[]>([]);
-    const { loading, setLoading } = useGlobalLoading();
-    const [error, setError] = useState<string | null>(null);
-
-    const contactRoles: { [key: string]: string[] } = {
-        important: ['Emergency Response', 'Hospital', 'Fire Department', 'Police', 'Emergency Care'],
-        school: ['Elementary School', 'Middle School', 'High School', 'Principal', 'Teacher'],
-        professional: ['Doctor', 'Dentist', 'Lawyer', 'Financial Advisor', 'Therapist', 'Pediatrician'],
-        activity: ['Coach', 'Instructor', 'Tutor', 'Activity Leader'],
-        other: ['Custom Role'],
-    };
-    const [showAllSections, setShowAllSections] = useState<{ [key: number]: boolean }>({});
-    const getContacts = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const response = await getUserContacts({});
-            const { status, payload } = response;
-            if (status) {
-                const groupedByType: Record<string, ContactItem[]> = {
-                    important: [], // Important Contacts
-                    school: [],
-                    professional: [],
-                    other: [],
-                };
-
-                payload.contacts.forEach((section: any) => {
-                    section.items.forEach((item: any) => {
-                        const roleLower = item.role.toLowerCase();
-                        if (contactRoles.important.some(r => roleLower.includes(r.toLowerCase()))) {
-                            groupedByType['important'].push({
-                                icon: '🚨',
-                                name: item.name,
-                                role: item.role,
-                                phone: item.phone,
-                                bgColor: '#fee2e2',
-                                textColor: '#dc2626',
-                            });
-                        } else if (contactRoles.school.some(r => roleLower.includes(r.toLowerCase()))) {
-                            groupedByType['school'].push({
-                                icon: '🏫',
-                                name: item.name,
-                                role: item.role,
-                                phone: item.phone,
-                                bgColor: '#dcfce7',
-                                textColor: '#16a34a',
-                            });
-                        } else if (contactRoles.professional.some(r => roleLower.includes(r.toLowerCase()))) {
-                            groupedByType['professional'].push({
-                                icon: '👨‍⚕',
-                                name: item.name,
-                                role: item.role,
-                                phone: item.phone,
-                                bgColor: '#f0f4f8',
-                                textColor: '#374151',
-                            });
-                        } else {
-                            groupedByType['other'].push({
-                                icon: '👤',
-                                name: item.name,
-                                role: item.role,
-                                phone: item.phone,
-                                bgColor: '#f0f4f8',
-                                textColor: '#374151',
-                            });
-                        }
-                    });
-                });
-
-                // Define all sections with potential empty arrays
-                const formattedSections: ContactSection[] = [
-                    { title: 'Important Contacts', type: 'important', items: groupedByType['important'] },
-                    { title: 'Schools', type: 'school', items: groupedByType['school'] },
-                    { title: 'Professional Services', type: 'professional', items: groupedByType['professional'] },
-                    { title: 'Other Contacts', type: 'other', items: groupedByType['other'] },
-                ];
-
-                setContacts(formattedSections);
-            } else {
-                setError('Failed to fetch contacts');
-                message.error('Failed to fetch contacts');
-            }
-        } catch (error) {
-            console.error('Failed to fetch contacts:', error);
-            setError('Error fetching contacts');
-            message.error('Error fetching contacts');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        getContacts();
-    }, []);
-
-    const showModal = (
-        type: 'contact' | 'section-edit' | 'new-section',
-        sectionIndex: number | null = null,
-        itemIndex: number | null = null
-    ) => {
-        setModalType(type);
-        setCurrentSectionIndex(sectionIndex);
-        setCurrentItemIndex(itemIndex);
-
-        if (type === 'section-edit' && sectionIndex !== null) {
-            setSectionItems(contacts[sectionIndex].items);
-        } else if (type === 'contact' && sectionIndex !== null && itemIndex !== null) {
-            form.setFieldsValue(contacts[sectionIndex].items[itemIndex]);
-        } else {
-            form.resetFields();
-            if (type === 'contact') {
-                form.setFieldsValue({
-                    bgColor: '#f0f4f8',
-                    textColor: '#374151',
-                    icon: '👤',
-                });
-            }
-        }
-        setIsModalOpen(true);
-    };
-
-    const handleOk = async () => {
-        try {
-            await form.validateFields();
-            const formValues = form.getFieldsValue();
-
-            if (modalType === 'contact' && currentSectionIndex !== null) {
-                setLoading(true);
-                const addedBy = localStorage.getItem('userId') || 'current_user';
-                const payload = {
-                    contacts: {
-                        name: formValues.name,
-                        role: formValues.role,
-                        phone: formValues.phone,
-                        addedBy,
-                    },
-                };
-
-                const response = await addContacts(payload);
-                if (response.status) {
-                    const updatedContacts = [...contacts];
-                    const newContact: ContactItem = {
-                        icon: formValues.icon,
-                        name: formValues.name,
-                        role: formValues.role,
-                        phone: formValues.phone,
-                        bgColor: formValues.bgColor,
-                        textColor: formValues.textColor,
-                    };
-
-                    if (currentItemIndex !== null) {
-                        updatedContacts[currentSectionIndex].items[currentItemIndex] = newContact;
-                    } else {
-                        updatedContacts[currentSectionIndex].items.push(newContact);
-                    }
-
-                    setContacts(updatedContacts);
-                    message.success('Contact added successfully!');
-                    setIsModalOpen(false);
-                    form.resetFields();
-                } else {
-                    message.error('Failed to save contact');
-                }
-            } else if (modalType === 'new-section') {
-                const newSection: ContactSection = {
-                    title: formValues.sectionName,
-                    type: 'other',
-                    items: [],
-                };
-                setContacts([...contacts, newSection]);
-                message.success('Section created successfully!');
-                setIsModalOpen(false);
-                form.resetFields();
-            }
-        } catch (error) {
-            console.error('Error in handleOk:', error);
-            message.error('Failed to save contact. Please try again.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleItemDelete = async (sectionIndex: number, itemIndex: number) => {
-        const updatedContacts = [...contacts];
-        updatedContacts[sectionIndex].items.splice(itemIndex, 1);
-        setContacts(updatedContacts);
-        setSectionItems(updatedContacts[sectionIndex].items);
-        message.success('Item deleted successfully!');
-    };
-
-    const handleCancel = () => {
-        setIsModalOpen(false);
-        form.resetFields();
-    };
-
-    const renderFormFields = () => {
-        switch (modalType) {
-            case 'new-section':
-                return (
-                    <Form.Item
-                        name="sectionName"
-                        label="Section Name"
-                        rules={[{ required: true, message: 'Please enter section name!' }]}
-                    >
-                        <Input
-                            placeholder="Enter section name (e.g., 'Tutors')"
-                            style={{ width: '100%' }}
-                        />
-                    </Form.Item>
-                );
-
-            case 'contact':
-                const currentSection = contacts[currentSectionIndex || 0];
-                const availableRoles = contactRoles[currentSection?.type] || contactRoles.other;
-
-                return (
-                    <>
-                        <Row gutter={16}>
-                            <Col span={8}>
-                                <Form.Item
-                                    name="icon"
-                                    label="Icon"
-                                    rules={[{ required: true, message: 'Please input an icon!' }]}
-                                >
-                                    <Input placeholder="Enter emoji (e.g., 🚨)" style={{ width: '100%' }} />
-                                </Form.Item>
-                            </Col>
-                            <Col span={16}>
-                                <Form.Item
-                                    name="name"
-                                    label="Name/Organization"
-                                    rules={[{ required: true, message: 'Please input the name!' }]}
-                                >
-                                    <Input placeholder="Enter name or organization" style={{ width: '100%' }} />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-
-                        <Row gutter={16}>
-                            <Col span={12}>
-                                <Form.Item
-                                    name="role"
-                                    label="Role/Position"
-                                    rules={[{ required: true, message: 'Please input the role!' }]}
-                                >
-                                    <Select
-                                        placeholder="Select or type role"
-                                        showSearch
-                                        allowClear
-                                        options={availableRoles.map((role: any) => ({ label: role, value: role }))}
-                                        style={{ width: '100%' }}
-                                    />
-                                </Form.Item>
-                            </Col>
-                            <Col span={12}>
-                                <Form.Item
-                                    name="phone"
-                                    label="Phone Number"
-                                    rules={[{ required: true, message: 'Please input the phone number!' }]}
-                                >
-                                    <Input placeholder="Enter phone number" style={{ width: '100%' }} />
-                                </Form.Item>
-                            </Col>
-                        </Row>
-                    </>
-                );
-
-            case 'section-edit':
-                return (
-                    <div
-                        style={{
-                            maxHeight: '500px',
-                            overflowY: 'auto',
-                            padding: '16px',
-                        }}
-                    >
-                        {sectionItems.map((item, index) => (
-                            <div
-                                key={index}
-                                style={{
-                                    marginBottom: '16px',
-                                    padding: '16px',
-                                    backgroundColor: '#f8fafc',
-                                    borderRadius: '8px',
-                                    border: '1px solid #e2e8f0',
-                                    position: 'relative',
-                                }}
-                            >
-                                <div
-                                    style={{
-                                        position: 'absolute',
-                                        top: '12px',
-                                        right: '12px',
-                                        display: 'flex',
-                                        gap: '8px',
-                                    }}
-                                >
-                                    <Button
-                                        type="text"
-                                        size="small"
-                                        icon={<EditOutlined />}
-                                        onClick={() => {
-                                            setIsModalOpen(false);
-                                            setTimeout(() => {
-                                                showModal('contact', currentSectionIndex, index);
-                                            }, 100);
-                                        }}
-                                        style={{ color: '#3b82f6' }}
-                                    />
-                                    <Popconfirm
-                                        title="Are you sure to delete this contact?"
-                                        onConfirm={() => handleItemDelete(currentSectionIndex!, index)}
-                                        okText="Yes"
-                                        cancelText="No"
-                                    >
-                                        <Button
-                                            type="text"
-                                            size="small"
-                                            icon={<DeleteOutlined />}
-                                            style={{ color: '#dc2626' }}
-                                        />
-                                    </Popconfirm>
-                                </div>
-
-                                <div
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '12px',
-                                        paddingRight: '80px',
-                                    }}
-                                >
-                                    <div
-                                        style={{
-                                            width: '32px',
-                                            height: '32px',
-                                            backgroundColor: item.bgColor,
-                                            borderRadius: '8px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            color: item.textColor,
-                                            fontSize: '16px',
-                                        }}
-                                    >
-                                        {item.icon}
-                                    </div>
-                                    <div>
-                                        <div style={{ fontWeight: 600, fontSize: '14px' }}>{item.name}</div>
-                                        <div style={{ color: '#6b7280', fontSize: '12px' }}>
-                                            {item.role} • {item.phone}
-                                        </div>
-                                    </div>
-                                </div>
-
-
-                            </div>
-                        ))}
-                        <Button
-                            type="dashed"
-                            size="small"
-                            icon={<PlusOutlined />}
-                            onClick={() => showModal('contact', currentSectionIndex, null)}
-                            style={{ width: '100%', marginTop: '16px', borderRadius: '6px' }}
-                        >
-                            Add
-                        </Button>
-
-                    </div>
-                );
-
-            default:
-                return null;
-        }
-    };
-
-    return (
-        <Card className="modern-card fade-in" style={{ height: '100%', padding: '24px' }}>
-            <div className="modern-card-header">
-                <h2
-                    className="modern-card-title"
-                    style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '20px', fontWeight: 700, color: '#111827' }}
-                >
-                    <PhoneOutlined style={{ color: '#10b981' }} />
-                    Important Contacts
-                </h2>
-            </div>
-
-
-            {loading ? (
-                <div>Loading...</div>
-            ) : error ? (
-                <div style={{ color: '#dc2626' }}>{error}</div>
-            ) : contacts.length === 0 ? (
-                <div
-                    style={{
-                        textAlign: 'center',
-                        color: '#9ca3af',
-                        fontSize: '14px',
-                        padding: '20px 0',
-                    }}
-                >
-                    No contacts available. Click 'Add' to get started.
-                </div>
-            ) : (
-                contacts.map((section, sectionIndex) => {
-                    type SectionType = 'important' | 'school' | 'professional' | 'other';
-                    const categoryColors: Record<SectionType, { bg: string; border: string; text: string }> = {
-                        important: { bg: '#fef2f2', border: '#fecaca', text: '#dc2626' },
-                        school: { bg: '#f0fdf4', border: '#bbf7d0', text: '#16a34a' },
-                        professional: { bg: '#eff6ff', border: '#bfdbfe', text: '#2563eb' },
-                        other: { bg: '#f8fafc', border: '#e2e8f0', text: '#64748b' },
-                    };
-                    const colors = categoryColors[(section.type as SectionType)] || categoryColors.other;
-
-                    return (
-                        <div key={sectionIndex} style={{ marginBottom: '28px' }}>
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    padding: '12px 16px',
-                                    background: colors.bg,
-                                    borderRadius: '8px',
-                                    border: `1px solid ${colors.border}`,
-                                    marginBottom: '12px',
-                                }}
-                            >
-                                <h4
-                                    style={{
-                                        margin: 0,
-                                        fontSize: '13px',
-                                        fontWeight: 700,
-                                        color: colors.text,
-                                        letterSpacing: '0.5px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '6px',
-                                    }}
-                                >
-                                    {section.items[0]?.icon || '👤'} {section.title.toUpperCase()}
-                                </h4>
-                                <Button
-                                    type="text"
-                                    size="small"
-                                    icon={<Plus size={16} />}
-                                    onClick={() => showModal('section-edit', sectionIndex, null)}
-                                    style={{ color: colors.text }}
-                                />
-                            </div>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                {section.items.length === 0 ? (
-                                    <div
-                                        style={{
-                                            textAlign: 'center',
-                                            padding: '32px 0',
-                                            color: '#9ca3af',
-                                            fontSize: '14px',
-                                        }}
-                                    >
-                                        <div>No data</div>
-                                    </div>
-                                ) : (
-                                    (showAllSections[sectionIndex] ? section.items : section.items.slice(0, 2)).map(
-                                        (contact, contactIndex) => (
-                                            <div
-                                                key={contactIndex}
-                                                style={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    border: '1px solid #f3f4f6',
-                                                    borderRadius: '12px',
-                                                    padding: '12px 16px',
-                                                    backgroundColor: '#fff',
-                                                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                                                }}
-                                            >
-                                                <div
-                                                    style={{
-                                                        width: '40px',
-                                                        height: '40px',
-                                                        backgroundColor: contact.bgColor || '#e5e7eb',
-                                                        borderRadius: '50%',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        color: contact.textColor || '#1f2937',
-                                                        fontWeight: 600,
-                                                        fontSize: '16px',
-                                                        marginRight: '16px',
-                                                        textTransform: 'capitalize',
-                                                    }}
-                                                >
-                                                    {contact.icon}
-                                                </div>
-                                                <div style={{ flex: 1 }}>
-                                                    <div style={{ fontWeight: 600, fontSize: '14px', color: '#1e293b' }}>
-                                                        {contact.name}
-                                                    </div>
-                                                    <div style={{ fontSize: '13px', color: '#64748b' }}>
-                                                        {contact.role} • {contact.phone}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )
-                                    )
-                                )}
-
-                                {section.items.length > 2 && (
-                                    <div style={{ textAlign: 'center', marginTop: '12px' }}>
-                                        <Button
-                                            type="link"
-                                            size="small"
-                                            icon={
-                                                showAllSections[sectionIndex] ? <EyeInvisibleOutlined /> : <EyeOutlined />
-                                            }
-                                            onClick={() =>
-                                                setShowAllSections((prev) => ({
-                                                    ...prev,
-                                                    [sectionIndex]: !prev[sectionIndex],
-                                                }))
-                                            }
-                                            style={{ color: '#6b7280', fontWeight: 500 }}
-                                        >
-                                            {showAllSections[sectionIndex]
-                                                ? 'Show Less'
-                                                : `View All (${section.items.length})`}
-                                        </Button>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    );
-                })
-            )}
-            <Modal
-                open={isModalOpen}
-                onOk={modalType !== 'section-edit' ? handleOk : () => setIsModalOpen(false)}
-                onCancel={handleCancel}
-                footer={null}
-                width={700}
-                closable={false}
-                style={{ top: 20, borderRadius: 12, overflow: 'hidden' }}
-                confirmLoading={loading}
-            >
-                {/* Gradient Header */}
-                <div
-                    style={{
-                        background: 'linear-gradient(90deg, #3b82f6, #6366f1)',
-                        padding: '18px 24px',
-                        color: 'white',
-                        fontSize: '18px',
-                        fontWeight: 600,
-                    }}
-                >
-                    {modalType === 'new-section'
-                        ? 'Add New Contact Section'
-                        : modalType === 'contact'
-                            ? currentItemIndex !== null
-                                ? 'Edit Contact Info'
-                                : 'Add New Contact'
-                            : 'Manage Contact Section'}
-                </div>
-
-                {/* Form Content */}
-                <div style={{ backgroundColor: '#fff', padding: '24px' }}>
-                    <Form form={form} layout="vertical" style={{ marginTop: 0 }}>
-                        {renderFormFields()}
-                    </Form>
-
-                    {/* Footer */}
-                    {modalType !== 'section-edit' && (
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24, gap: 12 }}>
-                            <Button onClick={handleCancel} style={{ borderRadius: 8, padding: '6px 20px' }}>
-                                Cancel
-                            </Button>
-                            <Button
-                                type="primary"
-                                onClick={handleOk}
-                                loading={loading}
-                                style={{
-                                    borderRadius: 8,
-                                    padding: '6px 20px',
-                                    background: 'linear-gradient(90deg, #3b82f6, #6366f1)',
-                                    border: 'none',
-                                    fontWeight: 500,
-                                }}
-                            >
-                                {currentItemIndex !== null
-                                    ? 'Update'
-                                    : modalType === 'new-section'
-                                        ? 'Create Section'
-                                        : 'Add'}
-                            </Button>
-                        </div>
-                    )}
-
-                    {modalType === 'section-edit' && (
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
-                            <Button
-                                type="primary"
-                                onClick={() => setIsModalOpen(false)}
-                                style={{
-                                    borderRadius: 8,
-                                    padding: '6px 20px',
-                                    background: 'linear-gradient(90deg, #3b82f6, #6366f1)',
-                                    border: 'none',
-                                    fontWeight: 500,
-                                }}
-                            >
-                                Close
-                            </Button>
-                        </div>
-                    )}
-                </div>
-            </Modal>
-
-        </Card>
-    );
-
-
-};
+// const { TextArea } = AntInput;
+
+// // Define GuardianItem and GuardianSection types for Guardians
+// interface GuardianItem {
+//     name: string;
+//     relationship: string;
+//     phone: string;
+//     details?: string;
+// }
+
+// interface GuardianSection {
+//     title: string;
+//     type: string;
+//     items: GuardianItem[];
+// }
+
+// // Define ContactItem and ContactSection types for Guardians
+// interface ContactItem {
+//     icon: string;
+//     name: string;
+//     role: string;
+//     phone: string;
+//     bgColor: string;
+//     textColor: string;
+//     details?: string;
+// }
+
+// interface ContactSection {
+//     title: string;
+//     type: string;
+//     items: ContactItem[];
+// }// page.tsx (Update GuardiansEmergencyInfo)
+
+// const GuardiansEmergencyInfo: React.FC = () => {
+//     const [guardianInfo, setGuardianInfo] = useState<GuardianSection[]>([]);
+//     const [isModalOpen, setIsModalOpen] = useState(false);
+//     const [modalType, setModalType] = useState<'guardian' | 'section-edit' | 'new-section'>('guardian');
+//     const [currentSectionIndex, setCurrentSectionIndex] = useState<number | null>(null);
+//     const [currentItemIndex, setCurrentItemIndex] = useState<number | null>(null);
+//     const [form] = Form.useForm();
+//     const [sectionItems, setSectionItems] = useState<GuardianItem[]>([]);
+//     const { loading, setLoading } = useGlobalLoading();
+//     const [error, setError] = useState<string | null>(null);
+//     const [expandedSections, setExpandedSections] = useState<{ [key: number]: boolean }>({});
+
+//     const guardianRelations = [
+//         'Grandmother', 'Grandfather', 'Uncle', 'Aunt', 'Family Friend',
+//         'Sibling', 'Cousin', 'Neighbor', 'Other Family Member', 'Policy ',
+//         'Family Doctor', 'Insurance ', 'Specialist', 'health', 'provider',
+//     ];
+
+//     const getGuardian = async () => {
+//         setLoading(true);
+//         setError(null);
+//         try {
+//             const response = await getGuardians({});
+//             const { status, payload } = response;
+//             if (status) {
+//                 const groupedByType: Record<string, GuardianItem[]> = {
+//                     guardian: [],
+//                     insurance: [],
+//                     medical: [],
+//                 };
+
+//                 payload.emergencyInfo.forEach((info: GuardianItem) => {
+//                     const relLower = info.relationship.toLowerCase();
+//                     if (relLower.includes('policy') || relLower.includes('insurance') || relLower.includes('provider')) {
+//                         groupedByType['insurance'].push(info);
+//                     } else if (relLower.includes('doctor') || relLower.includes('health') || relLower.includes('pediatrician') || relLower.includes('specialist')) {
+//                         groupedByType['medical'].push(info);
+//                     } else {
+//                         groupedByType['guardian'].push(info);
+//                     }
+//                 });
+
+//                 const formattedSections: GuardianSection[] = [
+//                     { title: 'Emergency Guardians', type: 'guardian', items: groupedByType['guardian'] },
+//                     { title: 'Life Insurance', type: 'insurance', items: groupedByType['insurance'] },
+//                     { title: 'Medical Information', type: 'medical', items: groupedByType['medical'] },
+//                 ];
+
+//                 setGuardianInfo(formattedSections);
+//             } else {
+//                 setError('Failed to fetch guardian info');
+//                 message.error('Failed to fetch guardian info');
+//             }
+//         } catch (err) {
+//             setError('Error fetching guardian info');
+//             message.error('Error fetching guardian info');
+//         } finally {
+//             setLoading(false);
+//         }
+//     };
+
+//     useEffect(() => {
+//         getGuardian();
+//     }, []);
+
+//     const showModal = (
+//         type: 'guardian' | 'section-edit' | 'new-section',
+//         sectionIndex: number | null = null,
+//         itemIndex: number | null = null
+//     ) => {
+//         setModalType(type);
+//         setCurrentSectionIndex(sectionIndex);
+//         setCurrentItemIndex(itemIndex);
+
+//         if (type === 'section-edit' && sectionIndex !== null) {
+//             setSectionItems(guardianInfo[sectionIndex].items);
+//         } else if (type === 'guardian' && sectionIndex !== null && itemIndex !== null) {
+//             form.setFieldsValue(guardianInfo[sectionIndex].items[itemIndex]);
+//         } else {
+//             form.resetFields();
+//         }
+//         setIsModalOpen(true);
+//     };
+
+//     const handleOk = async () => {
+//         try {
+//             await form.validateFields();
+//             const values = form.getFieldsValue();
+
+//             if (modalType === 'new-section') {
+//                 const newSection: GuardianSection = {
+//                     title: values.sectionName,
+//                     type: 'other',
+//                     items: [],
+//                 };
+//                 setGuardianInfo([...guardianInfo, newSection]);
+//                 message.success('New section created!');
+//                 setIsModalOpen(false);
+//                 form.resetFields();
+//             } else if (modalType === 'guardian' && currentSectionIndex !== null) {
+//                 setLoading(true);
+//                 const payload = {
+//                     name: values.name,
+//                     relationship: values.relation,
+//                     phone: values.phone,
+//                     details: values.details || '',
+//                     addedBy: localStorage.getItem('userId') || 'current_user',
+//                 };
+
+//                 const response = await addGuardians(payload);
+//                 if (response.status) {
+//                     const updatedGuardianInfo = [...guardianInfo];
+//                     const newItem: GuardianItem = {
+//                         name: values.name,
+//                         relationship: values.relation,
+//                         phone: values.phone,
+//                         details: values.details,
+//                     };
+
+//                     if (currentItemIndex !== null) {
+//                         updatedGuardianInfo[currentSectionIndex].items[currentItemIndex] = newItem;
+//                         message.success('Guardian info updated!');
+//                     } else {
+//                         updatedGuardianInfo[currentSectionIndex].items.push(newItem);
+//                         message.success('Guardian info added!');
+//                     }
+
+//                     setGuardianInfo(updatedGuardianInfo);
+//                     setIsModalOpen(false);
+//                     form.resetFields();
+//                 } else {
+//                     message.error('Failed to save guardian info');
+//                 }
+//             }
+//         } catch (error) {
+//             console.error('Error in handleOk:', error);
+//             message.error('Failed to save guardian info. Please try again.');
+//         } finally {
+//             setLoading(false);
+//         }
+//     };
+
+//     const handleItemDelete = async (sectionIndex: number, itemIndex: number) => {
+//         const updatedGuardianInfo = [...guardianInfo];
+//         updatedGuardianInfo[sectionIndex].items.splice(itemIndex, 1);
+//         setGuardianInfo(updatedGuardianInfo);
+//         setSectionItems(updatedGuardianInfo[sectionIndex].items);
+//         message.success('Item deleted successfully!');
+//     };
+
+//     const handleCancel = () => {
+//         setIsModalOpen(false);
+//         form.resetFields();
+//     };
+
+//     const toggleSectionExpand = (index: number) => {
+//         setExpandedSections((prev) => ({
+//             ...prev,
+//             [index]: !prev[index],
+//         }));
+//     };
+
+//     const renderFormFields = () => {
+//         switch (modalType) {
+//             case 'new-section':
+//                 return (
+//                     <Form.Item
+//                         name="sectionName"
+//                         label="Section Name"
+//                         rules={[{ required: true, message: 'Please enter section name!' }]}
+//                     >
+//                         <Input placeholder="Enter section name (e.g., 'Family Friends')" style={{ width: '100%' }} />
+//                     </Form.Item>
+//                 );
+
+//             case 'guardian':
+//                 return (
+//                     <>
+//                         <Row gutter={16}>
+//                             <Col span={12}>
+//                                 <Form.Item
+//                                     name="name"
+//                                     label="Full Name"
+//                                     rules={[{ required: true, message: 'Please input the name!' }]}
+//                                 >
+//                                     <Input placeholder="Enter full name" />
+//                                 </Form.Item>
+//                             </Col>
+//                             <Col span={12}>
+//                                 <Form.Item
+//                                     name="relation"
+//                                     label="Relationship/Role"
+//                                     rules={[{ required: true, message: 'Please select or input the relationship!' }]}
+//                                 >
+//                                     <Select
+//                                         placeholder="Select or type relationship"
+//                                         showSearch
+//                                         allowClear
+//                                         options={guardianRelations.map((rel) => ({ label: rel, value: rel }))}
+//                                     />
+//                                 </Form.Item>
+//                             </Col>
+//                         </Row>
+//                         <Form.Item
+//                             name="phone"
+//                             label="Phone Number"
+//                             rules={[{ required: true, message: 'Please input the phone number!' }]}
+//                         >
+//                             <Input placeholder="Enter phone number" />
+//                         </Form.Item>
+//                         <Form.Item name="details" label="Additional Details">
+//                             <Input.TextArea placeholder="Enter additional details" rows={3} />
+//                         </Form.Item>
+//                     </>
+//                 );
+
+//             case 'section-edit':
+//                 return (
+//                     <div style={{ maxHeight: '500px', overflowY: 'auto', padding: '16px' }}>
+//                         {sectionItems.map((item, index) => (
+//                             <div
+//                                 key={index}
+//                                 style={{
+//                                     marginBottom: '16px',
+//                                     padding: '16px',
+//                                     backgroundColor: '#f8fafc',
+//                                     borderRadius: '8px',
+//                                     border: '1px solid #e2e8f0',
+//                                     position: 'relative',
+//                                 }}
+//                             >
+//                                 <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', gap: '8px' }}>
+//                                     <Button
+//                                         type="text"
+//                                         size="small"
+//                                         icon={<EditOutlined />}
+//                                         onClick={() => {
+//                                             setIsModalOpen(false);
+//                                             setTimeout(() => {
+//                                                 showModal('guardian', currentSectionIndex, index);
+//                                             }, 100);
+//                                         }}
+//                                         style={{ color: '#3b82f6' }}
+//                                     />
+//                                     <Popconfirm
+//                                         title="Are you sure to delete this item?"
+//                                         onConfirm={() => handleItemDelete(currentSectionIndex!, index)}
+//                                         okText="Yes"
+//                                         cancelText="No"
+//                                     >
+//                                         <Button type="text" size="small" icon={<DeleteOutlined />} style={{ color: '#dc2626' }} />
+//                                     </Popconfirm>
+//                                 </div>
+//                                 <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px', paddingRight: '80px' }}>
+//                                     {item.name}
+//                                 </div>
+//                                 <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: '4px' }}>
+//                                     {item.relationship} • {item.phone}
+//                                 </div>
+//                                 {item.details && <div style={{ color: '#9ca3af', fontSize: '11px' }}>{item.details}</div>}
+//                             </div>
+//                         ))}
+//                         <Button
+//                             type="dashed"
+//                             size="small"
+//                             icon={<PlusOutlined />}
+//                             onClick={() => showModal('guardian', currentSectionIndex, null)}
+//                             style={{ width: '100%', marginTop: '16px', borderRadius: '6px' }}
+//                         >
+//                             Add
+//                         </Button>
+//                     </div>
+//                 );
+
+//             default:
+//                 return null;
+//         }
+//     };
+
+//     return (
+//         <Card className="modern-card fade-in" style={{ height: '100%', padding: '24px' }}>
+//             <div className="modern-card-header">
+//                 <h2 className="modern-card-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+//                     <SafetyOutlined style={{ color: '#dc2626' }} />
+//                     Guardians & Emergency Info
+//                 </h2>
+//             </div>
+
+//             {loading ? (
+//                 <div>Loading...</div>
+//             ) : error ? (
+//                 <div style={{ color: '#dc2626' }}>{error}</div>
+//             ) : guardianInfo.length === 0 ? (
+//                 <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: '14px', padding: '20px 0' }}>
+//                     No guardian info available.
+//                 </div>
+//             ) : (
+//                 guardianInfo.map((section, sectionIndex) => {
+//                     const isExpanded = expandedSections[sectionIndex];
+//                     const itemsToShow = isExpanded ? section.items : section.items.slice(0, 2);
+//                     const bgColor =
+//                         section.type === 'guardian' ? '#fef2f2' : section.type === 'insurance' ? '#eff6ff' : '#fefce8';
+//                     const borderColor =
+//                         section.type === 'guardian' ? '#fecaca' : section.type === 'insurance' ? '#bfdbfe' : '#fde68a';
+//                     const headerColor =
+//                         section.type === 'guardian' ? '#dc2626' : section.type === 'insurance' ? '#2563eb' : '#ca8a04';
+
+//                     return (
+//                         <div key={sectionIndex} style={{ marginBottom: 32 }}>
+//                             <div
+//                                 style={{
+//                                     display: 'flex',
+//                                     justifyContent: 'space-between',
+//                                     alignItems: 'center',
+//                                     marginBottom: 16,
+//                                     padding: '12px 16px',
+//                                     background: `linear-gradient(135deg, ${bgColor} 0%, ${bgColor} 100%)`,
+//                                     borderRadius: '8px',
+//                                     border: `1px solid ${borderColor}`,
+//                                 }}
+//                             >
+//                                 <h4
+//                                     style={{
+//                                         margin: 0,
+//                                         fontSize: '13px',
+//                                         fontWeight: 700,
+//                                         color: headerColor,
+//                                         letterSpacing: '0.5px',
+//                                         textTransform: 'uppercase',
+//                                     }}
+//                                 >
+//                                     {section.title}
+//                                 </h4>
+//                                 <Button
+//                                     type="text"
+//                                     size="small"
+//                                     icon={<Plus size={16} />}
+//                                     onClick={() => showModal('section-edit', sectionIndex, null)}
+//                                     style={{ color: headerColor }}
+//                                 />
+//                             </div>
+
+//                             <List
+//                                 size="small"
+//                                 dataSource={itemsToShow}
+//                                 renderItem={(item) => (
+//                                     <List.Item
+//                                         style={{
+//                                             padding: '12px 16px',
+//                                             background: 'white',
+//                                             borderRadius: '8px',
+//                                             marginBottom: '8px',
+//                                             border: '1px solid #f1f5f9',
+//                                         }}
+//                                         actions={[
+//                                             <Button
+//                                                 type="text"
+//                                                 icon={<PhoneOutlined />}
+//                                                 size="small"
+//                                                 style={{ color: '#10b981', borderRadius: '6px' }}
+//                                             />,
+//                                         ]}
+//                                     >
+//                                         <List.Item.Meta
+//                                             avatar={
+//                                                 <Avatar
+//                                                     style={{
+//                                                         background:
+//                                                             section.type === 'insurance'
+//                                                                 ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
+//                                                                 : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+//                                                         fontWeight: 600,
+//                                                     }}
+//                                                 >
+//                                                     {item.name?.charAt(0) || 'G'}
+//                                                 </Avatar>
+//                                             }
+//                                             title={
+//                                                 <span style={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>
+//                                                     {item.name}
+//                                                 </span>
+//                                             }
+//                                             description={
+//                                                 <div style={{ fontSize: '12px' }}>
+//                                                     <div style={{ color: '#64748b', fontWeight: 500 }}>
+//                                                         {item.relationship} • {item.phone}
+//                                                     </div>
+//                                                     {item.details && (
+//                                                         <div style={{ color: '#94a3b8', marginTop: 2 }}>{item.details}</div>
+//                                                     )}
+//                                                 </div>
+//                                             }
+//                                         />
+//                                     </List.Item>
+//                                 )}
+//                             />
+//                             {section.items.length > 2 && (
+//                                 <div style={{ textAlign: 'center', marginTop: '4px' }}>
+//                                     <Button
+//                                         type="link"
+//                                         size="small"
+//                                         icon={isExpanded ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+//                                         onClick={() => toggleSectionExpand(sectionIndex)}
+//                                         style={{ color: headerColor, fontWeight: 500 }}
+//                                     >
+//                                         {isExpanded ? 'Show Less' : `View All (${section.items.length})`}
+//                                     </Button>
+//                                 </div>
+//                             )}
+//                         </div>
+//                     );
+//                 })
+//             )}
+
+//             <Modal
+//                 open={isModalOpen}
+//                 onOk={modalType !== 'section-edit' ? handleOk : () => setIsModalOpen(false)}
+//                 onCancel={handleCancel}
+//                 footer={null}
+//                 width={700}
+//                 closable={false}
+//                 style={{ borderRadius: 12, overflow: 'hidden', top: 20 }}
+//                 confirmLoading={loading}
+//             >
+//                 {/* Modal Header */}
+//                 <div
+//                     style={{
+//                         background: 'linear-gradient(90deg, #3b82f6, #6366f1)',
+//                         padding: '18px 24px',
+//                         color: 'white',
+//                         fontSize: '18px',
+//                         fontWeight: 600,
+//                     }}
+//                 >
+//                     {modalType === 'new-section'
+//                         ? 'Add New Guardian Section'
+//                         : modalType === 'guardian'
+//                             ? currentItemIndex !== null
+//                                 ? 'Edit Guardian Info'
+//                                 : 'Add New Guardian'
+//                             : 'Manage Guardian Section'}
+//                 </div>
+
+//                 {/* Modal Body */}
+//                 <div style={{ backgroundColor: '#fff', padding: '24px' }}>
+//                     <Form
+//                         form={form}
+//                         layout="vertical"
+//                         style={{
+//                             marginTop: '0px',
+//                             paddingBottom: modalType === 'section-edit' ? 0 : 24,
+//                         }}
+//                     >
+//                         {renderFormFields()}
+//                     </Form>
+
+//                     {/* Footer Buttons */}
+//                     {modalType !== 'section-edit' && (
+//                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 20 }}>
+//                             <Button
+//                                 onClick={handleCancel}
+//                                 style={{ borderRadius: 8, padding: '6px 20px' }}
+//                             >
+//                                 Cancel
+//                             </Button>
+//                             <Button
+//                                 type="primary"
+//                                 onClick={handleOk}
+//                                 loading={loading}
+//                                 style={{
+//                                     borderRadius: 8,
+//                                     padding: '6px 20px',
+//                                     background: 'linear-gradient(90deg, #3b82f6, #6366f1)',
+//                                     border: 'none',
+//                                     fontWeight: 500,
+//                                 }}
+//                             >
+//                                 {currentItemIndex !== null
+//                                     ? 'Update'
+//                                     : modalType === 'new-section'
+//                                         ? 'Create Section'
+//                                         : 'Add'}
+//                             </Button>
+//                         </div>
+//                     )}
+
+//                     {modalType === 'section-edit' && (
+//                         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
+//                             <Button
+//                                 type="primary"
+//                                 onClick={() => setIsModalOpen(false)}
+//                                 style={{
+//                                     borderRadius: 8,
+//                                     padding: '6px 20px',
+//                                     background: 'linear-gradient(90deg, #3b82f6, #6366f1)',
+//                                     border: 'none',
+//                                     fontWeight: 500,
+//                                 }}
+//                             >
+//                                 Close
+//                             </Button>
+//                         </div>
+//                     )}
+//                 </div>
+//             </Modal>
+
+//         </Card>
+//     );
+// };
+
+
+
+
+
+// // page.tsx (Update ImportantContacts)
+// // Define ContactItem and ContactSection types
+// interface ContactItem {
+//     icon: string;
+//     name: string;
+//     role: string;
+//     phone: string;
+//     bgColor: string;
+//     textColor: string;
+// }
+
+// interface ContactSection {
+//     title: string;
+//     type: string;
+//     items: ContactItem[];
+// }
+
+// const ImportantContacts: React.FC = () => {
+//     const [contacts, setContacts] = useState<ContactSection[]>([]);
+//     const [isModalOpen, setIsModalOpen] = useState(false);
+//     const [modalType, setModalType] = useState<'contact' | 'section-edit' | 'new-section'>('contact');
+//     const [currentSectionIndex, setCurrentSectionIndex] = useState<number | null>(null);
+//     const [currentItemIndex, setCurrentItemIndex] = useState<number | null>(null);
+//     const [form] = Form.useForm();
+//     const [sectionItems, setSectionItems] = useState<ContactItem[]>([]);
+//     const { loading, setLoading } = useGlobalLoading();
+//     const [error, setError] = useState<string | null>(null);
+
+//     const contactRoles: { [key: string]: string[] } = {
+//         important: ['Emergency Response', 'Hospital', 'Fire Department', 'Police', 'Emergency Care'],
+//         school: ['Elementary School', 'Middle School', 'High School', 'Principal', 'Teacher'],
+//         professional: ['Doctor', 'Dentist', 'Lawyer', 'Financial Advisor', 'Therapist', 'Pediatrician'],
+//         activity: ['Coach', 'Instructor', 'Tutor', 'Activity Leader'],
+//         other: ['Custom Role'],
+//     };
+//     const [showAllSections, setShowAllSections] = useState<{ [key: number]: boolean }>({});
+//     const getContacts = async () => {
+//         setLoading(true);
+//         setError(null);
+//         try {
+//             const response = await getUserContacts({});
+//             const { status, payload } = response;
+//             if (status) {
+//                 const groupedByType: Record<string, ContactItem[]> = {
+//                     important: [], // Important Contacts
+//                     school: [],
+//                     professional: [],
+//                     other: [],
+//                 };
+
+//                 payload.contacts.forEach((section: any) => {
+//                     section.items.forEach((item: any) => {
+//                         const roleLower = item.role.toLowerCase();
+//                         if (contactRoles.important.some(r => roleLower.includes(r.toLowerCase()))) {
+//                             groupedByType['important'].push({
+//                                 icon: '🚨',
+//                                 name: item.name,
+//                                 role: item.role,
+//                                 phone: item.phone,
+//                                 bgColor: '#fee2e2',
+//                                 textColor: '#dc2626',
+//                             });
+//                         } else if (contactRoles.school.some(r => roleLower.includes(r.toLowerCase()))) {
+//                             groupedByType['school'].push({
+//                                 icon: '🏫',
+//                                 name: item.name,
+//                                 role: item.role,
+//                                 phone: item.phone,
+//                                 bgColor: '#dcfce7',
+//                                 textColor: '#16a34a',
+//                             });
+//                         } else if (contactRoles.professional.some(r => roleLower.includes(r.toLowerCase()))) {
+//                             groupedByType['professional'].push({
+//                                 icon: '👨‍⚕',
+//                                 name: item.name,
+//                                 role: item.role,
+//                                 phone: item.phone,
+//                                 bgColor: '#f0f4f8',
+//                                 textColor: '#374151',
+//                             });
+//                         } else {
+//                             groupedByType['other'].push({
+//                                 icon: '👤',
+//                                 name: item.name,
+//                                 role: item.role,
+//                                 phone: item.phone,
+//                                 bgColor: '#f0f4f8',
+//                                 textColor: '#374151',
+//                             });
+//                         }
+//                     });
+//                 });
+
+//                 // Define all sections with potential empty arrays
+//                 const formattedSections: ContactSection[] = [
+//                     { title: 'Important Contacts', type: 'important', items: groupedByType['important'] },
+//                     { title: 'Schools', type: 'school', items: groupedByType['school'] },
+//                     { title: 'Professional Services', type: 'professional', items: groupedByType['professional'] },
+//                     { title: 'Other Contacts', type: 'other', items: groupedByType['other'] },
+//                 ];
+
+//                 setContacts(formattedSections);
+//             } else {
+//                 setError('Failed to fetch contacts');
+//                 message.error('Failed to fetch contacts');
+//             }
+//         } catch (error) {
+//             console.error('Failed to fetch contacts:', error);
+//             setError('Error fetching contacts');
+//             message.error('Error fetching contacts');
+//         } finally {
+//             setLoading(false);
+//         }
+//     };
+
+//     useEffect(() => {
+//         getContacts();
+//     }, []);
+
+//     const showModal = (
+//         type: 'contact' | 'section-edit' | 'new-section',
+//         sectionIndex: number | null = null,
+//         itemIndex: number | null = null
+//     ) => {
+//         setModalType(type);
+//         setCurrentSectionIndex(sectionIndex);
+//         setCurrentItemIndex(itemIndex);
+
+//         if (type === 'section-edit' && sectionIndex !== null) {
+//             setSectionItems(contacts[sectionIndex].items);
+//         } else if (type === 'contact' && sectionIndex !== null && itemIndex !== null) {
+//             form.setFieldsValue(contacts[sectionIndex].items[itemIndex]);
+//         } else {
+//             form.resetFields();
+//             if (type === 'contact') {
+//                 form.setFieldsValue({
+//                     bgColor: '#f0f4f8',
+//                     textColor: '#374151',
+//                     icon: '👤',
+//                 });
+//             }
+//         }
+//         setIsModalOpen(true);
+//     };
+
+//     const handleOk = async () => {
+//         try {
+//             await form.validateFields();
+//             const formValues = form.getFieldsValue();
+
+//             if (modalType === 'contact' && currentSectionIndex !== null) {
+//                 setLoading(true);
+//                 const addedBy = localStorage.getItem('userId') || 'current_user';
+//                 const payload = {
+//                     contacts: {
+//                         name: formValues.name,
+//                         role: formValues.role,
+//                         phone: formValues.phone,
+//                         addedBy,
+//                     },
+//                 };
+
+//                 const response = await addContacts(payload);
+//                 if (response.status) {
+//                     const updatedContacts = [...contacts];
+//                     const newContact: ContactItem = {
+//                         icon: formValues.icon,
+//                         name: formValues.name,
+//                         role: formValues.role,
+//                         phone: formValues.phone,
+//                         bgColor: formValues.bgColor,
+//                         textColor: formValues.textColor,
+//                     };
+
+//                     if (currentItemIndex !== null) {
+//                         updatedContacts[currentSectionIndex].items[currentItemIndex] = newContact;
+//                     } else {
+//                         updatedContacts[currentSectionIndex].items.push(newContact);
+//                     }
+
+//                     setContacts(updatedContacts);
+//                     message.success('Contact added successfully!');
+//                     setIsModalOpen(false);
+//                     form.resetFields();
+//                 } else {
+//                     message.error('Failed to save contact');
+//                 }
+//             } else if (modalType === 'new-section') {
+//                 const newSection: ContactSection = {
+//                     title: formValues.sectionName,
+//                     type: 'other',
+//                     items: [],
+//                 };
+//                 setContacts([...contacts, newSection]);
+//                 message.success('Section created successfully!');
+//                 setIsModalOpen(false);
+//                 form.resetFields();
+//             }
+//         } catch (error) {
+//             console.error('Error in handleOk:', error);
+//             message.error('Failed to save contact. Please try again.');
+//         } finally {
+//             setLoading(false);
+//         }
+//     };
+
+//     const handleItemDelete = async (sectionIndex: number, itemIndex: number) => {
+//         const updatedContacts = [...contacts];
+//         updatedContacts[sectionIndex].items.splice(itemIndex, 1);
+//         setContacts(updatedContacts);
+//         setSectionItems(updatedContacts[sectionIndex].items);
+//         message.success('Item deleted successfully!');
+//     };
+
+//     const handleCancel = () => {
+//         setIsModalOpen(false);
+//         form.resetFields();
+//     };
+
+//     const renderFormFields = () => {
+//         switch (modalType) {
+//             case 'new-section':
+//                 return (
+//                     <Form.Item
+//                         name="sectionName"
+//                         label="Section Name"
+//                         rules={[{ required: true, message: 'Please enter section name!' }]}
+//                     >
+//                         <Input
+//                             placeholder="Enter section name (e.g., 'Tutors')"
+//                             style={{ width: '100%' }}
+//                         />
+//                     </Form.Item>
+//                 );
+
+//             case 'contact':
+//                 const currentSection = contacts[currentSectionIndex || 0];
+//                 const availableRoles = contactRoles[currentSection?.type] || contactRoles.other;
+
+//                 return (
+//                     <>
+//                         <Row gutter={16}>
+//                             <Col span={8}>
+//                                 <Form.Item
+//                                     name="icon"
+//                                     label="Icon"
+//                                     rules={[{ required: true, message: 'Please input an icon!' }]}
+//                                 >
+//                                     <Input placeholder="Enter emoji (e.g., 🚨)" style={{ width: '100%' }} />
+//                                 </Form.Item>
+//                             </Col>
+//                             <Col span={16}>
+//                                 <Form.Item
+//                                     name="name"
+//                                     label="Name/Organization"
+//                                     rules={[{ required: true, message: 'Please input the name!' }]}
+//                                 >
+//                                     <Input placeholder="Enter name or organization" style={{ width: '100%' }} />
+//                                 </Form.Item>
+//                             </Col>
+//                         </Row>
+
+//                         <Row gutter={16}>
+//                             <Col span={12}>
+//                                 <Form.Item
+//                                     name="role"
+//                                     label="Role/Position"
+//                                     rules={[{ required: true, message: 'Please input the role!' }]}
+//                                 >
+//                                     <Select
+//                                         placeholder="Select or type role"
+//                                         showSearch
+//                                         allowClear
+//                                         options={availableRoles.map((role: any) => ({ label: role, value: role }))}
+//                                         style={{ width: '100%' }}
+//                                     />
+//                                 </Form.Item>
+//                             </Col>
+//                             <Col span={12}>
+//                                 <Form.Item
+//                                     name="phone"
+//                                     label="Phone Number"
+//                                     rules={[{ required: true, message: 'Please input the phone number!' }]}
+//                                 >
+//                                     <Input placeholder="Enter phone number" style={{ width: '100%' }} />
+//                                 </Form.Item>
+//                             </Col>
+//                         </Row>
+//                     </>
+//                 );
+
+//             case 'section-edit':
+//                 return (
+//                     <div
+//                         style={{
+//                             maxHeight: '500px',
+//                             overflowY: 'auto',
+//                             padding: '16px',
+//                         }}
+//                     >
+//                         {sectionItems.map((item, index) => (
+//                             <div
+//                                 key={index}
+//                                 style={{
+//                                     marginBottom: '16px',
+//                                     padding: '16px',
+//                                     backgroundColor: '#f8fafc',
+//                                     borderRadius: '8px',
+//                                     border: '1px solid #e2e8f0',
+//                                     position: 'relative',
+//                                 }}
+//                             >
+//                                 <div
+//                                     style={{
+//                                         position: 'absolute',
+//                                         top: '12px',
+//                                         right: '12px',
+//                                         display: 'flex',
+//                                         gap: '8px',
+//                                     }}
+//                                 >
+//                                     <Button
+//                                         type="text"
+//                                         size="small"
+//                                         icon={<EditOutlined />}
+//                                         onClick={() => {
+//                                             setIsModalOpen(false);
+//                                             setTimeout(() => {
+//                                                 showModal('contact', currentSectionIndex, index);
+//                                             }, 100);
+//                                         }}
+//                                         style={{ color: '#3b82f6' }}
+//                                     />
+//                                     <Popconfirm
+//                                         title="Are you sure to delete this contact?"
+//                                         onConfirm={() => handleItemDelete(currentSectionIndex!, index)}
+//                                         okText="Yes"
+//                                         cancelText="No"
+//                                     >
+//                                         <Button
+//                                             type="text"
+//                                             size="small"
+//                                             icon={<DeleteOutlined />}
+//                                             style={{ color: '#dc2626' }}
+//                                         />
+//                                     </Popconfirm>
+//                                 </div>
+
+//                                 <div
+//                                     style={{
+//                                         display: 'flex',
+//                                         alignItems: 'center',
+//                                         gap: '12px',
+//                                         paddingRight: '80px',
+//                                     }}
+//                                 >
+//                                     <div
+//                                         style={{
+//                                             width: '32px',
+//                                             height: '32px',
+//                                             backgroundColor: item.bgColor,
+//                                             borderRadius: '8px',
+//                                             display: 'flex',
+//                                             alignItems: 'center',
+//                                             justifyContent: 'center',
+//                                             color: item.textColor,
+//                                             fontSize: '16px',
+//                                         }}
+//                                     >
+//                                         {item.icon}
+//                                     </div>
+//                                     <div>
+//                                         <div style={{ fontWeight: 600, fontSize: '14px' }}>{item.name}</div>
+//                                         <div style={{ color: '#6b7280', fontSize: '12px' }}>
+//                                             {item.role} • {item.phone}
+//                                         </div>
+//                                     </div>
+//                                 </div>
+
+
+//                             </div>
+//                         ))}
+//                         <Button
+//                             type="dashed"
+//                             size="small"
+//                             icon={<PlusOutlined />}
+//                             onClick={() => showModal('contact', currentSectionIndex, null)}
+//                             style={{ width: '100%', marginTop: '16px', borderRadius: '6px' }}
+//                         >
+//                             Add
+//                         </Button>
+
+//                     </div>
+//                 );
+
+//             default:
+//                 return null;
+//         }
+//     };
+
+//     return (
+//         <Card className="modern-card fade-in" style={{ height: '100%', padding: '24px' }}>
+//             <div className="modern-card-header">
+//                 <h2
+//                     className="modern-card-title"
+//                     style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '20px', fontWeight: 700, color: '#111827' }}
+//                 >
+//                     <PhoneOutlined style={{ color: '#10b981' }} />
+//                     Important Contacts
+//                 </h2>
+//             </div>
+
+
+//             {loading ? (
+//                 <div>Loading...</div>
+//             ) : error ? (
+//                 <div style={{ color: '#dc2626' }}>{error}</div>
+//             ) : contacts.length === 0 ? (
+//                 <div
+//                     style={{
+//                         textAlign: 'center',
+//                         color: '#9ca3af',
+//                         fontSize: '14px',
+//                         padding: '20px 0',
+//                     }}
+//                 >
+//                     No contacts available. Click 'Add' to get started.
+//                 </div>
+//             ) : (
+//                 contacts.map((section, sectionIndex) => {
+//                     type SectionType = 'important' | 'school' | 'professional' | 'other';
+//                     const categoryColors: Record<SectionType, { bg: string; border: string; text: string }> = {
+//                         important: { bg: '#fef2f2', border: '#fecaca', text: '#dc2626' },
+//                         school: { bg: '#f0fdf4', border: '#bbf7d0', text: '#16a34a' },
+//                         professional: { bg: '#eff6ff', border: '#bfdbfe', text: '#2563eb' },
+//                         other: { bg: '#f8fafc', border: '#e2e8f0', text: '#64748b' },
+//                     };
+//                     const colors = categoryColors[(section.type as SectionType)] || categoryColors.other;
+
+//                     return (
+//                         <div key={sectionIndex} style={{ marginBottom: '28px' }}>
+//                             <div
+//                                 style={{
+//                                     display: 'flex',
+//                                     justifyContent: 'space-between',
+//                                     alignItems: 'center',
+//                                     padding: '12px 16px',
+//                                     background: colors.bg,
+//                                     borderRadius: '8px',
+//                                     border: `1px solid ${colors.border}`,
+//                                     marginBottom: '12px',
+//                                 }}
+//                             >
+//                                 <h4
+//                                     style={{
+//                                         margin: 0,
+//                                         fontSize: '13px',
+//                                         fontWeight: 700,
+//                                         color: colors.text,
+//                                         letterSpacing: '0.5px',
+//                                         display: 'flex',
+//                                         alignItems: 'center',
+//                                         gap: '6px',
+//                                     }}
+//                                 >
+//                                     {section.items[0]?.icon || '👤'} {section.title.toUpperCase()}
+//                                 </h4>
+//                                 <Button
+//                                     type="text"
+//                                     size="small"
+//                                     icon={<Plus size={16} />}
+//                                     onClick={() => showModal('section-edit', sectionIndex, null)}
+//                                     style={{ color: colors.text }}
+//                                 />
+//                             </div>
+
+//                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+//                                 {section.items.length === 0 ? (
+//                                     <div
+//                                         style={{
+//                                             textAlign: 'center',
+//                                             padding: '32px 0',
+//                                             color: '#9ca3af',
+//                                             fontSize: '14px',
+//                                         }}
+//                                     >
+//                                         <div>No data</div>
+//                                     </div>
+//                                 ) : (
+//                                     (showAllSections[sectionIndex] ? section.items : section.items.slice(0, 2)).map(
+//                                         (contact, contactIndex) => (
+//                                             <div
+//                                                 key={contactIndex}
+//                                                 style={{
+//                                                     display: 'flex',
+//                                                     alignItems: 'center',
+//                                                     border: '1px solid #f3f4f6',
+//                                                     borderRadius: '12px',
+//                                                     padding: '12px 16px',
+//                                                     backgroundColor: '#fff',
+//                                                     boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+//                                                 }}
+//                                             >
+//                                                 <div
+//                                                     style={{
+//                                                         width: '40px',
+//                                                         height: '40px',
+//                                                         backgroundColor: contact.bgColor || '#e5e7eb',
+//                                                         borderRadius: '50%',
+//                                                         display: 'flex',
+//                                                         alignItems: 'center',
+//                                                         justifyContent: 'center',
+//                                                         color: contact.textColor || '#1f2937',
+//                                                         fontWeight: 600,
+//                                                         fontSize: '16px',
+//                                                         marginRight: '16px',
+//                                                         textTransform: 'capitalize',
+//                                                     }}
+//                                                 >
+//                                                     {contact.icon}
+//                                                 </div>
+//                                                 <div style={{ flex: 1 }}>
+//                                                     <div style={{ fontWeight: 600, fontSize: '14px', color: '#1e293b' }}>
+//                                                         {contact.name}
+//                                                     </div>
+//                                                     <div style={{ fontSize: '13px', color: '#64748b' }}>
+//                                                         {contact.role} • {contact.phone}
+//                                                     </div>
+//                                                 </div>
+//                                             </div>
+//                                         )
+//                                     )
+//                                 )}
+
+//                                 {section.items.length > 2 && (
+//                                     <div style={{ textAlign: 'center', marginTop: '12px' }}>
+//                                         <Button
+//                                             type="link"
+//                                             size="small"
+//                                             icon={
+//                                                 showAllSections[sectionIndex] ? <EyeInvisibleOutlined /> : <EyeOutlined />
+//                                             }
+//                                             onClick={() =>
+//                                                 setShowAllSections((prev) => ({
+//                                                     ...prev,
+//                                                     [sectionIndex]: !prev[sectionIndex],
+//                                                 }))
+//                                             }
+//                                             style={{ color: '#6b7280', fontWeight: 500 }}
+//                                         >
+//                                             {showAllSections[sectionIndex]
+//                                                 ? 'Show Less'
+//                                                 : `View All (${section.items.length})`}
+//                                         </Button>
+//                                     </div>
+//                                 )}
+//                             </div>
+//                         </div>
+//                     );
+//                 })
+//             )}
+//             <Modal
+//                 open={isModalOpen}
+//                 onOk={modalType !== 'section-edit' ? handleOk : () => setIsModalOpen(false)}
+//                 onCancel={handleCancel}
+//                 footer={null}
+//                 width={700}
+//                 closable={false}
+//                 style={{ top: 20, borderRadius: 12, overflow: 'hidden' }}
+//                 confirmLoading={loading}
+//             >
+//                 {/* Gradient Header */}
+//                 <div
+//                     style={{
+//                         background: 'linear-gradient(90deg, #3b82f6, #6366f1)',
+//                         padding: '18px 24px',
+//                         color: 'white',
+//                         fontSize: '18px',
+//                         fontWeight: 600,
+//                     }}
+//                 >
+//                     {modalType === 'new-section'
+//                         ? 'Add New Contact Section'
+//                         : modalType === 'contact'
+//                             ? currentItemIndex !== null
+//                                 ? 'Edit Contact Info'
+//                                 : 'Add New Contact'
+//                             : 'Manage Contact Section'}
+//                 </div>
+
+//                 {/* Form Content */}
+//                 <div style={{ backgroundColor: '#fff', padding: '24px' }}>
+//                     <Form form={form} layout="vertical" style={{ marginTop: 0 }}>
+//                         {renderFormFields()}
+//                     </Form>
+
+//                     {/* Footer */}
+//                     {modalType !== 'section-edit' && (
+//                         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24, gap: 12 }}>
+//                             <Button onClick={handleCancel} style={{ borderRadius: 8, padding: '6px 20px' }}>
+//                                 Cancel
+//                             </Button>
+//                             <Button
+//                                 type="primary"
+//                                 onClick={handleOk}
+//                                 loading={loading}
+//                                 style={{
+//                                     borderRadius: 8,
+//                                     padding: '6px 20px',
+//                                     background: 'linear-gradient(90deg, #3b82f6, #6366f1)',
+//                                     border: 'none',
+//                                     fontWeight: 500,
+//                                 }}
+//                             >
+//                                 {currentItemIndex !== null
+//                                     ? 'Update'
+//                                     : modalType === 'new-section'
+//                                         ? 'Create Section'
+//                                         : 'Add'}
+//                             </Button>
+//                         </div>
+//                     )}
+
+//                     {modalType === 'section-edit' && (
+//                         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
+//                             <Button
+//                                 type="primary"
+//                                 onClick={() => setIsModalOpen(false)}
+//                                 style={{
+//                                     borderRadius: 8,
+//                                     padding: '6px 20px',
+//                                     background: 'linear-gradient(90deg, #3b82f6, #6366f1)',
+//                                     border: 'none',
+//                                     fontWeight: 500,
+//                                 }}
+//                             >
+//                                 Close
+//                             </Button>
+//                         </div>
+//                     )}
+//                 </div>
+//             </Modal>
+
+//         </Card>
+//     );
+
+
+// };
 
 
 
@@ -1471,8 +1487,8 @@ const FamilyTasks: React.FC<FamilyTasksProps> = ({ familyMembers }) => {
     );
 };
 
-import { CalendarOutlined, ClockCircleOutlined, EnvironmentOutlined } from '@ant-design/icons';
-import { Card, List, Tag, Divider } from 'antd';
+import { CalendarOutlined, ClockCircleOutlined, EnvironmentOutlined, PlusOutlined } from '@ant-design/icons';
+import { Card, List, Tag, Divider, message, Button, Space } from 'antd';
 import { getUpcomingActivities } from '../../services/family';
 
 interface Activity {
@@ -1619,6 +1635,8 @@ import FamilyHubMemberDetails from '../../pages/family-hub/components/profile';
 import FamilyTasksComponent from '../components/familyTasksProjects';
 import FamilyNotes from './components/familyNotesLists';
 import { useGlobalLoading } from '../../app/loadingContext';
+import { useRouter } from 'next/navigation';
+import GuardianSection from './components/guardians';
 // import { PRIMARY_COLOR } from '../../comman';
 
 const FamilyCalendar: React.FC = () => {

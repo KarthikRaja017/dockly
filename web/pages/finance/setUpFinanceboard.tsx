@@ -794,6 +794,7 @@ export default SetupFinanceBoard;
 const AccountSelection = (props: any) => {
   const { accounts, setCurrentStep, setSelectedAccounts, selectedAccounts } =
     props;
+  console.log("🚀 ~ AccountSelection ~ accounts:", accounts)
 
   // Toggle selection
   const handleCheckboxChange = (accountId: string, checked: boolean) => {
@@ -812,7 +813,7 @@ const AccountSelection = (props: any) => {
     if (selectedAccounts.length !== 0) {
       setCurrentStep(3);
     }
-    console.log("Selected Accounts: ", selected); // or send to backend, etc.
+    // console.log("Selected Accounts: ", selected); // or send to backend, etc.
   };
 
   return (
@@ -890,7 +891,7 @@ const AccountSelection = (props: any) => {
       </div>
 
       <Row justify="space-between" style={{ marginTop: 40, padding: "0 20px" }}>
-        <Button>Back</Button>
+        <Button onClick={() => setCurrentStep(1)}>Back</Button>
         <Button
           type="primary"
           style={{ backgroundColor: "#0050ff" }}
