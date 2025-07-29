@@ -68,3 +68,7 @@ family_api.add_resource(GetFamilyMemberUserId, "/get/fam-id")
 family_api.add_resource(AddAccountPassword, "/add/account-passwords")
 family_api.add_resource(GetAccountPasswords, "/get/account-passwords")
 family_api.add_resource(UpdateAccountPassword, "/update/account-passwords")
+
+family_api.add_resource(UploadDriveFile, "/add/family-drive-file")
+family_api.add_resource(GetFamilyDriveFiles, "/get/family-drive-files")
+family_api.add_resource(DeleteDriveFile, "/delete/family-drive-files")

@@ -390,3 +390,100 @@ def extract_datetime(text: str, now: datetime | None = None) -> datetime:
 #             print(f"Push failed: {e}")
 
 #     return {"status": "Notification sent"}
+
+import io
+import traceback
+from werkzeug.utils import secure_filename
+from googleapiclient.http import MediaIoBaseUpload
+
+
+def ensure_drive_folder_structure(service, root_name="DOCKLY", subfolders=None):
+    if subfolders is None:
+        subfolders = ["Home", "Family", "Finance", "Health"]
+
+    def find_or_create_folder(name, parent_id=None):
+        # Search for folder
+        query = f"name='{name}' and mimeType='application/vnd.google-apps.folder'"
+        if parent_id:
+            query += f" and '{parent_id}' in parents"
+        else:
+            query += " and 'root' in parents"
+
+        response = service.files().list(q=query, fields="files(id, name)").execute()
+        files = response.get("files", [])
+
+        if files:
+            return files[0]["id"]
+        else:
+            # Create folder
+            folder_metadata = {
+                "name": name,
+                "mimeType": "application/vnd.google-apps.folder",
+            }
+            if parent_id:
+                folder_metadata["parents"] = [parent_id]
+            folder = service.files().create(body=folder_metadata, fields="id").execute()
+            return folder["id"]
+
+    # Ensure root folder
+    root_folder_id = find_or_create_folder(root_name)
+
+    # Ensure subfolders
+    folder_ids = {}
+    for name in subfolders:
+        folder_ids[name] = find_or_create_folder(name, parent_id=root_folder_id)
+
+    return {
+        "root": root_folder_id,  # ✅ This is what you need
+        "subfolders": folder_ids,
+    }
+
+
+def upload_file_to_hub_folder(service, file, hub_name):
+    try:
+        if hub_name not in ["Home", "Family", "Finance", "Health"]:
+            return {
+                "status": 0,
+                "message": f"Invalid hub name: {hub_name}",
+                "payload": {},
+            }
+
+        # Ensure folders
+        folder_ids = ensure_drive_folder_structure(service)
+        parent_id = folder_ids.get(hub_name)
+
+        # Prepare file metadata
+        file_metadata = {
+            "name": secure_filename(file.filename),
+            "parents": [parent_id],
+        }
+
+        media = MediaIoBaseUpload(
+            io.BytesIO(file.read()),
+            mimetype=file.content_type or "application/octet-stream",
+            resumable=True,
+        )
+
+        uploaded_file = (
+            service.files()
+            .create(
+                body=file_metadata,
+                media_body=media,
+                fields="id, name, mimeType, size, modifiedTime, webViewLink",
+            )
+            .execute()
+        )
+
+        return {
+            "status": 1,
+            "message": f"File '{file.filename}' uploaded successfully to {hub_name}",
+            "payload": {"file": uploaded_file},
+        }
+
+    except Exception as e:
+        traceback.print_exc()
+        return {
+            "status": 0,
+            "message": f"Failed to upload file: {str(e)}",
+            "payload": {},
+        }

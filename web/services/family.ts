@@ -297,16 +297,19 @@ export async function addGuardians(params: GuardianData): Promise<any> {
   }
 }
 
-export async function getGuardians(
-  params: { userId?: string } = {}
-): Promise<any> {
-  try {
-    const response = await api.get('/get/guardian-emergency-info', { params });
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching guardians:', error);
-    throw error;
-  }
+export async function getGuardians(userId: string) {
+  const response = await api.get('/get/family-members', {
+    params: { uid: userId },
+  });
+
+  // Filter members whose relationship includes 'Guardian'
+  const guardians = response.data.payload.members.filter(
+    (member: any) =>
+      member.relationship.toLowerCase().includes('guardian') &&
+      member.status !== 'pending'
+  );
+
+  return guardians;
 }
 
 export async function addPets(params: PetData): Promise<any> {
@@ -628,6 +631,40 @@ export async function updateAccountPassword(payload: any): Promise<any> {
     return response.data;
   } catch (error) {
     console.error('Error updating account password:', error);
+    throw error;
+  }
+}
+
+export async function uploadFamilyDocument(formData: FormData): Promise<any> {
+  try {
+    const response = await api.post('/add/family-drive-file', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error uploading family document:', error);
+    throw error;
+  }
+}
+
+export async function getFamilyDocuments(): Promise<any> {
+  try {
+    const response = await api.get('/get/family-drive-files');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching family documents:', error);
+    throw error;
+  }
+}
+
+export async function deleteFamilyDocument(fileId: string): Promise<any> {
+  try {
+    const res = await api.delete(`/delete/family-drive-file?file_id=${fileId}`);
+    return res.data;
+  } catch (error) {
+    console.error('Error deleting file:', error);
     throw error;
   }
 }

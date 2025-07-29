@@ -1,5 +1,7 @@
 from flask import request
 from flask_restful import Resource
+from root.files.models import DriveBaseResource
+from root.utilis import ensure_drive_folder_structure
 from root.db.dbHelper import DBHelper
 from root.auth.auth import auth_required
 
@@ -161,3 +163,50 @@ class GetConnectedAccounts(Resource):
             "payload": {"connectedAccounts": connectedAccounts},
             "message": "accounts fetched successfully",
         }
+
+
+from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
+import io
+from werkzeug.utils import secure_filename
+
+
+class UploadDocklyRootFile(DriveBaseResource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        try:
+            if "file" not in request.files:
+                return {"status": 0, "message": "No file provided"}, 400
+
+            file = request.files["file"]
+            service = self.get_drive_service(uid)
+            if not service:
+                return {"status": 0, "message": "Drive not connected"}, 401
+
+            folder_data = ensure_drive_folder_structure(service)
+            dockly_root_id = folder_data["root"]
+
+            file_metadata = {
+                "name": secure_filename(file.filename),
+                "parents": [dockly_root_id],
+            }
+
+            media = MediaIoBaseUpload(
+                io.BytesIO(file.read()),
+                mimetype=file.content_type or "application/octet-stream",
+            )
+            uploaded = (
+                service.files()
+                .create(
+                    body=file_metadata, media_body=media, fields="id, name, webViewLink"
+                )
+                .execute()
+            )
+
+            return {
+                "status": 1,
+                "message": "Uploaded to DOCKLY root",
+                "payload": {"file": uploaded},
+            }, 200
+
+        except Exception as e:
+            return {"status": 0, "message": f"Upload failed: {str(e)}"}, 500

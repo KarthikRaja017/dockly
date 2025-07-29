@@ -191,12 +191,15 @@
 
 
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Calendar, Plus, FileText, Star, Upload, Zap } from 'lucide-react';
 import StickyNotes from '../notes/notescard';
+import { uploadDocklyRootFile } from '../../services/home';
+import { message } from 'antd';
 
 const QuickActions: React.FC = () => {
     const [isDragActive, setIsDragActive] = useState(true);
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [isStickyOpen, setIsStickyOpen] = useState(false); // Sticky Notes modal control
 
     const actions = [
@@ -230,6 +233,31 @@ const QuickActions: React.FC = () => {
         },
     ];
 
+    const handleClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (files && files.length > 0) {
+            const uploads = Array.from(files).map(async (file) => {
+                try {
+                    const res = await uploadDocklyRootFile(file);
+                    if (res.status === 1) {
+                        message.success(`Uploaded: ${file.name}`);
+                    } else {
+                        message.error(res.message || `Failed to upload: ${file.name}`);
+                    }
+                } catch (err) {
+                    console.error('Upload error:', err);
+                    message.error(`Error uploading: ${file.name}`);
+                }
+            });
+            await Promise.all(uploads);
+            e.target.value = ''; // reset input
+        }
+    };
+
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault();
         setIsDragActive(true);
@@ -239,12 +267,27 @@ const QuickActions: React.FC = () => {
         setIsDragActive(false);
     };
 
-    const handleDrop = (e: React.DragEvent) => {
+    const handleDrop = async (e: React.DragEvent) => {
         e.preventDefault();
         setIsDragActive(false);
+
         const files = e.dataTransfer.files;
         if (files.length > 0) {
-            console.log('Files dropped:', files);
+            const uploads = Array.from(files).map(async (file) => {
+                try {
+                    const res = await uploadDocklyRootFile(file);
+                    if (res.status === 1) {
+                        message.success(`Uploaded: ${file.name}`);
+                    } else {
+                        message.error(res.message || `Failed to upload: ${file.name}`);
+                    }
+                } catch (err) {
+                    console.error('Upload error:', err);
+                    message.error(`Error uploading: ${file.name}`);
+                }
+            });
+
+            await Promise.all(uploads);
         }
     };
 
@@ -325,9 +368,10 @@ const QuickActions: React.FC = () => {
 
             {/* Drag & Drop Zone */}
             <div
-                // onDragOver={handleDragOver}
-                // onDragLeave={handleDragLeave}
-                // onDrop={handleDrop}
+                onClick={handleClick}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
                 style={{
                     border: `2px dashed ${isDragActive ? '#3b82f6' : '#d1d5db'}`,
                     borderRadius: '16px',
@@ -372,7 +416,13 @@ const QuickActions: React.FC = () => {
                     </div>
                 </div>
             </div>
-
+            <input
+                type="file"
+                multiple
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                style={{ display: 'none' }}
+            />
             {/* Sticky Notes Modal */}
             <StickyNotes isOpen={isStickyOpen} setIsOpen={setIsStickyOpen} />
         </div>

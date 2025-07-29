@@ -35,6 +35,7 @@ import {
     TableOutlined,
     LinkOutlined,
     BookOutlined,
+    DownloadOutlined,
 } from "@ant-design/icons";
 import {
     addBookmark,
@@ -556,7 +557,7 @@ const Bookmarks: React.FC = () => {
                         style={{
                             flex: "1 0 auto",
                             marginBottom: "8px",
-                            minHeight: "20px", // Ensure consistent space even when empty
+                            maxHeight: "20px", // Fixed height for one line
                         }}
                     >
                         <Paragraph
@@ -567,10 +568,8 @@ const Bookmarks: React.FC = () => {
                                 lineHeight: "1.4",
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
-                                display: "-webkit-box",
-                                WebkitLineClamp: 1,
-                                WebkitBoxOrient: "vertical",
-                                wordBreak: "break-word", // Ensure long words don't break layout
+                                whiteSpace: "nowrap", // Ensure single line with ellipsis
+                                maxWidth: "100%", // Prevent overflow
                             }}
                         >
                             {bookmark.description || " "}
@@ -580,7 +579,6 @@ const Bookmarks: React.FC = () => {
                     <div style={{ flex: "0 0 auto" }}>
                         {bookmark.tags?.length > 0 && (
                             <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                                {/* Show first 2 tags */}
                                 {bookmark.tags.slice(0, 2).map((tag, index) => (
                                     <Tag
                                         key={index}
@@ -601,7 +599,6 @@ const Bookmarks: React.FC = () => {
                                         {tag}
                                     </Tag>
                                 ))}
-                                {/* Show +n if there are more than 2 tags */}
                                 {bookmark.tags.length > 2 && (
                                     <Tooltip title={bookmark.tags.slice(2).join(", ")}>
                                         <Tag
@@ -666,7 +663,7 @@ const Bookmarks: React.FC = () => {
                                     overflow: "hidden",
                                     textOverflow: "ellipsis",
                                     display: "-webkit-box",
-                                    WebkitLineClamp: 2,
+                                    WebkitLineClamp: 1, // Changed to 1 for single-line description
                                     WebkitBoxOrient: "vertical",
                                 }}
                             >
@@ -767,9 +764,9 @@ const Bookmarks: React.FC = () => {
     return (
         <div
             style={{
-                marginTop: "40px",
+                marginTop: "70px",
                 minHeight: "100vh",
-                backgroundColor: "#ffffff",
+                // backgroundColor: "#ffffff",
                 padding: "24px",
                 marginLeft: "40px",
             }}
@@ -778,11 +775,11 @@ const Bookmarks: React.FC = () => {
                 style={{
                     maxWidth: "1400px",
                     margin: "0 auto",
-                    backgroundColor: "#fff",
+                    // backgroundColor: "#fff",
                     borderRadius: "16px",
-                    padding: "24px",
-                    border: "1px solid #f0f0f0",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+                    // padding: "24px",
+                    // border: "1px solid #f0f0f0",
+                    // boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
                 }}
             >
                 <Row
@@ -820,6 +817,20 @@ const Bookmarks: React.FC = () => {
                                 }}
                                 onClick={openCreateModal}
                             ></Button>
+                            <Button
+                                type="default"
+                                icon={<DownloadOutlined />}
+                                size="large"
+                                style={{
+                                    borderRadius: "12px",
+                                    borderColor: "#1890ff",
+                                    color: "#1890ff",
+                                }}
+                                href="/DocklySmartBookmarks-1.0.zip"
+                                download
+                            >
+                                Download
+                            </Button>
                         </Space>
                     </Col>
                 </Row>
@@ -898,7 +909,7 @@ const Bookmarks: React.FC = () => {
                             style={{
                                 textAlign: "center",
                                 borderRadius: "8px",
-                                backgroundColor: "#ffffff",
+                                // backgroundColor: "#ffffff",
                                 cursor: "pointer",
                                 border: showOnlyFavorites
                                     ? "2px solid #1890ff"
@@ -933,7 +944,7 @@ const Bookmarks: React.FC = () => {
                             style={{
                                 textAlign: "center",
                                 borderRadius: "8px",
-                                backgroundColor: "#ffffff",
+                                // backgroundColor: "#ffffff",
                             }}
                         >
                             <Title level={3} style={{ margin: 0, color: "#52c41a" }}>

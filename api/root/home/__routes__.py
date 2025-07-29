@@ -81,6 +81,10 @@ home_api.add_resource(GetPlannerNotes, "/get/planner-notes")
 home_api.add_resource(UpdatePlannerNotes, "/update/planner-notes")
 home_api.add_resource(DeletePlannerNotes, "/delete/planner-notes")
 
+home_api.add_resource(UploadHomeDriveFile, "/add/home-drive-file")
+home_api.add_resource(GetHomeDriveFiles, "/get/home-drive-files")
+home_api.add_resource(DeleteHomeDriveFile, "/delete/home-drive-file")
+
 # home_api.add_resource(GeoapifyAutocomplete, "/autocomplete/address")
 
 

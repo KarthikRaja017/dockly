@@ -517,3 +517,33 @@ export const fetchAddressSuggestions = async (
     return [];
   }
 };
+
+export async function uploadHomeDocument(formData: FormData): Promise<any> {
+  const response = await api.post('/add/home-drive-file', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data;
+}
+
+export async function getHomeDocuments(): Promise<any> {
+  const response = await api.get('/get/home-drive-files');
+  return response.data;
+}
+
+export async function deleteHomeDocument(fileId: string): Promise<any> {
+  const response = await api.delete(
+    `/delete/home-drive-file?file_id=${fileId}`
+  );
+  return response.data;
+}
+
+export async function uploadDocklyRootFile(file: File): Promise<any> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await api.post('/add/dockly-root-file', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+
+  return response.data;
+}

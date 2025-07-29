@@ -95,36 +95,32 @@ class RegisterUser(Resource):
         data = request.get_json()
         userName = data.get("userName")
         inputEmail = data.get("email", "")
+        isBookmark = data.get("isBookmark", False)
         userId = ""
 
-        # 1. Check if user exists by username
         existingUser = DBHelper.find_one(
             "users",
             filters={"user_name": userName},
             select_fields=["email", "uid", "duser"],
         )
-        #  CASE 1: User exists
+
         if existingUser:
             userId = existingUser.get("uid")
             dbEmail = existingUser.get("email")
             isDockly = existingUser.get("duser")
 
-            # Case: Dockly user with matching email — login
             if isDockly and inputEmail == dbEmail:
-                # sessionInfo = handle_user_session(userId)
                 token = getAccessTokens({"uid": userId})
                 return {
                     "status": 1,
                     "message": "Welcome back",
                     "payload": {
                         "userId": userId,
-                        # "session": sessionInfo,
                         "token": token["accessToken"],
                         "redirectUrl": "/dashboard",
                     },
                 }
 
-            # ⚠️ If email not given in input, send OTP to existing DB email for verification
             if isDockly and not inputEmail and dbEmail:
                 otp = generate_otp()
                 Thread(target=send_otp_email, args=(dbEmail, otp)).start()
@@ -140,15 +136,21 @@ class RegisterUser(Resource):
                     },
                 }
 
-            # 🚧 If not Dockly user, but email is provided, register as Dockly user (depends on your policy)
-            # if isDockly and inputEmail != dbEmail:
             return {
                 "status": 0,
                 "message": "Username already exists and is unavailable",
                 "payload": {},
             }
 
-        # CASE 2: New User (username not found)
+        # ❌ DO NOT CREATE new user if request is from bookmark
+        if isBookmark:
+            return {
+                "status": 0,
+                "message": "No username found. Please register.",
+                "payload": {},
+            }
+
+        # ✅ Allow registration only when not from bookmark (regular registration path)
         uid = uniqueId(digit=5, isNum=True, prefix="USER")
         userId = DBHelper.insert(
             "users",
@@ -162,14 +164,11 @@ class RegisterUser(Resource):
             splan=0,
         )
 
-        # sessionInfo = handle_user_session(userId)
-
         return {
             "status": 1,
             "message": "User registered and session created",
             "payload": {
                 "userId": userId,
-                # "session": sessionInfo,
                 "redirectUrl": "/sign-up",
             },
         }

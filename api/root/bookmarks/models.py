@@ -1,5 +1,7 @@
+import uuid
 from flask import request
 from flask_restful import Resource
+import time
 
 from root.db.dbHelper import DBHelper
 
@@ -10,11 +12,15 @@ class SaveBookmarks(Resource):
         uid = data.get("uid")
         bookmark = data.get("bookmarks")[0]
 
+        bookmark_id = f"{int(time.time()*1000)}_{uid}_{uuid.uuid4().hex[:6]}"
+
         bookmark_data = {
-            "uid": str(uid),
+            "id": bookmark_id,
+            "user_id": str(uid),
             "title": bookmark.get("title"),
             "url": bookmark.get("url"),
             "favicon": bookmark.get("favicon"),
+            "category": "",
         }
         DBHelper.insert("bookmarks", **bookmark_data)
 
@@ -31,12 +37,16 @@ class SaveAllBookmarks(Resource):
         uid = data.get("uid")
         bookmarks = data.get("bookmarks")
         for bookmark in bookmarks:
-            # Include the uid in each bookmark record
+            # Generate unique ID: timestamp + uid + random hex
+            bookmark_id = f"{int(time.time()*1000)}_{uid}_{uuid.uuid4().hex[:6]}"
+
             bookmark_data = {
-                "uid": str(uid),
+                "id": bookmark_id,
+                "user_id": str(uid),
                 "title": bookmark.get("title"),
                 "url": bookmark.get("url"),
                 "favicon": bookmark.get("favicon"),
+                "category": "",
             }
             DBHelper.insert("bookmarks", **bookmark_data)
 
@@ -54,9 +64,7 @@ class GetBookmarks(Resource):
         if not uid:
             return {"status": 0, "message": "UID is required"}, 400
 
-        # Get bookmarks for the provided UID
-        bookmarks = DBHelper.find_many("bookmarks", {"uid": uid})
-        # print(f"bookmarks: {bookmarks}")
+        bookmarks = DBHelper.find("bookmarks", {"uid": uid})
 
         return {
             "status": 1,
@@ -67,9 +75,6 @@ class GetBookmarks(Resource):
 
 # -------------------------------------------NEW-----------------------------------------------------
 
-from flask import request
-from flask_restful import Resource
-from root.db.dbHelper import DBHelper
 from root.auth.auth import auth_required
 from datetime import datetime
 from root.utilis import Status, uniqueId

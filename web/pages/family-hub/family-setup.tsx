@@ -19,10 +19,10 @@ const FamilyIntroBoard: React.FC = () => {
   const [isFamilyUser, setIsFamilyUser] = useState(false);
   const { loading, setLoading } = useGlobalLoading();
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [showSharing, setShowSharing] = useState(false);
+  // const [showSharing, setShowSharing] = useState(false);
   const [username, setUsername] = useState<string>('');
   const router = useRouter();
-  const params = useParams();
+  // const params = useParams();
 
   useEffect(() => {
     const storedUsername = localStorage.getItem('username');

@@ -1590,6 +1590,8 @@ from flask import request
 from flask_restful import Resource
 import logging
 from datetime import datetime, date
+from root.files.models import DriveBaseResource
+from root.utilis import ensure_drive_folder_structure
 from root.db.dbHelper import DBHelper
 from root.auth.auth import auth_required
 import random
@@ -3196,3 +3198,118 @@ class DeletePlannerNotes(Resource):
 #             return res.json()
 #         except Exception as e:
 #             return {"status": 0, "message": "Request failed", "error": str(e)}, 500
+
+from werkzeug.utils import secure_filename
+from googleapiclient.http import MediaIoBaseUpload
+import io
+
+
+class UploadHomeDriveFile(DriveBaseResource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        try:
+            if "file" not in request.files:
+                return {"status": 0, "message": "No file provided"}, 400
+
+            file = request.files["file"]
+            service = self.get_drive_service(uid)
+            if not service:
+                return {
+                    "status": 0,
+                    "message": "Google Drive not connected or token expired",
+                    "payload": {},
+                }, 401
+
+            folder_data = ensure_drive_folder_structure(service)
+            home_folder_id = folder_data["subfolders"].get("Home")
+
+            if not home_folder_id:
+                return {
+                    "status": 0,
+                    "message": "Home folder not found",
+                    "payload": {},
+                }, 404
+
+            file_metadata = {
+                "name": secure_filename(file.filename),
+                "parents": [home_folder_id],
+            }
+
+            media = MediaIoBaseUpload(
+                io.BytesIO(file.read()),
+                mimetype=file.content_type or "application/octet-stream",
+            )
+            uploaded = (
+                service.files()
+                .create(
+                    body=file_metadata, media_body=media, fields="id, name, webViewLink"
+                )
+                .execute()
+            )
+
+            return {
+                "status": 1,
+                "message": "File uploaded to Home folder",
+                "payload": {"file": uploaded},
+            }, 200
+
+        except Exception as e:
+            return {"status": 0, "message": f"Failed to upload file: {str(e)}"}, 500
+
+
+class GetHomeDriveFiles(DriveBaseResource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        try:
+            service = self.get_drive_service(uid)
+            if not service:
+                return {
+                    "status": 0,
+                    "message": "Drive not connected",
+                    "payload": {},
+                }, 401
+
+            folder_data = ensure_drive_folder_structure(service)
+            home_folder_id = folder_data["subfolders"].get("Home")
+
+            if not home_folder_id:
+                return {
+                    "status": 0,
+                    "message": "Home folder not found",
+                    "payload": {},
+                }, 404
+
+            query = f"'{home_folder_id}' in parents and trashed = false"
+            results = (
+                service.files()
+                .list(q=query, fields="files(id, name, webViewLink)", spaces="drive")
+                .execute()
+            )
+            files = results.get("files", [])
+
+            return {
+                "status": 1,
+                "message": "Files fetched",
+                "payload": {"files": files},
+            }, 200
+
+        except Exception as e:
+            return {"status": 0, "message": f"Fetch failed: {str(e)}"}, 500
+
+
+class DeleteHomeDriveFile(DriveBaseResource):
+    @auth_required(isOptional=True)
+    def delete(self, uid, user):
+        file_id = request.args.get("file_id")
+        if not file_id:
+            return {"status": 0, "message": "Missing file_id"}, 400
+
+        service = self.get_drive_service(uid)
+        if not service:
+            return {"status": 0, "message": "Drive not connected"}, 401
+
+        try:
+            service.files().delete(fileId=file_id).execute()
+            return {"status": 1, "message": "File deleted"}, 200
+        except Exception as e:
+            return {"status": 0, "message": f"Delete failed: {str(e)}"}, 500

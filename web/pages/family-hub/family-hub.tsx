@@ -1,7 +1,6 @@
 'use client'
 import { ArrowLeft, ArrowRightCircle, BoxSelect, Heart, LayoutPanelLeft, Plus, Search, Share, Users } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-import DocklyLoader from '../../utils/docklyLoader';
 interface FamilyMember {
     id: number;
     name: string;
@@ -17,7 +16,6 @@ const FamilyHubPage: React.FC = () => {
     const { loading, setLoading } = useGlobalLoading();
     const [profileVisible, setProfileVisible] = useState(false);
     const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
-    // console.log("🚀 ~ familyMembers:", familyMembers)
     const [view, setView] = useState<"Day" | "Week" | "Month" | "Year">("Month")
     const handleViewChange = (newView: "Day" | "Week" | "Month" | "Year") => {
         setView(newView);
@@ -51,7 +49,7 @@ const FamilyHubPage: React.FC = () => {
             }}
         >
             {profileVisible && (
-                <FamilyHubMemberDetails />
+                <ProfilePage />
             )}
             {!profileVisible && (
                 <div
@@ -1637,6 +1635,7 @@ import FamilyNotes from './components/familyNotesLists';
 import { useGlobalLoading } from '../../app/loadingContext';
 import { useRouter } from 'next/navigation';
 import GuardianSection from './components/guardians';
+import ProfilePage from '../../app/[username]/family-hub/profile/[id]/page';
 // import { PRIMARY_COLOR } from '../../comman';
 
 const FamilyCalendar: React.FC = () => {

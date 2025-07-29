@@ -161,6 +161,8 @@
         "access_code VARCHAR",
         "family_group_id VARCHAR",
         "method VARCHAR",
+        "shared_items VARCHAR",
+        "permissions VARCHAR",
         "created_at TIMESTAMP"
       ]
     },

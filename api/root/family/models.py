@@ -8,8 +8,14 @@ import smtplib
 import traceback
 
 # from root.planner.models import create_calendar_event, update_calendar_event
+from root.files.models import DriveBaseResource
 from root.common import DocklyUsers, HubsEnum, Permissions, Status
-from root.utilis import create_calendar_event, uniqueId, update_calendar_event
+from root.utilis import (
+    create_calendar_event,
+    ensure_drive_folder_structure,
+    uniqueId,
+    update_calendar_event,
+)
 from root.users.models import generate_otp, send_otp_email
 from root.config import EMAIL_PASSWORD, EMAIL_SENDER, SMTP_PORT, SMTP_SERVER, WEB_URL
 from root.email import generate_invitation_email
@@ -227,7 +233,31 @@ class GetFamilyMembers(Resource):
         familyMembers = []
 
         def clean_relationship(rel):
-            return rel.replace("❤", "").replace("👶", "").replace("👴", "")
+            return (
+                rel.replace("❤", "")
+                .replace("👶", "")
+                .replace("👴", "")
+                .replace("🛡", "")
+                .strip()
+            )
+
+        # Step 0: Preload notifications metadata for enrichment
+        notifications = DBHelper.find_all(
+            table_name="notifications",
+            filters={"sender_id": uid},  # include all (pending or accepted)
+            select_fields=["metadata"],
+        )
+
+        email_to_metadata = {}
+        for notif in notifications:
+            meta = notif.get("metadata", {})
+            input_data = meta.get("input_data", {})
+            email = input_data.get("email", "")
+            if email:
+                email_to_metadata[email.lower().strip()] = {
+                    "sharedItems": input_data.get("sharedItems", {}),
+                    "permissions": input_data.get("permissions", {}),
+                }
 
         # Step 1: Get family group id of the user
         gid = DBHelper.find_one(
@@ -265,74 +295,77 @@ class GetFamilyMembers(Resource):
                 if member["fm_user_id"] == uid
                 else clean_relationship(member["relationship"])
             )
+
+            email = member.get("email", "").lower().strip()
+            metadata = email_to_metadata.get(email, {})
+            sharedItems = metadata.get("sharedItems", {})
+            permissions = metadata.get("permissions", {})
+
             familyMembers.append(
                 {
                     "name": member["name"],
                     "relationship": relationship,
-                    "email": member.get("email", ""),
+                    "email": email,
                     "id": member.get("id", ""),
+                    "sharedItems": sharedItems,
+                    "permissions": permissions,
                 }
             )
 
         # Step 3: If guest, add the owner
-        if int(duser) == DocklyUsers.Guests.value and fuser:
-            fuserMember = DBHelper.find_one(
-                table_name="users",
-                filters={"uid": fuser},
-                select_fields=["user_name", "email", "id"],
-            )
-            if fuserMember:
-                familyMembers.append(
-                    {
-                        "name": fuserMember.get("user_name", "User"),
-                        "relationship": "Owner",
-                        "email": fuserMember.get("email", ""),
-                        "id": fuserMember.get("id", ""),
-                    }
-                )
+        if duser is not None and fuser:
+            try:
+                if int(duser) == DocklyUsers.Guests.value:
+                    fuserMember = DBHelper.find_one(
+                        table_name="users",
+                        filters={"uid": fuser},
+                        select_fields=["user_name", "email", "id"],
+                    )
+                    if fuserMember:
+                        familyMembers.append(
+                            {
+                                "name": fuserMember.get("user_name", "User"),
+                                "relationship": "Owner",
+                                "email": fuserMember.get("email", ""),
+                                "id": fuserMember.get("id", ""),
+                            }
+                        )
+            except ValueError:
+                pass  # Invalid duser, skip
 
         # Step 4: Add pending invites
-        notifications = DBHelper.find_all(
-            table_name="notifications",
-            filters={"sender_id": uid, "status": "pending"},
-            select_fields=["metadata"],
-        )
+        for notif in notifications:
+            meta = notif.get("metadata", {})
+            input_data = meta.get("input_data", {})
+            email = input_data.get("email", "").lower().strip()
+            if not email:
+                continue
+            if any(mem.get("email", "").lower() == email for mem in familyMembers):
+                continue  # already included
 
-        for notification in notifications:
-            metadata = notification.get("metadata", {})
-            if metadata:
-                input_data = metadata.get("input_data", {})
-                familyMembers.append(
-                    {
-                        "name": input_data.get("name", "Unknown"),
-                        "relationship": clean_relationship(
-                            input_data.get("relationship", "Unknown")
-                        ),
-                        "status": "pending",
-                        "email": input_data.get("email", ""),
-                        "id": input_data.get("id", ""),
-                    }
-                )
+            familyMembers.append(
+                {
+                    "name": input_data.get("name", "Unknown"),
+                    "relationship": clean_relationship(
+                        input_data.get("relationship", "Unknown")
+                    ),
+                    "status": "pending",
+                    "email": email,
+                    "id": input_data.get("id", ""),
+                    "sharedItems": input_data.get("sharedItems", {}),
+                    "permissions": input_data.get("permissions", {}),
+                }
+            )
 
-        # Step 5: Remove duplicate emails
+        # Step 5: Remove duplicate emails and hide email from output
         unique_members = []
         seen_emails = set()
         for member in familyMembers:
             email = member.get("email", "").lower().strip()
             if not email or email not in seen_emails:
                 seen_emails.add(email)
-                # Remove email from final output if you don't want to expose it
                 member.pop("email", None)
                 unique_members.append(member)
-        # print(f"==>> unique_members: {unique_members}")
-
-        # Step 6: Fallback - if no members found, return the current user
-        # print(f"unique_membyyyyyyyyyyyyyyyyyyyers: {unique_members}")
-        # if not unique_members:
-        #     print(f"unique_members: {unique_members}")
-        #     unique_members.append(
-        #         {"name": user.get("user_name", "User"), "relationship": "me"}
-        #     )
 
         return {
             "status": 1,
@@ -2121,136 +2154,6 @@ class AddProvider(Resource):
             if not provider:
                 return {"status": 0, "message": "No provider data provided"}, 400
 
-            required_fields = ["providerTitle", "providerName", "addedBy"]
-            missing_fields = [f for f in required_fields if f not in provider]
-            if missing_fields:
-                return {
-                    "status": 0,
-                    "message": f"Missing fields: {', '.join(missing_fields)}",
-                }, 400
-
-            user_check = DBHelper.find_one("users", {"uid": uid})
-            if not user_check:
-                return {"status": 0, "message": f"User with ID {uid} not found"}, 400
-
-            now = datetime.now().isoformat()
-
-            provider_id = DBHelper.insert(
-                table_name="healthcare_providers",
-                return_column="id",
-                user_id=uid,
-                provider_title=provider["providerTitle"],
-                provider_name=provider["providerName"],
-                provider_phone=provider.get("providerPhone", ""),
-                added_by=provider["addedBy"],
-                added_time=now,
-                edited_by=provider.get("editedBy", provider["addedBy"]),
-                updated_at=now,
-            )
-
-            return {
-                "status": 1,
-                "message": "Provider added",
-                "payload": {"id": provider_id},
-            }, 200
-
-        except Exception as e:
-            return {"status": 0, "message": f"Failed to add provider: {str(e)}"}, 500
-
-
-class GetProviders(Resource):
-    @auth_required(isOptional=True)
-    def get(self, uid, user):
-        try:
-            user_id = request.args.get("userId")
-            if not user_id:
-                return {"status": 0, "message": "User ID is required"}, 400
-
-            user_check = DBHelper.find_one("users", {"uid": user_id})
-            if not user_check:
-                return {
-                    "status": 0,
-                    "message": f"User with ID {user_id} not found",
-                }, 400
-
-            providers = DBHelper.find_all(
-                table_name="healthcare_providers", filters={"user_id": user_id}
-            )
-
-            # Convert datetime objects to ISO strings
-            for provider in providers:
-                for key in ["added_time", "updated_at"]:
-                    if provider.get(key) and isinstance(provider[key], datetime):
-                        provider[key] = provider[key].isoformat()
-
-            return {"status": 1, "payload": providers}, 200
-
-        except Exception as e:
-            return {"status": 0, "message": f"Failed to fetch providers: {str(e)}"}, 500
-
-
-class UpdateProvider(Resource):
-    @auth_required(isOptional=True)
-    def put(self, uid, user):
-        try:
-            inputData = request.get_json(silent=True)
-            if not inputData:
-                return {"status": 0, "message": "No input data provided"}, 400
-
-            provider = inputData.get("provider", {})
-            if not provider:
-                return {"status": 0, "message": "No provider data provided"}, 400
-
-            required_fields = ["id", "providerTitle", "providerName", "addedBy"]
-            missing = [f for f in required_fields if f not in provider]
-            if missing:
-                return {
-                    "status": 0,
-                    "message": f"Missing fields: {', '.join(missing)}",
-                }, 400
-
-            record = DBHelper.find_one(
-                "healthcare_providers", {"id": provider["id"], "user_id": uid}
-            )
-            if not record:
-                return {"status": 0, "message": "Provider record not found"}, 404
-
-            now = datetime.now().isoformat()
-
-            DBHelper.update_one(
-                table_name="healthcare_providers",
-                filters={"id": provider["id"], "user_id": uid},
-                updates={
-                    "provider_title": provider["providerTitle"],
-                    "provider_name": provider["providerName"],
-                    "provider_phone": provider.get("providerPhone", ""),
-                    "edited_by": provider.get("editedBy", provider["addedBy"]),
-                    "updated_at": now,
-                },
-            )
-
-            return {
-                "status": 1,
-                "message": "Provider updated",
-                "payload": {"id": provider["id"]},
-            }, 200
-
-        except Exception as e:
-            return {"status": 0, "message": f"Failed to update provider: {str(e)}"}, 500
-
-
-class AddProvider(Resource):
-    @auth_required(isOptional=True)
-    def post(self, uid, user):
-        try:
-            inputData = request.get_json(silent=True)
-            if not inputData:
-                return {"status": 0, "message": "No input data provided"}, 400
-
-            provider = inputData.get("provider", {})
-            if not provider:
-                return {"status": 0, "message": "No provider data provided"}, 400
-
             required_fields = ["providerTitle", "providerName", "addedBy", "userId"]
             missing_fields = [f for f in required_fields if f not in provider]
             if missing_fields:
@@ -2496,3 +2399,128 @@ class UpdateAccountPassword(Resource):
 
         except Exception as e:
             return {"status": 0, "message": f"Failed to update account: {str(e)}"}, 500
+
+
+from werkzeug.utils import secure_filename
+from googleapiclient.http import MediaIoBaseUpload
+import io
+
+
+class UploadDriveFile(DriveBaseResource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        try:
+            if "file" not in request.files:
+                return {"status": 0, "message": "No file provided"}, 400
+
+            file = request.files["file"]
+            hub = request.form.get("hub", "").capitalize()
+
+            # Validate hub name
+            if not hub or hub not in ["Home", "Family", "Finance", "Health"]:
+                return {"status": 0, "message": "Invalid or missing hub name"}, 400
+
+            # Get Google Drive service
+            service = self.get_drive_service(uid)
+            if not service:
+                return {
+                    "status": 0,
+                    "message": "Google Drive not connected or token expired",
+                    "payload": {},
+                }, 401
+
+            # Get folder structure
+            folder_data = ensure_drive_folder_structure(service)
+            hub_folder_id = folder_data["subfolders"].get(hub)
+
+            if not hub_folder_id:
+                return {
+                    "status": 0,
+                    "message": f"{hub} folder not found",
+                    "payload": {},
+                }, 404
+
+            # Prepare upload
+            file_metadata = {
+                "name": secure_filename(file.filename),
+                "parents": [hub_folder_id],
+            }
+            media = MediaIoBaseUpload(
+                io.BytesIO(file.read()),
+                mimetype=file.content_type or "application/octet-stream",
+            )
+
+            uploaded = (
+                service.files()
+                .create(
+                    body=file_metadata, media_body=media, fields="id, name, webViewLink"
+                )
+                .execute()
+            )
+
+            return {
+                "status": 1,
+                "message": "File uploaded successfully",
+                "payload": {"file": uploaded},
+            }, 200
+
+        except Exception as e:
+            return {"status": 0, "message": f"Failed to upload file: {str(e)}"}, 500
+
+
+class GetFamilyDriveFiles(DriveBaseResource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        try:
+            service = self.get_drive_service(uid)
+            if not service:
+                return {
+                    "status": 0,
+                    "message": "Google Drive not connected",
+                    "payload": {},
+                }, 401
+
+            folder_data = ensure_drive_folder_structure(service)
+            family_folder_id = folder_data["subfolders"].get("Family")
+
+            if not family_folder_id:
+                return {
+                    "status": 0,
+                    "message": "Family folder not found",
+                    "payload": {},
+                }, 404
+
+            query = f"'{family_folder_id}' in parents and trashed = false"
+            results = (
+                service.files()
+                .list(q=query, fields="files(id, name, webViewLink)", spaces="drive")
+                .execute()
+            )
+            files = results.get("files", [])
+
+            return {
+                "status": 1,
+                "message": "Files fetched successfully",
+                "payload": {"files": files},
+            }, 200
+
+        except Exception as e:
+            return {"status": 0, "message": f"Failed to fetch files: {str(e)}"}, 500
+
+
+class DeleteDriveFile(Resource):
+    @auth_required(isOptional=True)
+    def delete(self, uid, user):
+        file_id = request.args.get("file_id")
+        if not file_id:
+            return {"status": 0, "message": "Missing file_id"}, 400
+
+        service = self.get_drive_service(uid)
+        if not service:
+            return {"status": 0, "message": "Drive not connected"}, 401
+
+        try:
+            service.files().delete(fileId=file_id).execute()
+            return {"status": 1, "message": "File deleted"}
+        except Exception as e:
+            return {"status": 0, "message": f"Delete failed: {str(e)}"}, 500

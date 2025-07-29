@@ -27,7 +27,16 @@ import {
     Table,
     Pagination,
     MenuProps,
-    Popconfirm
+    Popconfirm,
+    Checkbox,
+    Drawer,
+    List,
+    Statistic,
+    Timeline,
+    Collapse,
+    Alert,
+    InputNumber,
+    DatePicker
 } from 'antd';
 import {
     SearchOutlined,
@@ -62,32 +71,49 @@ import {
     CloseOutlined,
     UploadOutlined,
     FolderAddOutlined,
-    UserOutlined
+    UserOutlined,
+    EditOutlined,
+    CopyOutlined,
+    FolderOpenOutlined,
+    StarFilled,
+    CheckOutlined,
+    BarChartOutlined,
+    HistoryOutlined,
+    BugOutlined,
+    InfoCircleOutlined,
+    HddOutlined,
+    FileOutlined,
 } from '@ant-design/icons';
-import { createDriveFolder, deleteDriveFile, downloadDriveFile, listDriveFiles, shareDriveFile, uploadDriveFile } from '../../../services/files';
-import { PRIMARY_COLOR } from '../../comman';
+import {
+    createDriveFolder,
+    deleteDriveFile,
+    downloadDriveFile,
+    listDriveFiles,
+    shareDriveFile,
+    uploadDriveFile,
+    bulkDownloadFiles,
+    bulkDeleteFiles,
+    renameDriveFile,
+    copyDriveFile,
+    moveDriveFile,
+    starDriveFile,
+    getDriveStorage,
+    findDuplicateFiles,
+    getStorageAnalytics,
+    getActivityLog,
+    logActivity,
+    type DriveFile,
+    type DriveFolder,
+    type StorageInfo,
+    type ActivityLog,
+    type DuplicateFile
+} from '../../../services/files';
 import { trimGooglePhotoUrl } from '../../../pages/components/header';
 
-interface DriveFile {
-    id: string;
-    name: string;
-    mimeType: string;
-    size?: number;
-    modifiedTime: string;
-    owners: Array<{ displayName?: string; photoLink?: string; emailAddress?: string }>;
-    webViewLink?: string;
-    thumbnailLink?: string;
-    shared?: boolean;
-    starred?: boolean;
-}
+const PRIMARY_COLOR = '#1890ff';
 
-interface DriveFolder {
-    id: string;
-    name: string;
-    modifiedTime: string;
-    shared?: boolean;
-    owners?: Array<{ displayName?: string; photoLink?: string; emailAddress?: string }>;
-}
+// Add this function to simulate trimGooglePhotoUrl since it's imported but not defined
+// const trimGooglePhotoUrl = (url: string) => url;
 
 interface UploadProgress {
     [fileName: string]: {
@@ -106,8 +132,10 @@ const { Content } = Layout;
 const { Title, Text } = Typography;
 const { Search } = Input;
 const { Dragger } = Upload;
+const { Panel } = Collapse;
+const { RangePicker } = DatePicker;
 
-// Upload Area Component
+// Enhanced Upload Area Component
 const UploadArea: React.FC<{
     onUpload: (file: File) => void;
     uploadProgress: UploadProgress;
@@ -207,6 +235,100 @@ const UploadArea: React.FC<{
     );
 };
 
+// Bulk Actions Toolbar
+const BulkActionsToolbar: React.FC<{
+    selectedItems: string[];
+    onClearSelection: () => void;
+    onBulkDownload: () => void;
+    onBulkDelete: () => void;
+    onBulkMove: () => void;
+    onBulkCopy: () => void;
+    onBulkShare: () => void;
+}> = ({
+    selectedItems,
+    onClearSelection,
+    onBulkDownload,
+    onBulkDelete,
+    onBulkMove,
+    onBulkCopy,
+    onBulkShare
+}) => {
+        if (selectedItems.length === 0) return null;
+
+        return (
+            <div style={{
+                position: 'fixed',
+                bottom: '24px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                backgroundColor: '#fff',
+                padding: '12px 24px',
+                borderRadius: '28px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                border: '1px solid #e8eaed',
+                zIndex: 1000,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+            }}>
+                <Text style={{ fontSize: '14px', fontWeight: 500 }}>
+                    {selectedItems.length} selected
+                </Text>
+                <Divider type="vertical" />
+                <Space size="small">
+                    <Tooltip title="Download">
+                        <Button
+                            type="text"
+                            icon={<DownloadOutlined />}
+                            onClick={onBulkDownload}
+                            size="small"
+                        />
+                    </Tooltip>
+                    <Tooltip title="Move">
+                        <Button
+                            type="text"
+                            icon={<FolderOpenOutlined />}
+                            onClick={onBulkMove}
+                            size="small"
+                        />
+                    </Tooltip>
+                    <Tooltip title="Copy">
+                        <Button
+                            type="text"
+                            icon={<CopyOutlined />}
+                            onClick={onBulkCopy}
+                            size="small"
+                        />
+                    </Tooltip>
+                    <Tooltip title="Share">
+                        <Button
+                            type="text"
+                            icon={<ShareAltOutlined />}
+                            onClick={onBulkShare}
+                            size="small"
+                        />
+                    </Tooltip>
+                    <Tooltip title="Delete">
+                        <Button
+                            type="text"
+                            danger
+                            icon={<DeleteOutlined />}
+                            onClick={onBulkDelete}
+                            size="small"
+                        />
+                    </Tooltip>
+                    <Divider type="vertical" />
+                    <Button
+                        type="text"
+                        icon={<CloseOutlined />}
+                        onClick={onClearSelection}
+                        size="small"
+                    />
+                </Space>
+            </div>
+        );
+    };
+
 const HeaderBar: React.FC<{
     breadcrumbs: Array<{ id: string; name: string }>;
     onNavigate: (index: number) => void;
@@ -224,6 +346,13 @@ const HeaderBar: React.FC<{
     selectedAccount: string | null;
     onAccountChange: (accountEmail: string | null) => void;
     availableAccounts: AccountFilter[];
+    selectedItems: string[];
+    onToggleSelectAll: () => void;
+    isAllSelected: boolean;
+    storageInfo: StorageInfo | null;
+    onShowAnalytics: () => void;
+    onShowActivity: () => void;
+    onShowDuplicates: () => void;
 }> = ({
     breadcrumbs,
     onNavigate,
@@ -241,6 +370,13 @@ const HeaderBar: React.FC<{
     selectedAccount,
     onAccountChange,
     availableAccounts,
+    selectedItems,
+    onToggleSelectAll,
+    isAllSelected,
+    storageInfo,
+    onShowAnalytics,
+    onShowActivity,
+    onShowDuplicates
 }) => {
         const [showSearch, setShowSearch] = useState(false);
 
@@ -301,220 +437,279 @@ const HeaderBar: React.FC<{
         ];
 
         const selectedAccountData = availableAccounts.find(acc => acc.email === selectedAccount);
+        const breadcrumbItems = [
+            {
+                title: <HomeOutlined style={{ color: PRIMARY_COLOR }} />,
+            },
+            ...breadcrumbs.map((crumb, index) => ({
+                title: (
+                    <Button
+                        type="link"
+                        onClick={() => onNavigate(index)}
+                        style={{
+                            padding: 0,
+                            height: 'auto',
+                            color: index === breadcrumbs.length - 1 ? PRIMARY_COLOR : '#5f6368',
+                            fontWeight: index === breadcrumbs.length - 1 ? 500 : 400,
+                            fontSize: '14px',
+                        }}
+                    >
+                        {crumb.name}
+                    </Button>
+                ),
+                key: crumb.id,
+            })),
+        ];
 
         return (
-            <div
-                style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '12px 24px',
-                    backgroundColor: '#f9fafa',
-                    flexWrap: 'wrap',
-                    gap: '16px'
-                }}
-            >
-                {/* Breadcrumbs on Left */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Breadcrumb>
-                        <Breadcrumb.Item>
-                            <HomeOutlined style={{ color: PRIMARY_COLOR }} />
-                        </Breadcrumb.Item>
-                        {breadcrumbs.map((crumb, index) => (
-                            <Breadcrumb.Item key={crumb.id}>
-                                <Button
-                                    type="link"
-                                    onClick={() => onNavigate(index)}
-                                    style={{
-                                        padding: 0,
-                                        height: 'auto',
-                                        color:
-                                            index === breadcrumbs.length - 1
-                                                ? PRIMARY_COLOR
-                                                : '#5f6368',
-                                        fontWeight: index === breadcrumbs.length - 1 ? 500 : 400,
-                                        fontSize: '14px'
-                                    }}
-                                >
-                                    {crumb.name}
-                                </Button>
-                            </Breadcrumb.Item>
-                        ))}
-                    </Breadcrumb>
-                </div>
+            <div>
+                {/* Storage Info Bar */}
+                {/* <StorageInfo storageInfo={storageInfo} /> */}
 
-                {/* Search + Filters on Right */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    {/* Search Section */}
-                    {!showSearch ? (
-                        <Button
-                            icon={<SearchOutlined />}
-                            size="middle"
-                            style={{
-                                borderColor: '#dadce0',
-                                color: '#5f6368',
-                                transition: 'all 0.3s ease',
-                            }}
-                            onClick={() => setShowSearch(true)}
-                        />
-                    ) : (
+                <div
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '12px 24px',
+                        backgroundColor: '#f9fafa',
+                        flexWrap: 'wrap',
+                        gap: '16px'
+                    }}
+                >
+                    {/* Breadcrumbs and Selection on Left */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Search
-                                placeholder="Search in Drive"
-                                value={searchQuery}
-                                onChange={(e) => onSearchChange(e.target.value)}
-                                style={{
-                                    width: '250px',
-                                    transition: 'all 0.3s ease',
-                                    borderRadius: '20px',
-                                }}
-                                size="middle"
-                                allowClear
-                                autoFocus
-                            />
-                            <Button
-                                icon={<CloseOutlined />}
-                                onClick={() => setShowSearch(false)}
-                                size="middle"
-                                style={{
-                                    borderColor: '#dadce0',
-                                    color: '#5f6368',
-                                    borderRadius: '50%',
-                                }}
-                            />
-                        </div>
-                    )}
-
-                    {/* Filters */}
-                    <Space size="small">
-                        {/* Account Filter */}
-                        <Tooltip title="Filter by account">
-                            <Select
-                                value={selectedAccount}
-                                onChange={onAccountChange}
-                                style={{
-                                    minWidth: 180,
-                                    borderRadius: '8px'
-                                }}
-                                size="middle"
-                                placeholder="All Accounts"
-                                optionLabelProp="label"
-                                dropdownStyle={{
-                                    borderRadius: '12px',
-                                    boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                                    border: '1px solid #e8eaed',
-                                    padding: '4px 0'
-                                }}
-                                suffixIcon={
-                                    selectedAccount ? (
-                                        selectedAccountData?.photoLink ? (
-                                            <Avatar size={18} src={selectedAccountData.photoLink} />
-                                        ) : (
-                                            <Avatar
-                                                size={18}
-                                                style={{
-                                                    backgroundColor: PRIMARY_COLOR,
-                                                    fontSize: '10px'
-                                                }}
-                                            >
-                                                {(selectedAccountData?.displayName || selectedAccountData?.email || 'U')[0].toUpperCase()}
-                                            </Avatar>
-                                        )
-                                    ) : (
-                                        <div style={{
-                                            width: '18px',
-                                            height: '18px',
-                                            borderRadius: '50%',
-                                            backgroundColor: '#e8f0fe',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center'
-                                        }}>
-                                            <UserOutlined style={{ color: PRIMARY_COLOR, fontSize: '10px' }} />
-                                        </div>
-                                    )
-                                }
-                            >
-                                {accountFilterOptions.map(option => (
-                                    <Select.Option key={option.value || 'all'} value={option.value}>
-                                        {option.label}
-                                    </Select.Option>
-                                ))}
-                            </Select>
-                        </Tooltip>
-
-                        <Select
-                            value={sortBy}
-                            onChange={onSortByChange}
-                            style={{ width: 120 }}
-                            size="middle"
-                        >
-                            <Select.Option value="modifiedTime">Modified</Select.Option>
-                            <Select.Option value="name">Name</Select.Option>
-                            <Select.Option value="size">Size</Select.Option>
-                        </Select>
-
-                        <Tooltip title={`Sort ${sortOrder === 'asc' ? 'Descending' : 'Ascending'}`}>
-                            <Button
-                                icon={
-                                    sortOrder === 'asc'
-                                        ? <SortAscendingOutlined />
-                                        : <SortDescendingOutlined />
-                                }
-                                onClick={onSortOrderChange}
-                                size="middle"
-                                style={{
-                                    borderColor: '#dadce0',
-                                    color: '#5f6368',
-                                    borderRadius: '6px',
-                                }}
-                            />
-                        </Tooltip>
-
-                        <Tooltip title={`Switch to ${viewMode === 'grid' ? 'List' : 'Grid'} view`}>
-                            <Button
-                                icon={
-                                    viewMode === 'grid'
-                                        ? <UnorderedListOutlined />
-                                        : <AppstoreOutlined />
-                                }
-                                onClick={onViewModeChange}
-                                size="middle"
-                                style={{
-                                    borderColor: '#dadce0',
-                                    color: '#5f6368',
-                                    borderRadius: '6px',
-                                }}
-                            />
-                        </Tooltip>
-
-                        <Tooltip title="Refresh">
-                            <Button
-                                icon={<ReloadOutlined spin={loading} />}
-                                onClick={onRefresh}
+                            <Checkbox
+                                checked={isAllSelected}
+                                onChange={onToggleSelectAll}
                                 disabled={loading}
+                            />
+                            <Breadcrumb items={breadcrumbItems} />
+                        </div>
+                        {selectedItems.length > 0 && (
+                            <Badge
+                                count={selectedItems.length}
+                                style={{ backgroundColor: PRIMARY_COLOR }}
+                                showZero={false}
+                            />
+                        )}
+                    </div>
+
+                    {/* Search + Filters on Right */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        {/* Search Section */}
+                        {!showSearch ? (
+                            <Button
+                                icon={<SearchOutlined />}
                                 size="middle"
                                 style={{
                                     borderColor: '#dadce0',
                                     color: '#5f6368',
-                                    borderRadius: '6px',
+                                    transition: 'all 0.3s ease',
                                 }}
+                                onClick={() => setShowSearch(true)}
                             />
-                        </Tooltip>
-                        {extraIcon}
-                    </Space>
+                        ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Search
+                                    placeholder="Search in Drive"
+                                    value={searchQuery}
+                                    onChange={(e) => onSearchChange(e.target.value)}
+                                    style={{
+                                        width: '250px',
+                                        transition: 'all 0.3s ease',
+                                        borderRadius: '20px',
+                                    }}
+                                    size="middle"
+                                    allowClear
+                                    autoFocus
+                                />
+                                <Button
+                                    icon={<CloseOutlined />}
+                                    onClick={() => setShowSearch(false)}
+                                    size="middle"
+                                    style={{
+                                        borderColor: '#dadce0',
+                                        color: '#5f6368',
+                                        borderRadius: '50%',
+                                    }}
+                                />
+                            </div>
+                        )}
+
+                        {/* Filters */}
+                        <Space size="small">
+                            {/* Account Filter */}
+                            <Tooltip title="Filter by account">
+                                <Select
+                                    value={selectedAccount}
+                                    onChange={onAccountChange}
+                                    style={{
+                                        minWidth: 180,
+                                        borderRadius: '8px'
+                                    }}
+                                    size="middle"
+                                    placeholder="All Accounts"
+                                    optionLabelProp="label"
+                                    dropdownStyle={{
+                                        borderRadius: '12px',
+                                        boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                                        border: '1px solid #e8eaed',
+                                        padding: '4px 0'
+                                    }}
+                                    suffixIcon={
+                                        selectedAccount ? (
+                                            selectedAccountData?.photoLink ? (
+                                                <Avatar size={18} src={selectedAccountData.photoLink} />
+                                            ) : (
+                                                <Avatar
+                                                    size={18}
+                                                    style={{
+                                                        backgroundColor: PRIMARY_COLOR,
+                                                        fontSize: '10px'
+                                                    }}
+                                                >
+                                                    {(selectedAccountData?.displayName || selectedAccountData?.email || 'U')[0].toUpperCase()}
+                                                </Avatar>
+                                            )
+                                        ) : (
+                                            <div style={{
+                                                width: '18px',
+                                                height: '18px',
+                                                borderRadius: '50%',
+                                                backgroundColor: '#e8f0fe',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
+                                            }}>
+                                                <UserOutlined style={{ color: PRIMARY_COLOR, fontSize: '10px' }} />
+                                            </div>
+                                        )
+                                    }
+                                >
+                                    {accountFilterOptions.map(option => (
+                                        <Select.Option key={option.value || 'all'} value={option.value}>
+                                            {option.label}
+                                        </Select.Option>
+                                    ))}
+                                </Select>
+                            </Tooltip>
+
+                            <Select
+                                value={sortBy}
+                                onChange={onSortByChange}
+                                style={{ width: 120 }}
+                                size="middle"
+                            >
+                                <Select.Option value="modifiedTime">Modified</Select.Option>
+                                <Select.Option value="name">Name</Select.Option>
+                                <Select.Option value="size">Size</Select.Option>
+                            </Select>
+
+                            <Tooltip title={`Sort ${sortOrder === 'asc' ? 'Descending' : 'Ascending'}`}>
+                                <Button
+                                    icon={
+                                        sortOrder === 'asc'
+                                            ? <SortAscendingOutlined />
+                                            : <SortDescendingOutlined />
+                                    }
+                                    onClick={onSortOrderChange}
+                                    size="middle"
+                                    style={{
+                                        borderColor: '#dadce0',
+                                        color: '#5f6368',
+                                        borderRadius: '6px',
+                                    }}
+                                />
+                            </Tooltip>
+
+                            {/* <Tooltip title="Analytics">
+                                <Button
+                                    icon={<BarChartOutlined />}
+                                    onClick={onShowAnalytics}
+                                    size="middle"
+                                    style={{
+                                        borderColor: '#dadce0',
+                                        color: '#5f6368',
+                                        borderRadius: '6px',
+                                    }}
+                                />
+                            </Tooltip>
+
+                            <Tooltip title="Activity">
+                                <Button
+                                    icon={<HistoryOutlined />}
+                                    onClick={onShowActivity}
+                                    size="middle"
+                                    style={{
+                                        borderColor: '#dadce0',
+                                        color: '#5f6368',
+                                        borderRadius: '6px',
+                                    }}
+                                />
+                            </Tooltip>
+
+                            <Tooltip title="Find Duplicates">
+                                <Button
+                                    icon={<BugOutlined />}
+                                    onClick={onShowDuplicates}
+                                    size="middle"
+                                    style={{
+                                        borderColor: '#dadce0',
+                                        color: '#5f6368',
+                                        borderRadius: '6px',
+                                    }}
+                                />
+                            </Tooltip> */}
+
+                            <Tooltip title={`Switch to ${viewMode === 'grid' ? 'List' : 'Grid'} view`}>
+                                <Button
+                                    icon={
+                                        viewMode === 'grid'
+                                            ? <UnorderedListOutlined />
+                                            : <AppstoreOutlined />
+                                    }
+                                    onClick={onViewModeChange}
+                                    size="middle"
+                                    style={{
+                                        borderColor: '#dadce0',
+                                        color: '#5f6368',
+                                        borderRadius: '6px',
+                                    }}
+                                />
+                            </Tooltip>
+
+                            <Tooltip title="Refresh">
+                                <Button
+                                    icon={<ReloadOutlined spin={loading} />}
+                                    onClick={onRefresh}
+                                    disabled={loading}
+                                    size="middle"
+                                    style={{
+                                        borderColor: '#dadce0',
+                                        color: '#5f6368',
+                                        borderRadius: '6px',
+                                    }}
+                                />
+                            </Tooltip>
+                            {extraIcon}
+                        </Space>
+                    </div>
                 </div>
             </div>
         );
     };
 
-// Folders Section Component
+// Enhanced Folders Section Component
 const FoldersSection: React.FC<{
     folders: DriveFolder[];
     onFolderClick: (folderId: string, folderName: string) => void;
     onFileAction: (action: string, item: DriveFolder | DriveFile) => void;
     viewMode: 'grid' | 'list';
-}> = ({ folders, onFolderClick, onFileAction, viewMode }) => {
+    selectedItems: string[];
+    onItemSelect: (itemId: string, selected: boolean) => void;
+}> = ({ folders, onFolderClick, onFileAction, viewMode, selectedItems, onItemSelect }) => {
     const [showAll, setShowAll] = useState(false);
     const displayFolders = showAll
         ? folders
@@ -522,16 +717,40 @@ const FoldersSection: React.FC<{
 
     const getMenuItems = (folder: DriveFolder) => [
         {
+            key: 'rename',
+            label: 'Rename',
+            icon: <EditOutlined />,
+            onClick: () => onFileAction('rename', folder)
+        },
+        {
+            key: 'copy',
+            label: 'Make a copy',
+            icon: <CopyOutlined />,
+            onClick: () => onFileAction('copy', folder)
+        },
+        {
+            key: 'move',
+            label: 'Move',
+            icon: <FolderOpenOutlined />,
+            onClick: () => onFileAction('move', folder)
+        },
+        {
             key: 'share',
             label: 'Share',
             icon: <ShareAltOutlined />,
             onClick: () => onFileAction('share', folder)
         },
         {
+            key: 'info',
+            label: 'Details',
+            icon: <InfoCircleOutlined />,
+            onClick: () => onFileAction('info', folder)
+        },
+        {
             key: 'delete',
             label: (
                 <Popconfirm
-                    title={`Delete ${'mimeType' in folder ? 'file' : 'folder'}?`}
+                    title="Delete folder?"
                     description={`Are you sure you want to delete "${folder.name}"?`}
                     okText="Delete"
                     okType="danger"
@@ -599,7 +818,6 @@ const FoldersSection: React.FC<{
                     {displayFolders.map((folder) => (
                         <Col xs={12} sm={8} md={6} lg={4} xl={3} key={folder.id}>
                             <div
-                                onClick={() => onFolderClick(folder.id, folder.name)}
                                 style={{
                                     padding: '12px',
                                     borderRadius: '8px',
@@ -621,11 +839,20 @@ const FoldersSection: React.FC<{
                                 }}
                             >
                                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-                                    <FolderOutlined style={{
-                                        fontSize: '20px',
-                                        color: PRIMARY_COLOR,
-                                        marginRight: '8px'
-                                    }} />
+                                    <Checkbox
+                                        checked={selectedItems.includes(folder.id)}
+                                        onChange={(e) => onItemSelect(folder.id, e.target.checked)}
+                                        onClick={(e) => e.stopPropagation()}
+                                        style={{ marginRight: '8px' }}
+                                    />
+                                    <FolderOutlined
+                                        style={{
+                                            fontSize: '20px',
+                                            color: PRIMARY_COLOR,
+                                            marginRight: '8px'
+                                        }}
+                                        onClick={() => onFolderClick(folder.id, folder.name)}
+                                    />
                                     <Text
                                         style={{
                                             fontSize: '14px',
@@ -634,8 +861,10 @@ const FoldersSection: React.FC<{
                                             overflow: 'hidden',
                                             textOverflow: 'ellipsis',
                                             whiteSpace: 'nowrap',
-                                            fontWeight: 500
+                                            fontWeight: 500,
+                                            cursor: 'pointer'
                                         }}
+                                        onClick={() => onFolderClick(folder.id, folder.name)}
                                     >
                                         {folder.name}
                                     </Text>
@@ -648,13 +877,14 @@ const FoldersSection: React.FC<{
                                             size="small"
                                             icon={<MoreOutlined />}
                                             style={{
-                                                opacity: 0,
-                                                transition: 'opacity 0.2s ease',
+                                                // opacity: 0,
+                                                // transition: 'opacity 0.2s ease',
+                                                color: PRIMARY_COLOR,
+                                                // backgroundColor: PRIMARY_COLOR,
                                                 position: 'absolute',
                                                 top: '8px',
                                                 right: '8px'
                                             }}
-                                            className="folder-menu-btn"
                                             onClick={(e) => e.stopPropagation()}
                                         />
                                     </Dropdown>
@@ -664,7 +894,7 @@ const FoldersSection: React.FC<{
                                 </Text>
                                 {folder.shared && (
                                     <div style={{ marginTop: '4px' }}>
-                                        <Tag color="blue" style={{ fontSize: '11px' }}>
+                                        <Tag color="blue" style={{ fontSize: '8px' }}>
                                             <TeamOutlined style={{ marginRight: '2px' }} />
                                             Shared
                                         </Tag>
@@ -679,7 +909,6 @@ const FoldersSection: React.FC<{
                     {displayFolders.map((folder) => (
                         <div
                             key={folder.id}
-                            onClick={() => onFolderClick(folder.id, folder.name)}
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
@@ -696,12 +925,24 @@ const FoldersSection: React.FC<{
                                 e.currentTarget.style.backgroundColor = 'transparent';
                             }}
                         >
-                            <FolderOutlined style={{
-                                fontSize: '18px',
-                                color: PRIMARY_COLOR,
-                                marginRight: '16px'
-                            }} />
-                            <div style={{ flex: 1, minWidth: 0 }}>
+                            <Checkbox
+                                checked={selectedItems.includes(folder.id)}
+                                onChange={(e) => onItemSelect(folder.id, e.target.checked)}
+                                style={{ marginRight: '12px' }}
+                                onClick={(e) => e.stopPropagation()}
+                            />
+                            <FolderOutlined
+                                style={{
+                                    fontSize: '18px',
+                                    color: PRIMARY_COLOR,
+                                    marginRight: '16px'
+                                }}
+                                onClick={() => onFolderClick(folder.id, folder.name)}
+                            />
+                            <div
+                                style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}
+                                onClick={() => onFolderClick(folder.id, folder.name)}
+                            >
                                 <Text style={{ fontSize: '14px', color: '#202124', fontWeight: 500 }}>
                                     {folder.name}
                                 </Text>
@@ -736,7 +977,36 @@ const FoldersSection: React.FC<{
         </div>
     );
 };
-// Files Section Component
+
+const getFileIcon = (mimeType: string) => {
+    if (mimeType.includes('image')) return <PictureOutlined />;
+    if (mimeType.includes('video')) return <PlayCircleOutlined />;
+    if (mimeType.includes('pdf')) return <FilePdfOutlined />;
+    if (mimeType.includes('document')) return <FileTextOutlined />;
+    if (mimeType.includes('spreadsheet')) return <FileExcelOutlined />;
+    if (mimeType.includes('presentation')) return <FilePptOutlined />;
+    if (mimeType.includes('zip') || mimeType.includes('archive')) return <FileZipOutlined />;
+    return <FileTextOutlined />;
+};
+
+const getFileIconColor = (mimeType: string) => {
+    if (mimeType.includes('image')) return '#34a853';
+    if (mimeType.includes('video')) return '#ea4335';
+    if (mimeType.includes('pdf')) return '#ea4335';
+    if (mimeType.includes('document')) return '#4285f4';
+    if (mimeType.includes('spreadsheet')) return '#34a853';
+    if (mimeType.includes('presentation')) return '#ff9900';
+    if (mimeType.includes('zip') || mimeType.includes('archive')) return '#9aa0a6';
+    return '#5f6368';
+};
+
+const formatFileSize = (bytes?: number) => {
+    if (!bytes) return '';
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return Math.round((bytes / Math.pow(1024, i)) * 100) / 100 + ' ' + sizes[i];
+};
+// Enhanced Files Section Component
 const FilesSection: React.FC<{
     files: DriveFile[];
     onFileAction: (action: string, file: DriveFile) => void;
@@ -744,39 +1014,13 @@ const FilesSection: React.FC<{
     currentPage: number;
     pageSize: number;
     onPageChange: (page: number, size?: number) => void;
-}> = ({ files, onFileAction, viewMode, currentPage, pageSize, onPageChange }) => {
+    selectedItems: string[];
+    onItemSelect: (itemId: string, selected: boolean) => void;
+}> = ({ files, onFileAction, viewMode, currentPage, pageSize, onPageChange, selectedItems, onItemSelect }) => {
     const startIndex = (currentPage - 1) * pageSize;
     const endIndex = startIndex + pageSize;
     const displayFiles = files.slice(startIndex, endIndex);
 
-    const getFileIcon = (mimeType: string) => {
-        if (mimeType.includes('image')) return <PictureOutlined />;
-        if (mimeType.includes('video')) return <PlayCircleOutlined />;
-        if (mimeType.includes('pdf')) return <FilePdfOutlined />;
-        if (mimeType.includes('document')) return <FileTextOutlined />;
-        if (mimeType.includes('spreadsheet')) return <FileExcelOutlined />;
-        if (mimeType.includes('presentation')) return <FilePptOutlined />;
-        if (mimeType.includes('zip') || mimeType.includes('archive')) return <FileZipOutlined />;
-        return <FileTextOutlined />;
-    };
-
-    const getFileIconColor = (mimeType: string) => {
-        if (mimeType.includes('image')) return '#34a853';
-        if (mimeType.includes('video')) return '#ea4335';
-        if (mimeType.includes('pdf')) return '#ea4335';
-        if (mimeType.includes('document')) return '#4285f4';
-        if (mimeType.includes('spreadsheet')) return '#34a853';
-        if (mimeType.includes('presentation')) return '#ff9900';
-        if (mimeType.includes('zip') || mimeType.includes('archive')) return '#9aa0a6';
-        return '#5f6368';
-    };
-
-    const formatFileSize = (bytes?: number) => {
-        if (!bytes) return '';
-        const sizes = ['B', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(1024));
-        return Math.round((bytes / Math.pow(1024, i)) * 100) / 100 + ' ' + sizes[i];
-    };
 
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
@@ -793,7 +1037,7 @@ const FilesSection: React.FC<{
     const getMenuItems = (file: DriveFile) => [
         {
             key: 'view',
-            label: 'View',
+            label: 'Open',
             icon: <EyeOutlined />,
             onClick: () => onFileAction('view', file),
         },
@@ -804,16 +1048,46 @@ const FilesSection: React.FC<{
             onClick: () => onFileAction('download', file),
         },
         {
+            key: 'rename',
+            label: 'Rename',
+            icon: <EditOutlined />,
+            onClick: () => onFileAction('rename', file),
+        },
+        {
+            key: 'copy',
+            label: 'Make a copy',
+            icon: <CopyOutlined />,
+            onClick: () => onFileAction('copy', file),
+        },
+        {
+            key: 'move',
+            label: 'Move',
+            icon: <FolderOpenOutlined />,
+            onClick: () => onFileAction('move', file),
+        },
+        {
+            key: 'star',
+            label: file.starred ? 'Remove star' : 'Add star',
+            icon: file.starred ? <StarFilled style={{ color: '#fbbc04' }} /> : <StarOutlined />,
+            onClick: () => onFileAction('star', file),
+        },
+        {
             key: 'share',
             label: 'Share',
             icon: <ShareAltOutlined />,
             onClick: () => onFileAction('share', file),
         },
         {
+            key: 'info',
+            label: 'Details',
+            icon: <InfoCircleOutlined />,
+            onClick: () => onFileAction('info', file),
+        },
+        {
             key: 'delete',
             label: (
                 <Popconfirm
-                    title={`Delete ${'mimeType' in file ? 'file' : 'folder'}?`}
+                    title="Delete file?"
                     description={`Are you sure you want to delete "${file.name}"?`}
                     okText="Delete"
                     okType="danger"
@@ -831,6 +1105,17 @@ const FilesSection: React.FC<{
     // ------------------ LIST VIEW -------------------
     if (viewMode === 'list') {
         const columns = [
+            {
+                title: '',
+                key: 'select',
+                width: 50,
+                render: (_: any, record: DriveFile) => (
+                    <Checkbox
+                        checked={selectedItems.includes(record.id)}
+                        onChange={(e) => onItemSelect(record.id, e.target.checked)}
+                    />
+                )
+            },
             {
                 title: 'Name',
                 dataIndex: 'name',
@@ -852,10 +1137,14 @@ const FilesSection: React.FC<{
                                 {getFileIcon(record.mimeType)}
                             </div>
                             <div>
-                                <Text style={{ fontSize: '14px', color: '#202124', fontWeight: 500 }}
-                                >
-                                    {text}
-                                </Text>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Text style={{ fontSize: '14px', color: '#202124', fontWeight: 500 }}>
+                                        {text}
+                                    </Text>
+                                    {record.starred && (
+                                        <StarFilled style={{ color: '#fbbc04', fontSize: '12px' }} />
+                                    )}
+                                </div>
                                 {record.shared && (
                                     <div style={{ marginTop: '2px' }}>
                                         <Tag color="blue" style={{ fontSize: '11px' }}>
@@ -987,7 +1276,6 @@ const FilesSection: React.FC<{
                                 overflow: 'hidden',
                                 position: 'relative',
                             }}
-                            onClick={() => onFileAction('view', file)} // <-- open on click
                             onMouseEnter={(e) => {
                                 e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
                                 e.currentTarget.style.transform = 'translateY(-2px)';
@@ -1011,7 +1299,21 @@ const FilesSection: React.FC<{
                                     backgroundPosition: 'center',
                                     position: 'relative',
                                 }}
+                                onClick={() => onFileAction('view', file)}
                             >
+                                <Checkbox
+                                    checked={selectedItems.includes(file.id)}
+                                    onChange={(e) => onItemSelect(file.id, e.target.checked)}
+                                    style={{
+                                        position: 'absolute',
+                                        top: '8px',
+                                        left: '8px',
+                                        backgroundColor: 'rgba(255,255,255,0.9)',
+                                        borderRadius: '4px',
+                                        padding: '2px'
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                />
                                 {!file.thumbnailLink && (
                                     <div style={{ fontSize: '32px', color: getFileIconColor(file.mimeType) }}>
                                         {getFileIcon(file.mimeType)}
@@ -1022,42 +1324,43 @@ const FilesSection: React.FC<{
                                         position: 'absolute',
                                         top: '8px',
                                         right: '8px',
-                                        opacity: 0,
-                                        transition: 'opacity 0.2s ease',
                                     }}
-                                    className="file-menu-btn"
+                                // className="file-menu-btn"
                                 >
                                     <Dropdown menu={{ items: getMenuItems(file) }} trigger={['click']}>
                                         <Button
                                             type="primary"
                                             size="small"
-                                            shape="circle"
                                             icon={<MoreOutlined />}
                                             style={{
-                                                backgroundColor: 'rgba(0,0,0,0.6)',
                                                 border: 'none',
-                                                boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                                                color: PRIMARY_COLOR,
+                                                backgroundColor: 'transparent',
                                             }}
-                                            onClick={(e) => e.stopPropagation()} // prevent open on dropdown click
+                                            onClick={(e) => e.stopPropagation()}
                                         />
                                     </Dropdown>
                                 </div>
                             </div>
                             <div style={{ padding: '12px' }}>
-                                <Text
-                                    style={{
-                                        fontSize: '14px',
-                                        color: '#202124',
-                                        display: 'block',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        whiteSpace: 'nowrap',
-                                        marginBottom: '4px',
-                                        fontWeight: 500,
-                                    }}
-                                >
-                                    {file.name}
-                                </Text>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
+                                    <Text
+                                        style={{
+                                            fontSize: '14px',
+                                            color: '#202124',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap',
+                                            fontWeight: 500,
+                                            flex: 1
+                                        }}
+                                    >
+                                        {file.name}
+                                    </Text>
+                                    {file.starred && (
+                                        <StarFilled style={{ color: '#fbbc04', fontSize: '12px' }} />
+                                    )}
+                                </div>
                                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
                                     {file.owners[0]?.photoLink ? (
                                         <Avatar size={16} src={file.owners[0].photoLink} style={{ marginRight: '6px' }} />
@@ -1085,11 +1388,6 @@ const FilesSection: React.FC<{
                                         {file.shared && (
                                             <Tooltip title="Shared">
                                                 <TeamOutlined style={{ color: PRIMARY_COLOR, fontSize: '12px' }} />
-                                            </Tooltip>
-                                        )}
-                                        {file.starred && (
-                                            <Tooltip title="Starred">
-                                                <StarOutlined style={{ color: '#fbbc04', fontSize: '12px' }} />
                                             </Tooltip>
                                         )}
                                     </Space>
@@ -1149,10 +1447,34 @@ const GoogleDriveManager: React.FC = () => {
     const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
     const [availableAccounts, setAvailableAccounts] = useState<AccountFilter[]>([]);
 
+    // New state for enhanced features
+    const [selectedItems, setSelectedItems] = useState<string[]>([]);
+    const [storageInfo, setStorageInfo] = useState<StorageInfo | null>(null);
+    const [showAnalytics, setShowAnalytics] = useState(false);
+    const [showActivity, setShowActivity] = useState(false);
+    const [showDuplicates, setShowDuplicates] = useState(false);
+    const [showRenameModal, setShowRenameModal] = useState(false);
+    const [showMoveModal, setShowMoveModal] = useState(false);
+    const [showCopyModal, setShowCopyModal] = useState(false);
+    const [showBulkShareModal, setShowBulkShareModal] = useState(false);
+    const [showBulkMoveModal, setShowBulkMoveModal] = useState(false);
+    const [showBulkCopyModal, setShowBulkCopyModal] = useState(false);
+    const [showFileInfoModal, setShowFileInfoModal] = useState(false);
+    const [currentActionItem, setCurrentActionItem] = useState<DriveFile | DriveFolder | null>(null);
+    const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+    const [duplicateFiles, setDuplicateFiles] = useState<DuplicateFile[]>([]);
+    const [storageAnalytics, setStorageAnalytics] = useState<any>(null);
+
     const handleToggleUpload = () => setShowUploadArea(true);
     const handleAddFolder = () => setShowCreateFolder(true);
     const [form] = Form.useForm();
     const [shareForm] = Form.useForm();
+    const [renameForm] = Form.useForm();
+    const [moveForm] = Form.useForm();
+    const [copyForm] = Form.useForm();
+    const [bulkShareForm] = Form.useForm();
+    const [bulkMoveForm] = Form.useForm();
+    const [bulkCopyForm] = Form.useForm();
 
     // Extract unique accounts from files and folders
     const extractAvailableAccounts = useCallback((files: DriveFile[], folders: DriveFolder[]) => {
@@ -1160,7 +1482,7 @@ const GoogleDriveManager: React.FC = () => {
 
         // Extract from files
         files.forEach(file => {
-            file.owners?.forEach(owner => {
+            file.owners?.forEach((owner: any) => {
                 if (owner.emailAddress) {
                     accountsMap.set(owner.emailAddress, {
                         email: owner.emailAddress,
@@ -1173,7 +1495,7 @@ const GoogleDriveManager: React.FC = () => {
 
         // Extract from folders
         folders.forEach(folder => {
-            folder.owners?.forEach(owner => {
+            folder.owners?.forEach((owner: any) => {
                 if (owner.emailAddress) {
                     accountsMap.set(owner.emailAddress, {
                         email: owner.emailAddress,
@@ -1218,9 +1540,66 @@ const GoogleDriveManager: React.FC = () => {
         }
     };
 
+    const fetchStorageInfo = async () => {
+        try {
+            const response = await getDriveStorage();
+            if (response?.data) {
+                setStorageInfo(response.data.payload);
+            }
+        } catch (error: any) {
+            console.error('Error fetching storage info:', error);
+        }
+    };
+
+    const fetchActivityLog = async () => {
+        try {
+            const response = await getActivityLog({ limit: 50 });
+            if (response?.data) {
+                setActivityLogs(response.data.payload || []);
+            }
+        } catch (error: any) {
+            console.error('Error fetching activity log:', error);
+        }
+    };
+
+    const fetchDuplicates = async () => {
+        try {
+            const response = await findDuplicateFiles({ folderId: currentFolder });
+            if (response?.data) {
+                setDuplicateFiles(response.data.payload || []);
+            }
+        } catch (error: any) {
+            console.error('Error finding duplicates:', error);
+            message.error('Failed to find duplicate files.');
+        }
+    };
+
+    const fetchStorageAnalytics = async () => {
+        try {
+            const response = await getStorageAnalytics();
+            if (response?.data) {
+                setStorageAnalytics(response.data.payload);
+            }
+        } catch (error: any) {
+            console.error('Error fetching storage analytics:', error);
+        }
+    };
+
     useEffect(() => {
         fetchFiles();
     }, [currentFolder, sortBy, sortOrder]);
+
+    useEffect(() => {
+        fetchStorageInfo();
+    }, []);
+
+    const logUserActivity = async (action: string, fileName: string, fileId?: string, details?: string) => {
+        try {
+            await logActivity({ action, fileName, fileId, details });
+        } catch (error) {
+            console.error('Error logging activity:', error);
+        }
+    };
 
     const handleFileUpload = async (file: File) => {
         setIsUploading(true);
@@ -1241,6 +1620,7 @@ const GoogleDriveManager: React.FC = () => {
             }));
 
             message.success(`${file.name} uploaded successfully`);
+            await logUserActivity('upload', file.name, undefined, `Uploaded to ${breadcrumbs[breadcrumbs.length - 1].name}`);
             fetchFiles();
         } catch (error: any) {
             console.error('Upload error:', error);
@@ -1266,6 +1646,7 @@ const GoogleDriveManager: React.FC = () => {
             case 'view':
                 if ('webViewLink' in item && item.webViewLink) {
                     window.open(item.webViewLink, '_blank');
+                    await logUserActivity('view', item.name, item.id);
                 }
                 break;
             case 'download':
@@ -1282,9 +1663,36 @@ const GoogleDriveManager: React.FC = () => {
                         window.URL.revokeObjectURL(url);
                         document.body.removeChild(a);
                         message.success(`${item.name} downloaded successfully`);
+                        await logUserActivity('download', item.name, item.id);
                     } catch (error: any) {
                         console.error('Download error:', error);
                         message.error(`Failed to download ${item.name}`);
+                    }
+                }
+                break;
+            case 'rename':
+                setCurrentActionItem(item);
+                setShowRenameModal(true);
+                renameForm.setFieldsValue({ newName: item.name });
+                break;
+            case 'copy':
+                setCurrentActionItem(item);
+                setShowCopyModal(true);
+                break;
+            case 'move':
+                setCurrentActionItem(item);
+                setShowMoveModal(true);
+                break;
+            case 'star':
+                if ('starred' in item) {
+                    try {
+                        await starDriveFile({ fileId: item.id, starred: !item.starred });
+                        message.success(`${item.starred ? 'Removed star from' : 'Added star to'} ${item.name}`);
+                        await logUserActivity(item.starred ? 'unstar' : 'star', item.name, item.id);
+                        fetchFiles();
+                    } catch (error: any) {
+                        console.error('Star error:', error);
+                        message.error(`Failed to ${item.starred ? 'unstar' : 'star'} ${item.name}`);
                     }
                 }
                 break;
@@ -1292,10 +1700,15 @@ const GoogleDriveManager: React.FC = () => {
                 setShareFileId(item.id);
                 setShowShareModal(true);
                 break;
+            case 'info':
+                setCurrentActionItem(item);
+                setShowFileInfoModal(true);
+                break;
             case 'delete':
                 try {
                     await deleteDriveFile({ fileId: item.id });
                     message.success(`${item.name} deleted successfully`);
+                    await logUserActivity('delete', item.name, item.id);
                     fetchFiles();
                 } catch (error: any) {
                     console.error('Delete error:', error);
@@ -1315,6 +1728,7 @@ const GoogleDriveManager: React.FC = () => {
             setShowCreateFolder(false);
             form.resetFields();
             message.success(`Folder "${values.folderName}" created successfully`);
+            await logUserActivity('create_folder', values.folderName, undefined, `Created in ${breadcrumbs[breadcrumbs.length - 1].name}`);
             fetchFiles();
         } catch (error: any) {
             console.error('Create folder error:', error);
@@ -1334,15 +1748,132 @@ const GoogleDriveManager: React.FC = () => {
             setShareFileId('');
             shareForm.resetFields();
             message.success('File shared successfully');
+
+            const sharedItem = [...files, ...folders].find(item => item.id === shareFileId);
+            if (sharedItem) {
+                await logUserActivity('share', sharedItem.name, shareFileId, `Shared with ${values.email}`);
+            }
         } catch (error: any) {
             console.error('Share error:', error);
             message.error('Failed to share file');
         }
     };
 
+    const handleRename = async (values: any) => {
+        if (!currentActionItem) return;
+
+        try {
+            await renameDriveFile({
+                fileId: currentActionItem.id,
+                newName: values.newName
+            });
+
+            setShowRenameModal(false);
+            setCurrentActionItem(null);
+            renameForm.resetFields();
+            message.success(`Renamed to "${values.newName}" successfully`);
+            await logUserActivity('rename', values.newName, currentActionItem.id, `From "${currentActionItem.name}"`);
+            fetchFiles();
+        } catch (error: any) {
+            console.error('Rename error:', error);
+            message.error('Failed to rename');
+        }
+    };
+
+    const handleCopy = async (values: any) => {
+        if (!currentActionItem) return;
+
+        try {
+            await copyDriveFile({
+                fileId: currentActionItem.id,
+                parentId: values.targetFolder,
+                name: values.newName
+            });
+
+            setShowCopyModal(false);
+            setCurrentActionItem(null);
+            copyForm.resetFields();
+            message.success(`${currentActionItem.name} copied successfully`);
+            await logUserActivity('copy', currentActionItem.name, currentActionItem.id);
+            fetchFiles();
+        } catch (error: any) {
+            console.error('Copy error:', error);
+            message.error('Failed to copy');
+        }
+    };
+
+    const handleMove = async (values: any) => {
+        if (!currentActionItem) return;
+
+        try {
+            await moveDriveFile({
+                fileId: currentActionItem.id,
+                targetFolderId: values.targetFolder
+            });
+
+            setShowMoveModal(false);
+            setCurrentActionItem(null);
+            moveForm.resetFields();
+            message.success(`${currentActionItem.name} moved successfully`);
+            await logUserActivity('move', currentActionItem.name, currentActionItem.id);
+            fetchFiles();
+        } catch (error: any) {
+            console.error('Move error:', error);
+            message.error('Failed to move');
+        }
+    };
+
+    // Bulk Operations
+    const handleBulkDownload = async () => {
+        try {
+            const response = await bulkDownloadFiles({ fileIds: selectedItems });
+            const blob = new Blob([response.data]);
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'bulk-download.zip';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            message.success(`${selectedItems.length} files downloaded successfully`);
+            await logUserActivity('bulk_download', `${selectedItems.length} files`, undefined);
+            setSelectedItems([]);
+        } catch (error: any) {
+            console.error('Bulk download error:', error);
+            message.error('Failed to download files');
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        try {
+            await bulkDeleteFiles({ fileIds: selectedItems });
+            message.success(`${selectedItems.length} items deleted successfully`);
+            await logUserActivity('bulk_delete', `${selectedItems.length} items`, undefined);
+            setSelectedItems([]);
+            fetchFiles();
+        } catch (error: any) {
+            console.error('Bulk delete error:', error);
+            message.error('Failed to delete items');
+        }
+    };
+
+    const handleBulkMove = () => {
+        setShowBulkMoveModal(true);
+    };
+
+    const handleBulkCopy = () => {
+        setShowBulkCopyModal(true);
+    };
+
+    const handleBulkShare = () => {
+        setShowBulkShareModal(true);
+    };
+
     const navigateToFolder = (folderId: string, folderName: string) => {
         setCurrentFolder(folderId);
         setCurrentPage(1);
+        setSelectedItems([]);
         if (folderId === 'root') {
             setBreadcrumbs([{ id: 'root', name: 'My Drive' }]);
         } else {
@@ -1355,7 +1886,27 @@ const GoogleDriveManager: React.FC = () => {
         setBreadcrumbs(newBreadcrumbs);
         setCurrentFolder(newBreadcrumbs[newBreadcrumbs.length - 1].id);
         setCurrentPage(1);
+        setSelectedItems([]);
     };
+
+    const handleItemSelect = (itemId: string, selected: boolean) => {
+        if (selected) {
+            setSelectedItems(prev => [...prev, itemId]);
+        } else {
+            setSelectedItems(prev => prev.filter(id => id !== itemId));
+        }
+    };
+
+    const handleToggleSelectAll = () => {
+        const allItems = [...files.map(f => f.id), ...folders.map(f => f.id)];
+        if (selectedItems.length === allItems.length) {
+            setSelectedItems([]);
+        } else {
+            setSelectedItems(allItems);
+        }
+    };
+
+    const isAllSelected = selectedItems.length > 0 && selectedItems.length === (files.length + folders.length);
 
     // Filter files and folders by search query and selected account
     const filteredFiles = files.filter(file => {
@@ -1395,6 +1946,7 @@ const GoogleDriveManager: React.FC = () => {
         if (key === 'upload') handleToggleUpload();
         if (key === 'folder') handleAddFolder();
     };
+
     const handleToggleUploads = () => setShowUploadArea(prev => !prev);
 
     return (
@@ -1408,7 +1960,6 @@ const GoogleDriveManager: React.FC = () => {
                     padding: '16px 24px',
                     borderBottom: `1px solid ${PRIMARY_COLOR}`,
                     backgroundColor: '#f9fafa',
-                    // boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center' }}>
                         <div style={{
@@ -1460,7 +2011,23 @@ const GoogleDriveManager: React.FC = () => {
                     selectedAccount={selectedAccount}
                     onAccountChange={setSelectedAccount}
                     availableAccounts={availableAccounts}
-                    extraIcon={ // <-- Pass icon as extra prop
+                    selectedItems={selectedItems}
+                    onToggleSelectAll={handleToggleSelectAll}
+                    isAllSelected={isAllSelected}
+                    storageInfo={storageInfo}
+                    onShowAnalytics={() => {
+                        fetchStorageAnalytics();
+                        setShowAnalytics(true);
+                    }}
+                    onShowActivity={() => {
+                        fetchActivityLog();
+                        setShowActivity(true);
+                    }}
+                    onShowDuplicates={() => {
+                        fetchDuplicates();
+                        setShowDuplicates(true);
+                    }}
+                    extraIcon={
                         <Button
                             type="text"
                             size="small"
@@ -1471,10 +2038,10 @@ const GoogleDriveManager: React.FC = () => {
                                 fontSize: '13px',
                                 height: '28px'
                             }}
-                        >
-                        </Button>
+                        />
                     }
                 />
+
                 {/* Upload Area */}
                 {showUploadArea && (
                     <div style={{ padding: '24px' }}>
@@ -1485,6 +2052,17 @@ const GoogleDriveManager: React.FC = () => {
                         />
                     </div>
                 )}
+
+                {/* Bulk Actions Toolbar */}
+                <BulkActionsToolbar
+                    selectedItems={selectedItems}
+                    onClearSelection={() => setSelectedItems([])}
+                    onBulkDownload={handleBulkDownload}
+                    onBulkDelete={handleBulkDelete}
+                    onBulkMove={handleBulkMove}
+                    onBulkCopy={handleBulkCopy}
+                    onBulkShare={handleBulkShare}
+                />
 
                 {/* Content */}
                 {loading ? (
@@ -1507,6 +2085,8 @@ const GoogleDriveManager: React.FC = () => {
                             onFolderClick={navigateToFolder}
                             onFileAction={handleFileAction}
                             viewMode={viewMode}
+                            selectedItems={selectedItems}
+                            onItemSelect={handleItemSelect}
                         />
 
                         {/* Files Section */}
@@ -1520,6 +2100,8 @@ const GoogleDriveManager: React.FC = () => {
                                 setCurrentPage(page);
                                 if (size) setPageSize(size);
                             }}
+                            selectedItems={selectedItems}
+                            onItemSelect={handleItemSelect}
                         />
 
                         {/* Empty State */}
@@ -1546,6 +2128,8 @@ const GoogleDriveManager: React.FC = () => {
                         )}
                     </>
                 )}
+
+                {/* Modals and Drawers */}
 
                 {/* Create Folder Modal */}
                 <Modal
@@ -1608,7 +2192,7 @@ const GoogleDriveManager: React.FC = () => {
                     </Form>
                 </Modal>
 
-                {/* Share File Modal */}
+                {/* Share Modal */}
                 <Modal
                     title={
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1683,6 +2267,229 @@ const GoogleDriveManager: React.FC = () => {
                         </Form.Item>
                     </Form>
                 </Modal>
+
+                {/* Rename Modal */}
+                <Modal
+                    title={
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <EditOutlined style={{ color: PRIMARY_COLOR }} />
+                            <span style={{ fontSize: '16px', fontWeight: 500 }}>Rename</span>
+                        </div>
+                    }
+                    open={showRenameModal}
+                    onCancel={() => {
+                        setShowRenameModal(false);
+                        setCurrentActionItem(null);
+                        renameForm.resetFields();
+                    }}
+                    footer={null}
+                    width={400}
+                >
+                    <Form
+                        form={renameForm}
+                        onFinish={handleRename}
+                        layout="vertical"
+                        style={{ marginTop: '20px' }}
+                    >
+                        <Form.Item
+                            name="newName"
+                            label="New name"
+                            rules={[{ required: true, message: 'Please enter a new name' }]}
+                        >
+                            <Input autoFocus />
+                        </Form.Item>
+                        <Form.Item style={{ marginBottom: 0, textAlign: 'right', marginTop: '24px' }}>
+                            <Space>
+                                <Button
+                                    onClick={() => {
+                                        setShowRenameModal(false);
+                                        setCurrentActionItem(null);
+                                        renameForm.resetFields();
+                                    }}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button type="primary" htmlType="submit">
+                                    Rename
+                                </Button>
+                            </Space>
+                        </Form.Item>
+                    </Form>
+                </Modal>
+
+                {/* Analytics Drawer */}
+                <Drawer
+                    title={
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <BarChartOutlined style={{ color: PRIMARY_COLOR }} />
+                            <span>Storage Analytics</span>
+                        </div>
+                    }
+                    placement="right"
+                    onClose={() => setShowAnalytics(false)}
+                    open={showAnalytics}
+                    width={400}
+                >
+                    {storageAnalytics && (
+                        <div>
+                            <Card size="small" style={{ marginBottom: '16px' }}>
+                                <Statistic
+                                    title="Total Files"
+                                    value={storageAnalytics.totalFiles || 0}
+                                    prefix={<FileOutlined />}
+                                />
+                            </Card>
+                            <Card size="small" style={{ marginBottom: '16px' }}>
+                                <Statistic
+                                    title="Total Folders"
+                                    value={storageAnalytics.totalFolders || 0}
+                                    prefix={<FolderOutlined />}
+                                />
+                            </Card>
+                            {storageAnalytics.byType && (
+                                <Card size="small" title="Files by Type">
+                                    {Object.entries(storageAnalytics.byType).map(([type, count]: [string, any]) => (
+                                        <div key={type} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                            <Text>{type}</Text>
+                                            <Text strong>{count}</Text>
+                                        </div>
+                                    ))}
+                                </Card>
+                            )}
+                        </div>
+                    )}
+                </Drawer>
+
+                {/* Activity Drawer */}
+                <Drawer
+                    title={
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <HistoryOutlined style={{ color: PRIMARY_COLOR }} />
+                            <span>Activity Log</span>
+                        </div>
+                    }
+                    placement="right"
+                    onClose={() => setShowActivity(false)}
+                    open={showActivity}
+                    width={500}
+                >
+                    <Timeline>
+                        {activityLogs.map((log) => (
+                            <Timeline.Item
+                                key={log.id}
+                                dot={
+                                    log.action === 'upload' ? <UploadOutlined style={{ color: '#52c41a' }} /> :
+                                        log.action === 'download' ? <DownloadOutlined style={{ color: '#1890ff' }} /> :
+                                            log.action === 'delete' ? <DeleteOutlined style={{ color: '#ff4d4f' }} /> :
+                                                <ClockCircleOutlined style={{ color: '#faad14' }} />
+                                }
+                            >
+                                <div>
+                                    <Text strong>{log.action.replace('_', ' ').toUpperCase()}</Text>
+                                    <br />
+                                    <Text>{log.fileName}</Text>
+                                    <br />
+                                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                                        {new Date(log.timestamp).toLocaleString()}
+                                    </Text>
+                                    {log.details && (
+                                        <>
+                                            <br />
+                                            <Text type="secondary" style={{ fontSize: '12px' }}>
+                                                {log.details}
+                                            </Text>
+                                        </>
+                                    )}
+                                </div>
+                            </Timeline.Item>
+                        ))}
+                    </Timeline>
+                </Drawer>
+
+                {/* Duplicates Drawer */}
+                <Drawer
+                    title={
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <BugOutlined style={{ color: PRIMARY_COLOR }} />
+                            <span>Duplicate Files</span>
+                        </div>
+                    }
+                    placement="right"
+                    onClose={() => setShowDuplicates(false)}
+                    open={showDuplicates}
+                    width={600}
+                >
+                    {duplicateFiles.length === 0 ? (
+                        <Empty description="No duplicate files found" />
+                    ) : (
+                        <div>
+                            <Alert
+                                message="Duplicate Files Found"
+                                description={`Found ${duplicateFiles.length} sets of duplicate files. Review and clean up to free storage space.`}
+                                type="info"
+                                style={{ marginBottom: '16px' }}
+                            />
+                            <Collapse>
+                                {duplicateFiles.map((duplicate, index) => (
+                                    <Panel
+                                        header={
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <Text strong>{duplicate.name}</Text>
+                                                <div>
+                                                    <Badge count={duplicate.files.length} style={{ backgroundColor: '#faad14' }} />
+                                                    <Text style={{ marginLeft: '8px', fontSize: '12px', color: '#5f6368' }}>
+                                                        {(duplicate.totalSize / (1024 * 1024)).toFixed(2)} MB
+                                                    </Text>
+                                                </div>
+                                            </div>
+                                        }
+                                        key={index}
+                                    >
+                                        <List
+                                            dataSource={duplicate.files}
+                                            renderItem={(file) => (
+                                                <List.Item
+                                                    actions={[
+                                                        <Button
+                                                            key="delete"
+                                                            type="text"
+                                                            danger
+                                                            size="small"
+                                                            icon={<DeleteOutlined />}
+                                                            onClick={() => handleFileAction('delete', file)}
+                                                        >
+                                                            Delete
+                                                        </Button>
+                                                    ]}
+                                                >
+                                                    <List.Item.Meta
+                                                        avatar={
+                                                            <div style={{ fontSize: '16px', color: getFileIconColor(file.mimeType) }}>
+                                                                {getFileIcon(file.mimeType)}
+                                                            </div>
+                                                        }
+                                                        title={file.name}
+                                                        description={
+                                                            <div>
+                                                                <Text type="secondary">
+                                                                    Modified {new Date(file.modifiedTime).toLocaleDateString()}
+                                                                </Text>
+                                                                <br />
+                                                                <Text type="secondary">
+                                                                    {formatFileSize(file.size)}
+                                                                </Text>
+                                                            </div>
+                                                        }
+                                                    />
+                                                </List.Item>
+                                            )}
+                                        />
+                                    </Panel>
+                                ))}
+                            </Collapse>
+                        </div>
+                    )}
+                </Drawer>
             </Content>
 
             <style jsx>{`

@@ -27,6 +27,7 @@ const ProfilePage = () => {
     const [collapsed, setCollapsed] = useState(false);
     const [form] = Form.useForm();
     const [personalInfo, setPersonalInfo] = useState<any>(null);
+    const [localUserName, setLocalUserName] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchResolvedUserId = async () => {
@@ -97,6 +98,13 @@ const ProfilePage = () => {
             action: 'Locate'
         }
     ];
+
+    useEffect(() => {
+        const storedName = localStorage.getItem('username');
+        if (storedName) {
+            setLocalUserName(storedName);
+        }
+    }, []);
 
     const documents = [
         {
@@ -191,7 +199,7 @@ const ProfilePage = () => {
 
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <Title level={2} style={{ color: 'white', margin: 0, marginBottom: 8 }}>
-                                        {personalInfo?.firstName || `${personalInfo?.preferredName ?? ''} ${personalInfo?.lastName ?? ''}` || 'Family Member'}
+                                        {localUserName || personalInfo?.firstName || `${personalInfo?.preferredName ?? ''} ${personalInfo?.lastName ?? ''}` || 'Family Member'}
                                     </Title>
                                     <Text style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: 16, display: 'block', marginBottom: 12 }}>
                                         {personalInfo?.relationship || ''} •
@@ -200,19 +208,19 @@ const ProfilePage = () => {
                                     </Text>
                                 </div>
 
-                                <Button
-                                    icon={<EditOutlined />}
-                                    onClick={handleEdit}
-                                    style={{
-                                        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                                        border: '1px solid rgba(255, 255, 255, 0.3)',
-                                        color: 'white',
-                                        backdropFilter: 'blur(10px)',
-                                        flexShrink: 0
-                                    }}
-                                >
-                                    Edit Profile
-                                </Button>
+                                {/* <Button
+                                icon={<EditOutlined />}
+                                onClick={handleEdit}
+                                style={{
+                                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                                    color: 'white',
+                                    backdropFilter: 'blur(10px)',
+                                    flexShrink: 0
+                                }}
+                            >
+                                Edit Profile
+                            </Button> */}
                             </div>
                         </Card>
 
