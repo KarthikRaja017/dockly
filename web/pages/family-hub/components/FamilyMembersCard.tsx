@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Card, Avatar, Button, Space, Typography, Row, Col, Dropdown, Menu, Tag } from 'antd';
 import { PlusOutlined, UserOutlined, CloseOutlined } from '@ant-design/icons';
-import ProfilePage from '../../../app/[username]/family-hub/profile/[id]/page';
+import ProfileClient from '../../../app/[username]/family-hub/profile/[id]/profileClient';
+// import ProfilePage from '../../../app/[username]/family-hub/profile/[id]/page';
 
 const { Text } = Typography;
 
@@ -41,7 +42,7 @@ const FamilyMembersCard: React.FC<FamilyMembersCardProps> = ({
     selectedMemberId,
     setSelectedMemberId
 }) => {
-    const filteredMembers = familyMembers.filter(member => {
+    const filteredMembers = (familyMembers || []).filter(member => {
         if (activeFilter === 'all') return true;
         return member.type === activeFilter;
     });
@@ -200,9 +201,9 @@ const FamilyMembersCard: React.FC<FamilyMembersCardProps> = ({
                     style={{ marginBottom: '24px', borderRadius: '12px' }}
                     bodyStyle={{ padding: 0, margin: 0 }}
                 >
-                    <ProfilePage
-                    // memberId={selectedMemberId.toString()}
-                    // onBack={handleCloseProfile}
+                    <ProfileClient
+                        memberId={selectedMemberId.toString()}
+                        onBack={handleCloseProfile}
                     />
                 </Card>
             )}
