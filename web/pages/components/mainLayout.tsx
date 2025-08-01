@@ -61,7 +61,7 @@ export default function MainLayout({ children, colors }: MainLayoutProps) {
     }}>
       {/* <Sidebar ref={hoverRef} isHovered={isHovered} /> */}
       {!hidden && (
-        <Sidebar collapsed={collapsed} isHovered={!collapsed} />
+        <Sidebar collapsed={collapsed} />
       )}
       <Layout
         style={{
