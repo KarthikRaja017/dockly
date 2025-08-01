@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Card, Progress, Button, Badge, Table, Collapse, Typography, Row, Col, Statistic, Modal, Upload, List, message } from 'antd';
+import { Card, Progress, Button, Badge, Table, Collapse, Typography, Row, Col, Statistic, Modal, Upload, List, message, Form, Input, Space } from 'antd';
 import {
     CheckOutlined,
     ExportOutlined,
@@ -17,7 +17,7 @@ import {
     DeleteOutlined,
     EditOutlined
 } from '@ant-design/icons';
-import { deleteFamilyDocument, getFamilyDocuments, getGuardians, uploadFamilyDocument } from '../../../services/family';
+import { addBeneficiary, deleteFamilyDocument, getBeneficiaries, getFamilyDocuments, getGuardians, updateBeneficiary, uploadFamilyDocument } from '../../../services/family';
 import EstatePlanningCard from './estateplanning';
 import type { UploadRequestOption } from 'rc-upload/lib/interface';
 
@@ -36,6 +36,9 @@ const GuardianSection: React.FC = () => {
     const [uploadModalVisible, setUploadModalVisible] = useState(false);
     const [viewModalVisible, setViewModalVisible] = useState(false);
     const [uploadedDocs, setUploadedDocs] = useState<DriveFile[]>([]);
+    const [beneficiaries, setBeneficiaries] = useState<any[]>([]);
+    const [editingBeneficiary, setEditingBeneficiary] = useState<any | null>(null);
+    const [beneficiaryModalVisible, setBeneficiaryModalVisible] = useState(false);
 
     useEffect(() => {
         async function fetchGuardians() {
@@ -55,8 +58,9 @@ const GuardianSection: React.FC = () => {
             const actualFile = file as File;
 
             const formData = new FormData();
-            formData.append('file', actualFile); // 🔥 crucial part
+            formData.append('file', actualFile);
             formData.append('hub', 'Family');
+            formData.append('docType', 'EstateDocuments');
 
             const res = await uploadFamilyDocument(formData); // ← calls your service
 
@@ -75,9 +79,23 @@ const GuardianSection: React.FC = () => {
         }
     };
 
+    useEffect(() => {
+        async function fetchData() {
+            const userId = localStorage.getItem("userId");
+            if (userId) {
+                const res = await getBeneficiaries(userId);
+                if (res.status === 1) {
+                    setBeneficiaries(res.payload);
+                }
+            }
+        }
+        fetchData();
+    }, []);
+
     const fetchFamilyDocs = async () => {
         try {
-            const res = await getFamilyDocuments();
+            const uid = localStorage.getItem("userId");
+            const res = await getFamilyDocuments(uid, 'EstateDocuments');
             if (res.status === 1) {
                 setUploadedDocs(res.payload.files || []);
             }
@@ -105,67 +123,6 @@ const GuardianSection: React.FC = () => {
         }
     };
 
-
-    const beneficiaryColumns = [
-        {
-            title: 'Account/Policy',
-            dataIndex: 'account',
-            key: 'account',
-        },
-        {
-            title: 'Primary Beneficiary',
-            dataIndex: 'primary',
-            key: 'primary',
-        },
-        {
-            title: 'Secondary Beneficiary',
-            dataIndex: 'secondary',
-            key: 'secondary',
-        },
-        {
-            title: 'Last Updated',
-            dataIndex: 'updated',
-            key: 'updated',
-        },
-        {
-            title: 'Action',
-            key: 'action',
-            render: () => (
-                <Button type="primary" ghost size="small">Edit</Button>
-            ),
-        },
-    ];
-
-    const beneficiaryData = [
-        {
-            key: '1',
-            account: '401(k) - Vanguard',
-            primary: 'Sarah Smith (100%)',
-            secondary: 'Emma Smith (50%), Liam Smith (50%)',
-            updated: 'Jan 2025',
-        },
-        {
-            key: '2',
-            account: 'IRA - Fidelity',
-            primary: 'Sarah Smith (100%)',
-            secondary: 'Martha Smith (100%)',
-            updated: 'Jan 2025',
-        },
-        {
-            key: '3',
-            account: 'Life Insurance - Prudential',
-            primary: 'Sarah Smith (100%)',
-            secondary: 'Trust (100%)',
-            updated: 'Dec 2024',
-        },
-        {
-            key: '4',
-            account: 'Checking - Chase',
-            primary: 'Sarah Smith (POD)',
-            secondary: '-',
-            updated: 'Nov 2024',
-        },
-    ];
 
     function getAccessTagColor(itemKey: string) {
         switch (itemKey.toLowerCase()) {
@@ -203,7 +160,7 @@ const GuardianSection: React.FC = () => {
         <div style={{
             maxWidth: '100%',
             margin: '0 auto',
-            padding: '20px',
+            padding: '12px',
             backgroundColor: '#f9fafb',
             minHeight: '100vh',
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
@@ -213,29 +170,29 @@ const GuardianSection: React.FC = () => {
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                marginBottom: '24px',
-                paddingBottom: '16px',
+                marginBottom: '16px',
+                paddingBottom: '12px',
                 borderBottom: '2px solid #e5e7eb'
             }}>
                 <Title level={2} style={{
                     margin: 0,
-                    fontSize: '24px',
+                    fontSize: '20px',
                     fontWeight: 700,
                     color: '#111827',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '12px'
+                    gap: '8px'
                 }}>
-                    <SafetyCertificateOutlined style={{ fontSize: '28px', color: '#007AFF' }} />
+                    <SafetyCertificateOutlined style={{ fontSize: '22px', color: '#007AFF' }} />
                     Guardians & Estate Planning
                 </Title>
                 <Button
                     type="primary"
                     icon={<ExportOutlined />}
                     style={{
-                        padding: '10px 20px',
+                        padding: '6px 12px',
                         height: 'auto',
-                        fontSize: '14px',
+                        fontSize: '12px',
                         fontWeight: 500
                     }}
                 >
@@ -243,54 +200,13 @@ const GuardianSection: React.FC = () => {
                 </Button>
             </div>
 
-            {/* Progress Overview */}
-            <Card style={{
-                marginBottom: '10px',
-                borderRadius: '8px',
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)'
-            }}>
-                <Title level={2} style={{ marginBottom: '10px', marginTop: '6px', fontSize: '20px' }}>Estate Planning Progress</Title>
-                <Row gutter={16} style={{ marginBottom: '20px' }}>
-                    <Col span={6}>
-                        <Statistic
-                            title={<span style={{ fontSize: '13px' }}>Documents Complete</span>}
-                            value={7}
-                            valueStyle={{ color: '#3355ff', fontWeight: 700 }}
-                        />
-                    </Col>
-                    <Col span={6}>
-                        <Statistic
-                            title={<span style={{ fontSize: '13px' }}>In Progress</span>}
-                            value={3}
-                            valueStyle={{ color: '#3355ff', fontWeight: 700 }}
-                        />
-                    </Col>
-                    <Col span={6}>
-                        <Statistic
-                            title={<span style={{ fontSize: '13px' }}>Not Started</span>}
-                            value={2}
-                            valueStyle={{ color: '#3355ff', fontWeight: 700 }}
-                        />
-                    </Col>
-                    <Col span={6}>
-                        <Statistic
-                            title={<span style={{ fontSize: '13px' }}>Overall Complete</span>}
-                            value={85}
-                            suffix="%"
-                            valueStyle={{ color: '#3355ff', fontWeight: 700 }}
-                        />
-                    </Col>
-                </Row>
-                <Progress percent={85} strokeColor="#10b981" />
-            </Card>
-
             {/* Estate Planning Grid */}
-            <Row gutter={[24, 24]} style={{ marginBottom: '32px' }}>
+            <Row gutter={[16, 16]} style={{ marginBottom: '20px' }}>
                 {/* Guardians Card */}
                 <Col span={12}>
                     <Card
                         style={{
-                            borderRadius: '12px',
+                            borderRadius: '8px',
                             boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
                             height: '100%'
                         }}
@@ -298,52 +214,52 @@ const GuardianSection: React.FC = () => {
                     >
                         <div style={{
                             //   padding: '0 0 20px 0',
-                            borderBottom: '1px solid #e5e7eb',
-                            backgroundColor: '#f0f4f8',
-                            margin: '-24px -24px 20px -24px',
-                            padding: '20px 24px'
+                            // borderBottom: '1px solid #e5e7eb',
+                            // backgroundColor: '#f0f4f8',
+                            margin: '-24px -24px 12px -24px',
+                            padding: '12px 16px'
                         }}>
                             <Title level={4} style={{
                                 margin: 0,
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '8px'
+                                gap: '6px',
+                                fontSize: '14px'
                             }}>
-                                <TeamOutlined />
-                                Guardians & Access Management
+                                🛡️ Guardians & Access Management
                             </Title>
-                            {getStatusBadge('complete')}
+                            {/* {getStatusBadge('complete')} */}
                         </div>
 
-                        <div style={{ marginBottom: '16px' }}>
+                        <div style={{ marginBottom: '12px' }}>
                             {guardians.map((guardian, index) => (
                                 <div key={index} style={{
                                     display: 'flex',
                                     justifyContent: 'space-between',
                                     alignItems: 'center',
-                                    padding: '12px',
-                                    marginBottom: '8px',
+                                    padding: '8px',
+                                    marginBottom: '6px',
                                     backgroundColor: '#f0f4f8',
-                                    borderRadius: '8px',
+                                    borderRadius: '6px',
                                     border: '1px solid #e5e7eb'
                                 }}>
                                     <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 500, color: '#111827' }}>
+                                        <div style={{ fontWeight: 500, color: '#111827', fontSize: '13px' }}>
                                             {guardian.name}
                                         </div>
-                                        <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '2px' }}>
+                                        <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '1px' }}>
                                             {guardian.relationship}
                                         </div>
                                     </div>
-                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                                         {Object.keys(guardian.sharedItems ?? {}).length > 0 ? (
                                             Object.keys(guardian.sharedItems).map((itemKey) => (
                                                 <span
                                                     key={itemKey}
                                                     style={{
-                                                        fontSize: '12px',
-                                                        padding: '4px 10px',
-                                                        borderRadius: '12px',
+                                                        fontSize: '10px',
+                                                        padding: '2px 6px',
+                                                        borderRadius: '8px',
                                                         backgroundColor: getAccessTagColor(itemKey).bg,
                                                         color: getAccessTagColor(itemKey).text,
                                                         fontWeight: 500,
@@ -355,9 +271,9 @@ const GuardianSection: React.FC = () => {
                                         ) : (
                                             <span
                                                 style={{
-                                                    fontSize: '12px',
-                                                    padding: '4px 10px',
-                                                    borderRadius: '12px',
+                                                    fontSize: '10px',
+                                                    padding: '2px 6px',
+                                                    borderRadius: '8px',
                                                     backgroundColor: '#f3f4f6',
                                                     color: '#9ca3af',
                                                     fontWeight: 500,
@@ -381,7 +297,7 @@ const GuardianSection: React.FC = () => {
             </Button> */}
 
                         <Paragraph style={{
-                            fontSize: '13px',
+                            fontSize: '11px',
                             color: '#6b7280',
                             margin: 0,
                             lineHeight: 1.5
@@ -393,57 +309,80 @@ const GuardianSection: React.FC = () => {
 
                 {/* Estate Planning Card with Collapsible Sections */}
                 <Col span={12}>
-                    <EstatePlanningCard />
+                    <div style={{ marginTop: 0, paddingTop: 0 }}>
+                        <EstatePlanningCard />
+                    </div>
                 </Col>
 
                 {/* Second Row - Beneficiary Designations */}
                 <Col span={16}>
                     <Card
                         style={{
-                            borderRadius: '12px',
+                            borderRadius: '8px',
                             boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
                             height: '100%'
                         }}
                         hoverable
                     >
-                        <div style={{
-                            //   padding: '0 0 20px 0',
-                            borderBottom: '1px solid #e5e7eb',
-                            backgroundColor: '#f0f4f8',
-                            margin: '-24px -24px 20px -24px',
-                            padding: '20px 24px'
-                        }}>
-                            <Title level={4} style={{
-                                margin: 0,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px'
-                            }}>
-                                <TeamOutlined />
-                                Beneficiary Designations
-                            </Title>
-                            {getStatusBadge('complete')}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Title level={4} style={{ margin: 0, fontSize: '14px' }}>💰 Beneficiary Designations</Title>
+                            <Button
+                                type="primary"
+                                icon={<PlusOutlined />}
+                                size="small"
+                                onClick={() => {
+                                    setEditingBeneficiary(null);
+                                    setBeneficiaryModalVisible(true);
+                                }}
+                            />
                         </div>
-
                         <Table
-                            columns={beneficiaryColumns}
-                            dataSource={beneficiaryData}
-                            pagination={false}
                             size="small"
-                            style={{ marginBottom: '16px' }}
+                            columns={[
+                                {
+                                    title: 'Account/Policy',
+                                    dataIndex: 'account',
+                                },
+                                {
+                                    title: 'Primary Beneficiary',
+                                    dataIndex: 'primary_beneficiary',
+                                },
+                                {
+                                    title: 'Secondary Beneficiary',
+                                    dataIndex: 'secondary_beneficiary',
+                                },
+                                {
+                                    title: 'Last Updated',
+                                    dataIndex: 'updated',
+                                },
+                                {
+                                    title: 'Action',
+                                    render: (_, record) => (
+                                        <Button
+                                            type="primary"
+                                            ghost
+                                            size="small"
+                                            onClick={() => {
+                                                setEditingBeneficiary(record);
+                                                setBeneficiaryModalVisible(true);
+                                            }}
+                                        >
+                                            Edit
+                                        </Button>
+                                    ),
+                                },
+                            ]}
+                            dataSource={beneficiaries}
+                            rowKey="id"
+                            pagination={false}
                         />
-
-                        <Button ghost type="primary" icon={<PlusOutlined />}>
-                            Add Account/Policy
-                        </Button>
                     </Card>
                 </Col>
-
                 {/* Additional Estate Documents */}
                 <Col span={8}>
                     <Card
                         style={{
-                            borderRadius: '12px',
+                            borderRadius: '8px',
                             boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
                             height: '100%',
                         }}
@@ -451,10 +390,10 @@ const GuardianSection: React.FC = () => {
                     >
                         <div
                             style={{
-                                borderBottom: '1px solid #e5e7eb',
-                                backgroundColor: '#f0f4f8',
-                                margin: '-24px -24px 20px -24px',
-                                padding: '20px 24px',
+                                // borderBottom: '1px solid #e5e7eb',
+                                // backgroundColor: '#f0f4f8',
+                                margin: '-24px -24px 12px -24px',
+                                padding: '12px 16px',
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center',
@@ -466,25 +405,25 @@ const GuardianSection: React.FC = () => {
                                     margin: 0,
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '8px',
+                                    gap: '6px',
+                                    fontSize: '14px'
                                 }}
                             >
-                                <FolderOutlined />
-                                Additional Estate Documents
+                                📜 Additional Estate Documents
                             </Title>
                             <Button
                                 type="primary"
                                 icon={<PlusOutlined />}
-
+                                size="small"
                                 onClick={() => setUploadModalVisible(true)}
                             />
                         </div>
                         <div
                             style={{
-                                marginBottom: '16px',
-                                maxHeight: '250px', // ⬅ restricts height
+                                marginBottom: '12px',
+                                maxHeight: '200px', // ⬅ restricts height
                                 overflowY: 'auto',
-                                paddingRight: '4px', // space for scrollbar
+                                paddingRight: '2px', // space for scrollbar
                             }}
                         >
                             {uploadedDocs.length > 0 ? (
@@ -492,16 +431,16 @@ const GuardianSection: React.FC = () => {
                                     <div
                                         key={index}
                                         style={{
-                                            padding: '16px',
-                                            marginBottom: '12px',
+                                            padding: '8px',
+                                            marginBottom: '6px',
                                             backgroundColor: '#f0f4f8',
-                                            borderRadius: '8px',
+                                            borderRadius: '6px',
                                             border: '1px solid #e5e7eb',
                                         }}
                                     >
                                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                             <div>
-                                                <div style={{ fontWeight: 500, color: '#111827' }}>
+                                                <div style={{ fontWeight: 500, color: '#111827', fontSize: '12px' }}>
                                                     <a href={doc.webViewLink} target="_blank" rel="noopener noreferrer">
                                                         {doc.name}
                                                     </a>
@@ -511,7 +450,7 @@ const GuardianSection: React.FC = () => {
                                     </div>
                                 ))
                             ) : (
-                                <div style={{ padding: 16, color: '#6b7280' }}>No documents uploaded yet.</div>
+                                <div style={{ padding: 8, color: '#6b7280', fontSize: '11px' }}>No documents uploaded yet.</div>
                             )}
                         </div>
                         {/* <Button
@@ -546,33 +485,74 @@ const GuardianSection: React.FC = () => {
                             </p>
                         </Upload.Dragger>
                     </Modal>
-
-                    {/* View Modal */}
                     <Modal
-                        open={viewModalVisible}
-                        title="Family Folder Documents"
-                        onCancel={() => setViewModalVisible(false)}
+                        open={beneficiaryModalVisible}
+                        onCancel={() => setBeneficiaryModalVisible(false)}
+                        title={editingBeneficiary ? "Edit Beneficiary" : "Add Beneficiary"}
                         footer={null}
+                        style={{ top: 20 }}
                     >
-                        <List
-                            dataSource={uploadedDocs}
-                            renderItem={(doc) => (
-                                <List.Item
-                                    actions={[
-                                        <Button
-                                            danger
-                                            type="text"
-                                            icon={<DeleteOutlined />}
-                                            onClick={() => handleDeleteFile(doc.id)}
-                                        />,
-                                    ]}
-                                >
-                                    {doc.name}
-                                </List.Item>
-                            )}
-                        />
-                    </Modal>
+                        <Form
+                            layout="vertical"
+                            initialValues={{
+                                account: editingBeneficiary?.account,
+                                primary_beneficiary: editingBeneficiary?.primary_beneficiary,
+                                secondary_beneficiary: editingBeneficiary?.secondary_beneficiary,
+                            }}
+                            onFinish={async (values) => {
+                                const beneficiary = {
+                                    userId: localStorage.getItem("userId"),
+                                    account: values.account,
+                                    primary_beneficiary: values.primary_beneficiary,
+                                    secondary_beneficiary: values.secondary_beneficiary,
+                                    updated: new Date().toISOString().split("T")[0], // today's date
+                                    addedBy: localStorage.getItem("userId"),
+                                };
 
+                                if (editingBeneficiary) {
+                                    await updateBeneficiary({ beneficiary });
+                                } else {
+                                    await addBeneficiary({ beneficiary });
+                                }
+
+                                setBeneficiaryModalVisible(false);
+                                const res = await getBeneficiaries(localStorage.getItem("userId")!);
+                                if (res.status === 1) setBeneficiaries(res.payload);
+                            }}
+                            style={{ marginTop: "16px" }}
+                        >
+                            <Form.Item
+                                name="account"
+                                label="Account/Policy"
+                                rules={[{ required: true, message: "Please enter account/policy name" }]}
+                            >
+                                <Input placeholder="Enter account or policy name" />
+                            </Form.Item>
+
+                            <Form.Item
+                                name="primary_beneficiary"
+                                label="Primary Beneficiary"
+                                rules={[{ required: true, message: "Please enter primary beneficiary" }]}
+                            >
+                                <Input placeholder="Enter primary beneficiary name" />
+                            </Form.Item>
+
+                            <Form.Item
+                                name="secondary_beneficiary"
+                                label="Secondary Beneficiary"
+                            >
+                                <Input placeholder="Enter secondary beneficiary name" />
+                            </Form.Item>
+
+                            <Form.Item style={{ marginBottom: 0, textAlign: "right" }}>
+                                <Space>
+                                    <Button type="primary" htmlType="submit">
+                                        {editingBeneficiary ? "Update Beneficiary" : "Add Beneficiary"}
+                                    </Button>
+                                </Space>
+                            </Form.Item>
+                        </Form>
+                    </Modal>
                 </Col>
 
             </Row>

@@ -1074,22 +1074,23 @@ def get_category_name(category_id):
 
 
 class AddNotes(Resource):
-    @auth_required(isOptional=True)  # This decorator injects uid and user
-    def post(self, uid=None, user=None):  # ✅ Accept injected args here
+    @auth_required(isOptional=True)
+    def post(self, uid=None, user=None):
         try:
             inputData = request.get_json(force=True)
-            print(f"==>> inputData: {inputData}")
         except Exception as e:
             return {"status": 0, "message": f"Invalid JSON: {str(e)}"}, 422
 
         title = inputData.get("title", "").strip()
         description = inputData.get("description", "").strip()
         category_id = inputData.get("category_id")
+        hub = inputData.get("hub", "").strip().upper()  # ✅ Add this
 
-        if not title or not description or not category_id:
+        # Validate all fields
+        if not title or not description or not category_id or not hub:
             return {
                 "status": 0,
-                "message": "Fields title, description, and category_id are required.",
+                "message": "Fields title, description, category_id, and hub are required.",
             }, 422
 
         now = datetime.now().isoformat()
@@ -1102,6 +1103,7 @@ class AddNotes(Resource):
                 title=title,
                 description=description,
                 category_id=category_id,
+                hub=hub,  # ✅ Save hub here
                 created_at=now,
                 updated_at=now,
             )
@@ -1113,6 +1115,7 @@ class AddNotes(Resource):
                     "title": title,
                     "description": description,
                     "category_id": category_id,
+                    "hub": hub,
                 },
             }
         except Exception as e:
@@ -1140,7 +1143,21 @@ class GetNotes(Resource):
             ]
             family_member_ids = list(set(family_member_ids + [uid]))
 
-            # 2. Fetch notes
+            # 2. Get hub from query param (safe handling)
+            hub = request.args.get("hub")
+            if hub:
+                hub = hub.strip().upper()
+                if hub == "UNDEFINED":
+                    hub = None  # Treat invalid 'undefined' string as None
+            else:
+                hub = None
+
+            # 3. Prepare filters
+            extra_filters = {"is_active": True}
+            if hub:
+                extra_filters["hub"] = hub
+
+            # 4. Fetch notes
             select_fields = [
                 "id",
                 "title",
@@ -1148,15 +1165,17 @@ class GetNotes(Resource):
                 "category_id",
                 "created_at",
                 "updated_at",
+                "hub",
             ]
             notes_raw = DBHelper.find_in(
                 table_name="notes_lists",
                 select_fields=select_fields,
                 field="user_id",
                 values=family_member_ids,
+                extra_filters=extra_filters,
             )
 
-            # 3. Format notes and include category_name
+            # 5. Format notes and include category_name
             notes = []
             for note in notes_raw:
                 notes.append(
@@ -1165,9 +1184,8 @@ class GetNotes(Resource):
                         "title": note["title"],
                         "description": note["description"],
                         "category_id": note["category_id"],
-                        "category_name": get_category_name(
-                            note["category_id"]
-                        ),  # ✅ include category_name
+                        "category_name": get_category_name(note["category_id"]),
+                        "hub": note.get("hub", "FAMILY"),
                         "created_at": (
                             note["created_at"].isoformat()
                             if isinstance(note["created_at"], datetime)
@@ -1200,9 +1218,13 @@ class UpdateNote(Resource):
         title = data.get("title", "").strip()
         description = data.get("description", "").strip()
         category_id = data.get("category_id")
+        hub = data.get("hub", "").strip().upper()  # ✅ NEW: get hub from frontend
 
-        if not note_id or not title or not description or not category_id:
-            return {"status": 0, "message": "Missing required fields"}, 422
+        if not note_id or not title or not description or not category_id or not hub:
+            return {
+                "status": 0,
+                "message": "Missing required fields: id, title, description, category_id, or hub",
+            }, 422
 
         try:
             DBHelper.update(
@@ -1212,12 +1234,33 @@ class UpdateNote(Resource):
                     "title": title,
                     "description": description,
                     "category_id": category_id,
+                    "hub": hub,  # ✅ NEW: update hub
                     "updated_at": datetime.now().isoformat(),
                 },
             )
             return {"status": 1, "message": "Note updated successfully"}
         except Exception as e:
-            return {"status": 0, "message": f"Update failed: {str(e)}"}
+            return {"status": 0, "message": f"Update failed: {str(e)}"}
+
+
+class DeleteNote(Resource):
+    @auth_required(isOptional=True)
+    def delete(self, uid, user):
+        note_id = request.args.get("id")
+
+        if not note_id:
+            return {"status": 0, "message": "Note ID is required", "payload": {}}
+
+        try:
+            # DBHelper.delete_all("note", {"id": note_id, "user_id": uid})
+            DBHelper.update_one(
+                "notes_lists",
+                filters={"id": note_id},
+                updates={"is_active": False},
+            )
+            return {"status": 1, "message": "Note deleted successfully"}
+        except Exception as e:
+            return {"status": 0, "message": "Failed to delete note", "error": str(e)}
 
 
 class AddNoteCategory(Resource):
@@ -1824,11 +1867,15 @@ class UpdatePersonalInfo(Resource):
             if not user_check:
                 return {"status": 0, "message": f"User with ID {uid} not found"}, 400
 
-            personal_id = personal_info["id"]
             record_check = DBHelper.find_one(
                 table_name="personal_information",
-                filters={"id": personal_id, "user_id": uid},
+                filters={"family_member_user_id": fm_user_id, "user_id": uid},
             )
+            if not record_check:
+                return {"status": 0, "message": "Personal info record not found"}, 404
+
+            personal_id = record_check["id"]
+
             if not record_check:
                 return {"status": 0, "message": "Personal info record not found"}, 404
 
@@ -2406,6 +2453,29 @@ from googleapiclient.http import MediaIoBaseUpload
 import io
 
 
+def get_or_create_subfolder(service, folder_name: str, parent_id: str):
+    """Check if a folder with name exists under parent, else create it"""
+    query = (
+        f"name = '{folder_name}' and mimeType = 'application/vnd.google-apps.folder' "
+        f"and '{parent_id}' in parents and trashed = false"
+    )
+
+    response = service.files().list(q=query, fields="files(id, name)").execute()
+    folders = response.get("files", [])
+
+    if folders:
+        return folders[0]["id"]
+
+    # Folder not found, so create it
+    metadata = {
+        "name": folder_name,
+        "mimeType": "application/vnd.google-apps.folder",
+        "parents": [parent_id],
+    }
+    created_folder = service.files().create(body=metadata, fields="id").execute()
+    return created_folder["id"]
+
+
 class UploadDriveFile(DriveBaseResource):
     @auth_required(isOptional=True)
     def post(self, uid, user):
@@ -2415,12 +2485,17 @@ class UploadDriveFile(DriveBaseResource):
 
             file = request.files["file"]
             hub = request.form.get("hub", "").capitalize()
+            doc_type = request.form.get("docType", "").strip()
 
-            # Validate hub name
             if not hub or hub not in ["Home", "Family", "Finance", "Health"]:
                 return {"status": 0, "message": "Invalid or missing hub name"}, 400
 
-            # Get Google Drive service
+            if hub == "Family" and doc_type != "EstateDocuments":
+                return {
+                    "status": 0,
+                    "message": "Missing or invalid docType for Family hub",
+                }, 400
+
             service = self.get_drive_service(uid)
             if not service:
                 return {
@@ -2429,28 +2504,29 @@ class UploadDriveFile(DriveBaseResource):
                     "payload": {},
                 }, 401
 
-            # Get folder structure
+            # Step 1: Get or create DOCKLY > Family
             folder_data = ensure_drive_folder_structure(service)
-            hub_folder_id = folder_data["subfolders"].get(hub)
+            family_folder_id = folder_data["subfolders"].get("Family")
+            if not family_folder_id:
+                return {"status": 0, "message": "Family folder not found"}, 404
 
-            if not hub_folder_id:
-                return {
-                    "status": 0,
-                    "message": f"{hub} folder not found",
-                    "payload": {},
-                }, 404
+            # Step 2: Create/get Estate Documents folder inside Family
+            estate_folder_id = get_or_create_subfolder(
+                service, "Estate Documents", parent_id=family_folder_id
+            )
 
-            # Prepare upload
+            # Step 3: Upload to Estate Documents
             file_metadata = {
                 "name": secure_filename(file.filename),
-                "parents": [hub_folder_id],
+                "parents": [estate_folder_id],
             }
+
             media = MediaIoBaseUpload(
                 io.BytesIO(file.read()),
                 mimetype=file.content_type or "application/octet-stream",
             )
 
-            uploaded = (
+            uploaded_file = (
                 service.files()
                 .create(
                     body=file_metadata, media_body=media, fields="id, name, webViewLink"
@@ -2461,7 +2537,7 @@ class UploadDriveFile(DriveBaseResource):
             return {
                 "status": 1,
                 "message": "File uploaded successfully",
-                "payload": {"file": uploaded},
+                "payload": {"file": uploaded_file},
             }, 200
 
         except Exception as e:
@@ -2482,7 +2558,6 @@ class GetFamilyDriveFiles(DriveBaseResource):
 
             folder_data = ensure_drive_folder_structure(service)
             family_folder_id = folder_data["subfolders"].get("Family")
-
             if not family_folder_id:
                 return {
                     "status": 0,
@@ -2490,7 +2565,13 @@ class GetFamilyDriveFiles(DriveBaseResource):
                     "payload": {},
                 }, 404
 
-            query = f"'{family_folder_id}' in parents and trashed = false"
+            # 🔥 Get or create "Estate Documents" subfolder inside Family
+            estate_folder_id = get_or_create_subfolder(
+                service, "Estate Documents", parent_id=family_folder_id
+            )
+
+            # 🔍 Fetch only files from Estate Documents folder
+            query = f"'{estate_folder_id}' in parents and trashed = false"
             results = (
                 service.files()
                 .list(q=query, fields="files(id, name, webViewLink)", spaces="drive")
@@ -2500,12 +2581,15 @@ class GetFamilyDriveFiles(DriveBaseResource):
 
             return {
                 "status": 1,
-                "message": "Files fetched successfully",
+                "message": "Estate documents fetched successfully",
                 "payload": {"files": files},
             }, 200
 
         except Exception as e:
-            return {"status": 0, "message": f"Failed to fetch files: {str(e)}"}, 500
+            return {
+                "status": 0,
+                "message": f"Failed to fetch estate documents: {str(e)}",
+            }, 500
 
 
 class DeleteDriveFile(Resource):
@@ -2524,3 +2608,298 @@ class DeleteDriveFile(Resource):
             return {"status": 1, "message": "File deleted"}
         except Exception as e:
             return {"status": 0, "message": f"Delete failed: {str(e)}"}, 500
+
+
+class UploadDocumentRecordFile(DriveBaseResource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        try:
+            if "file" not in request.files:
+                return {"status": 0, "message": "No file provided"}, 400
+
+            file = request.files["file"]
+
+            service = self.get_drive_service(uid)
+            if not service:
+                return {"status": 0, "message": "Google Drive not connected"}, 401
+
+            # Resolve "DOCKLY" > "Family" > "Documents and Records"
+            root_id = get_or_create_subfolder(service, "DOCKLY", "root")
+            family_id = get_or_create_subfolder(service, "Family", root_id)
+            documents_id = get_or_create_subfolder(
+                service, "Documents and Records", family_id
+            )
+
+            file_metadata = {
+                "name": secure_filename(file.filename),
+                "parents": [documents_id],
+            }
+
+            media = MediaIoBaseUpload(
+                io.BytesIO(file.read()),
+                mimetype=file.content_type or "application/octet-stream",
+                resumable=True,
+            )
+
+            uploaded_file = (
+                service.files()
+                .create(
+                    body=file_metadata,
+                    media_body=media,
+                    fields="id, name, mimeType, size, modifiedTime, webViewLink",
+                )
+                .execute()
+            )
+
+            return {
+                "status": 1,
+                "message": "File uploaded successfully",
+                "payload": {"file": uploaded_file},
+            }
+
+        except Exception as e:
+            traceback.print_exc()
+            return {"status": 0, "message": f"Upload failed: {str(e)}"}, 500
+
+
+class GetDocumentRecordsFiles(DriveBaseResource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        try:
+            service = self.get_drive_service(uid)
+            if not service:
+                return {"status": 0, "message": "Google Drive not connected"}, 401
+
+            # Navigate: DOCKLY → Family → Documents and Records
+            root_id = get_or_create_subfolder(service, "DOCKLY", "root")
+            family_id = get_or_create_subfolder(service, "Family", root_id)
+            documents_id = get_or_create_subfolder(
+                service, "Documents and Records", family_id
+            )
+
+            query = f"'{documents_id}' in parents and trashed = false"
+            results = (
+                service.files()
+                .list(
+                    q=query,
+                    fields="files(id, name, mimeType, size, modifiedTime, webViewLink)",
+                    spaces="drive",
+                )
+                .execute()
+            )
+
+            return {
+                "status": 1,
+                "message": "Files fetched successfully",
+                "payload": {"files": results.get("files", [])},
+            }
+
+        except Exception as e:
+            traceback.print_exc()
+            return {"status": 0, "message": f"Failed to fetch files: {str(e)}"}, 500
+
+
+class UploadMedicalRecordFile(DriveBaseResource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        try:
+            if "file" not in request.files:
+                return {"status": 0, "message": "No file provided"}, 400
+
+            file = request.files["file"]
+
+            service = self.get_drive_service(uid)
+            if not service:
+                return {"status": 0, "message": "Google Drive not connected"}, 401
+
+            # Navigate: DOCKLY > Family > Medical Records
+            root_id = get_or_create_subfolder(service, "DOCKLY", "root")
+            family_id = get_or_create_subfolder(service, "Family", root_id)
+            medical_id = get_or_create_subfolder(service, "Medical Records", family_id)
+
+            file_metadata = {
+                "name": secure_filename(file.filename),
+                "parents": [medical_id],
+            }
+
+            media = MediaIoBaseUpload(
+                io.BytesIO(file.read()),
+                mimetype=file.content_type or "application/octet-stream",
+                resumable=True,
+            )
+
+            uploaded_file = (
+                service.files()
+                .create(
+                    body=file_metadata,
+                    media_body=media,
+                    fields="id, name, mimeType, size, modifiedTime, webViewLink",
+                )
+                .execute()
+            )
+
+            return {
+                "status": 1,
+                "message": "Medical file uploaded successfully",
+                "payload": {"file": uploaded_file},
+            }
+
+        except Exception as e:
+            traceback.print_exc()
+            return {"status": 0, "message": f"Upload failed: {str(e)}"}, 500
+
+
+class GetMedicalRecordFiles(DriveBaseResource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        try:
+            service = self.get_drive_service(uid)
+            if not service:
+                return {"status": 0, "message": "Google Drive not connected"}, 401
+
+            root_id = get_or_create_subfolder(service, "DOCKLY", "root")
+            family_id = get_or_create_subfolder(service, "Family", root_id)
+            medical_id = get_or_create_subfolder(service, "Medical Records", family_id)
+
+            query = f"'{medical_id}' in parents and trashed = false"
+            results = (
+                service.files()
+                .list(
+                    q=query,
+                    fields="files(id, name, mimeType, size, modifiedTime, webViewLink)",
+                    spaces="drive",
+                )
+                .execute()
+            )
+
+            return {
+                "status": 1,
+                "message": "Medical files fetched successfully",
+                "payload": {"files": results.get("files", [])},
+            }
+
+        except Exception as e:
+            traceback.print_exc()
+            return {"status": 0, "message": f"Failed to fetch files: {str(e)}"}, 500
+
+
+class AddBeneficiary(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        try:
+            inputData = request.get_json(silent=True)
+            if not inputData:
+                return {"status": 0, "message": "No input data provided"}, 400
+
+            beneficiary = inputData.get("beneficiary", {})
+            required_fields = ["userId", "account", "primary_beneficiary", "addedBy"]
+            missing = [f for f in required_fields if f not in beneficiary]
+            if missing:
+                return {
+                    "status": 0,
+                    "message": f"Missing fields: {', '.join(missing)}",
+                }, 400
+
+            now = datetime.now().isoformat()
+
+            beneficiary_id = DBHelper.insert(
+                table_name="beneficiaries",
+                return_column="id",
+                user_id=uid,
+                account=beneficiary["account"],
+                primary_beneficiary=beneficiary["primary_beneficiary"],
+                secondary_beneficiary=beneficiary.get("secondary_beneficiary", ""),
+                created_at=now,
+                updated_at=now,
+            )
+
+            return {
+                "status": 1,
+                "message": "Beneficiary added",
+                "payload": {"id": beneficiary_id},
+            }, 200
+
+        except Exception as e:
+            return {"status": 0, "message": f"Failed to add beneficiary: {str(e)}"}, 500
+
+
+class GetBeneficiaries(Resource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        try:
+            user_id = request.args.get("userId")
+            if not user_id:
+                return {"status": 0, "message": "User ID is required"}, 400
+
+            beneficiaries = DBHelper.find_all(
+                table_name="beneficiaries",
+                filters={"user_id": user_id},
+            )
+
+            for b in beneficiaries:
+                updated_at = b.pop("updated_at", None)
+                created_at = b.pop("created_at", None)
+
+                b["updated"] = updated_at.strftime("%Y-%m-%d") if updated_at else ""
+                b["created"] = created_at.strftime("%Y-%m-%d") if created_at else ""
+
+            return {"status": 1, "payload": beneficiaries}, 200
+
+        except Exception as e:
+            return {
+                "status": 0,
+                "message": f"Failed to fetch beneficiaries: {str(e)}",
+            }, 500
+
+
+class UpdateBeneficiary(Resource):
+    @auth_required(isOptional=True)
+    def put(self, uid, user):
+        try:
+            inputData = request.get_json(silent=True)
+            beneficiary = inputData.get("beneficiary", {})
+
+            required_fields = [
+                "id",
+                "userId",
+                "account",
+                "primary_beneficiary",
+                "addedBy",
+            ]
+            missing = [f for f in required_fields if f not in beneficiary]
+            if missing:
+                return {
+                    "status": 0,
+                    "message": f"Missing fields: {', '.join(missing)}",
+                }, 400
+
+            record = DBHelper.find_one(
+                "beneficiaries",
+                {"id": beneficiary["id"], "user_id": beneficiary["userId"]},
+            )
+            if not record:
+                return {"status": 0, "message": "Beneficiary not found"}, 404
+
+            now = datetime.now().isoformat()
+
+            DBHelper.update_one(
+                table_name="beneficiaries",
+                filters={"id": beneficiary["id"]},
+                updates={
+                    "account": beneficiary["account"],
+                    "primary_beneficiary": beneficiary["primary_beneficiary"],
+                    "secondary_beneficiary": beneficiary.get(
+                        "secondary_beneficiary", ""
+                    ),
+                    "updated": beneficiary.get("updated", ""),
+                    "updated_at": now,
+                },
+            )
+
+            return {"status": 1, "message": "Beneficiary updated"}, 200
+
+        except Exception as e:
+            return {
+                "status": 0,
+                "message": f"Failed to update beneficiary: {str(e)}",
+            }, 500

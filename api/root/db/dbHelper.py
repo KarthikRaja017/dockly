@@ -291,7 +291,7 @@ class DBHelper:
                 postgres.release_connection(conn)
 
     @staticmethod
-    def find_in(table_name, select_fields, field, values):
+    def find_in(table_name, select_fields, field, values, extra_filters=None):
         conn = None
         cur = None
         try:
@@ -305,14 +305,29 @@ class DBHelper:
             cur = conn.cursor(cursor_factory=RealDictCursor)
 
             columns_sql = sql.SQL(", ").join(map(sql.Identifier, select_fields))
-            query = sql.SQL(
-                "SELECT {fields} FROM {table} WHERE {field} = ANY(%s)"
-            ).format(
+
+            # Build WHERE conditions
+            conditions = [
+                sql.SQL("{field} = ANY(%s)").format(field=sql.Identifier(field))
+            ]
+            params = [values]
+
+            if extra_filters:
+                for key, val in extra_filters.items():
+                    conditions.append(
+                        sql.SQL("{key} = %s").format(key=sql.Identifier(key))
+                    )
+                    params.append(val)
+
+            where_clause = sql.SQL(" AND ").join(conditions)
+
+            query = sql.SQL("SELECT {fields} FROM {table} WHERE {where_clause}").format(
                 fields=columns_sql,
                 table=sql.Identifier(table_name),
-                field=sql.Identifier(field),
+                where_clause=where_clause,
             )
-            cur.execute(query, (values,))
+
+            cur.execute(query, tuple(params))
             return cur.fetchall()
 
         except Exception as e:

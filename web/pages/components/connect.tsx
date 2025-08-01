@@ -56,6 +56,9 @@ const FolderConnectionModal: React.FC<FolderConnectionModalProps> = ({ isModalVi
         if (service === 'google') {
             window.location.href = `${API_URL}/add-googleCalendar?username=${currentUser?.user_name}&userId=${currentUser?.uid}`;
         }
+        else if (service === "outlook") {
+            window.location.href = `${API_URL}/add-microsoftAccount?username=${currentUser?.user_name}&userId=${currentUser?.uid}`;
+        }
     };
 
     const renderGoogleAccounts = () => {
@@ -88,6 +91,45 @@ const FolderConnectionModal: React.FC<FolderConnectionModalProps> = ({ isModalVi
                     type="dashed"
                     icon={<UserPlus size={16} />}
                     onClick={() => handleConnect('google')}
+                    size="small"
+                    style={{ marginTop: 8 }}
+                >
+                    Add another account
+                </Button>
+            </div>
+        );
+    };
+
+    const renderOutlookAccounts = () => {
+        const outlookAccounts = connectedAccounts.filter(acc => acc.provider === 'outlook');
+        if (!outlookAccounts.length) return null;
+
+        return (
+            <div style={{ marginTop: 12, paddingLeft: 64 }}>
+                {outlookAccounts.map((acc, idx) => {
+                    let userData = null;
+                    try {
+                        userData = acc.user_object ? JSON.parse(acc.user_object) : null;
+                    } catch (_) { }
+
+                    const picture = userData?.picture || null;
+
+                    return (
+                        <div key={idx} style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+                            <Avatar
+                                size={32}
+                                src={picture}
+                                icon={!picture && <User size={16} />}
+                                style={{ marginRight: 8 }}
+                            />
+                            <Text>{userData?.email || acc.email}</Text>
+                        </div>
+                    );
+                })}
+                <Button
+                    type="dashed"
+                    icon={<UserPlus size={16} />}
+                    onClick={() => handleConnect('outlook')}
                     size="small"
                     style={{ marginTop: 8 }}
                 >
@@ -228,7 +270,7 @@ const FolderConnectionModal: React.FC<FolderConnectionModalProps> = ({ isModalVi
                                         {connections[key] ? 'Connected' : 'Connect'}
                                     </Button>
                                 </div>
-
+                                {service.key === 'outlook' && connections.outlook && renderOutlookAccounts()}
                                 {service.key === 'google' && connections.google && renderGoogleAccounts()}
                             </Card>
                         );

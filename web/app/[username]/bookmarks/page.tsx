@@ -47,6 +47,9 @@ import {
 } from "../../../services/bookmarks";
 import { Bookmark, BookmarkFormData } from "../../../types/bookmarks";
 import { useGlobalLoading } from "../../loadingContext";
+import ExtensionDownloadModal from "../../../pages/bookmarks/smdownload";
+import { useRouter } from "next/navigation";
+import { useCurrentUser } from "../../userContext";
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
@@ -64,6 +67,7 @@ const categoryColors: Record<string, string> = {
 
 const Bookmarks: React.FC = () => {
     const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
+    const router = useRouter();
     const { loading, setLoading } = useGlobalLoading();
     const [searchQuery, setSearchQuery] = useState("");
     const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
@@ -82,6 +86,11 @@ const Bookmarks: React.FC = () => {
     );
     const [form] = Form.useForm();
     const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
+    const username = useCurrentUser()?.user_name || "";
+
+    const showModal = () => {
+        router.push(`/${username}/bookmarks/download`);
+    };
 
     useEffect(() => {
         loadBookmarks();
@@ -821,15 +830,29 @@ const Bookmarks: React.FC = () => {
                                 type="default"
                                 icon={<DownloadOutlined />}
                                 size="large"
+                                onClick={showModal}
                                 style={{
                                     borderRadius: "12px",
                                     borderColor: "#1890ff",
                                     color: "#1890ff",
+                                    height: '48px',
+                                    fontSize: '16px',
+                                    fontWeight: '600',
+                                    minWidth: '160px',
+                                    background: 'linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%)',
+                                    boxShadow: '0 2px 8px rgba(24, 144, 255, 0.15)',
+                                    transition: 'all 0.3s ease'
                                 }}
-                                href="/DocklySmartBookmarks-1.0.zip"
-                                download
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                    e.currentTarget.style.boxShadow = '0 4px 16px rgba(24, 144, 255, 0.25)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(24, 144, 255, 0.15)';
+                                }}
                             >
-                                Download
+                                Download Extension
                             </Button>
                         </Space>
                     </Col>

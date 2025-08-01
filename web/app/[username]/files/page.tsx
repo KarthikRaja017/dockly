@@ -36,7 +36,9 @@ import {
     Collapse,
     Alert,
     InputNumber,
-    DatePicker
+    DatePicker,
+    Descriptions,
+    TreeSelect
 } from 'antd';
 import {
     SearchOutlined,
@@ -83,6 +85,9 @@ import {
     InfoCircleOutlined,
     HddOutlined,
     FileOutlined,
+    CalendarOutlined,
+    TagsOutlined,
+    LinkOutlined
 } from '@ant-design/icons';
 import {
     createDriveFolder,
@@ -102,18 +107,23 @@ import {
     getStorageAnalytics,
     getActivityLog,
     logActivity,
+    getDriveFileInfo,
+    bulkShareFiles,
+    bulkMoveFiles,
+    bulkCopyFiles,
+    getAccountColor,
+    getFileSource,
     type DriveFile,
     type DriveFolder,
     type StorageInfo,
     type ActivityLog,
     type DuplicateFile
 } from '../../../services/files';
-import { trimGooglePhotoUrl } from '../../../pages/components/header';
 
 const PRIMARY_COLOR = '#1890ff';
 
 // Add this function to simulate trimGooglePhotoUrl since it's imported but not defined
-// const trimGooglePhotoUrl = (url: string) => url;
+const trimGooglePhotoUrl = (url: string) => url;
 
 interface UploadProgress {
     [fileName: string]: {
@@ -126,6 +136,7 @@ interface AccountFilter {
     email: string;
     displayName: string;
     photoLink?: string;
+    provider: string; // Add provider field to distinguish Google vs Outlook
 }
 
 const { Content } = Layout;
@@ -380,6 +391,42 @@ const HeaderBar: React.FC<{
 }) => {
         const [showSearch, setShowSearch] = useState(false);
 
+        // Helper function to get provider icon with account-specific colors
+        const getProviderIcon = (provider: string, accountIndex: number) => {
+            const color = getAccountColor(provider, accountIndex);
+
+            if (provider === 'google') {
+                return (
+                    <div style={{
+                        width: '16px',
+                        height: '16px',
+                        borderRadius: '3px',
+                        backgroundColor: color,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }}>
+                        <span style={{ color: 'white', fontSize: '8px', fontWeight: 'bold' }}>G</span>
+                    </div>
+                );
+            } else if (provider === 'outlook') {
+                return (
+                    <div style={{
+                        width: '16px',
+                        height: '16px',
+                        borderRadius: '3px',
+                        backgroundColor: color,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }}>
+                        <span style={{ color: 'white', fontSize: '8px', fontWeight: 'bold' }}>O</span>
+                    </div>
+                );
+            }
+            return <UserOutlined style={{ fontSize: '12px' }} />;
+        };
+
         const accountFilterOptions = [
             {
                 value: null,
@@ -401,7 +448,7 @@ const HeaderBar: React.FC<{
                     </div>
                 )
             },
-            ...availableAccounts.map(account => ({
+            ...availableAccounts.map((account, index) => ({
                 value: account.email,
                 label: (
                     <div style={{ display: 'flex', alignItems: 'center', padding: '4px 0' }}>
@@ -409,23 +456,29 @@ const HeaderBar: React.FC<{
                             <Avatar
                                 size={24}
                                 src={account.photoLink}
-                                style={{ marginRight: '8px' }}
+                                style={{
+                                    marginRight: '8px',
+                                    border: `2px solid ${getAccountColor(account.provider, index)}`
+                                }}
                             />
                         ) : (
                             <Avatar
                                 size={24}
                                 style={{
                                     marginRight: '8px',
-                                    backgroundColor: PRIMARY_COLOR,
+                                    backgroundColor: getAccountColor(account.provider, index),
                                     fontSize: '12px'
                                 }}
                             >
                                 {(account.displayName || account.email)[0].toUpperCase()}
                             </Avatar>
                         )}
-                        <div>
-                            <div style={{ fontSize: '13px', color: '#202124', fontWeight: 500 }}>
-                                {account.displayName || 'Unknown'}
+                        <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ fontSize: '13px', color: '#202124', fontWeight: 500 }}>
+                                    {account.displayName || 'Unknown'}
+                                </span>
+                                {getProviderIcon(account.provider, index)}
                             </div>
                             <div style={{ fontSize: '11px', color: '#5f6368' }}>
                                 {account.email}
@@ -437,6 +490,8 @@ const HeaderBar: React.FC<{
         ];
 
         const selectedAccountData = availableAccounts.find(acc => acc.email === selectedAccount);
+        const selectedAccountIndex = availableAccounts.findIndex(acc => acc.email === selectedAccount);
+
         const breadcrumbItems = [
             {
                 title: <HomeOutlined style={{ color: PRIMARY_COLOR }} />,
@@ -463,9 +518,6 @@ const HeaderBar: React.FC<{
 
         return (
             <div>
-                {/* Storage Info Bar */}
-                {/* <StorageInfo storageInfo={storageInfo} /> */}
-
                 <div
                     style={{
                         display: 'flex',
@@ -546,7 +598,7 @@ const HeaderBar: React.FC<{
                                     value={selectedAccount}
                                     onChange={onAccountChange}
                                     style={{
-                                        minWidth: 180,
+                                        minWidth: 200,
                                         borderRadius: '8px'
                                     }}
                                     size="middle"
@@ -559,20 +611,29 @@ const HeaderBar: React.FC<{
                                         padding: '4px 0'
                                     }}
                                     suffixIcon={
-                                        selectedAccount ? (
-                                            selectedAccountData?.photoLink ? (
-                                                <Avatar size={18} src={selectedAccountData.photoLink} />
-                                            ) : (
-                                                <Avatar
-                                                    size={18}
-                                                    style={{
-                                                        backgroundColor: PRIMARY_COLOR,
-                                                        fontSize: '10px'
-                                                    }}
-                                                >
-                                                    {(selectedAccountData?.displayName || selectedAccountData?.email || 'U')[0].toUpperCase()}
-                                                </Avatar>
-                                            )
+                                        selectedAccount && selectedAccountData ? (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                {selectedAccountData.photoLink ? (
+                                                    <Avatar
+                                                        size={18}
+                                                        src={selectedAccountData.photoLink}
+                                                        style={{
+                                                            border: `2px solid ${getAccountColor(selectedAccountData.provider, selectedAccountIndex)}`
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <Avatar
+                                                        size={18}
+                                                        style={{
+                                                            backgroundColor: getAccountColor(selectedAccountData.provider, selectedAccountIndex),
+                                                            fontSize: '10px'
+                                                        }}
+                                                    >
+                                                        {(selectedAccountData.displayName || selectedAccountData.email || 'U')[0].toUpperCase()}
+                                                    </Avatar>
+                                                )}
+                                                {getProviderIcon(selectedAccountData.provider, selectedAccountIndex)}
+                                            </div>
                                         ) : (
                                             <div style={{
                                                 width: '18px',
@@ -624,45 +685,6 @@ const HeaderBar: React.FC<{
                                 />
                             </Tooltip>
 
-                            {/* <Tooltip title="Analytics">
-                                <Button
-                                    icon={<BarChartOutlined />}
-                                    onClick={onShowAnalytics}
-                                    size="middle"
-                                    style={{
-                                        borderColor: '#dadce0',
-                                        color: '#5f6368',
-                                        borderRadius: '6px',
-                                    }}
-                                />
-                            </Tooltip>
-
-                            <Tooltip title="Activity">
-                                <Button
-                                    icon={<HistoryOutlined />}
-                                    onClick={onShowActivity}
-                                    size="middle"
-                                    style={{
-                                        borderColor: '#dadce0',
-                                        color: '#5f6368',
-                                        borderRadius: '6px',
-                                    }}
-                                />
-                            </Tooltip>
-
-                            <Tooltip title="Find Duplicates">
-                                <Button
-                                    icon={<BugOutlined />}
-                                    onClick={onShowDuplicates}
-                                    size="middle"
-                                    style={{
-                                        borderColor: '#dadce0',
-                                        color: '#5f6368',
-                                        borderRadius: '6px',
-                                    }}
-                                />
-                            </Tooltip> */}
-
                             <Tooltip title={`Switch to ${viewMode === 'grid' ? 'List' : 'Grid'} view`}>
                                 <Button
                                     icon={
@@ -709,7 +731,8 @@ const FoldersSection: React.FC<{
     viewMode: 'grid' | 'list';
     selectedItems: string[];
     onItemSelect: (itemId: string, selected: boolean) => void;
-}> = ({ folders, onFolderClick, onFileAction, viewMode, selectedItems, onItemSelect }) => {
+    availableAccounts: AccountFilter[];
+}> = ({ folders, onFolderClick, onFileAction, viewMode, selectedItems, onItemSelect, availableAccounts }) => {
     const [showAll, setShowAll] = useState(false);
     const displayFolders = showAll
         ? folders
@@ -776,6 +799,14 @@ const FoldersSection: React.FC<{
         return date.toLocaleDateString();
     };
 
+    const getFolderAccentColor = (folder: DriveFolder) => {
+        if (!folder.source_email) return PRIMARY_COLOR;
+
+        const accountIndex = availableAccounts.findIndex(acc => acc.email === folder.source_email);
+        const provider = getFileSource(folder);
+        return getAccountColor(provider, accountIndex >= 0 ? accountIndex : 0);
+    };
+
     if (folders.length === 0) return null;
 
     return (
@@ -815,163 +846,196 @@ const FoldersSection: React.FC<{
 
             {viewMode === 'grid' ? (
                 <Row gutter={[12, 12]}>
-                    {displayFolders.map((folder) => (
-                        <Col xs={12} sm={8} md={6} lg={4} xl={3} key={folder.id}>
-                            <div
-                                style={{
-                                    padding: '12px',
-                                    borderRadius: '8px',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s ease',
-                                    backgroundColor: '#fff',
-                                    border: '1px solid transparent',
-                                    position: 'relative'
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor = '#f8f9fa';
-                                    e.currentTarget.style.borderColor = '#dadce0';
-                                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.backgroundColor = '#fff';
-                                    e.currentTarget.style.borderColor = 'transparent';
-                                    e.currentTarget.style.boxShadow = 'none';
-                                }}
-                            >
-                                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-                                    <Checkbox
-                                        checked={selectedItems.includes(folder.id)}
-                                        onChange={(e) => onItemSelect(folder.id, e.target.checked)}
-                                        onClick={(e) => e.stopPropagation()}
-                                        style={{ marginRight: '8px' }}
-                                    />
-                                    <FolderOutlined
-                                        style={{
-                                            fontSize: '20px',
-                                            color: PRIMARY_COLOR,
-                                            marginRight: '8px'
-                                        }}
-                                        onClick={() => onFolderClick(folder.id, folder.name)}
-                                    />
-                                    <Text
-                                        style={{
-                                            fontSize: '14px',
-                                            color: '#202124',
-                                            flex: 1,
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            whiteSpace: 'nowrap',
-                                            fontWeight: 500,
-                                            cursor: 'pointer'
-                                        }}
-                                        onClick={() => onFolderClick(folder.id, folder.name)}
-                                    >
-                                        {folder.name}
-                                    </Text>
-                                    <Dropdown
-                                        menu={{ items: getMenuItems(folder) }}
-                                        trigger={['click']}
-                                    >
-                                        <Button
-                                            type="text"
-                                            size="small"
-                                            icon={<MoreOutlined />}
-                                            style={{
-                                                // opacity: 0,
-                                                // transition: 'opacity 0.2s ease',
-                                                color: PRIMARY_COLOR,
-                                                // backgroundColor: PRIMARY_COLOR,
-                                                position: 'absolute',
-                                                top: '8px',
-                                                right: '8px'
-                                            }}
+                    {displayFolders.map((folder) => {
+                        const accentColor = getFolderAccentColor(folder);
+                        return (
+                            <Col xs={12} sm={8} md={6} lg={4} xl={3} key={folder.id}>
+                                <div
+                                    style={{
+                                        padding: '12px',
+                                        borderRadius: '8px',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s ease',
+                                        backgroundColor: '#fff',
+                                        border: `1px solid ${accentColor}20`,
+                                        position: 'relative'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.backgroundColor = '#f8f9fa';
+                                        e.currentTarget.style.borderColor = accentColor + '40';
+                                        e.currentTarget.style.boxShadow = `0 2px 8px ${accentColor}20`;
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.backgroundColor = '#fff';
+                                        e.currentTarget.style.borderColor = accentColor + '20';
+                                        e.currentTarget.style.boxShadow = 'none';
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                                        <Checkbox
+                                            checked={selectedItems.includes(folder.id)}
+                                            onChange={(e) => onItemSelect(folder.id, e.target.checked)}
                                             onClick={(e) => e.stopPropagation()}
+                                            style={{ marginRight: '8px' }}
                                         />
-                                    </Dropdown>
-                                </div>
-                                <Text style={{ fontSize: '12px', color: '#5f6368' }}>
-                                    Modified {formatDate(folder.modifiedTime)}
-                                </Text>
-                                {folder.shared && (
-                                    <div style={{ marginTop: '4px' }}>
-                                        <Tag color="blue" style={{ fontSize: '8px' }}>
-                                            <TeamOutlined style={{ marginRight: '2px' }} />
-                                            Shared
-                                        </Tag>
+                                        <FolderOutlined
+                                            style={{
+                                                fontSize: '20px',
+                                                color: accentColor,
+                                                marginRight: '8px'
+                                            }}
+                                            onClick={() => onFolderClick(folder.id, folder.name)}
+                                        />
+                                        <Text
+                                            style={{
+                                                fontSize: '14px',
+                                                color: '#202124',
+                                                flex: 1,
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                whiteSpace: 'nowrap',
+                                                fontWeight: 500,
+                                                cursor: 'pointer'
+                                            }}
+                                            onClick={() => onFolderClick(folder.id, folder.name)}
+                                        >
+                                            {folder.name}
+                                        </Text>
+                                        <Dropdown
+                                            menu={{ items: getMenuItems(folder) }}
+                                            trigger={['click']}
+                                        >
+                                            <Button
+                                                type="text"
+                                                size="small"
+                                                icon={<MoreOutlined />}
+                                                style={{
+                                                    color: accentColor,
+                                                    position: 'absolute',
+                                                    top: '8px',
+                                                    right: '8px'
+                                                }}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        </Dropdown>
                                     </div>
-                                )}
-                            </div>
-                        </Col>
-                    ))}
-                </Row>
-            ) : (
-                <div>
-                    {displayFolders.map((folder) => (
-                        <div
-                            key={folder.id}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                padding: '12px 16px',
-                                borderRadius: '8px',
-                                cursor: 'pointer',
-                                transition: 'background-color 0.2s ease',
-                                marginBottom: '4px'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = '#f8f9fa';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = 'transparent';
-                            }}
-                        >
-                            <Checkbox
-                                checked={selectedItems.includes(folder.id)}
-                                onChange={(e) => onItemSelect(folder.id, e.target.checked)}
-                                style={{ marginRight: '12px' }}
-                                onClick={(e) => e.stopPropagation()}
-                            />
-                            <FolderOutlined
-                                style={{
-                                    fontSize: '18px',
-                                    color: PRIMARY_COLOR,
-                                    marginRight: '16px'
-                                }}
-                                onClick={() => onFolderClick(folder.id, folder.name)}
-                            />
-                            <div
-                                style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}
-                                onClick={() => onFolderClick(folder.id, folder.name)}
-                            >
-                                <Text style={{ fontSize: '14px', color: '#202124', fontWeight: 500 }}>
-                                    {folder.name}
-                                </Text>
-                                <div style={{ marginTop: '2px' }}>
                                     <Text style={{ fontSize: '12px', color: '#5f6368' }}>
                                         Modified {formatDate(folder.modifiedTime)}
                                     </Text>
                                     {folder.shared && (
-                                        <Tag color="blue" style={{ marginLeft: '8px', fontSize: '11px' }}>
-                                            <TeamOutlined style={{ marginRight: '2px' }} />
-                                            Shared
-                                        </Tag>
+                                        <div style={{ marginTop: '4px' }}>
+                                            <Tag color="blue" style={{ fontSize: '8px' }}>
+                                                <TeamOutlined style={{ marginRight: '2px' }} />
+                                                Shared
+                                            </Tag>
+                                        </div>
+                                    )}
+                                    {folder.source_email && (
+                                        <div style={{ marginTop: '4px' }}>
+                                            <Tag
+                                                color={getFileSource(folder) === 'google' ? 'green' : 'blue'}
+                                                style={{
+                                                    fontSize: '8px',
+                                                    backgroundColor: accentColor + '15',
+                                                    borderColor: accentColor + '40',
+                                                    color: accentColor
+                                                }}
+                                            >
+                                                {getFileSource(folder) === 'google' ? 'Google' : 'Outlook'}
+                                            </Tag>
+                                        </div>
                                     )}
                                 </div>
-                            </div>
-                            <Dropdown
-                                menu={{ items: getMenuItems(folder) }}
-                                trigger={['click']}
+                            </Col>
+                        );
+                    })}
+                </Row>
+            ) : (
+                <div>
+                    {displayFolders.map((folder) => {
+                        const accentColor = getFolderAccentColor(folder);
+                        return (
+                            <div
+                                key={folder.id}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    padding: '12px 16px',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease',
+                                    marginBottom: '6px',
+                                    borderLeft: `3px solid ${accentColor}`,
+                                    // borderBottom: `0.5px solid ${accentColor}`
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = accentColor + '10';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
                             >
-                                <Button
-                                    type="text"
-                                    size="small"
-                                    icon={<MoreOutlined />}
-                                    style={{ color: '#5f6368' }}
+                                <Checkbox
+                                    checked={selectedItems.includes(folder.id)}
+                                    onChange={(e) => onItemSelect(folder.id, e.target.checked)}
+                                    style={{ marginRight: '12px' }}
                                     onClick={(e) => e.stopPropagation()}
                                 />
-                            </Dropdown>
-                        </div>
-                    ))}
+                                <FolderOutlined
+                                    style={{
+                                        fontSize: '18px',
+                                        color: accentColor,
+                                        marginRight: '16px'
+                                    }}
+                                    onClick={() => onFolderClick(folder.id, folder.name)}
+                                />
+                                <div
+                                    style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}
+                                    onClick={() => onFolderClick(folder.id, folder.name)}
+                                >
+                                    <Text style={{ fontSize: '14px', color: '#202124', fontWeight: 500 }}>
+                                        {folder.name}
+                                    </Text>
+                                    <div style={{ marginTop: '2px' }}>
+                                        <Text style={{ fontSize: '12px', color: '#5f6368' }}>
+                                            Modified {formatDate(folder.modifiedTime)}
+                                        </Text>
+                                        {folder.shared && (
+                                            <Tag color="blue" style={{ marginLeft: '8px', fontSize: '11px' }}>
+                                                <TeamOutlined style={{ marginRight: '2px' }} />
+                                                Shared
+                                            </Tag>
+                                        )}
+                                        {folder.source_email && (
+                                            <Tag
+                                                style={{
+                                                    marginLeft: '8px',
+                                                    fontSize: '11px',
+                                                    backgroundColor: accentColor + '15',
+                                                    borderColor: accentColor + '40',
+                                                    color: accentColor
+                                                }}
+                                            >
+                                                {getFileSource(folder) === 'google' ? 'Google' : 'Outlook'}
+                                            </Tag>
+                                        )}
+                                    </div>
+                                </div>
+                                <Dropdown
+                                    menu={{ items: getMenuItems(folder) }}
+                                    trigger={['click']}
+                                >
+                                    <Button
+                                        type="text"
+                                        size="small"
+                                        icon={<MoreOutlined />}
+                                        style={{ color: '#5f6368' }}
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
+                                </Dropdown>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
         </div>
@@ -1006,6 +1070,7 @@ const formatFileSize = (bytes?: number) => {
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return Math.round((bytes / Math.pow(1024, i)) * 100) / 100 + ' ' + sizes[i];
 };
+
 // Enhanced Files Section Component
 const FilesSection: React.FC<{
     files: DriveFile[];
@@ -1016,11 +1081,11 @@ const FilesSection: React.FC<{
     onPageChange: (page: number, size?: number) => void;
     selectedItems: string[];
     onItemSelect: (itemId: string, selected: boolean) => void;
-}> = ({ files, onFileAction, viewMode, currentPage, pageSize, onPageChange, selectedItems, onItemSelect }) => {
+    availableAccounts: AccountFilter[];
+}> = ({ files, onFileAction, viewMode, currentPage, pageSize, onPageChange, selectedItems, onItemSelect, availableAccounts }) => {
     const startIndex = (currentPage - 1) * pageSize;
     const endIndex = startIndex + pageSize;
     const displayFiles = files.slice(startIndex, endIndex);
-
 
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
@@ -1032,6 +1097,14 @@ const FilesSection: React.FC<{
         if (days === 1) return 'Yesterday';
         if (days < 7) return `${days} days ago`;
         return date.toLocaleDateString();
+    };
+
+    const getFileAccentColor = (file: DriveFile) => {
+        if (!file.source_email) return PRIMARY_COLOR;
+
+        const accountIndex = availableAccounts.findIndex(acc => acc.email === file.source_email);
+        const provider = getFileSource(file);
+        return getAccountColor(provider, accountIndex >= 0 ? accountIndex : 0);
     };
 
     const getMenuItems = (file: DriveFile) => [
@@ -1065,12 +1138,12 @@ const FilesSection: React.FC<{
             icon: <FolderOpenOutlined />,
             onClick: () => onFileAction('move', file),
         },
-        {
+        ...(file.starred !== undefined ? [{
             key: 'star',
             label: file.starred ? 'Remove star' : 'Add star',
             icon: file.starred ? <StarFilled style={{ color: '#fbbc04' }} /> : <StarOutlined />,
             onClick: () => onFileAction('star', file),
-        },
+        }] : []),
         {
             key: 'share',
             label: 'Share',
@@ -1122,6 +1195,7 @@ const FilesSection: React.FC<{
                 key: 'name',
                 ellipsis: true,
                 render: (text: string, record: DriveFile) => {
+                    const accentColor = getFileAccentColor(record);
                     return (
                         <div
                             style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
@@ -1145,14 +1219,26 @@ const FilesSection: React.FC<{
                                         <StarFilled style={{ color: '#fbbc04', fontSize: '12px' }} />
                                     )}
                                 </div>
-                                {record.shared && (
-                                    <div style={{ marginTop: '2px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
+                                    {record.shared && (
                                         <Tag color="blue" style={{ fontSize: '11px' }}>
                                             <TeamOutlined style={{ marginRight: '2px' }} />
                                             Shared
                                         </Tag>
-                                    </div>
-                                )}
+                                    )}
+                                    {record.source_email && (
+                                        <Tag
+                                            style={{
+                                                fontSize: '11px',
+                                                backgroundColor: accentColor + '15',
+                                                borderColor: accentColor + '40',
+                                                color: accentColor
+                                            }}
+                                        >
+                                            {getFileSource(record) === 'google' ? 'Google' : 'Outlook'}
+                                        </Tag>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     )
@@ -1263,139 +1349,158 @@ const FilesSection: React.FC<{
                 <Badge count={files.length} style={{ backgroundColor: '#e8f0fe', color: PRIMARY_COLOR }} />
             </div>
             <Row gutter={[12, 12]}>
-                {displayFiles.map((file) => (
-                    <Col xs={12} sm={8} md={6} lg={4} xl={3} key={file.id}>
-                        <div
-                            style={{
-                                padding: '0',
-                                borderRadius: '8px',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s ease',
-                                backgroundColor: '#fff',
-                                border: '1px solid #e8eaed',
-                                overflow: 'hidden',
-                                position: 'relative',
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-                                e.currentTarget.style.transform = 'translateY(-2px)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.boxShadow = 'none';
-                                e.currentTarget.style.transform = 'translateY(0)';
-                            }}
-                        >
+                {displayFiles.map((file) => {
+                    const accentColor = getFileAccentColor(file);
+                    return (
+                        <Col xs={12} sm={8} md={6} lg={4} xl={3} key={file.id}>
                             <div
                                 style={{
-                                    height: '120px',
-                                    backgroundColor: '#f8f9fa',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    backgroundImage: file.thumbnailLink
-                                        ? `url(${trimGooglePhotoUrl(file.thumbnailLink)})`
-                                        : 'none',
-                                    backgroundSize: 'cover',
-                                    backgroundPosition: 'center',
+                                    padding: '0',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease',
+                                    backgroundColor: '#fff',
+                                    border: `1px solid ${accentColor}20`,
+                                    overflow: 'hidden',
                                     position: 'relative',
                                 }}
-                                onClick={() => onFileAction('view', file)}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.boxShadow = `0 4px 12px ${accentColor}25`;
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                    e.currentTarget.style.borderColor = accentColor + '40';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.boxShadow = 'none';
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.borderColor = accentColor + '20';
+                                }}
                             >
-                                <Checkbox
-                                    checked={selectedItems.includes(file.id)}
-                                    onChange={(e) => onItemSelect(file.id, e.target.checked)}
-                                    style={{
-                                        position: 'absolute',
-                                        top: '8px',
-                                        left: '8px',
-                                        backgroundColor: 'rgba(255,255,255,0.9)',
-                                        borderRadius: '4px',
-                                        padding: '2px'
-                                    }}
-                                    onClick={(e) => e.stopPropagation()}
-                                />
-                                {!file.thumbnailLink && (
-                                    <div style={{ fontSize: '32px', color: getFileIconColor(file.mimeType) }}>
-                                        {getFileIcon(file.mimeType)}
-                                    </div>
-                                )}
                                 <div
                                     style={{
-                                        position: 'absolute',
-                                        top: '8px',
-                                        right: '8px',
+                                        height: '120px',
+                                        backgroundColor: '#f8f9fa',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        backgroundImage: file.thumbnailLink
+                                            ? `url(${trimGooglePhotoUrl(file.thumbnailLink)})`
+                                            : 'none',
+                                        backgroundSize: 'cover',
+                                        backgroundPosition: 'center',
+                                        position: 'relative',
+                                        borderBottom: `2px solid ${accentColor}15`
                                     }}
-                                // className="file-menu-btn"
+                                // onClick={() => onFileAction('view', file)}
                                 >
-                                    <Dropdown menu={{ items: getMenuItems(file) }} trigger={['click']}>
-                                        <Button
-                                            type="primary"
-                                            size="small"
-                                            icon={<MoreOutlined />}
-                                            style={{
-                                                border: 'none',
-                                                color: PRIMARY_COLOR,
-                                                backgroundColor: 'transparent',
-                                            }}
-                                            onClick={(e) => e.stopPropagation()}
-                                        />
-                                    </Dropdown>
-                                </div>
-                            </div>
-                            <div style={{ padding: '12px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
-                                    <Text
+                                    <Checkbox
+                                        checked={selectedItems.includes(file.id)}
+                                        onChange={(e) => onItemSelect(file.id, e.target.checked)}
                                         style={{
-                                            fontSize: '14px',
-                                            color: '#202124',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            whiteSpace: 'nowrap',
-                                            fontWeight: 500,
-                                            flex: 1
+                                            position: 'absolute',
+                                            top: '8px',
+                                            left: '8px',
+                                            backgroundColor: 'rgba(255,255,255,0.9)',
+                                            borderRadius: '4px',
+                                            padding: '2px'
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
+                                    {!file.thumbnailLink && (
+                                        <div style={{ fontSize: '32px', color: getFileIconColor(file.mimeType) }}>
+                                            {getFileIcon(file.mimeType)}
+                                        </div>
+                                    )}
+                                    <div
+                                        style={{
+                                            position: 'absolute',
+                                            top: '8px',
+                                            right: '8px',
                                         }}
                                     >
-                                        {file.name}
-                                    </Text>
-                                    {file.starred && (
-                                        <StarFilled style={{ color: '#fbbc04', fontSize: '12px' }} />
-                                    )}
+                                        <Dropdown menu={{ items: getMenuItems(file) }} trigger={['click']}>
+                                            <Button
+                                                type="primary"
+                                                size="small"
+                                                icon={<MoreOutlined />}
+                                                style={{
+                                                    border: 'none',
+                                                    color: accentColor,
+                                                    backgroundColor: 'rgba(255,255,255,0.9)',
+                                                }}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        </Dropdown>
+                                    </div>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
-                                    {file.owners[0]?.photoLink ? (
-                                        <Avatar size={16} src={file.owners[0].photoLink} style={{ marginRight: '6px' }} />
-                                    ) : (
-                                        <Avatar
-                                            size={16}
+                                <div style={{ padding: '12px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
+                                        <Text
                                             style={{
-                                                marginRight: '6px',
-                                                backgroundColor: PRIMARY_COLOR,
-                                                fontSize: '10px',
+                                                fontSize: '14px',
+                                                color: '#202124',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                whiteSpace: 'nowrap',
+                                                fontWeight: 500,
+                                                flex: 1
                                             }}
+                                            onClick={() => onFileAction('view', file)}
                                         >
-                                            {(file.owners[0]?.displayName || 'U')[0]}
-                                        </Avatar>
-                                    )}
-                                    <Text style={{ fontSize: '12px', color: '#5f6368' }}>
-                                        {formatDate(file.modifiedTime)}
-                                    </Text>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <Text style={{ fontSize: '12px', color: '#5f6368' }}>
-                                        {formatFileSize(file.size)}
-                                    </Text>
-                                    <Space size={4}>
-                                        {file.shared && (
-                                            <Tooltip title="Shared">
-                                                <TeamOutlined style={{ color: PRIMARY_COLOR, fontSize: '12px' }} />
-                                            </Tooltip>
+                                            {file.name}
+                                        </Text>
+                                        {file.starred && (
+                                            <StarFilled style={{ color: '#fbbc04', fontSize: '12px' }} />
                                         )}
-                                    </Space>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
+                                        {file.owners[0]?.photoLink ? (
+                                            <Avatar size={16} src={file.owners[0].photoLink} style={{ marginRight: '6px' }} />
+                                        ) : (
+                                            <Avatar
+                                                size={16}
+                                                style={{
+                                                    marginRight: '6px',
+                                                    backgroundColor: accentColor,
+                                                    fontSize: '10px',
+                                                }}
+                                            >
+                                                {(file.owners[0]?.displayName || 'U')[0]}
+                                            </Avatar>
+                                        )}
+                                        <Text style={{ fontSize: '12px', color: '#5f6368' }}>
+                                            {formatDate(file.modifiedTime)}
+                                        </Text>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <Text style={{ fontSize: '12px', color: '#5f6368' }}>
+                                            {formatFileSize(file.size)}
+                                        </Text>
+                                        <Space size={4}>
+                                            {file.shared && (
+                                                <Tooltip title="Shared">
+                                                    <TeamOutlined style={{ color: accentColor, fontSize: '12px' }} />
+                                                </Tooltip>
+                                            )}
+                                            {file.source_email && (
+                                                <Tag
+                                                    style={{
+                                                        fontSize: '8px',
+                                                        margin: 0,
+                                                        backgroundColor: accentColor + '15',
+                                                        borderColor: accentColor + '40',
+                                                        color: accentColor
+                                                    }}
+                                                >
+                                                    {getFileSource(file) === 'google' ? 'G' : 'O'}
+                                                </Tag>
+                                            )}
+                                        </Space>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </Col>
-                ))}
+                        </Col>
+                    );
+                })}
             </Row>
             {files.length > pageSize && (
                 <div
@@ -1465,6 +1570,10 @@ const GoogleDriveManager: React.FC = () => {
     const [duplicateFiles, setDuplicateFiles] = useState<DuplicateFile[]>([]);
     const [storageAnalytics, setStorageAnalytics] = useState<any>(null);
 
+    // Additional state for new modals
+    const [fileInfo, setFileInfo] = useState<any>(null);
+    const [folderTreeData, setFolderTreeData] = useState<any[]>([]);
+
     const handleToggleUpload = () => setShowUploadArea(true);
     const handleAddFolder = () => setShowCreateFolder(true);
     const [form] = Form.useForm();
@@ -1476,39 +1585,59 @@ const GoogleDriveManager: React.FC = () => {
     const [bulkMoveForm] = Form.useForm();
     const [bulkCopyForm] = Form.useForm();
 
-    // Extract unique accounts from files and folders
+    // Extract unique accounts from files and folders - Updated to include both Google and Outlook
     const extractAvailableAccounts = useCallback((files: DriveFile[], folders: DriveFolder[]) => {
         const accountsMap = new Map<string, AccountFilter>();
 
         // Extract from files
         files.forEach(file => {
-            file.owners?.forEach((owner: any) => {
-                if (owner.emailAddress) {
-                    accountsMap.set(owner.emailAddress, {
-                        email: owner.emailAddress,
-                        displayName: owner.displayName || owner.emailAddress,
-                        photoLink: owner.photoLink
-                    });
-                }
-            });
+            if (file.source_email) {
+                const provider = file.source_email.includes('gmail') || file.source_email.includes('google') ? 'google' : 'outlook';
+                accountsMap.set(file.source_email, {
+                    email: file.source_email,
+                    displayName: file.account_name || file.source_email.split('@')[0],
+                    photoLink: file.owners?.[0]?.photoLink,
+                    provider: provider
+                });
+            }
         });
 
         // Extract from folders
         folders.forEach(folder => {
-            folder.owners?.forEach((owner: any) => {
-                if (owner.emailAddress) {
-                    accountsMap.set(owner.emailAddress, {
-                        email: owner.emailAddress,
-                        displayName: owner.displayName || owner.emailAddress,
-                        photoLink: owner.photoLink
-                    });
-                }
-            });
+            if (folder.source_email) {
+                const provider = folder.source_email.includes('gmail') || folder.source_email.includes('google') ? 'google' : 'outlook';
+                accountsMap.set(folder.source_email, {
+                    email: folder.source_email,
+                    displayName: folder.account_name || folder.source_email.split('@')[0],
+                    photoLink: folder.owners?.[0]?.photoLink,
+                    provider: provider
+                });
+            }
         });
 
         return Array.from(accountsMap.values()).sort((a, b) =>
             a.displayName.localeCompare(b.displayName)
         );
+    }, []);
+
+    // Build folder tree for move/copy operations
+    const buildFolderTree = useCallback((folders: DriveFolder[], currentItemId?: string) => {
+        return [
+            {
+                title: 'My Drive',
+                key: 'root',
+                value: 'root',
+                icon: <HomeOutlined />,
+                children: folders
+                    .filter(folder => folder.id !== currentItemId) // Exclude current item
+                    .map(folder => ({
+                        title: folder.name,
+                        key: folder.id,
+                        value: folder.id,
+                        icon: <FolderOutlined />,
+                    }))
+            }
+        ];
     }, []);
 
     const fetchFiles = async () => {
@@ -1531,6 +1660,10 @@ const GoogleDriveManager: React.FC = () => {
                 // Extract available accounts
                 const accounts = extractAvailableAccounts(fetchedFiles, fetchedFolders);
                 setAvailableAccounts(accounts);
+
+                // Build folder tree for modals
+                const tree = buildFolderTree(fetchedFolders);
+                setFolderTreeData(tree);
             }
         } catch (error: any) {
             console.error('Error fetching files:', error);
@@ -1582,6 +1715,18 @@ const GoogleDriveManager: React.FC = () => {
             }
         } catch (error: any) {
             console.error('Error fetching storage analytics:', error);
+        }
+    };
+
+    const fetchFileInfo = async (fileId: string) => {
+        try {
+            const response = await getDriveFileInfo({ fileId });
+            if (response?.data) {
+                setFileInfo(response.data.payload);
+            }
+        } catch (error: any) {
+            console.error('Error fetching file info:', error);
+            message.error('Failed to fetch file information.');
         }
     };
 
@@ -1642,6 +1787,8 @@ const GoogleDriveManager: React.FC = () => {
     };
 
     const handleFileAction = async (action: string, item: DriveFile | DriveFolder) => {
+        const fileSource = getFileSource(item);
+
         switch (action) {
             case 'view':
                 if ('webViewLink' in item && item.webViewLink) {
@@ -1652,7 +1799,10 @@ const GoogleDriveManager: React.FC = () => {
             case 'download':
                 if ('mimeType' in item) {
                     try {
-                        const response = await downloadDriveFile({ fileId: item.id });
+                        const response = await downloadDriveFile({
+                            fileId: item.id,
+                            provider: fileSource
+                        });
                         const blob = new Blob([response.data]);
                         const url = window.URL.createObjectURL(blob);
                         const a = document.createElement('a');
@@ -1678,6 +1828,7 @@ const GoogleDriveManager: React.FC = () => {
             case 'copy':
                 setCurrentActionItem(item);
                 setShowCopyModal(true);
+                copyForm.setFieldsValue({ newName: `Copy of ${item.name}` });
                 break;
             case 'move':
                 setCurrentActionItem(item);
@@ -1702,11 +1853,15 @@ const GoogleDriveManager: React.FC = () => {
                 break;
             case 'info':
                 setCurrentActionItem(item);
+                await fetchFileInfo(item.id);
                 setShowFileInfoModal(true);
                 break;
             case 'delete':
                 try {
-                    await deleteDriveFile({ fileId: item.id });
+                    await deleteDriveFile({
+                        fileId: item.id,
+                        provider: fileSource
+                    });
                     message.success(`${item.name} deleted successfully`);
                     await logUserActivity('delete', item.name, item.id);
                     fetchFiles();
@@ -1738,10 +1893,14 @@ const GoogleDriveManager: React.FC = () => {
 
     const handleShareFile = async (values: any) => {
         try {
+            const sharedItem = [...files, ...folders].find(item => item.id === shareFileId);
+            const fileSource = sharedItem ? getFileSource(sharedItem) : 'google';
+
             await shareDriveFile({
                 fileId: shareFileId,
                 email: values.email,
-                role: values.role || 'reader'
+                role: values.role || 'reader',
+                provider: fileSource
             });
 
             setShowShareModal(false);
@@ -1749,7 +1908,6 @@ const GoogleDriveManager: React.FC = () => {
             shareForm.resetFields();
             message.success('File shared successfully');
 
-            const sharedItem = [...files, ...folders].find(item => item.id === shareFileId);
             if (sharedItem) {
                 await logUserActivity('share', sharedItem.name, shareFileId, `Shared with ${values.email}`);
             }
@@ -1763,9 +1921,11 @@ const GoogleDriveManager: React.FC = () => {
         if (!currentActionItem) return;
 
         try {
+            const fileSource = getFileSource(currentActionItem);
             await renameDriveFile({
                 fileId: currentActionItem.id,
-                newName: values.newName
+                newName: values.newName,
+                provider: fileSource
             });
 
             setShowRenameModal(false);
@@ -1784,10 +1944,12 @@ const GoogleDriveManager: React.FC = () => {
         if (!currentActionItem) return;
 
         try {
+            const fileSource = getFileSource(currentActionItem);
             await copyDriveFile({
                 fileId: currentActionItem.id,
-                parentId: values.targetFolder,
-                name: values.newName
+                parentId: values.targetFolder === 'root' ? undefined : values.targetFolder,
+                name: values.newName,
+                provider: fileSource
             });
 
             setShowCopyModal(false);
@@ -1806,9 +1968,11 @@ const GoogleDriveManager: React.FC = () => {
         if (!currentActionItem) return;
 
         try {
+            const fileSource = getFileSource(currentActionItem);
             await moveDriveFile({
                 fileId: currentActionItem.id,
-                targetFolderId: values.targetFolder
+                targetFolderId: values.targetFolder === 'root' ? 'root' : values.targetFolder,
+                provider: fileSource
             });
 
             setShowMoveModal(false);
@@ -1870,6 +2034,64 @@ const GoogleDriveManager: React.FC = () => {
         setShowBulkShareModal(true);
     };
 
+    // New bulk operation handlers
+    const handleBulkMoveSubmit = async (values: any) => {
+        try {
+            await bulkMoveFiles({
+                fileIds: selectedItems,
+                targetFolderId: values.targetFolder === 'root' ? 'root' : values.targetFolder
+            });
+
+            setShowBulkMoveModal(false);
+            bulkMoveForm.resetFields();
+            message.success(`${selectedItems.length} items moved successfully`);
+            await logUserActivity('bulk_move', `${selectedItems.length} items`, undefined);
+            setSelectedItems([]);
+            fetchFiles();
+        } catch (error: any) {
+            console.error('Bulk move error:', error);
+            message.error('Failed to move items');
+        }
+    };
+
+    const handleBulkCopySubmit = async (values: any) => {
+        try {
+            await bulkCopyFiles({
+                fileIds: selectedItems,
+                targetFolderId: values.targetFolder === 'root' ? 'root' : values.targetFolder
+            });
+
+            setShowBulkCopyModal(false);
+            bulkCopyForm.resetFields();
+            message.success(`${selectedItems.length} items copied successfully`);
+            await logUserActivity('bulk_copy', `${selectedItems.length} items`, undefined);
+            setSelectedItems([]);
+            fetchFiles();
+        } catch (error: any) {
+            console.error('Bulk copy error:', error);
+            message.error('Failed to copy items');
+        }
+    };
+
+    const handleBulkShareSubmit = async (values: any) => {
+        try {
+            await bulkShareFiles({
+                fileIds: selectedItems,
+                email: values.email,
+                role: values.role || 'reader'
+            });
+
+            setShowBulkShareModal(false);
+            bulkShareForm.resetFields();
+            message.success(`${selectedItems.length} items shared successfully`);
+            await logUserActivity('bulk_share', `${selectedItems.length} items`, undefined, `Shared with ${values.email}`);
+            setSelectedItems([]);
+        } catch (error: any) {
+            console.error('Bulk share error:', error);
+            message.error('Failed to share items');
+        }
+    };
+
     const navigateToFolder = (folderId: string, folderName: string) => {
         setCurrentFolder(folderId);
         setCurrentPage(1);
@@ -1911,15 +2133,13 @@ const GoogleDriveManager: React.FC = () => {
     // Filter files and folders by search query and selected account
     const filteredFiles = files.filter(file => {
         const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesAccount = !selectedAccount ||
-            file.owners?.some(owner => owner.emailAddress === selectedAccount);
+        const matchesAccount = !selectedAccount || file.source_email === selectedAccount;
         return matchesSearch && matchesAccount;
     });
 
     const filteredFolders = folders.filter(folder => {
         const matchesSearch = folder.name.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesAccount = !selectedAccount ||
-            folder.owners?.some(owner => owner.emailAddress === selectedAccount);
+        const matchesAccount = !selectedAccount || folder.source_email === selectedAccount;
         return matchesSearch && matchesAccount;
     });
 
@@ -2087,6 +2307,7 @@ const GoogleDriveManager: React.FC = () => {
                             viewMode={viewMode}
                             selectedItems={selectedItems}
                             onItemSelect={handleItemSelect}
+                            availableAccounts={availableAccounts}
                         />
 
                         {/* Files Section */}
@@ -2102,6 +2323,7 @@ const GoogleDriveManager: React.FC = () => {
                             }}
                             selectedItems={selectedItems}
                             onItemSelect={handleItemSelect}
+                            availableAccounts={availableAccounts}
                         />
 
                         {/* Empty State */}
@@ -2129,8 +2351,7 @@ const GoogleDriveManager: React.FC = () => {
                     </>
                 )}
 
-                {/* Modals and Drawers */}
-
+                {/* All existing modals remain the same, just keeping the structure */}
                 {/* Create Folder Modal */}
                 <Modal
                     title={
@@ -2315,6 +2536,929 @@ const GoogleDriveManager: React.FC = () => {
                             </Space>
                         </Form.Item>
                     </Form>
+                </Modal>
+
+                {/* Move Modal */}
+                <Modal
+                    title={
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{
+                                width: '32px',
+                                height: '32px',
+                                backgroundColor: '#e8f0fe',
+                                borderRadius: '8px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}>
+                                <FolderOpenOutlined style={{ color: PRIMARY_COLOR, fontSize: '16px' }} />
+                            </div>
+                            <div>
+                                <span style={{ fontSize: '18px', fontWeight: 600, color: '#202124' }}>
+                                    Move to
+                                </span>
+                                {currentActionItem && (
+                                    <div style={{ fontSize: '13px', color: '#5f6368', marginTop: '2px' }}>
+                                        {currentActionItem.name}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    }
+                    open={showMoveModal}
+                    onCancel={() => {
+                        setShowMoveModal(false);
+                        setCurrentActionItem(null);
+                        moveForm.resetFields();
+                    }}
+                    footer={null}
+                    width={500}
+                    style={{ borderRadius: '12px' }}
+                    styles={{
+                        header: { borderBottom: '1px solid #f0f0f0', paddingBottom: '16px' },
+                        body: { paddingTop: '24px' }
+                    }}
+                >
+                    <Form
+                        form={moveForm}
+                        onFinish={handleMove}
+                        layout="vertical"
+                    >
+                        <Form.Item
+                            name="targetFolder"
+                            label={
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <FolderOutlined style={{ color: PRIMARY_COLOR }} />
+                                    <span style={{ fontSize: '14px', fontWeight: 500 }}>Select destination folder</span>
+                                </div>
+                            }
+                            rules={[{ required: true, message: 'Please select a destination folder' }]}
+                        >
+                            <TreeSelect
+                                style={{ borderRadius: '8px' }}
+                                dropdownStyle={{
+                                    borderRadius: '12px',
+                                    boxShadow: '0 6px 16px rgba(0,0,0,0.12)',
+                                    border: '1px solid #e8eaed'
+                                }}
+                                placeholder="Choose folder"
+                                allowClear
+                                treeDefaultExpandAll
+                                treeData={folderTreeData}
+                                size="large"
+                                showSearch
+                                treeNodeFilterProp="title"
+                            />
+                        </Form.Item>
+                        <div style={{
+                            backgroundColor: '#f8f9fa',
+                            padding: '16px',
+                            borderRadius: '8px',
+                            marginBottom: '24px'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                <InfoCircleOutlined style={{ color: '#4285f4', fontSize: '16px' }} />
+                                <span style={{ fontSize: '14px', fontWeight: 500, color: '#202124' }}>
+                                    Moving files
+                                </span>
+                            </div>
+                            <Text style={{ fontSize: '13px', color: '#5f6368', lineHeight: 1.5 }}>
+                                The file will be moved to the selected location. This action cannot be undone automatically.
+                            </Text>
+                        </div>
+                        <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+                            <Space size="middle">
+                                <Button
+                                    size="large"
+                                    onClick={() => {
+                                        setShowMoveModal(false);
+                                        setCurrentActionItem(null);
+                                        moveForm.resetFields();
+                                    }}
+                                    style={{
+                                        borderRadius: '8px',
+                                        borderColor: '#dadce0',
+                                        color: '#5f6368'
+                                    }}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="primary"
+                                    size="large"
+                                    htmlType="submit"
+                                    style={{
+                                        backgroundColor: PRIMARY_COLOR,
+                                        borderColor: PRIMARY_COLOR,
+                                        borderRadius: '8px',
+                                        fontWeight: 500,
+                                        minWidth: '80px'
+                                    }}
+                                >
+                                    Move
+                                </Button>
+                            </Space>
+                        </Form.Item>
+                    </Form>
+                </Modal>
+
+                {/* Copy Modal */}
+                <Modal
+                    title={
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{
+                                width: '32px',
+                                height: '32px',
+                                backgroundColor: '#e8f0fe',
+                                borderRadius: '8px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}>
+                                <CopyOutlined style={{ color: PRIMARY_COLOR, fontSize: '16px' }} />
+                            </div>
+                            <div>
+                                <span style={{ fontSize: '18px', fontWeight: 600, color: '#202124' }}>
+                                    Make a copy
+                                </span>
+                                {currentActionItem && (
+                                    <div style={{ fontSize: '13px', color: '#5f6368', marginTop: '2px' }}>
+                                        {currentActionItem.name}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    }
+                    open={showCopyModal}
+                    onCancel={() => {
+                        setShowCopyModal(false);
+                        setCurrentActionItem(null);
+                        copyForm.resetFields();
+                    }}
+                    footer={null}
+                    width={520}
+                    style={{ borderRadius: '12px' }}
+                    styles={{
+                        header: { borderBottom: '1px solid #f0f0f0', paddingBottom: '16px' },
+                        body: { paddingTop: '24px' }
+                    }}
+                >
+                    <Form
+                        form={copyForm}
+                        onFinish={handleCopy}
+                        layout="vertical"
+                    >
+                        <Form.Item
+                            name="newName"
+                            label={
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <EditOutlined style={{ color: PRIMARY_COLOR }} />
+                                    <span style={{ fontSize: '14px', fontWeight: 500 }}>Name</span>
+                                </div>
+                            }
+                            rules={[{ required: true, message: 'Please enter a name for the copy' }]}
+                        >
+                            <Input
+                                size="large"
+                                style={{ borderRadius: '8px' }}
+                                placeholder="Enter name for the copy"
+                            />
+                        </Form.Item>
+                        <Form.Item
+                            name="targetFolder"
+                            label={
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <FolderOutlined style={{ color: PRIMARY_COLOR }} />
+                                    <span style={{ fontSize: '14px', fontWeight: 500 }}>Destination folder</span>
+                                </div>
+                            }
+                            rules={[{ required: true, message: 'Please select a destination folder' }]}
+                        >
+                            <TreeSelect
+                                style={{ borderRadius: '8px' }}
+                                size="large"
+                                dropdownStyle={{
+                                    borderRadius: '12px',
+                                    boxShadow: '0 6px 16px rgba(0,0,0,0.12)',
+                                    border: '1px solid #e8eaed'
+                                }}
+                                placeholder="Choose destination folder"
+                                allowClear
+                                treeDefaultExpandAll
+                                treeData={folderTreeData}
+                                showSearch
+                                treeNodeFilterProp="title"
+                            />
+                        </Form.Item>
+                        <div style={{
+                            backgroundColor: '#f8f9fa',
+                            padding: '16px',
+                            borderRadius: '8px',
+                            marginBottom: '24px'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                <InfoCircleOutlined style={{ color: '#4285f4', fontSize: '16px' }} />
+                                <span style={{ fontSize: '14px', fontWeight: 500, color: '#202124' }}>
+                                    Creating copy
+                                </span>
+                            </div>
+                            <Text style={{ fontSize: '13px', color: '#5f6368', lineHeight: 1.5 }}>
+                                A copy of the file will be created in the selected location with the specified name.
+                            </Text>
+                        </div>
+                        <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+                            <Space size="middle">
+                                <Button
+                                    size="large"
+                                    onClick={() => {
+                                        setShowCopyModal(false);
+                                        setCurrentActionItem(null);
+                                        copyForm.resetFields();
+                                    }}
+                                    style={{
+                                        borderRadius: '8px',
+                                        borderColor: '#dadce0',
+                                        color: '#5f6368'
+                                    }}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="primary"
+                                    size="large"
+                                    htmlType="submit"
+                                    style={{
+                                        backgroundColor: PRIMARY_COLOR,
+                                        borderColor: PRIMARY_COLOR,
+                                        borderRadius: '8px',
+                                        fontWeight: 500,
+                                        minWidth: '80px'
+                                    }}
+                                >
+                                    Create copy
+                                </Button>
+                            </Space>
+                        </Form.Item>
+                    </Form>
+                </Modal>
+
+                {/* Bulk Share Modal */}
+                <Modal
+                    title={
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{
+                                width: '32px',
+                                height: '32px',
+                                backgroundColor: '#e8f0fe',
+                                borderRadius: '8px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}>
+                                <ShareAltOutlined style={{ color: PRIMARY_COLOR, fontSize: '16px' }} />
+                            </div>
+                            <div>
+                                <span style={{ fontSize: '18px', fontWeight: 600, color: '#202124' }}>
+                                    Share files
+                                </span>
+                                <div style={{ fontSize: '13px', color: '#5f6368', marginTop: '2px' }}>
+                                    {selectedItems.length} item{selectedItems.length > 1 ? 's' : ''} selected
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    open={showBulkShareModal}
+                    onCancel={() => {
+                        setShowBulkShareModal(false);
+                        bulkShareForm.resetFields();
+                    }}
+                    footer={null}
+                    width={520}
+                    style={{ borderRadius: '12px' }}
+                    styles={{
+                        header: { borderBottom: '1px solid #f0f0f0', paddingBottom: '16px' },
+                        body: { paddingTop: '24px' }
+                    }}
+                >
+                    <Form
+                        form={bulkShareForm}
+                        onFinish={handleBulkShareSubmit}
+                        layout="vertical"
+                    >
+                        <Form.Item
+                            name="email"
+                            label={
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <UserOutlined style={{ color: PRIMARY_COLOR }} />
+                                    <span style={{ fontSize: '14px', fontWeight: 500 }}>Add people</span>
+                                </div>
+                            }
+                            rules={[
+                                { required: true, message: 'Please enter an email address' },
+                                { type: 'email', message: 'Please enter a valid email address' }
+                            ]}
+                        >
+                            <Input
+                                size="large"
+                                placeholder="Enter email address"
+                                style={{ borderRadius: '8px' }}
+                                prefix={<UserOutlined style={{ color: '#5f6368' }} />}
+                            />
+                        </Form.Item>
+                        <Form.Item
+                            name="role"
+                            label={
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <TeamOutlined style={{ color: PRIMARY_COLOR }} />
+                                    <span style={{ fontSize: '14px', fontWeight: 500 }}>Permission level</span>
+                                </div>
+                            }
+                            initialValue="reader"
+                        >
+                            <Select size="large" style={{ borderRadius: '8px' }}>
+                                <Select.Option value="reader">
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                        <EyeOutlined style={{ color: '#5f6368' }} />
+                                        <div >Viewer</div>
+                                        <div style={{ fontSize: '10px', color: '#5f6368' }}>*Can view and comment</div>
+                                    </div>
+                                </Select.Option>
+                                <Select.Option value="commenter">
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                        <EditOutlined style={{ color: '#5f6368' }} />
+                                        <div >Commenter</div>
+                                        <div style={{ fontSize: '10px', color: '#5f6368' }}>*Can view and comment</div>
+                                    </div>
+                                </Select.Option>
+                                <Select.Option value="writer">
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                        <EditOutlined style={{ color: '#5f6368' }} />
+                                        <div >Editor</div>
+                                        <div style={{ fontSize: '10px', color: '#5f6368' }}>*Can view, comment and edit</div>
+                                    </div>
+                                </Select.Option>
+                            </Select>
+                        </Form.Item>
+                        <div style={{
+                            backgroundColor: '#f8f9fa',
+                            padding: '16px',
+                            borderRadius: '8px',
+                            marginBottom: '24px'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                <InfoCircleOutlined style={{ color: '#4285f4', fontSize: '16px' }} />
+                                <span style={{ fontSize: '14px', fontWeight: 500, color: '#202124' }}>
+                                    Bulk sharing
+                                </span>
+                            </div>
+                            <Text style={{ fontSize: '13px', color: '#5f6368', lineHeight: 1.5 }}>
+                                All selected files will be shared with the specified email address with the chosen permission level.
+                            </Text>
+                        </div>
+                        <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+                            <Space size="middle">
+                                <Button
+                                    size="large"
+                                    onClick={() => {
+                                        setShowBulkShareModal(false);
+                                        bulkShareForm.resetFields();
+                                    }}
+                                    style={{
+                                        borderRadius: '8px',
+                                        borderColor: '#dadce0',
+                                        color: '#5f6368'
+                                    }}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="primary"
+                                    size="large"
+                                    htmlType="submit"
+                                    style={{
+                                        backgroundColor: PRIMARY_COLOR,
+                                        borderColor: PRIMARY_COLOR,
+                                        borderRadius: '8px',
+                                        fontWeight: 500,
+                                        minWidth: '80px'
+                                    }}
+                                >
+                                    Share files
+                                </Button>
+                            </Space>
+                        </Form.Item>
+                    </Form>
+                </Modal>
+
+                {/* Bulk Move Modal */}
+                <Modal
+                    title={
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{
+                                width: '32px',
+                                height: '32px',
+                                backgroundColor: '#e8f0fe',
+                                borderRadius: '8px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}>
+                                <FolderOpenOutlined style={{ color: PRIMARY_COLOR, fontSize: '16px' }} />
+                            </div>
+                            <div>
+                                <span style={{ fontSize: '18px', fontWeight: 600, color: '#202124' }}>
+                                    Move files
+                                </span>
+                                <div style={{ fontSize: '13px', color: '#5f6368', marginTop: '2px' }}>
+                                    {selectedItems.length} item{selectedItems.length > 1 ? 's' : ''} selected
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    open={showBulkMoveModal}
+                    onCancel={() => {
+                        setShowBulkMoveModal(false);
+                        bulkMoveForm.resetFields();
+                    }}
+                    footer={null}
+                    width={520}
+                    style={{ borderRadius: '12px' }}
+                    styles={{
+                        header: { borderBottom: '1px solid #f0f0f0', paddingBottom: '16px' },
+                        body: { paddingTop: '24px' }
+                    }}
+                >
+                    <Form
+                        form={bulkMoveForm}
+                        onFinish={handleBulkMoveSubmit}
+                        layout="vertical"
+                    >
+                        <Form.Item
+                            name="targetFolder"
+                            label={
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <FolderOutlined style={{ color: PRIMARY_COLOR }} />
+                                    <span style={{ fontSize: '14px', fontWeight: 500 }}>Select destination folder</span>
+                                </div>
+                            }
+                            rules={[{ required: true, message: 'Please select a destination folder' }]}
+                        >
+                            <TreeSelect
+                                style={{ borderRadius: '8px' }}
+                                size="large"
+                                dropdownStyle={{
+                                    borderRadius: '12px',
+                                    boxShadow: '0 6px 16px rgba(0,0,0,0.12)',
+                                    border: '1px solid #e8eaed'
+                                }}
+                                placeholder="Choose destination folder"
+                                allowClear
+                                treeDefaultExpandAll
+                                treeData={folderTreeData}
+                                showSearch
+                                treeNodeFilterProp="title"
+                            />
+                        </Form.Item>
+                        <div style={{
+                            backgroundColor: '#fff3cd',
+                            border: '1px solid #ffeaa7',
+                            padding: '16px',
+                            borderRadius: '8px',
+                            marginBottom: '24px'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                <InfoCircleOutlined style={{ color: '#e67e22', fontSize: '16px' }} />
+                                <span style={{ fontSize: '14px', fontWeight: 500, color: '#d68910' }}>
+                                    Bulk move operation
+                                </span>
+                            </div>
+                            <Text style={{ fontSize: '13px', color: '#b7950b', lineHeight: 1.5 }}>
+                                All selected items will be moved to the chosen location. This action cannot be undone automatically.
+                            </Text>
+                        </div>
+                        <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+                            <Space size="middle">
+                                <Button
+                                    size="large"
+                                    onClick={() => {
+                                        setShowBulkMoveModal(false);
+                                        bulkMoveForm.resetFields();
+                                    }}
+                                    style={{
+                                        borderRadius: '8px',
+                                        borderColor: '#dadce0',
+                                        color: '#5f6368'
+                                    }}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="primary"
+                                    size="large"
+                                    htmlType="submit"
+                                    style={{
+                                        backgroundColor: PRIMARY_COLOR,
+                                        borderColor: PRIMARY_COLOR,
+                                        borderRadius: '8px',
+                                        fontWeight: 500,
+                                        minWidth: '80px'
+                                    }}
+                                >
+                                    Move files
+                                </Button>
+                            </Space>
+                        </Form.Item>
+                    </Form>
+                </Modal>
+
+                {/* Bulk Copy Modal */}
+                <Modal
+                    title={
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{
+                                width: '32px',
+                                height: '32px',
+                                backgroundColor: '#e8f0fe',
+                                borderRadius: '8px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}>
+                                <CopyOutlined style={{ color: PRIMARY_COLOR, fontSize: '16px' }} />
+                            </div>
+                            <div>
+                                <span style={{ fontSize: '18px', fontWeight: 600, color: '#202124' }}>
+                                    Copy files
+                                </span>
+                                <div style={{ fontSize: '13px', color: '#5f6368', marginTop: '2px' }}>
+                                    {selectedItems.length} item{selectedItems.length > 1 ? 's' : ''} selected
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    open={showBulkCopyModal}
+                    onCancel={() => {
+                        setShowBulkCopyModal(false);
+                        bulkCopyForm.resetFields();
+                    }}
+                    footer={null}
+                    width={520}
+                    style={{ borderRadius: '12px' }}
+                    styles={{
+                        header: { borderBottom: '1px solid #f0f0f0', paddingBottom: '16px' },
+                        body: { paddingTop: '24px' }
+                    }}
+                >
+                    <Form
+                        form={bulkCopyForm}
+                        onFinish={handleBulkCopySubmit}
+                        layout="vertical"
+                    >
+                        <Form.Item
+                            name="targetFolder"
+                            label={
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <FolderOutlined style={{ color: PRIMARY_COLOR }} />
+                                    <span style={{ fontSize: '14px', fontWeight: 500 }}>Select destination folder</span>
+                                </div>
+                            }
+                            rules={[{ required: true, message: 'Please select a destination folder' }]}
+                        >
+                            <TreeSelect
+                                style={{ borderRadius: '8px' }}
+                                size="large"
+                                dropdownStyle={{
+                                    borderRadius: '12px',
+                                    boxShadow: '0 6px 16px rgba(0,0,0,0.12)',
+                                    border: '1px solid #e8eaed'
+                                }}
+                                placeholder="Choose destination folder"
+                                allowClear
+                                treeDefaultExpandAll
+                                treeData={folderTreeData}
+                                showSearch
+                                treeNodeFilterProp="title"
+                            />
+                        </Form.Item>
+                        <div style={{
+                            backgroundColor: '#f8f9fa',
+                            padding: '16px',
+                            borderRadius: '8px',
+                            marginBottom: '24px'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                <InfoCircleOutlined style={{ color: '#4285f4', fontSize: '16px' }} />
+                                <span style={{ fontSize: '14px', fontWeight: 500, color: '#202124' }}>
+                                    Bulk copy operation
+                                </span>
+                            </div>
+                            <Text style={{ fontSize: '13px', color: '#5f6368', lineHeight: 1.5 }}>
+                                Copies of all selected items will be created in the chosen destination folder.
+                            </Text>
+                        </div>
+                        <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+                            <Space size="middle">
+                                <Button
+                                    size="large"
+                                    onClick={() => {
+                                        setShowBulkCopyModal(false);
+                                        bulkCopyForm.resetFields();
+                                    }}
+                                    style={{
+                                        borderRadius: '8px',
+                                        borderColor: '#dadce0',
+                                        color: '#5f6368'
+                                    }}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="primary"
+                                    size="large"
+                                    htmlType="submit"
+                                    style={{
+                                        backgroundColor: PRIMARY_COLOR,
+                                        borderColor: PRIMARY_COLOR,
+                                        borderRadius: '8px',
+                                        fontWeight: 500,
+                                        minWidth: '80px'
+                                    }}
+                                >
+                                    Copy files
+                                </Button>
+                            </Space>
+                        </Form.Item>
+                    </Form>
+                </Modal>
+
+                {/* File Info Modal */}
+                <Modal
+                    title={
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{
+                                width: '32px',
+                                height: '32px',
+                                backgroundColor: '#e8f0fe',
+                                borderRadius: '8px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}>
+                                <InfoCircleOutlined style={{ color: PRIMARY_COLOR, fontSize: '16px' }} />
+                            </div>
+                            <div>
+                                <span style={{ fontSize: '18px', fontWeight: 600, color: '#202124' }}>
+                                    File Details
+                                </span>
+                                {currentActionItem && (
+                                    <div style={{ fontSize: '13px', color: '#5f6368', marginTop: '2px' }}>
+                                        {currentActionItem.name}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    }
+                    open={showFileInfoModal}
+                    onCancel={() => {
+                        setShowFileInfoModal(false);
+                        setCurrentActionItem(null);
+                        setFileInfo(null);
+                    }}
+                    footer={null}
+                    width={600}
+                    style={{ borderRadius: '12px' }}
+                    styles={{
+                        header: { borderBottom: '1px solid #f0f0f0', paddingBottom: '16px' },
+                        body: { paddingTop: '24px' }
+                    }}
+                >
+                    {fileInfo && currentActionItem && (
+                        <div>
+                            {/* File Preview */}
+                            {fileInfo.thumbnailLink && (
+                                <div style={{
+                                    textAlign: 'center',
+                                    marginBottom: '24px',
+                                    padding: '20px',
+                                    backgroundColor: '#f8f9fa',
+                                    borderRadius: '8px'
+                                }}>
+                                    <img
+                                        src={fileInfo.thumbnailLink}
+                                        alt={currentActionItem.name}
+                                        style={{
+                                            maxWidth: '200px',
+                                            maxHeight: '200px',
+                                            borderRadius: '8px',
+                                            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                                        }}
+                                    />
+                                </div>
+                            )}
+
+                            {/* File Information */}
+                            <Descriptions
+                                column={1}
+                                bordered
+                                size="small"
+                                style={{
+                                    backgroundColor: '#fff',
+                                    borderRadius: '8px'
+                                }}
+                                labelStyle={{
+                                    backgroundColor: '#f8f9fa',
+                                    fontWeight: 500,
+                                    color: '#202124',
+                                    width: '150px'
+                                }}
+                            >
+                                <Descriptions.Item
+                                    label={
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <FileOutlined style={{ color: PRIMARY_COLOR }} />
+                                            Name
+                                        </div>
+                                    }
+                                >
+                                    <Text copyable style={{ fontWeight: 500 }}>
+                                        {currentActionItem.name}
+                                    </Text>
+                                </Descriptions.Item>
+
+                                {'mimeType' in currentActionItem && (
+                                    <Descriptions.Item
+                                        label={
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <TagsOutlined style={{ color: PRIMARY_COLOR }} />
+                                                Type
+                                            </div>
+                                        }
+                                    >
+                                        <Tag color="blue">{currentActionItem.mimeType}</Tag>
+                                    </Descriptions.Item>
+                                )}
+
+                                {'size' in currentActionItem && currentActionItem.size && (
+                                    <Descriptions.Item
+                                        label={
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <HddOutlined style={{ color: PRIMARY_COLOR }} />
+                                                Size
+                                            </div>
+                                        }
+                                    >
+                                        <Text>{formatFileSize(currentActionItem.size)}</Text>
+                                    </Descriptions.Item>
+                                )}
+
+                                <Descriptions.Item
+                                    label={
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <CalendarOutlined style={{ color: PRIMARY_COLOR }} />
+                                            Modified
+                                        </div>
+                                    }
+                                >
+                                    <Text>{new Date(currentActionItem.modifiedTime).toLocaleString()}</Text>
+                                </Descriptions.Item>
+
+                                {'createdTime' in currentActionItem && (
+                                    <Descriptions.Item
+                                        label={
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <CalendarOutlined style={{ color: PRIMARY_COLOR }} />
+                                                Created
+                                            </div>
+                                        }
+                                    >
+                                        <Text>{new Date(currentActionItem.createdTime).toLocaleString()}</Text>
+                                    </Descriptions.Item>
+                                )}
+
+                                {'owners' in currentActionItem && currentActionItem.owners && (
+                                    <Descriptions.Item
+                                        label={
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <UserOutlined style={{ color: PRIMARY_COLOR }} />
+                                                Owner
+                                            </div>
+                                        }
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            {currentActionItem.owners[0]?.photoLink ? (
+                                                <Avatar size={24} src={currentActionItem.owners[0].photoLink} />
+                                            ) : (
+                                                <Avatar size={24} style={{ backgroundColor: PRIMARY_COLOR }}>
+                                                    {(currentActionItem.owners[0]?.displayName || 'U')[0]}
+                                                </Avatar>
+                                            )}
+                                            <div>
+                                                <div style={{ fontWeight: 500 }}>
+                                                    {currentActionItem.owners[0]?.displayName || 'Unknown'}
+                                                </div>
+                                                <div style={{ fontSize: '12px', color: '#5f6368' }}>
+                                                    {currentActionItem.owners[0]?.emailAddress}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </Descriptions.Item>
+                                )}
+
+                                <Descriptions.Item
+                                    label={
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <ShareAltOutlined style={{ color: PRIMARY_COLOR }} />
+                                            Sharing
+                                        </div>
+                                    }
+                                >
+                                    <Space>
+                                        <Tag color={currentActionItem.shared ? 'green' : 'default'}>
+                                            {currentActionItem.shared ? 'Shared' : 'Private'}
+                                        </Tag>
+                                        {'starred' in currentActionItem && currentActionItem.starred && (
+                                            <Tag color="gold" icon={<StarOutlined />}>
+                                                Starred
+                                            </Tag>
+                                        )}
+                                    </Space>
+                                </Descriptions.Item>
+
+                                {'webViewLink' in currentActionItem && currentActionItem.webViewLink && (
+                                    <Descriptions.Item
+                                        label={
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <LinkOutlined style={{ color: PRIMARY_COLOR }} />
+                                                Link
+                                            </div>
+                                        }
+                                    >
+                                        <Button
+                                            type="link"
+                                            icon={<LinkOutlined />}
+                                            onClick={() => window.open(currentActionItem.webViewLink, '_blank')}
+                                            style={{ padding: 0 }}
+                                        >
+                                            Open in Cloud Drive
+                                        </Button>
+                                    </Descriptions.Item>
+                                )}
+
+                                {fileInfo.description && (
+                                    <Descriptions.Item
+                                        label={
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <FileTextOutlined style={{ color: PRIMARY_COLOR }} />
+                                                Description
+                                            </div>
+                                        }
+                                    >
+                                        <Text>{fileInfo.description}</Text>
+                                    </Descriptions.Item>
+                                )}
+                            </Descriptions>
+
+                            {/* Quick Actions */}
+                            <div style={{ marginTop: '24px', textAlign: 'center' }}>
+                                <Space size="middle">
+                                    {'webViewLink' in currentActionItem && (
+                                        <Button
+                                            type="primary"
+                                            icon={<EyeOutlined />}
+                                            onClick={() => window.open(currentActionItem.webViewLink, '_blank')}
+                                            style={{
+                                                backgroundColor: PRIMARY_COLOR,
+                                                borderColor: PRIMARY_COLOR,
+                                                borderRadius: '6px'
+                                            }}
+                                        >
+                                            Open
+                                        </Button>
+                                    )}
+                                    <Button
+                                        icon={<ShareAltOutlined />}
+                                        onClick={() => {
+                                            setShowFileInfoModal(false);
+                                            setShareFileId(currentActionItem.id);
+                                            setShowShareModal(true);
+                                        }}
+                                        style={{ borderRadius: '6px' }}
+                                    >
+                                        Share
+                                    </Button>
+                                    {'mimeType' in currentActionItem && (
+                                        <Button
+                                            icon={<DownloadOutlined />}
+                                            onClick={() => handleFileAction('download', currentActionItem)}
+                                            style={{ borderRadius: '6px' }}
+                                        >
+                                            Download
+                                        </Button>
+                                    )}
+                                </Space>
+                            </div>
+                        </div>
+                    )}
                 </Modal>
 
                 {/* Analytics Drawer */}

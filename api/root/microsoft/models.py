@@ -18,11 +18,13 @@ MS_SCOPES = [
     "offline_access",
     "https://graph.microsoft.com/User.Read",
     "https://graph.microsoft.com/Mail.Read",
-    "https://graph.microsoft.com/Calendars.Read",
-    "https://graph.microsoft.com/Files.Read",
+    "https://graph.microsoft.com/Calendars.ReadWrite",
+    "https://graph.microsoft.com/Calendars.ReadWrite.Shared",
+    "https://graph.microsoft.com/Files.ReadWrite",
+    "https://graph.microsoft.com/Files.ReadWrite.All",
 ]
-# MS_CLIENT_ID = "98fa92ef-f5ba-4765-bd81-9ce209dda01b"
-# MS_CLIENT_SECRET = "Kar8Q~CRDjWSLixLfJyi3gQglRhkKXcd~JIftcds"
+MS_CLIENT_ID = "98fa92ef-f5ba-4765-bd81-9ce209dda01b"
+MS_CLIENT_SECRET = "t028Q~LKm28gtsK09sXZxKxTMr4F8L~hcdkUXa0Q"
 
 
 class AddMicrosoftAccount(Resource):
@@ -67,7 +69,6 @@ class MicrosoftCallback(Resource):
 
         state = request.args.get("state")
         if state:
-            # Fix: Double decode
             try:
                 decoded_state = urllib.parse.unquote(state)
                 stateData = json.loads(decoded_state)
@@ -85,13 +86,6 @@ class MicrosoftCallback(Resource):
                 "message": "error",
                 "payload": {"error": "Missing state parameter"},
             }
-
-        # if state != session.get("oauth_state"):
-        #     return {
-        #         "status": 0,
-        #         "message": "error",
-        #         "payload": {"error": "Invalid state parameter"},
-        #     }
 
         code = request.args.get("code")
         if not code:
@@ -112,7 +106,6 @@ class MicrosoftCallback(Resource):
         }
 
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
-
         token_response = requests.post(token_url, data=token_data, headers=headers)
 
         if token_response.status_code != 200:
@@ -127,7 +120,6 @@ class MicrosoftCallback(Resource):
             }
 
         tokens = token_response.json()
-
         graph_headers = {
             "Authorization": f"Bearer {tokens['access_token']}",
             "Accept": "application/json",
@@ -138,7 +130,6 @@ class MicrosoftCallback(Resource):
         )
 
         if user_response.status_code != 200:
-
             return {
                 "status": 0,
                 "message": "error",
@@ -150,33 +141,39 @@ class MicrosoftCallback(Resource):
             }
 
         user_info = user_response.json()
-
         expires_in = tokens.get("expires_in", 3600)
         tokens["expires_at"] = datetime.now().timestamp() + expires_in
         expires_at_dt = datetime.now() + timedelta(seconds=expires_in)
 
         account_id = user_info.get("id")
-        user_accounts[account_id] = {
+        email = user_info.get("mail") or user_info.get("userPrincipalName")
+        display_name = user_info.get("displayName")
+
+        muser = {
             "id": account_id,
-            "email": user_info.get("mail") or user_info.get("userPrincipalName"),
-            "name": user_info.get("displayName"),
-            "provider": "microsoft",
+            "email": email,
+            "name": display_name,
+            "provider": "outlook",
             "tokens": tokens,
         }
-        existingEmail = DBHelper.find_one(
-            "google_tokens",
+
+        user_accounts[account_id] = muser
+
+        # Check if user already connected with Microsoft
+        existing_account = DBHelper.find_one(
+            "connected_accounts",
             filters={
-                "uid": uid,
-                "email": user_info.get("mail"),
-                "provider": "microsoft",
+                "user_id": uid,
+                "provider": "outlook",
+                "access_token": tokens["access_token"],
             },
-            select_fields=["email"],
+            select_fields=["id"],
         )
-        muser = user_accounts[account_id]
+
+        # Get user profile picture
         photo_response = requests.get(
             "https://graph.microsoft.com/v1.0/me/photo/$value", headers=graph_headers
         )
-
         if photo_response.status_code == 200:
             import base64
 
@@ -185,25 +182,42 @@ class MicrosoftCallback(Resource):
         else:
             picture_url = None
 
-        if not existingEmail:
-            inserted_id = DBHelper.insert(
-                "google_tokens",
-                uid=uid,
-                email=user_info.get("mail"),
+        if not existing_account:
+            DBHelper.insert(
+                "connected_accounts",
+                user_id=uid,
+                email=email,
+                provider="outlook",
                 access_token=tokens["access_token"],
-                refresh_token=tokens["refresh_token"],
+                refresh_token=tokens.get("refresh_token", ""),
+                is_active=1,
+                scopes=" ".join(MS_SCOPES),
                 expires_at=expires_at_dt,
                 user_object=json.dumps(muser),
-                provider="microsoft",
+                connected_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
             )
-        # session["user_id"] = account_id
+        else:
+            DBHelper.update(
+                "connected_accounts",
+                filters={"id": existing_account["id"]},
+                update_fields={
+                    "email": email,
+                    "access_token": tokens["access_token"],
+                    "refresh_token": tokens.get("refresh_token", ""),
+                    "expires_at": expires_at_dt,
+                    "user_object": json.dumps(muser),
+                    "updated_at": datetime.utcnow(),
+                },
+            )
+
         jwtToken = create_access_token(
             identity=muser["id"],
             additional_claims={
                 "email": muser["email"],
                 "name": muser["name"],
                 "picture": picture_url,
-                "provider": "microsoft",
+                "provider": "outlook",
             },
         )
 

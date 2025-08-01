@@ -455,11 +455,14 @@
         "user_id VARCHAR(255)",
         "title TEXT NOT NULL",
         "description TEXT NOT NULL",
+        "hub VARCHAR(255)",
         "created_at TIMESTAMP NOT NULL",
         "updated_at TIMESTAMP NOT NULL",
-        "category_id INTEGER NOT NULL"
+        "category_id INTEGER NOT NULL",
+        "is_active BOOLEAN DEFAULT TRUE"
       ]
     },
+
     {
       "table_name": "notes_categories",
       "columns": [
@@ -514,18 +517,7 @@
         "family_group_id VARCHAR"
       ]
     },
-    {
-      "table_name": "notes_lists",
-      "columns": [
-        "id SERIAL PRIMARY KEY",
-        "user_id VARCHAR(255)",
-        "title TEXT NOT NULL",
-        "description TEXT NOT NULL",
-        "created_at TIMESTAMP NOT NULL",
-        "updated_at TIMESTAMP NOT NULL",
-        "category_id INTEGER NOT NULL"
-      ]
-    },
+
     {
       "table_name": "projects",
       "columns": [
@@ -830,21 +822,6 @@
       ]
     },
     {
-      "table_name": "healthcare_providers",
-      "columns": [
-        "id SERIAL PRIMARY KEY",
-        "user_id VARCHAR(255) REFERENCES users(uid) ON DELETE CASCADE",
-        "provider_title VARCHAR(255) NOT NULL",
-        "provider_name VARCHAR(255) NOT NULL",
-        "provider_phone VARCHAR(20)",
-        "added_by VARCHAR(255)",
-        "added_time TIMESTAMP NOT NULL",
-        "edited_by VARCHAR(255)",
-        "updated_at TIMESTAMP NOT NULL"
-      ]
-    },
-
-    {
       "table_name": "bookmarks",
       "columns": [
         "id VARCHAR(255) PRIMARY KEY",
@@ -980,6 +957,19 @@
         "added_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP",
         "edited_by VARCHAR(255)",
         "updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      ]
+    },
+    {
+      "table_name": "beneficiaries",
+      "columns": [
+        "id SERIAL PRIMARY KEY",
+        "user_id VARCHAR(255) REFERENCES users(uid) ON DELETE CASCADE",
+        "account VARCHAR(100) NOT NULL",
+        "primary_beneficiary VARCHAR(255) NOT NULL",
+        "secondary_beneficiary VARCHAR(20)",
+        "updated VARCHAR(20)",
+        "created_at TIMESTAMPTZ DEFAULT now()",
+        "updated_at TIMESTAMPTZ DEFAULT now()"
       ]
     }
   ]

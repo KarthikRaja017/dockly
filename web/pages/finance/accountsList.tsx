@@ -4,6 +4,7 @@ import { Card, Typography, Row, Col, Avatar } from 'antd';
 import { getAccounts, getExpenseIncome } from '../../services/apiConfig';
 import { useRouter } from 'next/navigation';
 const { Title, Text } = Typography;
+import NotesLists from '../family-hub/components/familyNotesLists';
 
 const AccountsOverview = () => {
   const [sections, setSections] = useState<any[]>([]);
@@ -98,7 +99,7 @@ const AccountsOverview = () => {
           </Title>
         </Col>
       </Row>
-
+      <NotesLists currentHub="finance" />
       <Row gutter={[24, 24]}>
         {sections.map((section, index) => (
           <Col span={12} key={index}>

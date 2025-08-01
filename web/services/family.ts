@@ -351,12 +351,14 @@ export async function addNote(params: {
   description: string;
   category_id: number;
   user_id: string;
+  hub: string; // ✅ Add hub
 }) {
   return api.post('/family/add/notes', params);
 }
 
-export async function getAllNotes() {
-  return api.get('/family/get/notes');
+export async function getAllNotes(hub?: string) {
+  const url = hub ? `/family/get/notes?hub=${hub}` : `/family/get/notes`;
+  return api.get(url);
 }
 
 export async function updateNote(params: {
@@ -364,8 +366,15 @@ export async function updateNote(params: {
   title: string;
   description: string;
   category_id: number;
+  hub: string; // ✅ Add hub
 }) {
   return api.post('/family/update/note', params);
+}
+
+export async function deleteNote(params: any) {
+  return api.delete(`family/delete/note`, {
+    params,
+  });
 }
 
 export async function addNoteCategory(params: {
@@ -649,9 +658,14 @@ export async function uploadFamilyDocument(formData: FormData): Promise<any> {
   }
 }
 
-export async function getFamilyDocuments(): Promise<any> {
+export async function getFamilyDocuments(
+  uid: string | null,
+  docType: string
+): Promise<any> {
   try {
-    const response = await api.get('/get/family-drive-files');
+    const response = await api.get('/get/family-drive-files', {
+      params: { uid, docType },
+    });
     return response.data;
   } catch (error) {
     console.error('Error fetching family documents:', error);
@@ -667,4 +681,67 @@ export async function deleteFamilyDocument(fileId: string): Promise<any> {
     console.error('Error deleting file:', error);
     throw error;
   }
+}
+export async function uploadFamilyDocumentRecordFile(
+  formData: FormData
+): Promise<any> {
+  try {
+    const response = await api.post('/add/family-document-file', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error uploading family document record:', error);
+    throw error;
+  }
+}
+
+export async function getFamilyDocumentRecordFiles(): Promise<any> {
+  try {
+    const response = await api.get('/get/family-document-file');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching family document record files:', error);
+    throw error;
+  }
+}
+
+export async function uploadMedicalRecordFile(
+  formData: FormData
+): Promise<any> {
+  try {
+    const response = await api.post('/add/family-medical-file', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error uploading medical record:', error);
+    throw error;
+  }
+}
+
+export async function getMedicalRecordFiles(): Promise<any> {
+  try {
+    const response = await api.get('/get/family-medical-files');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching medical records:', error);
+    throw error;
+  }
+}
+
+export async function addBeneficiary(params: any): Promise<any> {
+  return api.post('/add/beneficiary', params).then((res) => res.data);
+}
+
+export async function getBeneficiaries(userId: string): Promise<any> {
+  return api
+    .get('/get/beneficiaries', { params: { userId } })
+    .then((res) => res.data);
+}
+
+export async function updateBeneficiary(params: any): Promise<any> {
+  return api.put('/update/beneficiary', params).then((res) => res.data);
 }

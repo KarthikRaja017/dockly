@@ -62,7 +62,11 @@ const staticDevices = [
     }
 ];
 
-const AssetsDevicesSection: React.FC = () => {
+interface AssetsDevicesSectionProps {
+    memberId: string;
+}
+
+const AssetsDevicesSection: React.FC<AssetsDevicesSectionProps> = ({ memberId }) => {
     const [accounts, setAccounts] = useState<AccountItem[]>([]);
     const [isModalVisible, setModalVisible] = useState(false);
     const [form] = Form.useForm();
@@ -75,8 +79,9 @@ const AssetsDevicesSection: React.FC = () => {
 
     useEffect(() => {
         const fetchData = async () => {
-            if (!id) return;
-            let finalUserId = id as string;
+            if (!memberId) return;
+
+            let finalUserId = memberId;
 
             if (!finalUserId.startsWith('USER')) {
                 const res = await resolveFamilyMemberUserId(finalUserId);
@@ -92,7 +97,7 @@ const AssetsDevicesSection: React.FC = () => {
         };
 
         fetchData();
-    }, [id]);
+    }, [memberId]);
 
     const handleAdd = () => {
         form.resetFields();
@@ -108,9 +113,12 @@ const AssetsDevicesSection: React.FC = () => {
     };
 
     const handleSubmit = async (values: AccountItem) => {
-        if (!resolvedUserId) return;
+        if (!resolvedUserId) {
+            console.log(resolvedUserId);
+            return;
+        }
 
-        const payload = {
+        const accountPayload = {
             userId: resolvedUserId,
             addedBy: resolvedUserId,
             editedBy: resolvedUserId,
@@ -120,17 +128,18 @@ const AssetsDevicesSection: React.FC = () => {
         try {
             if (editingIndex !== null) {
                 const existing = accounts[editingIndex];
-                const updated = [...accounts];
-                const response = await updateAccountPassword({ ...payload, id: existing.id });
+                const response = await updateAccountPassword({ account: { ...accountPayload, id: existing.id } });
                 if (response.status === 1) {
-                    updated[editingIndex] = { ...payload, id: existing.id };
+                    const updated = [...accounts];
+                    updated[editingIndex] = { ...accountPayload, id: existing.id };
                     setAccounts(updated);
                     message.success('Account updated');
                 }
             } else {
-                const response = await addAccountPassword(payload);
+
+                const response = await addAccountPassword(accountPayload);
                 if (response.status === 1) {
-                    const newItem = { ...payload, id: response.payload.id };
+                    const newItem = { ...accountPayload, id: response.payload.id };
                     setAccounts([...accounts, newItem]);
                     message.success('Account added');
                 }
@@ -154,16 +163,23 @@ const AssetsDevicesSection: React.FC = () => {
             return acc;
         }, {} as Record<string, AccountItem[]>);
 
+        const totalAccounts = accounts.length;
+        const shouldScroll = totalAccounts > 1;
+
         return (
-            <>
+            <div style={{
+                maxHeight: shouldScroll ? '250px' : 'none',
+                overflowY: shouldScroll ? 'auto' : 'visible',
+                paddingRight: shouldScroll ? '4px' : '0'
+            }}>
                 <Alert
                     message="🔐 All passwords are securely encrypted and only accessible by guardians"
                     type="warning"
-                    style={{ marginBottom: 16, fontSize: 12 }}
+                    style={{ marginBottom: 8, fontSize: 10 }}
                 />
                 {Object.entries(grouped).map(([category, entries]) => (
-                    <div key={category} style={{ marginBottom: 24 }}>
-                        <Title level={5} style={{ fontSize: 14, marginBottom: 12 }}>
+                    <div key={category} style={{ marginBottom: 12 }}>
+                        <Title level={5} style={{ fontSize: 12, marginBottom: 6, color: '#595959' }}>
                             {category}
                         </Title>
                         {entries.map((entry, index) => {
@@ -174,45 +190,46 @@ const AssetsDevicesSection: React.FC = () => {
                                     key={index}
                                     size="small"
                                     style={{
-                                        marginBottom: 8,
+                                        marginBottom: 4,
                                         backgroundColor: '#fafafa',
                                         border: '1px solid #d9d9d9',
                                         borderRadius: 8
                                     }}
+                                    bodyStyle={{ padding: 6 }}
                                 >
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                         <div style={{ flex: 1, minWidth: 0 }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 4 }}>
-                                                <Text strong style={{ fontSize: 14 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 2 }}>
+                                                <Text strong style={{ fontSize: 13 }}>
                                                     {entry.title}
                                                 </Text>
                                                 {entry.url && (
                                                     <Tooltip title={entry.url}>
-                                                        <a href={entry.url} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 4, color: '#1890ff', fontSize: 11 }}>
+                                                        <a href={entry.url} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 3, color: '#1890ff', fontSize: 10 }}>
                                                             ↗
                                                         </a>
                                                     </Tooltip>
                                                 )}
                                             </div>
-                                            <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 2, wordBreak: 'break-all' }}>
+                                            <div style={{ fontSize: 10, color: '#8c8c8c', marginBottom: 1, wordBreak: 'break-all' }}>
                                                 {entry.username}
                                             </div>
-                                            <div style={{ fontSize: 11, color: '#8c8c8c' }}>
+                                            <div style={{ fontSize: 9, color: '#8c8c8c' }}>
                                                 Password: {isShown ? entry.password : '••••••••••'}
                                             </div>
                                         </div>
-                                        <Space size={4} style={{ flexShrink: 0 }}>
-                                            <Button size="small" type="text" icon={<EyeOutlined />} onClick={() => {
+                                        <Space size={2} style={{ flexShrink: 0 }}>
+                                            <Button size="small" type="text" style={{ fontSize: 10, padding: '2px 4px' }} icon={<EyeOutlined style={{ fontSize: 10 }} />} onClick={() => {
                                                 if (entry.id) { setShowPasswordId(showPasswordId === entry.id ? null : entry.id) }
                                             }
 
                                             }>
                                                 Show
                                             </Button>
-                                            <Button size="small" type="text" icon={<CopyOutlined />} onClick={() => handleCopy(entry.password)}>
+                                            <Button size="small" type="text" style={{ fontSize: 10, padding: '2px 4px' }} icon={<CopyOutlined style={{ fontSize: 10 }} />} onClick={() => handleCopy(entry.password)}>
                                                 Copy
                                             </Button>
-                                            <Button size="small" type="text" icon={<EditOutlined />} onClick={() => handleEdit(index)}>
+                                            <Button size="small" type="text" style={{ fontSize: 10, padding: '2px 4px' }} icon={<EditOutlined style={{ fontSize: 10 }} />} onClick={() => handleEdit(index)}>
                                                 Edit
                                             </Button>
                                         </Space>
@@ -222,15 +239,15 @@ const AssetsDevicesSection: React.FC = () => {
                         })}
                     </div>
                 ))}
-            </>
+            </div>
         );
     };
 
     return (
-        <div style={{ maxWidth: '2000px', margin: '0 auto' }}>
+        <>
             <Card
                 title={
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span>
                             <LaptopOutlined style={{ marginRight: 8 }} />
                             Accounts & Assets
@@ -239,7 +256,7 @@ const AssetsDevicesSection: React.FC = () => {
                     </div>
                 }
                 style={{ width: '100%' }}
-                bodyStyle={{ padding: 24 }}
+                bodyStyle={{ padding: 6 }}
             >
                 <Tabs defaultActiveKey="accounts">
                     <TabPane tab="Accounts & Passwords" key="accounts">
@@ -249,32 +266,33 @@ const AssetsDevicesSection: React.FC = () => {
                         {staticDevices.map((item, idx) => (
                             <Card
                                 key={idx}
-                                style={{ marginBottom: 12, borderRadius: 8 }}
+                                style={{ marginBottom: 6, borderRadius: 8 }}
+                                bodyStyle={{ padding: 8 }}
                             >
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                     <div style={{ display: 'flex', alignItems: 'center' }}>
                                         <div
                                             style={{
-                                                width: 40,
-                                                height: 40,
+                                                width: 28,
+                                                height: 28,
                                                 backgroundColor: '#f5f5f5',
                                                 color: '#595959',
                                                 borderRadius: 8,
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
-                                                fontSize: 16,
-                                                marginRight: 12
+                                                fontSize: 12,
+                                                marginRight: 8
                                             }}
                                         >
                                             {item.icon}
                                         </div>
                                         <div>
-                                            <div style={{ fontSize: 14, fontWeight: 500 }}>{item.name}</div>
-                                            <div style={{ fontSize: 12, color: '#8c8c8c' }}>{item.meta}</div>
+                                            <div style={{ fontSize: 12, fontWeight: 500 }}>{item.name}</div>
+                                            <div style={{ fontSize: 10, color: '#8c8c8c' }}>{item.meta}</div>
                                         </div>
                                     </div>
-                                    <Button size="small" type="text">{item.action}</Button>
+                                    <Button size="small" type="text" style={{ fontSize: 10, padding: '2px 6px' }}>{item.action}</Button>
                                 </div>
                             </Card>
                         ))}
@@ -313,7 +331,7 @@ const AssetsDevicesSection: React.FC = () => {
                     </Form.Item>
                 </Form>
             </Modal>
-        </div>
+        </>
     );
 };
 

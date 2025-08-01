@@ -135,29 +135,30 @@ export default function SchoolActivities() {
     };
 
     const schoolInfoTab = (
-        <>
+        <div style={{ maxHeight: '300px', overflowY: 'auto', paddingRight: '4px' }}>
             {schools.map((school, index) => (
-                <Card key={index} style={{ marginBottom: 16, border: '1px solid #d1d5db' }}>
-                    <div style={{ display: 'flex', gap: 16 }}>
+                <Card key={index} style={{ marginBottom: 8, border: '1px solid #d1d5db', borderRadius: 8 }} bodyStyle={{ padding: 10 }}>
+                    <div style={{ display: 'flex', gap: 8 }}>
                         <div style={{
-                            width: 60, height: 60, borderRadius: 8,
+                            width: 36, height: 36, borderRadius: 8,
                             backgroundColor: '#4338ca', color: 'white',
-                            fontSize: 24, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            flexShrink: 0
                         }}>
                             🏫
                         </div>
                         <div style={{ flex: 1 }}>
-                            <Title level={4} style={{ margin: '0 0 8px 0' }}>{school.name}</Title>
-                            <Text type="secondary">
+                            <Title level={4} style={{ margin: '0 0 2px 0', fontSize: 14 }}>{school.name}</Title>
+                            <Text type="secondary" style={{ fontSize: 11 }}>
                                 {school.grade} {school.studentId && `• Student ID: ${school.studentId}`}
                             </Text>
 
-                            <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+                            <Row gutter={[8, 6]} style={{ marginTop: 8 }}>
                                 {school.customFields.map((field, i) => (
-                                    <Col xs={24} sm={6} key={i}>
+                                    <Col xs={24} sm={12} key={i}>
                                         <div>
-                                            <Text type="secondary" style={{ fontSize: 12 }}>{field.label}</Text>
-                                            <Input value={field.value} onChange={(e) => {
+                                            <Text type="secondary" style={{ fontSize: 10, display: 'block', marginBottom: 1 }}>{field.label}</Text>
+                                            <Input size="small" value={field.value} onChange={(e) => {
                                                 const updated = [...schools];
                                                 updated[index].customFields[i].value = e.target.value;
                                                 setSchools(updated);
@@ -168,11 +169,11 @@ export default function SchoolActivities() {
                             </Row>
 
                             {school.links.length > 0 && (
-                                <div style={{ marginTop: 16 }}>
-                                    <Text strong style={{ fontSize: 13 }}>Resources & Links</Text>
-                                    <Space wrap style={{ marginTop: 8 }}>
+                                <div style={{ marginTop: 8 }}>
+                                    <Text strong style={{ fontSize: 10, color: '#595959' }}>Resources & Links</Text>
+                                    <Space wrap style={{ marginTop: 4 }}>
                                         {school.links.map((link, i) => (
-                                            <a key={i} href={link.url} style={{ fontSize: 13 }} target="_blank" rel="noreferrer">
+                                            <a key={i} href={link.url} style={{ fontSize: 10, padding: '1px 4px', backgroundColor: '#f0f0f0', borderRadius: 3, textDecoration: 'none' }} target="_blank" rel="noreferrer">
                                                 {link.label}
                                             </a>
                                         ))}
@@ -180,18 +181,18 @@ export default function SchoolActivities() {
                                 </div>
                             )}
 
-                            <div style={{ marginTop: 16 }}>
+                            <div style={{ marginTop: 8 }}>
                                 <span
-                                    style={{ fontSize: 13, color: '#3355ff', cursor: 'pointer' }}
+                                    style={{ fontSize: 10, color: '#1890ff', cursor: 'pointer', marginRight: 8 }}
                                     onClick={() => setCustomFieldModalVisible(`school-${index}`)}
                                 >
                                     + Add custom field
                                 </span>
                                 <span
-                                    style={{ fontSize: 16, marginLeft: 16, color: '#1890ff', cursor: 'pointer' }}
+                                    style={{ fontSize: 10, color: '#1890ff', cursor: 'pointer' }}
                                     onClick={() => setLinkModalVisible(`school-${index}`)}
                                 >
-                                    + Link
+                                    + Add link
                                 </span>
                             </div>
                         </div>
@@ -199,34 +200,35 @@ export default function SchoolActivities() {
                 </Card>
             ))}
 
-            <Button type="dashed" block onClick={() => setSchoolModalVisible(true)}>
+            <Button type="dashed" block onClick={() => setSchoolModalVisible(true)} style={{ borderRadius: 8 }}>
                 + Add School
             </Button>
-        </>
+        </div>
     );
 
     const activitiesTab = (
-        <>
+        <div style={{ maxHeight: '300px', overflowY: 'auto', paddingRight: '4px' }}>
             {activities.map((activity, index) => (
-                <Card key={index} style={{ marginBottom: 16, border: '1px solid #d1d5db' }}>
-                    <div style={{ display: 'flex', gap: 16 }}>
+                <Card key={index} style={{ marginBottom: 8, border: '1px solid #d1d5db', borderRadius: 8 }} bodyStyle={{ padding: 10 }}>
+                    <div style={{ display: 'flex', gap: 8 }}>
                         <div style={{
-                            width: 60, height: 60, borderRadius: 8,
+                            width: 36, height: 36, borderRadius: 8,
                             backgroundColor: '#10b981', color: 'white',
-                            fontSize: 24, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            flexShrink: 0
                         }}>
                             {activity.emoji}
                         </div>
                         <div style={{ flex: 1 }}>
-                            <Title level={4} style={{ margin: '0 0 8px 0' }}>{activity.title}</Title>
-                            <Text type="secondary">{activity.schedule}</Text>
+                            <Title level={4} style={{ margin: '0 0 2px 0', fontSize: 14 }}>{activity.title}</Title>
+                            <Text type="secondary" style={{ fontSize: 11 }}>{activity.schedule}</Text>
 
-                            <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+                            <Row gutter={[8, 6]} style={{ marginTop: 8 }}>
                                 {activity.customFields.map((field, i) => (
-                                    <Col xs={24} sm={6} key={i}>
+                                    <Col xs={24} sm={12} key={i}>
                                         <div>
-                                            <Text type="secondary" style={{ fontSize: 12 }}>{field.label}</Text>
-                                            <Input value={field.value} onChange={(e) => {
+                                            <Text type="secondary" style={{ fontSize: 10, display: 'block', marginBottom: 1 }}>{field.label}</Text>
+                                            <Input size="small" value={field.value} onChange={(e) => {
                                                 const updated = [...activities];
                                                 updated[index].customFields[i].value = e.target.value;
                                                 setActivities(updated);
@@ -237,11 +239,11 @@ export default function SchoolActivities() {
                             </Row>
 
                             {activity.links.length > 0 && (
-                                <div style={{ marginTop: 16 }}>
-                                    <Text strong style={{ fontSize: 13 }}>Resources & Links</Text>
-                                    <Space wrap style={{ marginTop: 8 }}>
+                                <div style={{ marginTop: 8 }}>
+                                    <Text strong style={{ fontSize: 10, color: '#595959' }}>Resources & Links</Text>
+                                    <Space wrap style={{ marginTop: 4 }}>
                                         {activity.links.map((link, i) => (
-                                            <a key={i} href={link.url} style={{ fontSize: 13 }} target="_blank" rel="noreferrer">
+                                            <a key={i} href={link.url} style={{ fontSize: 10, padding: '1px 4px', backgroundColor: '#f0f0f0', borderRadius: 3, textDecoration: 'none' }} target="_blank" rel="noreferrer">
                                                 {link.label}
                                             </a>
                                         ))}
@@ -249,18 +251,18 @@ export default function SchoolActivities() {
                                 </div>
                             )}
 
-                            <div style={{ marginTop: 16 }}>
+                            <div style={{ marginTop: 8 }}>
                                 <span
-                                    style={{ fontSize: 13, color: '#3355ff', cursor: 'pointer' }}
+                                    style={{ fontSize: 10, color: '#1890ff', cursor: 'pointer', marginRight: 8 }}
                                     onClick={() => setCustomFieldModalVisible(`activity-${index}`)}
                                 >
                                     + Add custom field
                                 </span>
                                 <span
-                                    style={{ fontSize: 16, marginLeft: 16, color: '#1890ff', cursor: 'pointer' }}
+                                    style={{ fontSize: 10, color: '#1890ff', cursor: 'pointer' }}
                                     onClick={() => setLinkModalVisible(`activity-${index}`)}
                                 >
-                                    + Link
+                                    + Add link
                                 </span>
                             </div>
                         </div>
@@ -268,10 +270,10 @@ export default function SchoolActivities() {
                 </Card>
             ))}
 
-            <Button type="dashed" block onClick={() => setActivityModalVisible(true)}>
+            <Button type="dashed" block onClick={() => setActivityModalVisible(true)} style={{ borderRadius: 8 }}>
                 + Add Activity
             </Button>
-        </>
+        </div>
     );
 
     return (
@@ -287,6 +289,7 @@ export default function SchoolActivities() {
                     <EditOutlined style={{ cursor: 'pointer', color: '#1890ff' }} />
                 }
                 style={{ borderRadius: 12 }}
+                bodyStyle={{ padding: 12 }}
             >
                 <Tabs
                     items={[

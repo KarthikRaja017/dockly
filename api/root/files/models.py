@@ -18,9 +18,6 @@ from root.config import CLIENT_ID, CLIENT_SECRET, SCOPE
 from root.db.dbHelper import DBHelper
 from google.auth.exceptions import RefreshError
 
-# from root.utils import auth_required
-# from root.utils.status import Status
-
 
 class DriveBaseResource(Resource):
     """Base class for Google Drive operations"""

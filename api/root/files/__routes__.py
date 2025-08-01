@@ -1,5 +1,25 @@
+# Update routes to include all the new Outlook endpoints
+
+from .outlook import (
+    BulkDeleteOutlookFiles,
+    CopyOutlookFile,
+    CreateOutlookFolder,
+    DeleteOutlookFile,
+    DownloadOutlookFile,
+    ListOutlookFiles,
+    MoveOutlookFile,
+    RenameOutlookFile,
+    ShareOutlookFile,
+    UploadOutlookFile,
+    BulkDownloadOutlookFiles,
+    BulkMoveOutlookFiles,
+    BulkCopyOutlookFiles,
+    BulkShareOutlookFiles,
+    GetOutlookStorage,
+)
 from .models import (
     AdvancedSearch,
+    # BulkCopyFiles,
     BulkCopyFiles,
     BulkDeleteFiles,
     BulkDownloadFiles,
@@ -24,6 +44,7 @@ from .models import (
 )
 from . import google_drive_api
 
+# Google Drive endpoints
 google_drive_api.add_resource(ListDriveFiles, "/files")
 google_drive_api.add_resource(UploadDriveFile, "/upload")
 google_drive_api.add_resource(DownloadDriveFile, "/download")
@@ -58,3 +79,24 @@ google_drive_api.add_resource(GetStorageAnalytics, "/analytics/storage")
 # Activity Tracking
 google_drive_api.add_resource(GetActivityLog, "/activity")
 google_drive_api.add_resource(LogActivity, "/activity/log")
+
+# # Outlook/OneDrive endpoints
+# google_drive_api.add_resource(ListOutlookFiles, "/outlook/files")
+# google_drive_api.add_resource(UploadOutlookFile, "/outlook/upload")
+# google_drive_api.add_resource(DownloadOutlookFile, "/outlook/download")
+# google_drive_api.add_resource(DeleteOutlookFile, "/outlook/delete")
+# google_drive_api.add_resource(CreateOutlookFolder, "/outlook/folder/create")
+# google_drive_api.add_resource(ShareOutlookFile, "/outlook/share")
+# google_drive_api.add_resource(GetOutlookStorage, "/outlook/storage")
+
+# # Outlook Bulk Operations
+# google_drive_api.add_resource(BulkDownloadOutlookFiles, "/outlook/bulk/download")
+# google_drive_api.add_resource(BulkDeleteOutlookFiles, "/outlook/bulk/delete")
+# google_drive_api.add_resource(BulkMoveOutlookFiles, "/outlook/bulk/move")
+# google_drive_api.add_resource(BulkCopyOutlookFiles, "/outlook/bulk/copy")
+# google_drive_api.add_resource(BulkShareOutlookFiles, "/outlook/bulk/share")
+
+# # Outlook File Operations
+# google_drive_api.add_resource(RenameOutlookFile, "/outlook/rename")
+# google_drive_api.add_resource(MoveOutlookFile, "/outlook/move")
+# google_drive_api.add_resource(CopyOutlookFile, "/outlook/copy")

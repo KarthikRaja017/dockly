@@ -14,11 +14,17 @@ import {
     Tag,
     message,
     Modal,
+    Upload,
+    Collapse,
 } from 'antd';
 import {
     EditOutlined,
     MedicineBoxOutlined,
+    PlusOutlined,
     SafetyCertificateOutlined,
+    HeartOutlined,
+    InsuranceOutlined,
+    AlertOutlined,
 } from '@ant-design/icons';
 import {
     getPersonalInfo,
@@ -26,10 +32,14 @@ import {
     updatePersonalInfo,
     updateProvider,
     addProvider,
+    uploadMedicalRecordFile,
+    getMedicalRecordFiles,
 } from '../../../services/family';
+import type { UploadRequestOption } from 'rc-upload/lib/interface';
 
 const { Title } = Typography;
 const { TextArea } = Input;
+const { Panel } = Collapse;
 
 type ProviderField = {
     id: number;
@@ -52,7 +62,11 @@ const MedicalInfoPage: React.FC<MedicalInfoSectionProps> = ({ memberId }) => {
     const [providerModalVisible, setProviderModalVisible] = useState(false);
     const [providerFields, setProviderFields] = useState<ProviderField[]>([]);
     const [providerForm] = Form.useForm();
-    const [personalInfoId, setPersonalInfoId] = useState<string | null>(null);
+    // const [personalInfoId, setPersonalInfoId] = useState<string | null>(null);
+    const [uploadModalVisible, setUploadModalVisible] = useState(false);
+    const [uploading, setUploading] = useState(false);
+    const [medicalRecords, setMedicalRecords] = useState<any[]>([]);
+    const [activeKey, setActiveKey] = useState<string | string[]>(['basic']);
 
     // Coerce memberId prop to a flat string userId
     const userId = Array.isArray(memberId) ? memberId[0] : memberId ?? '';
@@ -70,8 +84,8 @@ const MedicalInfoPage: React.FC<MedicalInfoSectionProps> = ({ memberId }) => {
 
                 // Populate personal info form
                 if (personalRes.status === 1 && personalRes.payload) {
+                    console.log("Loaded personal info ID:", personalRes.payload.id); // 🔍 Add this
                     form.setFieldsValue(personalRes.payload);
-                    setPersonalInfoId(personalRes.payload.id);
                 }
 
                 // Build dynamic provider fields
@@ -114,31 +128,30 @@ const MedicalInfoPage: React.FC<MedicalInfoSectionProps> = ({ memberId }) => {
     const handleSave = async () => {
         try {
             // Ensure the hidden id field is included
-            if (personalInfoId) {
-                form.setFieldValue('id', personalInfoId);
-            }
-
             const values = await form.validateFields();
-
-            // Update personal info
+            const { id, ...rest } = values;
             const personalRes = await updatePersonalInfo({
                 personal_info: {
-                    ...values,
-                    id: personalInfoId,
+                    ...rest,
                     addedBy: userId,
                     editedBy: userId,
+                    userId,
                 },
             });
 
             // Update each provider
             await Promise.all(providerFields.map(f =>
                 updateProvider({
-                    id: f.id,
-                    providerTitle: f.title,
-                    providerName: values[f.name],
-                    providerPhone: values[f.phoneName],
-                    userId,
-                    editedBy: userId,
+                    provider: {
+                        id: f.id,
+                        providerTitle: f.title,
+                        providerName: values[f.name],
+                        providerPhone: values[f.phoneName],
+                        userId,
+                        addedBy: userId,
+                        editedBy: userId,
+                    }
+
                 })
             ));
 
@@ -195,22 +208,52 @@ const MedicalInfoPage: React.FC<MedicalInfoSectionProps> = ({ memberId }) => {
         }
     };
 
-    // Static data examples
-    const vaccinationRecords = [
-        { name: 'COVID-19 (Pfizer)', date: 'June 15, 2024', status: 'Up to date', statusColor: 'green' },
-        { name: 'Flu Shot', date: 'Oct 10, 2024', status: 'Current', statusColor: 'blue' },
-        // …etc
-    ];
-    const medicalExams = [
-        { name: 'Annual Physical', date: 'Mar 3, 2024', icon: '🩺' },
-        { name: 'Vision Test', date: 'May 20, 2024', icon: '👁' },
-    ];
+    const handleUpload = async (options: UploadRequestOption) => {
+        const { file, onSuccess, onError } = options;
+        setUploading(true);
 
-    // Tab contents
-    const generalTab = (
+        try {
+            const formData = new FormData();
+            formData.append('file', file as File);
+
+            const res = await uploadMedicalRecordFile(formData);
+            if (res.status === 1) {
+                message.success('File uploaded successfully');
+                setUploadModalVisible(false);
+                fetchMedicalRecords(); // refresh list
+                if (onSuccess) onSuccess({}, new XMLHttpRequest());
+            } else {
+                message.error(res.message || 'Upload failed');
+                if (onError) onError(new Error(res.message));
+            }
+        } catch (err) {
+            console.error(err);
+            message.error('Upload error');
+            if (onError) onError(err as Error);
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const fetchMedicalRecords = async () => {
+        try {
+            const res = await getMedicalRecordFiles();
+            if (res.status === 1) {
+                setMedicalRecords(res.payload.files || []);
+            }
+        } catch (err) {
+            console.error('Failed to fetch records', err);
+        }
+    };
+
+    useEffect(() => {
+        fetchMedicalRecords();
+    }, []);
+
+
+    // Collapsible panels for general tab
+    const basicMedicalPanel = (
         <>
-            <Form.Item name="id" hidden><Input /></Form.Item>
-            <Title level={5}>Basic Medical Information</Title>
             <Row gutter={16}>
                 <Col span={12}><Form.Item label="Blood Type" name="bloodType"><Input readOnly={!isEditing} /></Form.Item></Col>
                 <Col span={12}><Form.Item label="Height" name="height"><Input readOnly={!isEditing} /></Form.Item></Col>
@@ -219,7 +262,11 @@ const MedicalInfoPage: React.FC<MedicalInfoSectionProps> = ({ memberId }) => {
                 <Col span={12}><Form.Item label="Weight" name="weight"><Input readOnly={!isEditing} /></Form.Item></Col>
                 <Col span={12}><Form.Item label="Eye Color" name="eyeColor"><Input readOnly={!isEditing} /></Form.Item></Col>
             </Row>
-            <Title level={5} style={{ marginTop: 24 }}>Insurance Information</Title>
+        </>
+    );
+
+    const insurancePanel = (
+        <>
             <Row gutter={16}>
                 <Col span={12}><Form.Item label="Insurance Provider" name="insurance"><Input readOnly={!isEditing} /></Form.Item></Col>
                 <Col span={12}><Form.Item label="Member ID" name="memberId"><Input readOnly={!isEditing} /></Form.Item></Col>
@@ -228,11 +275,58 @@ const MedicalInfoPage: React.FC<MedicalInfoSectionProps> = ({ memberId }) => {
                 <Col span={12}><Form.Item label="Group Number" name="groupNum"><Input readOnly={!isEditing} /></Form.Item></Col>
                 <Col span={12}><Form.Item label="Last Checkup" name="lastCheckup"><Input type="date" readOnly={!isEditing} /></Form.Item></Col>
             </Row>
-            <Title level={5} style={{ marginTop: 24 }}>Allergies & Medications</Title>
+        </>
+    );
+
+    const allergiesMedicationsPanel = (
+        <>
             <Form.Item label="Known Allergies" name="allergies"><TextArea readOnly={!isEditing} /></Form.Item>
             <Form.Item label="Current Medications" name="medications"><TextArea readOnly={!isEditing} /></Form.Item>
             <Form.Item label="Medical Notes" name="notes"><TextArea readOnly={!isEditing} /></Form.Item>
         </>
+    );
+
+    const generalTab = (
+        <Collapse activeKey={activeKey} onChange={setActiveKey} accordion style={{ backgroundColor: 'transparent', border: 'none' }}>
+            <Panel
+                header={
+                    <span>
+                        <HeartOutlined style={{ marginRight: 8 }} />
+                        Basic Medical Information
+                    </span>
+                }
+                key="basic"
+                style={{ marginBottom: 16 }}
+            >
+                {basicMedicalPanel}
+            </Panel>
+
+            <Panel
+                header={
+                    <span>
+                        <InsuranceOutlined style={{ marginRight: 8 }} />
+                        Insurance Information
+                    </span>
+                }
+                key="insurance"
+                style={{ marginBottom: 16 }}
+            >
+                {insurancePanel}
+            </Panel>
+
+            <Panel
+                header={
+                    <span>
+                        <AlertOutlined style={{ marginRight: 8 }} />
+                        Allergies & Medications
+                    </span>
+                }
+                key="allergies"
+                style={{ marginBottom: 16 }}
+            >
+                {allergiesMedicationsPanel}
+            </Panel>
+        </Collapse>
     );
 
     const providersTab = (
@@ -260,36 +354,57 @@ const MedicalInfoPage: React.FC<MedicalInfoSectionProps> = ({ memberId }) => {
 
     const recordsTab = (
         <>
-            <Title level={5}>Vaccination Records</Title>
-            <List
-                itemLayout="horizontal"
-                dataSource={vaccinationRecords}
-                renderItem={item => (
-                    <List.Item actions={[<Tag color={item.statusColor}>{item.status}</Tag>]}>
-                        <List.Item.Meta
-                            avatar={<SafetyCertificateOutlined style={{ fontSize: 20, color: '#52c41a' }} />}
-                            title={item.name}
-                            description={item.date}
-                        />
-                    </List.Item>
-                )}
-            />
-            <Title level={5} style={{ marginTop: 32 }}>Medical Exams</Title>
-            <List
-                itemLayout="horizontal"
-                dataSource={medicalExams}
-                renderItem={item => (
-                    <List.Item actions={[<Button size="small">View Report</Button>]}>
-                        <List.Item.Meta
-                            avatar={<span style={{ fontSize: 20 }}>{item.icon}</span>}
-                            title={item.name}
-                            description={item.date}
-                        />
-                    </List.Item>
-                )}
-            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Title level={5}>Medical Records</Title>
+                <Upload
+                    showUploadList={false}
+                    customRequest={handleUpload}
+                >
+                    <Button
+                        type="dashed"
+                        size="small"
+                        icon={<PlusOutlined />}
+                        loading={uploading}
+                    >
+                        Upload
+                    </Button>
+                </Upload>
+            </div>
+
+            <div
+                style={{
+                    marginTop: 16,
+                    maxHeight: '250px', // limit the height
+                    overflowY: 'auto',
+                    paddingRight: '4px', // make room for scrollbar
+                }}
+            >
+                <List
+                    itemLayout="horizontal"
+                    dataSource={medicalRecords}
+                    renderItem={item => (
+                        <List.Item
+                            actions={[
+                                <Button
+                                    size="small"
+                                    onClick={() => window.open(item.webViewLink, '_blank')}
+                                >
+                                    View
+                                </Button>
+                            ]}
+                        >
+                            <List.Item.Meta
+                                avatar={<span style={{ fontSize: 20 }}>📁</span>}
+                                title={item.name}
+                                description={new Date(item.modifiedTime).toLocaleDateString()}
+                            />
+                        </List.Item>
+                    )}
+                />
+            </div>
         </>
     );
+
 
     return (
         <>

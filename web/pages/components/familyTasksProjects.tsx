@@ -245,41 +245,41 @@ const FamilyTasksComponent: React.FC<Props> = ({
         <Card
             style={{
                 background: COLORS.surface,
-                borderRadius: '16px',
+                borderRadius: '12px',
                 border: `1px solid ${COLORS.borderLight}`,
                 boxShadow: `0 2px 8px ${COLORS.shadowLight}`,
             }}
-            bodyStyle={{ padding: SPACING.lg }}
+            bodyStyle={{ padding: '12px' }}
         >
             <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                marginBottom: SPACING.lg,
+                marginBottom: '12px',
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.sm }}>
                     <div style={{
-                        width: '40px',
-                        height: '40px',
+                        width: '32px',
+                        height: '32px',
                         background: `linear-gradient(135deg, ${COLORS.accent}20, ${COLORS.accent}10)`,
-                        borderRadius: '12px',
+                        borderRadius: '8px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         border: `1px solid ${COLORS.accent}30`,
                     }}>
-                        <ProjectOutlined style={{ fontSize: '20px', color: COLORS.accent }} />
+                        <ProjectOutlined style={{ fontSize: '16px', color: COLORS.accent }} />
                     </div>
                     <div>
                         <Title level={3} style={{
                             margin: 0,
                             color: COLORS.text,
-                            fontSize: '20px',
-                            fontWeight: 700,
+                            fontSize: '14px',
+                            fontWeight: 600,
                         }}>
                             {title}
                         </Title>
-                        <Text style={{ color: COLORS.textSecondary, fontSize: '14px' }}>
+                        <Text style={{ color: COLORS.textSecondary, fontSize: '11px' }}>
                             {filledProjects.length} active projects
                         </Text>
                     </div>
@@ -289,11 +289,11 @@ const FamilyTasksComponent: React.FC<Props> = ({
                     icon={<PlusOutlined />}
                     onClick={() => setModalVisible(true)}
                     style={{
-                        // height: '40px',
-                        borderRadius: '10px',
+                        height: '32px',
+                        borderRadius: '8px',
                         backgroundColor: COLORS.accent,
                         borderColor: COLORS.accent,
-                        // fontWeight: 600,
+                        fontSize: '12px',
                     }}
                 >
 
@@ -315,7 +315,7 @@ const FamilyTasksComponent: React.FC<Props> = ({
                 <div style={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(2, 1fr)',
-                    gap: SPACING.lg,
+                    gap: '12px',
                     flex: 1,
                 }}>
                     {paginatedProjects.map((proj) => {
@@ -334,36 +334,36 @@ const FamilyTasksComponent: React.FC<Props> = ({
                                 key={proj.project_id}
                                 style={{
                                     background: COLORS.surface,
-                                    borderRadius: '14px',
+                                    borderRadius: '12px',
                                     border: `1px solid ${COLORS.borderLight}`,
                                     boxShadow: `0 2px 8px ${COLORS.shadowLight}`,
                                     transition: 'all 0.3s ease',
                                     cursor: proj.title ? 'default' : 'pointer',
-                                    height: '365px',
+                                    height: '280px',
                                     overflowY: 'auto',         // 👈 Set fixed height
                                     display: 'flex',            // 👈 These help with consistent layout
                                     flexDirection: 'column',
                                     justifyContent: 'space-between',
                                 }}
-                                bodyStyle={{ padding: SPACING.md }}
+                                bodyStyle={{ padding: '10px' }}
                                 hoverable={!proj.title}
                                 onClick={() => !proj.title && setModalVisible(true)}
                             >
                                 {/* Title + Progress */}
-                                <div style={{ marginBottom: SPACING.md }}>
+                                <div style={{ marginBottom: '10px' }}>
                                     <div style={{
                                         display: 'flex',
                                         justifyContent: 'space-between',
                                         alignItems: 'flex-start',
-                                        marginBottom: SPACING.sm,
+                                        marginBottom: '8px',
                                     }}>
                                         <div style={{ flex: 1 }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.sm }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                 <Title level={4} style={{
                                                     margin: 0,
                                                     color: proj.title ? COLORS.text : COLORS.textSecondary,
                                                     fontStyle: proj.title ? 'normal' : 'italic',
-                                                    fontSize: '16px',
+                                                    fontSize: '12px',
                                                 }}>
                                                     {proj.title || 'Add New Project'}
                                                 </Title>
@@ -371,22 +371,22 @@ const FamilyTasksComponent: React.FC<Props> = ({
                                                     <Badge
                                                         color={status.color}
                                                         text={status.text}
-                                                        style={{ fontSize: '11px' }}
+                                                        style={{ fontSize: '9px' }}
                                                     />
                                                 )}
                                             </div>
                                             <Text style={{
                                                 color: proj.description ? COLORS.textSecondary : COLORS.textTertiary,
-                                                fontSize: '13px',
+                                                fontSize: '10px',
                                                 fontStyle: proj.description ? 'normal' : 'italic',
                                                 display: 'block',
-                                                marginTop: SPACING.xs,
+                                                marginTop: '4px',
                                             }}>
                                                 {proj.description || 'Project description...'}
                                             </Text>
                                         </div>
                                         {proj.title && (
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.xs }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                                 <Button
                                                     type="primary"
                                                     shape="circle"
@@ -402,7 +402,9 @@ const FamilyTasksComponent: React.FC<Props> = ({
                                                         backgroundColor: COLORS.accent,
                                                         borderColor: COLORS.accent,
                                                         boxShadow: `0 2px 6px ${COLORS.shadowLight}`,
-                                                        marginLeft: SPACING.sm,
+                                                        marginLeft: '6px',
+                                                        width: '24px',
+                                                        height: '24px',
                                                     }}
                                                 />
                                             </div>
@@ -413,37 +415,37 @@ const FamilyTasksComponent: React.FC<Props> = ({
                                         <div style={{
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: SPACING.xs,
-                                            marginBottom: SPACING.sm,
+                                            gap: '4px',
+                                            marginBottom: '6px',
                                         }}>
-                                            <CalendarOutlined style={{ color: COLORS.textSecondary, fontSize: '12px' }} />
-                                            <Text style={{ color: COLORS.textSecondary, fontSize: '12px' }}>
+                                            <CalendarOutlined style={{ color: COLORS.textSecondary, fontSize: '10px' }} />
+                                            <Text style={{ color: COLORS.textSecondary, fontSize: '10px' }}>
                                                 Due: {dayjs(proj.due_date).format('MMM D, YYYY')}
                                             </Text>
                                         </div>
                                     )}
                                     {proj.progress >= 0 && (
-                                        <div style={{ marginBottom: SPACING.md }}>
+                                        <div style={{ marginBottom: '10px' }}>
                                             <div style={{
                                                 display: 'flex',
                                                 justifyContent: 'space-between',
                                                 alignItems: 'center',
-                                                marginBottom: SPACING.xs,
+                                                marginBottom: '4px',
                                             }}>
                                                 {/* Move task count next to "Progress" */}
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.sm }}>
-                                                    <Text style={{ fontSize: '12px', color: COLORS.textSecondary, fontWeight: 600 }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                    <Text style={{ fontSize: '10px', color: COLORS.textSecondary, fontWeight: 600 }}>
                                                         Progress
                                                     </Text>
-                                                    <Text style={{ fontSize: '12px', color: COLORS.textSecondary }}>
+                                                    <Text style={{ fontSize: '9px', color: COLORS.textSecondary }}>
                                                         {completedTasks}/{totalTasks} tasks
                                                     </Text>
                                                 </div>
 
                                                 {/* Percentage & Add (+) button */}
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.sm }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                     <Text style={{
-                                                        fontSize: '14px',
+                                                        fontSize: '11px',
                                                         fontWeight: 700,
                                                         color: getProgressColor(proj.progress),
                                                     }}>
@@ -457,7 +459,7 @@ const FamilyTasksComponent: React.FC<Props> = ({
                                                 trailColor={COLORS.borderLight}
                                                 showInfo={false}
                                                 strokeWidth={6}
-                                                style={{ marginBottom: SPACING.sm }}
+                                                style={{ marginBottom: '6px' }}
                                             />
                                         </div>
                                     )}
@@ -469,14 +471,14 @@ const FamilyTasksComponent: React.FC<Props> = ({
                                     style={{
                                         flex: 1,
                                         overflowY: 'auto',
-                                        marginBottom: SPACING.md,
+                                        marginBottom: '8px',
                                         paddingRight: '4px',
                                         minHeight: '0', // ensures flex layout respects overflow
                                     }}
                                 >
                                     {sortedTasks.length === 0 ? (
                                         <Empty
-                                            description={<Text style={{ color: COLORS.textSecondary, fontSize: '12px' }}>No tasks yet</Text>}
+                                            description={<Text style={{ color: COLORS.textSecondary, fontSize: '10px' }}>No tasks yet</Text>}
                                             image={Empty.PRESENTED_IMAGE_SIMPLE}
                                             style={{ margin: 0 }}
                                         />
@@ -488,15 +490,15 @@ const FamilyTasksComponent: React.FC<Props> = ({
                                                 style={{
                                                     display: 'flex',
                                                     alignItems: 'center',
-                                                    padding: SPACING.sm,
-                                                    minHeight: 40, // ✅ ensures it's not too small
+                                                    padding: '6px',
+                                                    minHeight: 32, // ✅ ensures it's not too small
                                                     background: task.completed
                                                         ? `${COLORS.success}08`
                                                         : task.title
                                                             ? COLORS.surfaceSecondary
                                                             : `${COLORS.borderLight}30`,
                                                     borderRadius: '10px',
-                                                    marginBottom: SPACING.sm,
+                                                    marginBottom: '6px',
                                                     border: `1px solid ${task.completed
                                                         ? `${COLORS.success}20`
                                                         : task.title
@@ -508,7 +510,7 @@ const FamilyTasksComponent: React.FC<Props> = ({
                                                         : `3px solid ${COLORS.borderLight}`,
                                                 }}
                                             >
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.sm, flex: 1 }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1 }}>
                                                     {task.title && (
                                                         <Checkbox
                                                             checked={task.completed}
@@ -518,7 +520,7 @@ const FamilyTasksComponent: React.FC<Props> = ({
                                                     )}
                                                     <div style={{ flex: 1 }}>
                                                         <div style={{
-                                                            fontSize: '13px',
+                                                            fontSize: '11px',
                                                             fontWeight: 500,
                                                             color: !task.title ? COLORS.textTertiary :
                                                                 task.completed ? COLORS.textSecondary : COLORS.text,
@@ -529,25 +531,25 @@ const FamilyTasksComponent: React.FC<Props> = ({
                                                         </div>
                                                         {task.due && (
                                                             <div style={{
-                                                                fontSize: '11px',
+                                                                fontSize: '9px',
                                                                 color: COLORS.textSecondary,
-                                                                marginTop: SPACING.xs,
+                                                                marginTop: '2px',
                                                             }}>
-                                                                <ClockCircleOutlined style={{ marginRight: SPACING.xs }} />
+                                                                <ClockCircleOutlined style={{ marginRight: '2px' }} />
                                                                 {task.due}
                                                             </div>
                                                         )}
                                                     </div>
                                                 </div>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.xs }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                                     {showAvatarInTask && task.title && (
                                                         <Tooltip title={task.assignee}>
                                                             <Avatar
-                                                                size={20}
+                                                                size={16}
                                                                 style={{
                                                                     backgroundColor: priorityColor[task.type] || COLORS.textSecondary,
                                                                     color: COLORS.surface,
-                                                                    fontSize: '10px',
+                                                                    fontSize: '8px',
                                                                     fontWeight: 600,
                                                                 }}
                                                             >
@@ -567,9 +569,9 @@ const FamilyTasksComponent: React.FC<Props> = ({
                                                                 }}
                                                                 style={{
                                                                     color: COLORS.textSecondary,
-                                                                    fontSize: '12px',
-                                                                    width: '24px',
-                                                                    height: '24px',
+                                                                    fontSize: '10px',
+                                                                    width: '20px',
+                                                                    height: '20px',
                                                                 }}
                                                             />
                                                         </Tooltip>
@@ -587,7 +589,7 @@ const FamilyTasksComponent: React.FC<Props> = ({
                                                 setViewMoreProject(proj);
                                                 setViewMoreModalVisible(true);
                                             }}
-                                            style={{ padding: 0, color: COLORS.accent }}
+                                            style={{ padding: 0, color: COLORS.accent, fontSize: '10px' }}
                                         >
                                             View More
                                         </Button>

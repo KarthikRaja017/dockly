@@ -118,6 +118,7 @@ class RegisterUser(Resource):
                         "userId": userId,
                         "token": token["accessToken"],
                         "redirectUrl": "/dashboard",
+                        "userName": userName,
                     },
                 }
 
@@ -132,6 +133,7 @@ class RegisterUser(Resource):
                         "redirectUrl": "/verify-email",
                         "email": dbEmail,
                         "userId": userId,
+                        "userName": userName,
                         "otpStatus": {"otp": otp, "email": dbEmail},
                     },
                 }

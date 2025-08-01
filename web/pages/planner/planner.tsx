@@ -53,7 +53,7 @@ import { useCurrentUser } from "../../app/userContext";
 import { PRIMARY_COLOR } from "../../app/comman";
 import { API_URL } from "../../services/apiConfig";
 import { useParams, useRouter } from "next/navigation";
-import FamilyNotes from "../family-hub/components/familyNotesLists";
+import NotesLists from "../family-hub/components/familyNotesLists";
 
 const { Title, Text } = Typography;
 
@@ -1802,7 +1802,7 @@ const Planner = () => {
                         />
                     </Col>
                     <Col span={8}>
-                        <FamilyNotes />
+                        <NotesLists currentHub="planner" />
                     </Col>
                 </Row>
                 <ConnectAccountModal
