@@ -1,4 +1,3 @@
-// app/[username]/family-hub/profile/[id]/page.tsx
 import React from "react";
 import ProfileClient from "./profileClient";
 
@@ -9,8 +8,8 @@ interface PageProps {
     };
 }
 
-function ProfilePage({ params }: PageProps) {
+const ProfilePage = async ({ params }: PageProps) => {
     return <ProfileClient memberId={params.id} />;
-}
+};
 
 export default ProfilePage;
