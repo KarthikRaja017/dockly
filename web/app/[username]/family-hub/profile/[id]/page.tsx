@@ -8,8 +8,8 @@ interface PageProps {
     };
 }
 
-const ProfilePage = async ({ params }: PageProps) => {
+const ProfilePage = ({ params }: PageProps) => {
     return <ProfileClient memberId={params.id} />;
-};
+}
 
 export default ProfilePage;
