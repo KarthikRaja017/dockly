@@ -23,8 +23,10 @@ MS_SCOPES = [
     "https://graph.microsoft.com/Files.ReadWrite",
     "https://graph.microsoft.com/Files.ReadWrite.All",
 ]
-MS_CLIENT_ID = "98fa92ef-f5ba-4765-bd81-9ce209dda01b"
-MS_CLIENT_SECRET = "t028Q~LKm28gtsK09sXZxKxTMr4F8L~hcdkUXa0Q"
+MS_CLIENT_ID = ""
+MS_CLIENT_SECRET = ""
+# MS_CLIENT_ID = "98fa92ef-f5ba-4765-bd81-9ce209dda01b"
+# MS_CLIENT_SECRET = "t028Q~LKm28gtsK09sXZxKxTMr4F8L~hcdkUXa0Q"
 
 
 class AddMicrosoftAccount(Resource):
