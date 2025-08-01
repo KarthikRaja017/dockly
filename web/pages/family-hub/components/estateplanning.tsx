@@ -34,10 +34,16 @@ const categories = [
 ];
 
 const EstatePlanningCard: React.FC = () => {
-    const [uploadedDocuments, setUploadedDocuments] = useState<Record<string, any>>(() => {
-        const saved = localStorage.getItem('estateDocuments');
-        return saved ? JSON.parse(saved) : {};
-    });
+    const [uploadedDocuments, setUploadedDocuments] = useState<Record<string, any>>({});
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('estateDocuments');
+            if (saved) {
+                setUploadedDocuments(JSON.parse(saved));
+            }
+        }
+    }, []);
 
     useEffect(() => {
         localStorage.setItem('estateDocuments', JSON.stringify(uploadedDocuments));
