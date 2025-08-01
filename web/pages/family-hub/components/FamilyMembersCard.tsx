@@ -201,8 +201,8 @@ const FamilyMembersCard: React.FC<FamilyMembersCardProps> = ({
                     bodyStyle={{ padding: 0, margin: 0 }}
                 >
                     <ProfilePage
-                        memberId={selectedMemberId.toString()}
-                        onBack={handleCloseProfile}
+                    // memberId={selectedMemberId.toString()}
+                    // onBack={handleCloseProfile}
                     />
                 </Card>
             )}
