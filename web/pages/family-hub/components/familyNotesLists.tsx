@@ -199,7 +199,7 @@ const NotesLists: React.FC<NotesListsProps> = ({
     showAllHubs = false,
 }) => {
     // Determine the active hub
-    const activeHub = currentHub || getCurrentHub();
+    const [activeHub, setActiveHub] = useState<string>(currentHub || "family");
 
     const [categories, setCategories] = useState<Category[]>([]);
     const [modalOpen, setModalOpen] = useState<boolean>(false);
@@ -219,6 +219,34 @@ const NotesLists: React.FC<NotesListsProps> = ({
     useEffect(() => {
         fetchCategoriesAndNotes();
     }, [activeHub, showAllHubs]);
+
+    useEffect(() => {
+        if (!currentHub) {
+            const getCurrentHub = (): string => {
+                if (typeof window !== "undefined") {
+                    const path = window.location.pathname;
+                    const hubMatch = path.match(/\/(family|finance|planner|health|home)/);
+                    if (hubMatch) return hubMatch[1];
+
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const hubFromParams = urlParams.get("hub");
+                    if (
+                        hubFromParams &&
+                        ["family", "finance", "planner", "health", "home"].includes(hubFromParams)
+                    ) return hubFromParams;
+
+                    const storedHub = localStorage.getItem("currentHub");
+                    if (
+                        storedHub &&
+                        ["family", "finance", "planner", "health", "home"].includes(storedHub)
+                    ) return storedHub;
+                }
+                return "family";
+            };
+
+            setActiveHub(getCurrentHub());
+        }
+    }, [currentHub]);
 
     const fetchCategoriesAndNotes = async () => {
         try {
