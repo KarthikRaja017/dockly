@@ -26,7 +26,7 @@ const OAuthCallback = () => {
     }
   }, [router, searchParams]);
 
-  return <DocklyLoader />;
+  return;
 };
 
 export default OAuthCallback;

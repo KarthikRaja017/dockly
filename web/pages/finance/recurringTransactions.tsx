@@ -1,14 +1,14 @@
 
+
 'use client';
 import React, { useEffect, useState } from 'react';
 import { Button, message } from 'antd';
 import { getRecurringTransactions } from '../../services/apiConfig';
 import DocklyLoader from '../../utils/docklyLoader';
-import { useGlobalLoading } from '../../app/loadingContext';
 
 const RecurringTransactions = () => {
     const [transactions, setTransactions] = useState<any[]>([]);
-    const { loading, setLoading } = useGlobalLoading();
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         fetchRecurring();
@@ -73,7 +73,9 @@ const RecurringTransactions = () => {
                 </Button>
             </div>
 
-            {!loading && (
+            {loading ? (
+                <DocklyLoader />
+            ) : (
                 transactions.map((t, i) => (
                     <div
                         key={i}
@@ -147,3 +149,4 @@ const RecurringTransactions = () => {
 };
 
 export default RecurringTransactions;
+

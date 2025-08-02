@@ -377,6 +377,18 @@ export async function deleteNote(params: any) {
   });
 }
 
+export async function shareNote(params: {
+  email: string;
+  note: {
+    title: string;
+    description: string;
+    hub?: string;
+    created_at?: string;
+  };
+}) {
+  return api.post('/family/share/note', params);
+}
+
 export async function addNoteCategory(params: {
   name: string;
   icon: string;
@@ -628,15 +640,11 @@ export async function getAccountPasswords(params: {
 
 export async function updateAccountPassword(payload: any): Promise<any> {
   try {
-    const response = await api.put(
-      '/update/account-passwords',
-      { account: payload },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    const response = await api.put('/update/account-passwords', payload, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
     return response.data;
   } catch (error) {
     console.error('Error updating account password:', error);
@@ -744,4 +752,55 @@ export async function getBeneficiaries(userId: string): Promise<any> {
 
 export async function updateBeneficiary(params: any): Promise<any> {
   return api.put('/update/beneficiary', params).then((res) => res.data);
+}
+
+// Add a device
+export async function addDevice(payload: any): Promise<any> {
+  try {
+    const response = await api.post(
+      '/add/device',
+      { device: payload },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error adding device:', error);
+    throw error;
+  }
+}
+
+// Get devices for a family member
+export async function getDevices(params: { userId: string }): Promise<any> {
+  try {
+    const response = await api.get('/get/devices', {
+      params,
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching devices:', error);
+    throw error;
+  }
+}
+
+// Update an existing device
+export async function updateDevice(payload: any): Promise<any> {
+  try {
+    const response = await api.put(
+      '/update/device',
+      { device: payload },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error updating device:', error);
+    throw error;
+  }
 }

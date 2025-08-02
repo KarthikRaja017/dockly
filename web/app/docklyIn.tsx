@@ -5,7 +5,6 @@ import { LowercaseInput, SIDEBAR_BG } from "./comman";
 import { useRouter } from "next/navigation";
 import { AxiosResponse } from "axios";
 import { showNotification } from "../utils/notification";
-import DocklyLoader from "../utils/docklyLoader";
 import addUsername from "../services/user";
 import SignUpDockly from "../pages/sign-in/signUp";
 import { useGlobalLoading } from "./loadingContext";
@@ -80,6 +79,22 @@ const DocklyLogin = () => {
 
   return (
     <>
+      <style jsx>{`
+        @keyframes rotatelogo {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+        
+        .rotating-logo {
+          animation: rotatelogo 8s linear infinite;
+          transform-origin: center;
+        }
+      `}</style>
+
       {!emailView ? (
         <div
           style={{
@@ -114,10 +129,11 @@ const DocklyLogin = () => {
             }}
           >
             <img
-              src="/dockly.png"
+              src="/dockly-logo.png"
               alt="Logo"
+              className="rotating-logo"
               style={{
-                width: "950px",
+                width: "650px",
                 transition: "width 0.3s ease-in-out",
               }}
             />
@@ -173,7 +189,7 @@ const DocklyLogin = () => {
           </Button>
 
           <p style={{ marginTop: 16, cursor: "pointer" }}>
-            Don’t remember the username?{" "}
+            Don't remember the username?{" "}
             <a style={{ color: "#003cff" }} onClick={() => setEmailView(true)}>
               Sign in with email
             </a>

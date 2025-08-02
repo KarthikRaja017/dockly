@@ -1,4 +1,3 @@
-
 "use client";
 import {
     EditOutlined,
@@ -507,37 +506,45 @@ const NotesLists: React.FC<NotesListsProps> = ({
         <>
             <div
                 style={{
-                    padding: 24,
-                    backgroundColor: "#fff",
-                    width: 400,
-                    borderRadius: 16,
+                    padding: 16,
+                    backgroundColor: "#ffffff",
+                    width: 380,
+                    borderRadius: 12,
                     position: "relative",
                     maxHeight: "70vh",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.1)",
+                    border: "1px solid rgba(0,0,0,0.06)",
+                    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
                 }}
             >
                 <h2
                     style={{
-                        fontSize: 18,
+                        fontSize: 16,
                         fontWeight: 600,
                         display: "flex",
                         alignItems: "center",
-                        gap: 8,
+                        gap: 6,
+                        margin: 0,
+                        marginBottom: 12,
+                        color: "#1f2937",
+                        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
                     }}
                 >
-                    <FileTextOutlined />  Notes & Lists
+                    <FileTextOutlined style={{ fontSize: 16 }} />
+                    Notes & Lists
                     {showAllHubs && (
-                        <span style={{ fontSize: 14, color: "#666" }}> (All Hubs)</span>
+                        <span style={{ fontSize: 12, color: "#6b7280", fontWeight: 400 }}> (All Hubs)</span>
                     )}
                 </h2>
                 <div
                     style={{
                         display: "flex",
                         flexDirection: "column",
-                        gap: 16,
-                        marginTop: 20,
+                        gap: 8,
+                        marginTop: 16,
                         maxHeight: "400px",
                         overflowY: "auto",
-                        paddingRight: 4,
+                        paddingRight: 2,
                     }}
                 >
                     {displayedCategories.map((category, index) => (
@@ -545,38 +552,64 @@ const NotesLists: React.FC<NotesListsProps> = ({
                             key={`${category.title}-${index}`}
                             onClick={() => openModal(index)}
                             style={{
-                                borderRadius: 12,
-                                padding: 12,
-                                border: "1px solid #e0e0e0",
-                                backgroundColor: "#f9f9f9",
+                                borderRadius: 8,
+                                padding: "10px 12px",
+                                border: "1px solid #f1f5f9",
+                                backgroundColor: "#fafbfc",
                                 display: "flex",
                                 justifyContent: "space-between",
                                 alignItems: "center",
                                 cursor: "pointer",
-                                minHeight: 60,
+                                minHeight: 48,
+                                transition: "all 0.2s ease",
+                                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = "#f8fafc";
+                                e.currentTarget.style.borderColor = "#e2e8f0";
+                                e.currentTarget.style.transform = "translateY(-1px)";
+                                e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.05)";
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = "#fafbfc";
+                                e.currentTarget.style.borderColor = "#f1f5f9";
+                                e.currentTarget.style.transform = "translateY(0)";
+                                e.currentTarget.style.boxShadow = "none";
                             }}
                         >
-                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                                 <div
                                     style={{
-                                        width: 34,
-                                        height: 34,
+                                        width: 28,
+                                        height: 28,
                                         background: `${categoryColorMap[category.title] ||
                                             stringToColor(category.title)
-                                            }20`,
-                                        borderRadius: 10,
+                                            }15`,
+                                        borderRadius: 6,
                                         display: "flex",
                                         justifyContent: "center",
                                         alignItems: "center",
+                                        fontSize: 12,
                                     }}
                                 >
                                     {category.icon}
                                 </div>
-                                <span style={{ fontWeight: 600 }}>{category.title}</span>
+                                <span style={{
+                                    fontWeight: 500,
+                                    fontSize: 14,
+                                    color: "#374151",
+                                    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+                                }}>
+                                    {category.title}
+                                </span>
                             </div>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                <span style={{ color: "#666", fontSize: 12 }}>
-                                    {category.items.length} notes
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <span style={{
+                                    color: "#9ca3af",
+                                    fontSize: 11,
+                                    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+                                }}>
+                                    {category.items.length}
                                 </span>
                                 <Button
                                     icon={
@@ -585,14 +618,15 @@ const NotesLists: React.FC<NotesListsProps> = ({
                                     onClick={(e) => togglePinCategory(category, e)}
                                     type="text"
                                     style={{
-                                        width: 24,
-                                        height: 24,
-                                        minWidth: 24,
+                                        width: 20,
+                                        height: 20,
+                                        minWidth: 20,
                                         padding: 0,
-                                        color: category.pinned ? "#1677ff" : "#999",
+                                        color: category.pinned ? "#3b82f6" : "#9ca3af",
+                                        fontSize: 11,
                                     }}
                                 />
-                                <RightOutlined style={{ fontSize: 14, color: "#666" }} />
+                                <RightOutlined style={{ fontSize: 10, color: "#9ca3af" }} />
                             </div>
                         </div>
                     ))}
@@ -601,7 +635,13 @@ const NotesLists: React.FC<NotesListsProps> = ({
                         <Button
                             type="text"
                             onClick={() => setShowAllCategories(true)}
-                            style={{ textAlign: "center", color: "#1677ff" }}
+                            style={{
+                                textAlign: "center",
+                                color: "#3b82f6",
+                                fontSize: 13,
+                                height: 32,
+                                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+                            }}
                         >
                             View More ({categories.length - 5})
                         </Button>
@@ -611,7 +651,13 @@ const NotesLists: React.FC<NotesListsProps> = ({
                         <Button
                             type="text"
                             onClick={() => setShowAllCategories(false)}
-                            style={{ textAlign: "center", color: "#1677ff" }}
+                            style={{
+                                textAlign: "center",
+                                color: "#3b82f6",
+                                fontSize: 13,
+                                height: 32,
+                                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+                            }}
                         >
                             Show Less
                         </Button>
@@ -624,16 +670,17 @@ const NotesLists: React.FC<NotesListsProps> = ({
                     onClick={() => setNewCategoryModal(true)}
                     style={{
                         position: "absolute",
-                        top: 24,
-                        right: 24,
-                        width: 34,
-                        height: 34,
-                        borderRadius: 10,
-                        backgroundColor: "#1677ff",
+                        top: 16,
+                        right: 16,
+                        width: 28,
+                        height: 28,
+                        borderRadius: 6,
+                        backgroundColor: "#3b82f6",
                         color: "white",
-                        boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+                        boxShadow: "0 2px 4px rgba(59, 130, 246, 0.3)",
                         border: "none",
                         zIndex: 10,
+                        fontSize: 12,
                     }}
                 />
             </div>
@@ -648,7 +695,7 @@ const NotesLists: React.FC<NotesListsProps> = ({
                 }}
                 onOk={handleAddCategory}
                 centered
-                width={450}
+                width={420}
                 okText="Add Category"
                 closable={false}
                 footer={[
@@ -659,6 +706,9 @@ const NotesLists: React.FC<NotesListsProps> = ({
                             setSelectedCategoryOption("");
                             setCustomCategoryName("");
                         }}
+                        style={{
+                            fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+                        }}
                     >
                         Cancel
                     </Button>,
@@ -667,19 +717,36 @@ const NotesLists: React.FC<NotesListsProps> = ({
                         type="primary"
                         onClick={handleAddCategory}
                         loading={loading}
+                        style={{
+                            fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+                        }}
                     >
                         Add Category
                     </Button>,
                 ]}
+                style={{
+                    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+                }}
             >
-                <div style={{ padding: "24px 0" }}>
-                    <Title level={4} style={{ marginBottom: 24, textAlign: "center" }}>
+                <div style={{ padding: "16px 0" }}>
+                    <Title level={4} style={{
+                        marginBottom: 16,
+                        textAlign: "center",
+                        fontSize: 16,
+                        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+                    }}>
                         Create New Category
                     </Title>
 
-                    <div style={{ marginBottom: 16 }}>
+                    <div style={{ marginBottom: 12 }}>
                         <label
-                            style={{ display: "block", marginBottom: 8, fontWeight: 500 }}
+                            style={{
+                                display: "block",
+                                marginBottom: 6,
+                                fontWeight: 500,
+                                fontSize: 13,
+                                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+                            }}
                         >
                             Select Category Type:
                         </label>
@@ -688,7 +755,7 @@ const NotesLists: React.FC<NotesListsProps> = ({
                             value={selectedCategoryOption}
                             onChange={handleCategorySelection}
                             style={{ width: "100%" }}
-                            size="large"
+                            size="middle"
                             showSearch
                             filterOption={(input, option) =>
                                 (option?.label ?? "")
@@ -705,9 +772,15 @@ const NotesLists: React.FC<NotesListsProps> = ({
                     </div>
 
                     {selectedCategoryOption === "Others" && (
-                        <div style={{ marginBottom: 16 }}>
+                        <div style={{ marginBottom: 12 }}>
                             <label
-                                style={{ display: "block", marginBottom: 8, fontWeight: 500 }}
+                                style={{
+                                    display: "block",
+                                    marginBottom: 6,
+                                    fontWeight: 500,
+                                    fontSize: 13,
+                                    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+                                }}
                             >
                                 Custom Category Name:
                             </label>
@@ -715,7 +788,7 @@ const NotesLists: React.FC<NotesListsProps> = ({
                                 placeholder="Enter your custom category name"
                                 value={customCategoryName}
                                 onChange={(e) => setCustomCategoryName(e.target.value)}
-                                size="large"
+                                size="middle"
                                 style={{ width: "100%" }}
                             />
                         </div>
@@ -724,22 +797,27 @@ const NotesLists: React.FC<NotesListsProps> = ({
                     {selectedCategoryOption && selectedCategoryOption !== "Others" && (
                         <div
                             style={{
-                                marginTop: 16,
-                                padding: 12,
-                                backgroundColor: "#f6ffed",
-                                border: "1px solid #b7eb8f",
-                                borderRadius: 8,
+                                marginTop: 12,
+                                padding: 10,
+                                backgroundColor: "#f0f9ff",
+                                border: "1px solid #bae6fd",
+                                borderRadius: 6,
+                                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
                             }}
                         >
-                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                                <span style={{ fontSize: 20 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <span style={{ fontSize: 16 }}>
                                     {
                                         suggestedCategories.find(
                                             (cat) => cat.value === selectedCategoryOption
                                         )?.icon
                                     }
                                 </span>
-                                <span style={{ fontWeight: 500 }}>
+                                <span style={{
+                                    fontWeight: 500,
+                                    fontSize: 14,
+                                    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+                                }}>
                                     {selectedCategoryOption}
                                 </span>
                             </div>
@@ -754,8 +832,11 @@ const NotesLists: React.FC<NotesListsProps> = ({
                 onCancel={() => setModalOpen(false)}
                 footer={null}
                 centered
-                width={550}
+                width={520}
                 closable={false}
+                style={{
+                    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+                }}
             >
                 {activeCategoryIndex !== null && (
                     <div>
@@ -764,14 +845,26 @@ const NotesLists: React.FC<NotesListsProps> = ({
                                 display: "flex",
                                 justifyContent: "space-between",
                                 alignItems: "center",
-                                marginBottom: 15,
+                                marginBottom: 12,
+                                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
                             }}
                         >
-                            <span style={{ fontSize: 22, fontWeight: 600 }}>
+                            <span style={{
+                                fontSize: 18,
+                                fontWeight: 600,
+                                color: "#1f2937",
+                                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+                            }}>
                                 {categories[activeCategoryIndex].icon}{" "}
                                 {categories[activeCategoryIndex].title}
                                 {!showAllHubs && (
-                                    <span style={{ fontSize: 14, color: "#666", marginLeft: 8 }}>
+                                    <span style={{
+                                        fontSize: 12,
+                                        color: "#6b7280",
+                                        marginLeft: 6,
+                                        fontWeight: 400,
+                                        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+                                    }}>
                                         ({getHubDisplayName(activeHub)})
                                     </span>
                                 )}
@@ -787,36 +880,43 @@ const NotesLists: React.FC<NotesListsProps> = ({
                                 }}
                                 style={{
                                     position: "absolute",
-                                    top: 20,
-                                    right: 44,
-                                    width: 34,
-                                    height: 34,
-                                    borderRadius: 12,
-                                    backgroundColor: "#1677ff",
+                                    top: 16,
+                                    right: 40,
+                                    width: 28,
+                                    height: 28,
+                                    borderRadius: 6,
+                                    backgroundColor: "#3b82f6",
                                     color: "white",
-                                    boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+                                    boxShadow: "0 2px 4px rgba(59, 130, 246, 0.3)",
                                     border: "none",
+                                    fontSize: 12,
                                 }}
                             />
                         </div>
 
-                        <div style={{ maxHeight: 300, overflowY: "auto", paddingRight: 8 }}>
+                        <div style={{ maxHeight: 280, overflowY: "auto", paddingRight: 4 }}>
                             {categories[activeCategoryIndex].items.length === 0 &&
                                 !showNoteForm ? (
                                 <div
                                     style={{
-                                        border: "1px dashed #d9d9d9",
-                                        borderRadius: 8,
-                                        padding: 24,
+                                        border: "1px dashed #d1d5db",
+                                        borderRadius: 6,
+                                        padding: 16,
                                         textAlign: "center",
-                                        marginBottom: 16,
-                                        backgroundColor: "#fffbfbff",
+                                        marginBottom: 12,
+                                        backgroundColor: "#fafbfc",
                                         cursor: "pointer",
+                                        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
                                     }}
                                     onClick={() => setShowNoteForm(true)}
                                 >
-                                    <PlusOutlined style={{ fontSize: 20, color: "#1677ff" }} />
-                                    <div style={{ marginTop: 8, color: "#1677ff" }}>
+                                    <PlusOutlined style={{ fontSize: 16, color: "#3b82f6" }} />
+                                    <div style={{
+                                        marginTop: 6,
+                                        color: "#3b82f6",
+                                        fontSize: 13,
+                                        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+                                    }}>
                                         Add your first note
                                         {!showAllHubs && ` to ${getHubDisplayName(activeHub)}`}
                                     </div>
@@ -826,36 +926,42 @@ const NotesLists: React.FC<NotesListsProps> = ({
                                     <div
                                         key={`note-${idx}`}
                                         style={{
-                                            border: "1px solid #f0f0f0",
-                                            borderRadius: 8,
-                                            padding: 12,
-                                            marginBottom: 12,
-                                            backgroundColor: "#fffbfbff",
+                                            border: "1px solid #f1f5f9",
+                                            borderRadius: 6,
+                                            padding: 10,
+                                            marginBottom: 8,
+                                            backgroundColor: "#fafbfc",
                                             display: "flex",
                                             justifyContent: "space-between",
                                             alignItems: "center",
+                                            fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
                                         }}
                                     >
                                         <div
                                             style={{
                                                 display: "flex",
                                                 alignItems: "flex-start",
-                                                gap: 8,
+                                                gap: 6,
                                             }}
                                         >
-                                            <div style={{ marginTop: 4 }}>📍</div>
+                                            <div style={{ marginTop: 2, fontSize: 12 }}>📍</div>
                                             <div>
-                                                <div style={{ fontSize: "15px" }}>
-                                                    <strong>{note.title}</strong> — {note.description}
+                                                <div style={{
+                                                    fontSize: "13px",
+                                                    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+                                                }}>
+                                                    <strong style={{ color: "#374151" }}>{note.title}</strong>
+                                                    <span style={{ color: "#6b7280" }}> — {note.description}</span>
                                                     {showAllHubs && (note as any).hub && (
                                                         <span
                                                             style={{
-                                                                fontSize: 12,
-                                                                color: "#666",
-                                                                marginLeft: 8,
-                                                                backgroundColor: "#f0f0f0",
-                                                                padding: "2px 6px",
-                                                                borderRadius: 4,
+                                                                fontSize: 10,
+                                                                color: "#6b7280",
+                                                                marginLeft: 6,
+                                                                backgroundColor: "#f3f4f6",
+                                                                padding: "1px 4px",
+                                                                borderRadius: 3,
+                                                                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
                                                             }}
                                                         >
                                                             {getHubDisplayName(
@@ -866,7 +972,11 @@ const NotesLists: React.FC<NotesListsProps> = ({
                                                 </div>
 
                                                 {note.created_at && (
-                                                    <div style={{ fontSize: 11, color: "#333" }}>
+                                                    <div style={{
+                                                        fontSize: 10,
+                                                        color: "#9ca3af",
+                                                        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+                                                    }}>
                                                         {new Date(note.created_at).toLocaleString()}
                                                     </div>
                                                 )}
@@ -877,6 +987,11 @@ const NotesLists: React.FC<NotesListsProps> = ({
                                                 icon={<EditOutlined />}
                                                 size="small"
                                                 onClick={() => handleEditNote(note, idx)}
+                                                style={{
+                                                    width: 24,
+                                                    height: 24,
+                                                    fontSize: 11
+                                                }}
                                             />
                                         )}
                                     </div>
@@ -885,14 +1000,15 @@ const NotesLists: React.FC<NotesListsProps> = ({
                         </div>
 
                         {showNoteForm && !showAllHubs && (
-                            <div style={{ marginTop: 20 }}>
+                            <div style={{ marginTop: 16 }}>
                                 <Input
                                     placeholder="Note Title"
                                     value={newNote.title}
                                     onChange={(e) =>
                                         setNewNote({ ...newNote, title: e.target.value })
                                     }
-                                    style={{ marginBottom: 12 }}
+                                    style={{ marginBottom: 8 }}
+                                    size="middle"
                                 />
                                 <Input
                                     placeholder="Note Description"
@@ -900,14 +1016,19 @@ const NotesLists: React.FC<NotesListsProps> = ({
                                     onChange={(e) =>
                                         setNewNote({ ...newNote, description: e.target.value })
                                     }
-                                    style={{ marginBottom: 20 }}
+                                    style={{ marginBottom: 16 }}
+                                    size="middle"
                                 />
                             </div>
                         )}
-                        <div style={{ marginTop: 20, textAlign: "right" }}>
+                        <div style={{ marginTop: 16, textAlign: "right" }}>
                             <Button
                                 onClick={() => setModalOpen(false)}
-                                style={{ marginRight: 8 }}
+                                style={{
+                                    marginRight: 6,
+                                    fontSize: 13,
+                                    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+                                }}
                             >
                                 Cancel
                             </Button>
@@ -916,6 +1037,10 @@ const NotesLists: React.FC<NotesListsProps> = ({
                                     type="primary"
                                     onClick={handleSaveNote}
                                     loading={loading}
+                                    style={{
+                                        fontSize: 13,
+                                        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+                                    }}
                                 >
                                     {editingNoteIndex !== null ? "Update Note" : "Add Note"}
                                 </Button>
@@ -929,4 +1054,3 @@ const NotesLists: React.FC<NotesListsProps> = ({
 };
 
 export default NotesLists;
-

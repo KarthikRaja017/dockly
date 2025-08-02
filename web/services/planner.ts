@@ -1,94 +1,3 @@
-// import { api } from './apiConfig';
-
-// // Interfaces
-// interface Project {
-//   id?: string;
-//   uid: string;
-//   title: string;
-//   description?: string;
-//   date?: string;
-//   time?: string;
-// }
-
-// interface Task {
-//   id?: string;
-//   uid: string;
-//   project_id: string;
-//   description: string;
-//   completed?: boolean;
-//   date?: string;
-//   time?: string;
-//   priority?: 'high' | 'medium' | 'low';
-// }
-
-// interface WeeklyFocus {
-//   id?: string;
-//   uid: string;
-//   description: string;
-// }
-
-// interface WeeklyTodo {
-//   id?: string;
-//   uid: string;
-//   description: string;
-//   completed?: boolean;
-//   priority?: 'high' | 'medium' | 'low';
-//   date?: string;
-//   time?: string;
-//   status?: string;
-// }
-// export async function addWeeklyGoal(params: any) {
-//   return api.post('/add/weekly-goals', params);
-// }
-
-// export async function addEvents(params: any) {
-//   return api.post('/add/events', params);
-// }
-
-// export async function getWeeklyGoals(params: {}) {
-//   return api.get('/get/weekly-goals', { params });
-// }
-
-// export async function getPlanner(params: {}) {
-//   return api.get('/get/planner', { params });
-// }
-
-// export async function addWeeklyTodo(params: WeeklyTodo) {
-//   return api.post('/add/weekly-todos', params);
-// }
-
-// export async function getWeeklyTodos(params: {}) {
-//   return api.get('/get/weekly-todos', { params });
-// }
-
-// export async function addWeeklyFocus(params: WeeklyFocus) {
-//   return api.post('/add/weekly-focus', params);
-// }
-
-// export async function getWeeklyFocus(params: {}) {
-//   return api.get('/get/weekly-focus', { params });
-// }
-
-// export async function addSmartNotes(params: any) {
-//   return api.post('/add/smart-notes', params);
-// }
-
-// export async function getSmartNotes(params: any) {
-//   return api.get('/get/smart-notes', {
-//     params: { ...params },
-//   });
-// }
-
-// export async function fetchNoteSuggestions(
-//   uid: string,
-//   source: string
-// ): Promise<string[]> {
-//   const response = await api.get(`/smartnotes/suggestions/${uid}`, {
-//     params: { source },
-//   });
-//   return response.data;
-// }
-
 import { api } from './apiConfig';
 
 // Interfaces
@@ -138,6 +47,17 @@ interface WeeklyGoal {
   date?: string;
   time?: string;
   priority?: 'high' | 'medium' | 'low';
+}
+
+// New comprehensive planner data endpoint
+export async function getAllPlannerData(
+  params: {
+    show_dockly?: boolean;
+    show_google?: boolean;
+    filtered_emails?: string[];
+  } = {}
+) {
+  return api.get('/get/planner-data-comprehensive', { params });
 }
 
 export async function addWeeklyGoal(params: WeeklyGoal) {
@@ -226,4 +146,26 @@ export async function updatePlannerNote(params: {
 // Delete a planner note
 export async function deletePlannerNote(id: string) {
   return api.delete(`/delete/planner-notes?id=${id}`);
+}
+
+export async function addProject(params: any) {
+  return api.post('/add/project', params);
+}
+
+export async function getProjects(params: { source?: string } = {}) {
+  return api.get('/get/projects', {
+    params,
+  });
+}
+
+export async function addTask(params: any) {
+  return api.post('/add/task', params);
+}
+
+export async function getTasks(params: any) {
+  return api.get('/get/tasks', { params });
+}
+
+export async function updateTask(params: any) {
+  return api.post('/update/task', params);
 }

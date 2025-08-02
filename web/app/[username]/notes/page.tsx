@@ -44,6 +44,7 @@ import {
     getNoteCategories,
     updateNoteCategory,
     deleteNote,
+    shareNote,
 } from "../../../services/family";
 
 const { Title, Text } = Typography;
@@ -519,28 +520,15 @@ const IntegratedNotes = () => {
 
             setLoading(true);
 
-            // Create email content
-            const emailSubject = `Shared Note: ${currentShareNote.title}`;
-            const emailBody = `
-Hi there!
-
-I wanted to share this note with you:
-
-Title: ${currentShareNote.title}
-Description: ${currentShareNote.description}
-Hub: ${getHubDisplayName(currentShareNote.hub || "FAMILY")}
-Created: ${new Date(currentShareNote.created_at || Date.now()).toLocaleDateString()}
-
-Best regards!
-      `.trim();
-
-            // Create mailto link
-            const mailtoLink = `mailto:${values.email}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
-
-            // Open email client
-            window.open(mailtoLink, '_blank');
-
-            message.success(`Note shared successfully to ${values.email}`);
+            const res = await shareNote({
+                email: values.email,
+                note: {
+                    title: currentShareNote.title,
+                    description: currentShareNote.description,
+                    hub: currentShareNote.hub,
+                    created_at: currentShareNote.created_at,
+                }
+            });
             setShareModalVisible(false);
             shareForm.resetFields();
             setCurrentShareNote(null);

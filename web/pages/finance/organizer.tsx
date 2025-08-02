@@ -1,5 +1,6 @@
 
 
+
 "use client";
 import React, { useEffect, useState } from "react";
 import { Tabs, Typography } from "antd";
@@ -18,13 +19,12 @@ import GoalsCard from "./goalcard";
 import RecurringTransactions from "./recurringTransactions";
 import { DollarSign } from "lucide-react";
 import DocklyLoader from "../../utils/docklyLoader";
-import { useGlobalLoading } from "../../app/loadingContext";
 
 const { Text, Title } = Typography;
 
 const FinanceTabs = () => {
   const [bankDetails, setBankDetails] = useState<any>(null);
-  const { loading, setLoading } = useGlobalLoading();
+  const [loading, setLoading] = useState<boolean>(false);
   const [activeKey, setActiveKey] = useState("1");
   const { session } = useQuilttSession();
 
@@ -57,7 +57,7 @@ const FinanceTabs = () => {
           </div>
           <div style={{ display: "flex" }}>
             <div style={{ width: 950 }}>
-              <MonthlyBudget />
+              <MonthlyBudget uid={""} />
             </div>
             <GoalsCard uid={""} />
           </div>
@@ -96,7 +96,7 @@ const FinanceTabs = () => {
       key: "4",
       children: (
         <div>
-          <MonthlyBudget />
+          <MonthlyBudget uid={""} />
         </div>
       ),
     },
@@ -110,6 +110,10 @@ const FinanceTabs = () => {
       ),
     },
   ];
+
+  if (loading) {
+    return <DocklyLoader />;
+  }
 
   return (
     <div style={{ margin: "65px 10px 10px 60px" }}>
@@ -184,3 +188,4 @@ const BoardTitle: React.FC = () => {
     </div>
   );
 };
+

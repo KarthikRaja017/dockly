@@ -20,6 +20,7 @@ EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 G_ACCESS_EXPIRES = timedelta(minutes=50000000)
 G_REFRESH_EXPIRES = timedelta(days=30)
 G_SECRET_KEY = os.getenv("G_SECRET_KEY")
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 AUTH_ENDPOINT = os.getenv("QUILTT_API_SECRET_KEY")
 

@@ -1,4 +1,4 @@
-"use client";
+'use client';
 import React, { useState, useEffect } from "react";
 import {
     DatePicker,
@@ -41,55 +41,52 @@ import {
 } from "@ant-design/icons";
 import { addProject, addTask, getProjects, getTasks, updateTask } from "../../services/family";
 import dayjs from "dayjs";
-import { addEvents, addPlannerNotes, addWeeklyGoal, addWeeklyTodo, deletePlannerNote, getPlanner, getPlannerNotes, getWeeklyTodos, updatePlannerNote, updateWeeklyGoal, updateWeeklyTodo } from "../../services/planner";
-import { getCalendarEvents } from "../../services/google";
-import DocklyLoader from "../../utils/docklyLoader";
+import { addEvents, addPlannerNotes, addWeeklyGoal, addWeeklyTodo, deletePlannerNote, getAllPlannerData, getPlannerNotes, getWeeklyTodos, updatePlannerNote, updateWeeklyGoal, updateWeeklyTodo } from "../../services/planner";
 import { Calendar } from "lucide-react";
-import { showNotification } from "../../utils/notification";
-import MiniCalendar from "../../pages/components/miniCalendar";
-import CustomCalendar from "../../pages/components/customCalendar";
-import FamilyTasksComponent from "../../pages/components/familyTasksProjects";
-import { useCurrentUser } from "../../app/userContext";
 import { PRIMARY_COLOR } from "../../app/comman";
-import { API_URL } from "../../services/apiConfig";
-import { useParams, useRouter } from "next/navigation";
+import { showNotification } from "../../utils/notification";
+import CustomCalendar from "../components/customCalendar";
+import MiniCalendar from "../components/miniCalendar";
+import FamilyTasksComponent from "../components/familyTasksProjects";
 import NotesLists from "../family-hub/components/familyNotesLists";
-
+import { useCurrentUser } from "../../app/userContext";
 const { Title, Text } = Typography;
 
-// Enhanced Professional color palette
+// Enhanced Professional color palette with better contrast
 const COLORS = {
-    primary: '#1C1C1E',
-    secondary: '#48484A',
-    accent: '#1890FF',
-    success: '#52C41A',
-    warning: '#FAAD14',
-    error: '#FF4D4F',
-    background: '#FAFBFC',
-    surface: '#FFFFFF',
-    surfaceSecondary: '#F8F9FA',
-    surfaceElevated: '#FDFDFD',
-    border: '#E8E8E8',
-    borderLight: '#F0F0F0',
-    borderMedium: '#D9D9D9',
-    text: '#1C1C1E',
-    textSecondary: '#6B7280',
-    textTertiary: '#9CA3AF',
-    overlay: 'rgba(0, 0, 0, 0.45)',
-    shadowLight: 'rgba(0, 0, 0, 0.04)',
-    shadowMedium: 'rgba(0, 0, 0, 0.08)',
-    shadowHeavy: 'rgba(0, 0, 0, 0.12)',
-    shadowElevated: 'rgba(0, 0, 0, 0.16)',
+    primary: '#1a1a1a',
+    secondary: '#4a4a4a',
+    accent: '#2563eb',
+    success: '#059669',
+    warning: '#d97706',
+    error: '#dc2626',
+    background: '#fafbfc',
+    surface: '#ffffff',
+    surfaceSecondary: '#f8fafc',
+    surfaceElevated: '#fdfdfd',
+    border: '#e2e8f0',
+    borderLight: '#f1f5f9',
+    borderMedium: '#cbd5e1',
+    text: '#1a1a1a',
+    textSecondary: '#64748b',
+    textTertiary: '#94a3b8',
+    overlay: 'rgba(0, 0, 0, 0.5)',
+    shadowLight: 'rgba(0, 0, 0, 0.05)',
+    shadowMedium: 'rgba(0, 0, 0, 0.1)',
+    shadowHeavy: 'rgba(0, 0, 0, 0.15)',
+    shadowElevated: 'rgba(0, 0, 0, 0.2)',
 };
 
 const SPACING = {
-    xs: 4,
-    sm: 8,
-    md: 16,
-    lg: 24,
-    xl: 32,
-    xxl: 48,
+    xs: 3,
+    sm: 6,
+    md: 12,
+    lg: 18,
+    xl: 24,
+    xxl: 36,
 };
+
+const FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 
 type Task = {
     id: number;
@@ -147,7 +144,6 @@ const CalendarAccountFilter: React.FC<{
         connectedAccounts.map((acc) => acc.email)
     );
     const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
-    const user = useCurrentUser();
 
     const groupedAccounts = groupAccountsByEmail(connectedAccounts as ConnectedAccountType[]);
 
@@ -176,14 +172,15 @@ const CalendarAccountFilter: React.FC<{
             <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: SPACING.sm,
-                padding: `${SPACING.md}px ${SPACING.lg}px`,
+                gap: SPACING.xs,
+                padding: `${SPACING.sm}px ${SPACING.md}px`,
                 background: COLORS.surfaceSecondary,
-                borderRadius: '12px',
+                borderRadius: '8px',
                 border: `1px solid ${COLORS.borderLight}`,
+                fontFamily: FONT_FAMILY,
             }}>
-                <GoogleOutlined style={{ color: COLORS.textSecondary, fontSize: '16px' }} />
-                <Text style={{ color: COLORS.textSecondary, fontSize: '14px', fontWeight: 500 }}>
+                <GoogleOutlined style={{ color: COLORS.textSecondary, fontSize: '14px' }} />
+                <Text style={{ color: COLORS.textSecondary, fontSize: '13px', fontWeight: 500, fontFamily: FONT_FAMILY }}>
                     No accounts connected
                 </Text>
                 <Button
@@ -194,9 +191,11 @@ const CalendarAccountFilter: React.FC<{
                     style={{
                         backgroundColor: COLORS.accent,
                         borderColor: COLORS.accent,
-                        borderRadius: '8px',
-                        height: '32px',
+                        borderRadius: '6px',
+                        height: '28px',
                         fontWeight: 600,
+                        fontSize: '12px',
+                        fontFamily: FONT_FAMILY,
                     }}
                 >
                     Connect
@@ -210,7 +209,7 @@ const CalendarAccountFilter: React.FC<{
             <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: SPACING.sm,
+                gap: SPACING.xs,
                 flexWrap: 'wrap',
             }}>
                 {groupedAccounts.slice(0, 3).map(({ email, providers }) => {
@@ -227,26 +226,27 @@ const CalendarAccountFilter: React.FC<{
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: SPACING.xs,
-                                padding: `${SPACING.sm}px ${SPACING.md}px`,
+                                padding: `${SPACING.xs}px ${SPACING.sm}px`,
                                 background: isActive ? `${primaryColor}12` : COLORS.surfaceSecondary,
                                 border: `1px solid ${isActive ? primaryColor : COLORS.borderLight}`,
-                                borderRadius: '10px',
+                                borderRadius: '6px',
                                 cursor: 'pointer',
                                 transition: 'all 0.2s ease',
                                 opacity: isActive ? 1 : 0.7,
+                                fontFamily: FONT_FAMILY,
                             }}
                         >
                             <Avatar
-                                size={24}
+                                size={20}
                                 style={{
                                     backgroundColor: primaryColor,
-                                    fontSize: '12px',
+                                    fontSize: '10px',
                                     fontWeight: 600,
                                 }}
                             >
                                 {providers[0].provider === 'google' ? <GoogleOutlined /> : 'D'}
                             </Avatar>
-                            <Text style={{ fontSize: '13px', fontWeight: 500 }}>
+                            <Text style={{ fontSize: '12px', fontWeight: 500, fontFamily: FONT_FAMILY }}>
                                 {email.split('@')[0]}
                             </Text>
                         </div>
@@ -259,9 +259,10 @@ const CalendarAccountFilter: React.FC<{
                         icon={<EyeOutlined />}
                         onClick={() => setIsFilterModalVisible(true)}
                         style={{
-                            borderRadius: '8px',
-                            fontSize: '12px',
-                            height: '32px',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            height: '28px',
+                            fontFamily: FONT_FAMILY,
                         }}
                     >
                         +{groupedAccounts.length - 3}
@@ -273,9 +274,10 @@ const CalendarAccountFilter: React.FC<{
                     icon={<FilterOutlined />}
                     onClick={() => setIsFilterModalVisible(true)}
                     style={{
-                        borderRadius: '8px',
-                        fontSize: '12px',
-                        height: '32px',
+                        borderRadius: '6px',
+                        fontSize: '11px',
+                        height: '28px',
+                        fontFamily: FONT_FAMILY,
                     }}
                 >
                     Filter
@@ -287,23 +289,23 @@ const CalendarAccountFilter: React.FC<{
                 open={isFilterModalVisible}
                 onCancel={() => setIsFilterModalVisible(false)}
                 footer={null}
-                width={500}
+                width={450}
             >
-                <div style={{ padding: '16px 0' }}>
+                <div style={{ padding: '12px 0', fontFamily: FONT_FAMILY }}>
                     <div style={{
-                        marginBottom: '16px',
+                        marginBottom: '12px',
                         display: 'flex',
                         justifyContent: 'space-between',
                     }}>
-                        <Button size="small" onClick={handleSelectAll}>
+                        <Button size="small" onClick={handleSelectAll} style={{ fontFamily: FONT_FAMILY }}>
                             Select All
                         </Button>
-                        <Button size="small" onClick={handleDeselectAll}>
+                        <Button size="small" onClick={handleDeselectAll} style={{ fontFamily: FONT_FAMILY }}>
                             Deselect All
                         </Button>
                     </div>
 
-                    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                    <Space direction="vertical" size="small" style={{ width: '100%' }}>
                         {groupedAccounts.map(({ email, providers }) => {
                             const isActive = activeFilters.includes(email);
                             const primaryColor = providers.find((p) => p.provider === 'dockly')
@@ -317,28 +319,29 @@ const CalendarAccountFilter: React.FC<{
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'space-between',
-                                        padding: '12px',
+                                        padding: '8px',
                                         background: isActive ? `${primaryColor}10` : COLORS.surfaceSecondary,
-                                        borderRadius: '8px',
+                                        borderRadius: '6px',
                                         border: `1px solid ${isActive ? primaryColor : COLORS.borderLight}`,
+                                        fontFamily: FONT_FAMILY,
                                     }}
                                 >
                                     <div style={{
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: '12px',
+                                        gap: '8px',
                                     }}>
                                         <Avatar
-                                            size={32}
+                                            size={28}
                                             style={{ backgroundColor: primaryColor }}
                                             icon={providers[0].provider === 'google' ? <GoogleOutlined /> : undefined}
                                         >
                                             {providers[0].provider === 'dockly' ? 'D' : email.charAt(0).toUpperCase()}
                                         </Avatar>
                                         <div>
-                                            <Text strong>{email}</Text>
+                                            <Text strong style={{ fontFamily: FONT_FAMILY, fontSize: '13px' }}>{email}</Text>
                                             <br />
-                                            <Text type="secondary" style={{ fontSize: '12px' }}>
+                                            <Text type="secondary" style={{ fontSize: '11px', fontFamily: FONT_FAMILY }}>
                                                 {providers.map(p => p.provider.charAt(0).toUpperCase() + p.provider.slice(1)).join(', ')}
                                             </Text>
                                         </div>
@@ -370,25 +373,25 @@ const ConnectAccountModal: React.FC<{
             open={isVisible}
             onCancel={onClose}
             footer={null}
-            width={500}
+            width={450}
             centered
         >
-            <div style={{ textAlign: 'center', padding: '24px' }}>
-                <CalendarOutlined style={{ fontSize: '64px', color: COLORS.accent, marginBottom: '24px' }} />
-                <Title level={3} style={{ marginBottom: '16px', color: COLORS.text }}>
+            <div style={{ textAlign: 'center', padding: '18px', fontFamily: FONT_FAMILY }}>
+                <CalendarOutlined style={{ fontSize: '48px', color: COLORS.accent, marginBottom: '18px' }} />
+                <Title level={4} style={{ marginBottom: '12px', color: COLORS.text, fontFamily: FONT_FAMILY }}>
                     Connect Your Google Calendar
                 </Title>
-                <Text style={{ display: 'block', marginBottom: '24px', color: COLORS.textSecondary }}>
+                <Text style={{ display: 'block', marginBottom: '18px', color: COLORS.textSecondary, fontFamily: FONT_FAMILY, fontSize: '14px' }}>
                     To view and manage your calendar events, please connect your Google account.
                     You can connect multiple accounts to see all your events in one place.
                 </Text>
                 <div style={{
                     background: COLORS.surfaceSecondary,
-                    padding: '16px',
-                    borderRadius: '8px',
-                    marginBottom: '24px'
+                    padding: '12px',
+                    borderRadius: '6px',
+                    marginBottom: '18px'
                 }}>
-                    <Text style={{ fontSize: '14px', color: COLORS.textSecondary }}>
+                    <Text style={{ fontSize: '13px', color: COLORS.textSecondary, fontFamily: FONT_FAMILY }}>
                         🔒 Your data is secure and we only access your calendar events
                     </Text>
                 </div>
@@ -400,10 +403,11 @@ const ConnectAccountModal: React.FC<{
                         onClick={onConnect}
                         style={{
                             width: '100%',
-                            height: '48px',
+                            height: '42px',
                             backgroundColor: COLORS.accent,
                             borderColor: COLORS.accent,
-                            borderRadius: '8px',
+                            borderRadius: '6px',
+                            fontFamily: FONT_FAMILY,
                         }}
                     >
                         Connect Google Account
@@ -411,7 +415,7 @@ const ConnectAccountModal: React.FC<{
                     <Button
                         type="text"
                         onClick={onClose}
-                        style={{ width: '100%' }}
+                        style={{ width: '100%', fontFamily: FONT_FAMILY }}
                     >
                         Maybe Later
                     </Button>
@@ -432,47 +436,45 @@ const PlannerTitle: React.FC<{
             alignItems: 'center',
             justifyContent: 'space-between',
             marginBottom: SPACING.xl,
-            padding: `${SPACING.sm}px ${SPACING.md}px`,
-            borderRadius: '24px',
+            padding: `${SPACING.xs}px ${SPACING.sm}px`,
+            borderRadius: '16px',
         }}>
             <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: SPACING.lg,
+                gap: SPACING.md,
             }}>
                 <div style={{
-                    width: '50px',
-                    height: '50px',
+                    width: '42px',
+                    height: '42px',
                     background: `linear-gradient(135deg, ${COLORS.accent}, ${COLORS.accent}dd)`,
                     color: 'white',
-                    borderRadius: '20px',
+                    borderRadius: '14px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    boxShadow: `0 8px 24px ${COLORS.accent}30`,
+                    boxShadow: `0 6px 20px ${COLORS.accent}30`,
                 }}>
-                    <Calendar size={26} />
+                    <Calendar size={22} />
                 </div>
                 <div>
                     <h1 style={{
-                        fontSize: '30px',
-                        fontWeight: 500,
+                        fontSize: '26px',
+                        fontWeight: 600,
                         color: COLORS.text,
                         margin: 0,
                         lineHeight: 1.2,
-                        background: `linear-gradient(135deg, ${COLORS.text}, ${COLORS.textSecondary})`,
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        backgroundClip: 'text',
+                        fontFamily: FONT_FAMILY,
                     }}>
                         Planner
                     </h1>
                     <Text style={{
                         color: COLORS.textSecondary,
-                        fontSize: '16px',
-                        fontWeight: 300,
+                        fontSize: '14px',
+                        fontWeight: 400,
                         display: 'block',
-                        marginTop: '4px',
+                        marginTop: '2px',
+                        fontFamily: FONT_FAMILY,
                     }}>
                         Organize your life efficiently
                     </Text>
@@ -500,56 +502,58 @@ const StatisticsCard: React.FC<{
     return (
         <div style={{
             background: `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceElevated})`,
-            borderRadius: '20px',
-            padding: SPACING.md,
+            borderRadius: '14px',
+            padding: SPACING.lg,
             border: `1px solid ${COLORS.borderLight}`,
-            boxShadow: `0 8px 32px ${COLORS.shadowLight}`,
+            boxShadow: `0 4px 16px ${COLORS.shadowLight}`,
             transition: 'all 0.2s ease',
             position: 'relative',
             overflow: 'hidden',
+            fontFamily: FONT_FAMILY,
         }}
             onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-4px)';
-                e.currentTarget.style.boxShadow = `0 16px 48px ${COLORS.shadowMedium}`;
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = `0 8px 24px ${COLORS.shadowMedium}`;
             }}
             onMouseLeave={(e) => {
                 e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = `0 8px 32px ${COLORS.shadowLight}`;
+                e.currentTarget.style.boxShadow = `0 4px 16px ${COLORS.shadowLight}`;
             }}
         >
             <div style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                marginBottom: SPACING.md,
+                marginBottom: SPACING.sm,
             }}>
                 <div style={{
-                    width: '38px',
-                    height: '38px',
+                    width: '32px',
+                    height: '32px',
                     background: `linear-gradient(135deg, ${color}, ${color}dd)`,
                     color: 'white',
-                    borderRadius: '16px',
+                    borderRadius: '10px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    boxShadow: `0 8px 24px ${color}30`,
+                    boxShadow: `0 4px 12px ${color}30`,
                 }}>
                     {icon}
                 </div>
                 <div style={{ textAlign: 'right' }}>
                     <div style={{
-                        fontSize: '25px',
-                        fontWeight: 500,
+                        fontSize: '20px',
+                        fontWeight: 600,
                         color: COLORS.text,
                         lineHeight: 1,
-                        marginBottom: '4px',
+                        marginBottom: '2px',
+                        fontFamily: FONT_FAMILY,
                     }}>
                         {value}
                         {total && (
                             <span style={{
-                                fontSize: '16px',
+                                fontSize: '14px',
                                 color: COLORS.textSecondary,
-                                fontWeight: 300,
+                                fontWeight: 400,
                             }}>
                                 /{total}
                             </span>
@@ -558,10 +562,11 @@ const StatisticsCard: React.FC<{
                 </div>
             </div>
             <div style={{
-                fontSize: '16px',
+                fontSize: '13px',
                 color: COLORS.textSecondary,
-                fontWeight: 600,
-                marginBottom: showProgress ? SPACING.md : 0,
+                fontWeight: 500,
+                marginBottom: showProgress ? SPACING.sm : 0,
+                fontFamily: FONT_FAMILY,
             }}>
                 {title}
             </div>
@@ -570,6 +575,7 @@ const StatisticsCard: React.FC<{
 };
 
 const Planner = () => {
+    const userId = useCurrentUser()?.uid;
     const [goals, setGoals] = useState<
         {
             id: string;
@@ -591,7 +597,7 @@ const Planner = () => {
         }[]
     >([]);
     const [projects, setProjects] = useState<Project[]>([]);
-    const [loading, setLoading] = useState(false);
+    // const [loading, setLoading] = useState(false);
     const [backup, setBackup] = useState(null);
     const [isGoalModalVisible, setIsGoalModalVisible] = useState(false);
     const [isEventModalVisible, setIsEventModalVisible] = useState(false);
@@ -610,8 +616,6 @@ const Planner = () => {
     const [goalForm] = Form.useForm();
     const [todoForm] = Form.useForm();
     const [projectForm] = Form.useForm();
-    const user = useCurrentUser();
-    const router = useRouter();
     const [notes, setNotes] = useState<
         { id: string; title: string; description: string; created_at: string }[]
     >([]);
@@ -619,8 +623,6 @@ const Planner = () => {
     const [isNoteModalVisible, setIsNoteModalVisible] = useState(false);
     const [noteForm] = Form.useForm();
     const [expandedSection, setExpandedSection] = useState<"goals" | "todos" | null>("goals");
-    const params = useParams();
-    const username = params?.username;
 
     // Helper functions
     const getPriorityColor = (priority: string) => {
@@ -703,7 +705,7 @@ const Planner = () => {
     };
 
     const handleConnectAccount = () => {
-        window.location.href = `${API_URL}/add-googleCalendar?username=${user?.user_name}&userId=${user?.uid}`;
+        window.location.href = `/add-googleCalendar?username=user&userId=123`;
     };
 
     // Statistics calculations
@@ -714,22 +716,6 @@ const Planner = () => {
     const totalProjects = projects.length;
     const completedProjects = projects.filter(p => p.progress === 100).length;
     const totalEvents = getFilteredCalendarEvents().length;
-
-    const fetchNotes = async () => {
-        try {
-            const res = await getPlannerNotes();
-            if (res.data.status === 1) {
-                setNotes(res.data.payload || []);
-            } else {
-                setNotes([]);
-                message.error("Failed to fetch notes");
-            }
-        } catch (err) {
-            console.error(err);
-            setNotes([]);
-            message.error("Something went wrong");
-        }
-    };
 
     const handleEditNote = (note: { id: string; title: string; description: string }) => {
         noteForm.setFieldsValue({ title: note.title, description: note.description });
@@ -743,12 +729,11 @@ const Planner = () => {
         (proj) => proj.source === 'planner'
     );
 
-
     const handleDeleteNote = async (id: string) => {
         try {
             await deletePlannerNote(id);
             message.success("Note deleted");
-            fetchNotes();
+            fetchAllPlannerData();
         } catch (err) {
             message.error("Failed to delete note");
         }
@@ -759,7 +744,7 @@ const Planner = () => {
     };
 
     const handleAddEvent = () => {
-        setLoading(true);
+        // setLoading(true);
         eventForm.validateFields().then(async (values) => {
             try {
                 values.date = values.date.format("YYYY-MM-DD");
@@ -775,15 +760,15 @@ const Planner = () => {
                 }
 
                 setIsEventModalVisible(false);
-                await fetchEvents();
+                await fetchAllPlannerData();
                 eventForm.resetFields();
             } catch (err) {
                 showNotification("Error", "Something went wrong", "error");
             } finally {
-                setLoading(false);
+                // setLoading(false);
             }
         }).catch(() => {
-            setLoading(false);
+            // setLoading(false);
         });
     };
 
@@ -793,7 +778,7 @@ const Planner = () => {
         due_date: string;
         visibility: 'public' | 'private';
     }) => {
-        setLoading(true);
+        // setLoading(true);
         try {
             await addProject({
                 ...project,
@@ -804,14 +789,14 @@ const Planner = () => {
         } catch {
             // Handle error
         }
-        setLoading(false);
+        // setLoading(false);
     };
 
     const handleAddTask = async (projectId: string,
         taskData?: { title: string; due_date: string; assignee?: string }
     ) => {
         if (!taskData) return;
-        setLoading(true);
+        // setLoading(true);
         try {
             await addTask({
                 project_id: projectId,
@@ -825,11 +810,11 @@ const Planner = () => {
         } catch {
             message.error('Failed to add task');
         }
-        setLoading(false);
+        // setLoading(false);
     };
 
     const handleToggleTask = async (projectId: string, taskId: number) => {
-        setLoading(true);
+        // setLoading(true);
         const project = projects.find((p) => p.project_id === projectId);
         const task = project?.tasks.find((t) => t.id === taskId);
         if (!task) return;
@@ -840,11 +825,11 @@ const Planner = () => {
         } catch {
             message.error('Failed to toggle task');
         }
-        setLoading(false);
+        // setLoading(false);
     };
 
     const handleUpdateTask = (task: Task): void => {
-        setLoading(true);
+        // setLoading(true);
         updateTask({
             task_id: task.id,
             title: task.title,
@@ -859,11 +844,11 @@ const Planner = () => {
             .catch(() => {
                 message.error('Failed to update task');
             });
-        setLoading(false);
+        // setLoading(false);
     };
 
     const fetchProjects = async () => {
-        setLoading(true);
+        // setLoading(true);
         try {
             const projRes = await getProjects({ source: 'planner' });
             const rawProjects = projRes.data.payload.projects || [];
@@ -903,7 +888,7 @@ const Planner = () => {
         } catch (err) {
             // Handle error
         }
-        setLoading(false);
+        // setLoading(false);
     };
 
     const getDueDateByView = (activeView: string, activeDate: Date) => {
@@ -943,7 +928,7 @@ const Planner = () => {
     };
 
     const handleAddGoal = async () => {
-        setLoading(true);
+        // setLoading(true);
         goalForm.validateFields().then(async (values) => {
             try {
                 const formattedDate = dayjs(values.date).format("YYYY-MM-DD");
@@ -970,58 +955,110 @@ const Planner = () => {
 
                 const fullMessage = status ? `${prefix} ${editingGoal ? "goal updated" : "goal added"} successfully` : msg;
                 showNotification(status ? "Success" : "Error", fullMessage, status ? "success" : "error");
-                getUserPlanner(true, currentDate);
+                await fetchAllPlannerData();
                 setIsGoalModalVisible(false);
                 setEditingGoal(null);
-                fetchEvents();
                 goalForm.resetFields();
             } catch (error) {
                 showNotification("Error", "Something went wrong", "error");
             } finally {
-                setLoading(false);
+                // setLoading(false);
             }
-        }).catch(() => setLoading(false));
+        });
     };
 
-    const getUserPlanner = async (preserveView: boolean = false, preservedDate: Date | null = null) => {
-        setLoading(true);
+    // Single comprehensive fetch function
+    const fetchAllPlannerData = async (preserveView: boolean = false, preservedDate: Date | null = null) => {
+        // setLoading(true);
         try {
-            const response = await getPlanner({});
+            // Determine filter parameters
+            const show_dockly = true; // Always show Dockly data
+            const show_google = connectedAccounts.length > 0; // Show Google if accounts connected
 
-            const rawGoals = response.data.payload.goals;
-            const rawTodos = response.data.payload.todos;
+            const response = await getAllPlannerData({
+                show_dockly,
+                show_google,
+                filtered_emails: filteredAccountEmails.length > 0 ? filteredAccountEmails : undefined
+            });
 
+            const payload = response.data.payload;
+
+            // Process goals
+            const rawGoals = payload.goals || [];
             const formattedGoals = rawGoals.map((item: any) => ({
                 id: item.id,
                 text: item.goal,
-                completed: item.completed ?? item.todo_status ?? false,
+                completed: item.completed ?? item.goal_status === 2,
                 date: dayjs(item.date).format("YYYY-MM-DD"),
                 time: dayjs(item.time, ["h:mm A", "HH:mm"]).format("h:mm A"),
             }));
+            setGoals(formattedGoals);
 
+            // Process todos
+            const rawTodos = payload.todos || [];
             const formattedTodos = rawTodos.map((item: any) => ({
                 id: item.id,
                 text: item.text,
-                completed: item.todo_status ?? item.todo_status ?? false,
+                completed: item.completed ?? false,
                 priority: item.priority || "medium",
                 date: dayjs(item.date).format("YYYY-MM-DD"),
                 time: dayjs(item.time, ["h:mm A", "HH:mm"]).format("h:mm A"),
                 goal_id: item.goal_id,
             }));
-
-            setGoals(formattedGoals);
             setTodos(formattedTodos);
+
+            // Process events
+            const rawEvents = payload.events || [];
+            setCalendarEvents(transformEvents(rawEvents));
+
+            // Process connected accounts
+            const connectedAccountsData = payload.connected_accounts || [];
+            setConnectedAccounts(connectedAccountsData);
+
+            // Set up person colors
+            const newPersonColors: { [key: string]: { color: string; email: string } } = {};
+            connectedAccountsData.forEach((account: any) => {
+                const colorToUse = account.provider === "dockly" ? PRIMARY_COLOR : account.color;
+                newPersonColors[account.userName] = {
+                    color: colorToUse,
+                    email: account.email,
+                };
+            });
+            setPersonColors(newPersonColors);
+
+            // Set backup email
+            if (connectedAccountsData.length > 0) {
+                setBackup(connectedAccountsData[0].email);
+            }
+
+            // Process notes
+            const rawNotes = payload.notes || [];
+            setNotes(rawNotes);
+
+            // Update filtered account emails if needed
+            if (filteredAccountEmails.length === 0) {
+                setFilteredAccountEmails(connectedAccountsData.map((acc: any) => acc.email));
+            }
+
+            // Show connect modal if no Google accounts connected
+            if (connectedAccountsData.filter((acc: any) => acc.provider === 'google').length === 0) {
+                setIsConnectAccountModalVisible(true);
+            }
+
             if (preservedDate) {
                 setCurrentDate(preservedDate);
             }
+
         } catch (error) {
-            console.error("Error fetching goals:", error);
+            console.error("Error fetching planner data:", error);
+            message.error("Failed to load planner data");
+        } finally {
+            // setLoading(false);
         }
-        setLoading(false);
     };
 
     const handleAddTodo = () => {
-        setLoading(true);
+        // setLoading(true);
         todoForm.validateFields().then(async (values) => {
             try {
                 const formattedDate = dayjs(values.date).format("YYYY-MM-DD");
@@ -1052,66 +1089,17 @@ const Planner = () => {
                 const msg = status ? `${prefix} ${action} successfully` : backendMsg;
 
                 showNotification(status ? "Success" : "Error", msg, status ? "success" : "error");
-                await getWeeklyTodos({});
-                getUserPlanner(true, currentDate);
+                await fetchAllPlannerData();
                 setIsTodoModalVisible(false);
                 setEditingTodo(null);
-                fetchEvents();
                 todoForm.resetFields();
             } catch (error) {
                 showNotification("Error", "Something went wrong", "error");
             } finally {
-                setLoading(false);
+                // setLoading(false);
             }
-        }).catch(() => setLoading(false));
+        });
     };
-
-    const fetchEvents = async () => {
-        try {
-            setLoading(true);
-            const response = await getCalendarEvents({});
-            const rawEvents = response?.data?.payload?.events || [];
-            const connectedAccountsData = response?.data?.payload?.connected_accounts || [];
-
-            setConnectedAccounts(connectedAccountsData);
-
-            if (filteredAccountEmails.length === 0) {
-                setFilteredAccountEmails(connectedAccountsData.map((acc: any) => acc.email));
-            }
-
-            const newPersonColors: { [key: string]: { color: string; email: string } } = {};
-            connectedAccountsData.forEach((account: any) => {
-                const colorToUse = account.provider === "dockly" ? PRIMARY_COLOR : account.color;
-
-                newPersonColors[account.userName] = {
-                    color: colorToUse,
-                    email: account.email,
-                };
-            });
-
-            setPersonColors(newPersonColors);
-
-            if (connectedAccountsData.length > 0) {
-                setBackup(connectedAccountsData[0].email);
-            }
-
-            if (rawEvents.length > 0) {
-                const transformedEvents = transformEvents(rawEvents);
-                setCalendarEvents(transformedEvents);
-            }
-
-            if (connectedAccountsData.length === 0) {
-                setIsConnectAccountModalVisible(true);
-            }
-
-        } catch (error) {
-            console.error('Error fetching events:', error);
-            setIsConnectAccountModalVisible(true);
-        } finally {
-            setLoading(false);
-        }
-    };
-
 
     const transformEvents = (rawEvents: any[]): any[] => {
         return rawEvents.map((event, index) => {
@@ -1168,6 +1156,7 @@ const Planner = () => {
             };
         });
     };
+
     const handleAddProject = async () => {
         try {
             const values = await projectForm.validateFields();
@@ -1179,7 +1168,7 @@ const Planner = () => {
                 visibility: values.visibility || 'private',
             };
 
-            await handleAddProjects(newProject); // ✅ This sends it to backend with meta.visibility
+            await handleAddProjects(newProject);
 
             projectForm.resetFields();
             setIsProjectModalVisible(false);
@@ -1188,14 +1177,10 @@ const Planner = () => {
         }
     };
 
-
     useEffect(() => {
-        fetchEvents();
-        getUserPlanner(true, currentDate);
+        fetchAllPlannerData();
         fetchProjects();
-        fetchNotes();
     }, []);
-
 
     const handleToggleTodo = async (id: string) => {
         const todo = todos.find((t) => t.id === id);
@@ -1214,7 +1199,7 @@ const Planner = () => {
             // Send update to backend
             await updateWeeklyTodo({
                 id: todo.id,
-                uid: user.uid,
+                uid: userId,
                 text: todo.text,
                 date: todo.date,
                 time: todo.time,
@@ -1223,10 +1208,6 @@ const Planner = () => {
                 completed: updatedCompleted,
                 sync_to_google: false,
             });
-
-
-            // Optional: fetch updated todos again to ensure sync
-            // getUserPlanner(true, currentDate);
 
         } catch (err) {
             // Revert UI on failure
@@ -1238,8 +1219,6 @@ const Planner = () => {
             showNotification("Error", "Failed to update task status", "error");
         }
     };
-
-
 
     const handleEditGoal = (goal: any) => {
         setEditingGoal(goal);
@@ -1287,10 +1266,6 @@ const Planner = () => {
         setCurrentDate(newDate);
     };
 
-    if (loading) {
-        return <DocklyLoader />;
-    }
-
     const filteredGoalsData2 = getFilteredGoals();
     const filteredTodosData2 = getFilteredTodos();
     const filteredCalendarEvents = getFilteredCalendarEvents();
@@ -1299,11 +1274,12 @@ const Planner = () => {
         <div style={{
             minHeight: "100vh",
             backgroundColor: COLORS.background,
-            marginLeft: "50px",
-            marginTop: "60px",
+            marginLeft: "40px",
+            marginTop: "50px",
+            fontFamily: FONT_FAMILY,
         }}>
             <div style={{
-                padding: SPACING.xl,
+                padding: SPACING.lg,
                 backgroundColor: COLORS.background,
                 minHeight: "100vh",
             }}>
@@ -1312,12 +1288,12 @@ const Planner = () => {
                     onFilterChange={handleAccountFilterChange}
                     onConnectAccount={handleConnectAccount}
                 />
-                <Row gutter={[SPACING.xl, SPACING.xl]} style={{ marginBottom: SPACING.xl }}>
+                <Row gutter={[SPACING.lg, SPACING.lg]} style={{ marginBottom: SPACING.lg }}>
                     <Col span={6}>
                         <StatisticsCard
                             title="Goals"
                             value={filteredGoalsData2.length}
-                            icon={<TrophyOutlined style={{ fontSize: '18px' }} />}
+                            icon={<TrophyOutlined style={{ fontSize: '14px' }} />}
                             color={COLORS.success}
                         />
                     </Col>
@@ -1326,23 +1302,22 @@ const Planner = () => {
                             title="Tasks Progress"
                             value={completedTodos}
                             total={filteredTodosData2.length}
-                            icon={<CheckSquareOutlined style={{ fontSize: '18px' }} />}
+                            icon={<CheckSquareOutlined style={{ fontSize: '14px' }} />}
                             color={COLORS.warning}
                         />
                     </Col>
                     <Col span={6}>
                         <StatisticsCard
                             title="Active Projects"
-                            value={projects.reduce((acc, p) => acc + p.tasks.filter(t => t.completed).length, 0)} // completed tasks
-                            total={projects.reduce((acc, p) => acc + p.tasks.length, 0)} // total tasks
-                            icon={<ProjectOutlined style={{ fontSize: '18px' }} />}
+                            value={projects.reduce((acc, p) => acc + p.tasks.filter(t => t.completed).length, 0)}
+                            total={projects.reduce((acc, p) => acc + p.tasks.length, 0)}
+                            icon={<ProjectOutlined style={{ fontSize: '14px' }} />}
                             color={COLORS.accent}
-                        // showProgress
                         />
                     </Col>
                     <Col span={6}>
                         <StatisticsCard
-                            title={`Calender Events (${view})`}
+                            title={`Calendar Events (${view})`}
                             value={getFilteredCalendarEvents().filter(event => {
                                 const { start, end } = getDateRange(currentDate, view);
                                 const startDay = dayjs(start).startOf("day");
@@ -1353,18 +1328,18 @@ const Planner = () => {
 
                                 return eventStart.isBefore(endDay) && eventEnd.isAfter(startDay);
                             }).length}
-                            icon={<CalendarOutlined style={{ fontSize: '18px' }} />}
+                            icon={<CalendarOutlined style={{ fontSize: '14px' }} />}
                             color={COLORS.secondary}
                         />
                     </Col>
                 </Row>
-                <Row gutter={[SPACING.md, SPACING.md]} style={{ marginBottom: SPACING.xl }}>
+                <Row gutter={[SPACING.sm, SPACING.sm]} style={{ marginBottom: SPACING.lg }}>
                     <Col span={17}>
                         <div style={{
                             background: COLORS.surface,
-                            borderRadius: '24px',
+                            borderRadius: '16px',
                             border: `1px solid ${COLORS.borderLight}`,
-                            boxShadow: `0 8px 32px ${COLORS.shadowLight}`,
+                            boxShadow: `0 4px 16px ${COLORS.shadowLight}`,
                             overflow: 'hidden',
                         }}>
                             <CustomCalendar
@@ -1372,7 +1347,7 @@ const Planner = () => {
                                 personColors={personColors}
                                 source="planner"
                                 allowMentions={false}
-                                fetchEvents={fetchEvents}
+                                fetchEvents={fetchAllPlannerData}
                                 view={view}
                                 onViewChange={setView}
                                 goals={filteredGoalsData2}
@@ -1394,13 +1369,13 @@ const Planner = () => {
                         <div style={{
                             display: 'flex',
                             flexDirection: 'column',
-                            gap: SPACING.md,
+                            gap: SPACING.sm,
                         }}>
                             <div style={{
                                 background: COLORS.surface,
-                                borderRadius: '20px',
+                                borderRadius: '14px',
                                 border: `1px solid ${COLORS.borderLight}`,
-                                boxShadow: `0 8px 32px ${COLORS.shadowLight}`,
+                                boxShadow: `0 4px 16px ${COLORS.shadowLight}`,
                                 overflow: 'hidden',
                             }}>
                                 <MiniCalendar
@@ -1413,9 +1388,9 @@ const Planner = () => {
                             </div>
                             <div style={{
                                 background: COLORS.surface,
-                                borderRadius: '20px',
+                                borderRadius: '14px',
                                 border: `1px solid ${COLORS.borderLight}`,
-                                boxShadow: `0 8px 32px ${COLORS.shadowLight}`,
+                                boxShadow: `0 4px 16px ${COLORS.shadowLight}`,
                                 overflow: 'hidden',
                             }}>
                                 <div style={{
@@ -1432,37 +1407,35 @@ const Planner = () => {
                                     <div style={{
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: SPACING.sm,
+                                        gap: SPACING.md,
                                     }}>
                                         <div style={{
-                                            width: '40px',
-                                            height: '40px',
+                                            width: '32px',
+                                            height: '32px',
                                             background: `linear-gradient(135deg, ${COLORS.success}, ${COLORS.success}dd)`,
-                                            borderRadius: '12px',
+                                            borderRadius: '8px',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
-                                            boxShadow: `0 4px 16px ${COLORS.success}20`,
+                                            boxShadow: `0 2px 8px ${COLORS.success}20`,
                                         }}>
-                                            <TrophyOutlined style={{ color: 'white', fontSize: '20px' }} />
+                                            <TrophyOutlined style={{ color: 'white', fontSize: '16px' }} />
                                         </div>
-                                        <div style={{ display: 'flex' }}>
-                                            <Text strong style={{ fontSize: '16px', color: COLORS.text }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.xs }}>
+                                            <Text strong style={{ fontSize: '14px', color: COLORS.text, fontFamily: FONT_FAMILY }}>
                                                 {getViewTitle("Goals")}
                                             </Text>
-                                            <div style={{ marginTop: '2px', marginLeft: 7 }}>
-                                                <Badge
-                                                    count={`${filteredGoalsData2.length}`}
-                                                    style={{
-                                                        backgroundColor: COLORS.success,
-                                                        fontSize: '12px',
-                                                        fontWeight: 400,
-                                                    }}
-                                                />
-                                            </div>
+                                            <Badge
+                                                count={`${filteredGoalsData2.length}`}
+                                                style={{
+                                                    backgroundColor: COLORS.success,
+                                                    fontSize: '10px',
+                                                    fontWeight: 500,
+                                                }}
+                                            />
                                         </div>
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.sm }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.xs }}>
                                         <Button
                                             type="primary"
                                             size="small"
@@ -1474,11 +1447,17 @@ const Planner = () => {
                                             style={{
                                                 backgroundColor: COLORS.accent,
                                                 borderColor: COLORS.accent,
-                                                borderRadius: '8px',
+                                                borderRadius: '6px',
+                                                width: '28px',
+                                                height: '28px',
+                                                padding: 0,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
                                             }}
                                         />
                                         <span style={{
-                                            fontSize: '14px',
+                                            fontSize: '12px',
                                             color: COLORS.textSecondary,
                                             transform: expandedSection === "goals" ? 'rotate(180deg)' : 'rotate(0deg)',
                                             transition: 'transform 0.2s ease',
@@ -1489,9 +1468,10 @@ const Planner = () => {
                                 </div>
                                 {expandedSection === "goals" && (
                                     <div style={{
-                                        padding: SPACING.lg,
-                                        maxHeight: '250px',
+                                        padding: SPACING.md,
+                                        maxHeight: '200px',
                                         overflowY: 'auto',
+                                        fontFamily: FONT_FAMILY,
                                     }}>
                                         {[...filteredGoalsData2,
                                         ...Array(Math.max(3, filteredGoalsData2.length + 1) - filteredGoalsData2.length).fill({})]
@@ -1501,28 +1481,28 @@ const Planner = () => {
                                                     style={{
                                                         display: "flex",
                                                         alignItems: "flex-start",
-                                                        padding: SPACING.md,
+                                                        padding: SPACING.sm,
                                                         backgroundColor: COLORS.surfaceSecondary,
-                                                        borderRadius: '12px',
+                                                        borderRadius: '8px',
                                                         border: goal?.id
                                                             ? `1px solid ${COLORS.success}20`
                                                             : `2px dashed ${COLORS.borderMedium}`,
-                                                        marginBottom: SPACING.md,
+                                                        marginBottom: SPACING.sm,
                                                         transition: 'all 0.2s ease',
                                                     }}
                                                 >
                                                     <div style={{
-                                                        width: '28px',
-                                                        height: '28px',
+                                                        width: '22px',
+                                                        height: '22px',
                                                         backgroundColor: goal?.id ? COLORS.success : COLORS.borderMedium,
                                                         color: goal?.id ? COLORS.surface : COLORS.textSecondary,
                                                         borderRadius: '50%',
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
-                                                        fontSize: '14px',
-                                                        fontWeight: 700,
-                                                        marginRight: SPACING.md,
+                                                        fontSize: '11px',
+                                                        fontWeight: 600,
+                                                        marginRight: SPACING.xs,
                                                         flexShrink: 0,
                                                     }}>
                                                         {goal?.completed ? '✓' : index + 1}
@@ -1531,13 +1511,14 @@ const Planner = () => {
                                                         {goal?.id ? (
                                                             <>
                                                                 <div style={{
-                                                                    fontSize: '15px',
-                                                                    fontWeight: 600,
+                                                                    fontSize: '13px',
+                                                                    fontWeight: 500,
                                                                     color: goal.completed ? COLORS.textSecondary : COLORS.text,
                                                                     textDecoration: goal.completed ? 'line-through' : 'none',
-                                                                    marginBottom: SPACING.sm,
+                                                                    marginBottom: SPACING.xs,
                                                                     wordBreak: 'break-word',
-                                                                    lineHeight: 1.4,
+                                                                    lineHeight: 1.3,
+                                                                    fontFamily: FONT_FAMILY,
                                                                 }}>
                                                                     {goal.text}
                                                                 </div>
@@ -1547,9 +1528,10 @@ const Planner = () => {
                                                                     alignItems: 'center',
                                                                 }}>
                                                                     <Text style={{
-                                                                        fontSize: '12px',
+                                                                        fontSize: '11px',
                                                                         color: COLORS.textSecondary,
                                                                         fontWeight: 500,
+                                                                        fontFamily: FONT_FAMILY,
                                                                     }}>
                                                                         {goal.date}
                                                                     </Text>
@@ -1559,10 +1541,12 @@ const Planner = () => {
                                                                         icon={<EditOutlined />}
                                                                         onClick={() => handleEditGoal(goal)}
                                                                         style={{
-                                                                            fontSize: '12px',
+                                                                            fontSize: '10px',
                                                                             color: COLORS.textSecondary,
-                                                                            padding: '4px 6px',
-                                                                            borderRadius: '6px',
+                                                                            padding: '2px 4px',
+                                                                            borderRadius: '4px',
+                                                                            width: '20px',
+                                                                            height: '20px',
                                                                         }}
                                                                     />
                                                                 </div>
@@ -1572,9 +1556,10 @@ const Planner = () => {
                                                                 style={{
                                                                     color: COLORS.textTertiary,
                                                                     fontStyle: "italic",
-                                                                    fontSize: '15px',
+                                                                    fontSize: '13px',
                                                                     cursor: "pointer",
                                                                     fontWeight: 500,
+                                                                    fontFamily: FONT_FAMILY,
                                                                 }}
                                                                 onClick={() => setIsGoalModalVisible(true)}
                                                             >
@@ -1589,9 +1574,9 @@ const Planner = () => {
                             </div>
                             <div style={{
                                 background: COLORS.surface,
-                                borderRadius: '20px',
+                                borderRadius: '14px',
                                 border: `1px solid ${COLORS.borderLight}`,
-                                boxShadow: `0 8px 32px ${COLORS.shadowLight}`,
+                                boxShadow: `0 4px 16px ${COLORS.shadowLight}`,
                                 overflow: 'hidden',
                             }}>
                                 <div style={{
@@ -1608,36 +1593,36 @@ const Planner = () => {
                                     <div style={{
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: SPACING.sm,
+                                        gap: SPACING.md,
                                     }}>
                                         <div style={{
-                                            width: '40px',
-                                            height: '40px',
+                                            width: '32px',
+                                            height: '32px',
                                             background: `linear-gradient(135deg, ${COLORS.warning}, ${COLORS.warning}dd)`,
-                                            borderRadius: '12px',
+                                            borderRadius: '8px',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
-                                            boxShadow: `0 4px 16px ${COLORS.warning}20`,
+                                            boxShadow: `0 2px 8px ${COLORS.warning}20`,
                                         }}>
-                                            <CheckSquareOutlined style={{ color: 'white', fontSize: '20px' }} />
+                                            <CheckSquareOutlined style={{ color: 'white', fontSize: '16px' }} />
                                         </div>
                                         <div>
-                                            <Text strong style={{ fontSize: '16px', color: COLORS.text }}>
+                                            <Text strong style={{ fontSize: '14px', color: COLORS.text, fontFamily: FONT_FAMILY }}>
                                                 {getViewTitle("Tasks")}
                                             </Text>
                                             <div style={{
                                                 display: 'flex',
                                                 alignItems: 'center',
-                                                gap: SPACING.sm,
+                                                gap: SPACING.xs,
                                                 marginTop: '2px',
                                             }}>
                                                 <Badge
                                                     count={`${completedTodos}/${filteredTodosData2.length}`}
                                                     style={{
                                                         backgroundColor: COLORS.warning,
-                                                        fontSize: '12px',
-                                                        fontWeight: 600,
+                                                        fontSize: '10px',
+                                                        fontWeight: 500,
                                                     }}
                                                 />
                                                 {filteredTodosData2.length > 0 && (
@@ -1646,14 +1631,14 @@ const Planner = () => {
                                                         strokeColor={COLORS.warning}
                                                         trailColor={COLORS.borderLight}
                                                         showInfo={false}
-                                                        strokeWidth={4}
-                                                        style={{ width: '50px' }}
+                                                        strokeWidth={3}
+                                                        style={{ width: '40px' }}
                                                     />
                                                 )}
                                             </div>
                                         </div>
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.sm }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.xs }}>
                                         <Button
                                             type="primary"
                                             size="small"
@@ -1665,11 +1650,17 @@ const Planner = () => {
                                             style={{
                                                 backgroundColor: COLORS.accent,
                                                 borderColor: COLORS.accent,
-                                                borderRadius: '8px',
+                                                borderRadius: '6px',
+                                                width: '28px',
+                                                height: '28px',
+                                                padding: 0,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
                                             }}
                                         />
                                         <span style={{
-                                            fontSize: '14px',
+                                            fontSize: '12px',
                                             color: COLORS.textSecondary,
                                             transform: expandedSection === "todos" ? 'rotate(180deg)' : 'rotate(0deg)',
                                             transition: 'transform 0.2s ease',
@@ -1680,9 +1671,10 @@ const Planner = () => {
                                 </div>
                                 {expandedSection === "todos" && (
                                     <div style={{
-                                        padding: SPACING.lg,
-                                        maxHeight: '280px',
+                                        padding: SPACING.md,
+                                        maxHeight: '220px',
                                         overflowY: 'auto',
+                                        fontFamily: FONT_FAMILY,
                                     }}>
                                         {[...filteredTodosData2,
                                         ...Array(Math.max(3, filteredTodosData2.length + 1) - filteredTodosData2.length).fill({})]
@@ -1692,13 +1684,13 @@ const Planner = () => {
                                                     style={{
                                                         display: "flex",
                                                         alignItems: "center",
-                                                        padding: SPACING.md,
+                                                        padding: SPACING.sm,
                                                         backgroundColor: COLORS.surfaceSecondary,
-                                                        borderRadius: '12px',
+                                                        borderRadius: '8px',
                                                         border: todo?.id
                                                             ? `1px solid ${getPriorityColor(todo.priority)}20`
                                                             : `2px dashed ${COLORS.borderMedium}`,
-                                                        marginBottom: SPACING.md,
+                                                        marginBottom: SPACING.xs,
                                                         transition: 'all 0.2s ease',
                                                     }}
                                                 >
@@ -1708,19 +1700,20 @@ const Planner = () => {
                                                                 checked={todo.completed}
                                                                 onChange={() => handleToggleTodo(todo.id)}
                                                                 style={{
-                                                                    marginRight: SPACING.md,
-                                                                    transform: 'scale(1.1)',
+                                                                    marginRight: SPACING.xs,
+                                                                    transform: 'scale(0.9)',
                                                                 }}
                                                             />
                                                             <div style={{ flex: 1, minWidth: 0 }}>
                                                                 <div style={{
-                                                                    fontSize: '15px',
-                                                                    fontWeight: 600,
+                                                                    fontSize: '13px',
+                                                                    fontWeight: 500,
                                                                     color: todo.completed ? COLORS.textSecondary : COLORS.text,
                                                                     textDecoration: todo.completed ? 'line-through' : 'none',
-                                                                    marginBottom: SPACING.sm,
+                                                                    marginBottom: SPACING.xs,
                                                                     wordBreak: 'break-word',
-                                                                    lineHeight: 1.4,
+                                                                    lineHeight: 1.3,
+                                                                    fontFamily: FONT_FAMILY,
                                                                 }}>
                                                                     {todo.text}
                                                                 </div>
@@ -1730,20 +1723,21 @@ const Planner = () => {
                                                                     alignItems: 'center',
                                                                 }}>
                                                                     <Text style={{
-                                                                        fontSize: '12px',
+                                                                        fontSize: '11px',
                                                                         color: COLORS.textSecondary,
                                                                         fontWeight: 500,
+                                                                        fontFamily: FONT_FAMILY,
                                                                     }}>
                                                                         {todo.date}
                                                                     </Text>
                                                                     <div style={{
                                                                         display: 'flex',
                                                                         alignItems: 'center',
-                                                                        gap: SPACING.sm,
+                                                                        gap: SPACING.xs,
                                                                     }}>
                                                                         <div style={{
-                                                                            width: '8px',
-                                                                            height: '8px',
+                                                                            width: '6px',
+                                                                            height: '6px',
                                                                             borderRadius: '50%',
                                                                             backgroundColor: getPriorityColor(todo.priority),
                                                                         }} />
@@ -1753,10 +1747,12 @@ const Planner = () => {
                                                                             icon={<EditOutlined />}
                                                                             onClick={() => handleEditTodo(todo)}
                                                                             style={{
-                                                                                fontSize: '12px',
+                                                                                fontSize: '10px',
                                                                                 color: COLORS.textSecondary,
-                                                                                padding: '4px 6px',
-                                                                                borderRadius: '6px',
+                                                                                padding: '2px 4px',
+                                                                                borderRadius: '4px',
+                                                                                width: '20px',
+                                                                                height: '20px',
                                                                             }}
                                                                         />
                                                                     </div>
@@ -1768,10 +1764,11 @@ const Planner = () => {
                                                             style={{
                                                                 color: COLORS.textTertiary,
                                                                 fontStyle: "italic",
-                                                                fontSize: '15px',
+                                                                fontSize: '13px',
                                                                 cursor: "pointer",
-                                                                paddingLeft: SPACING.lg,
+                                                                paddingLeft: SPACING.sm,
                                                                 fontWeight: 500,
+                                                                fontFamily: FONT_FAMILY,
                                                             }}
                                                             onClick={() => setIsTodoModalVisible(true)}
                                                         >
@@ -1786,8 +1783,8 @@ const Planner = () => {
                         </div>
                     </Col>
                 </Row>
-                <Row gutter={[SPACING.md, SPACING.md]}>
-                    <Col span={16}>
+                <Row gutter={[SPACING.xs, SPACING.xs]}>
+                    <Col span={17}>
                         <FamilyTasksComponent
                             title="Projects"
                             projects={filteredProjects}
@@ -1801,51 +1798,55 @@ const Planner = () => {
                             showAssigneeField={false}
                         />
                     </Col>
-                    <Col span={8}>
+                    <Col span={7}>
                         <NotesLists currentHub="planner" />
+                        {/* <div style={{ marginLeft: '0px' }}>
+                        </div> */}
                     </Col>
                 </Row>
+
+                {/* Modals */}
                 <ConnectAccountModal
                     isVisible={isConnectAccountModalVisible}
                     onClose={() => setIsConnectAccountModalVisible(false)}
                     onConnect={handleConnectAccount}
                 />
+
                 <Modal
                     title={
                         <div style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: SPACING.sm,
-                            fontSize: '20px',
-                            fontWeight: 700,
+                            gap: SPACING.xs,
+                            fontSize: '16px',
+                            fontWeight: 600,
+                            fontFamily: FONT_FAMILY,
                         }}>
                             <div style={{
-                                width: '36px',
-                                height: '36px',
+                                width: '30px',
+                                height: '30px',
                                 background: `linear-gradient(135deg, ${COLORS.accent}, ${COLORS.accent}dd)`,
-                                borderRadius: '10px',
+                                borderRadius: '8px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                             }}>
-                                <CalendarOutlined style={{ color: 'white', fontSize: '18px' }} />
+                                <CalendarOutlined style={{ color: 'white', fontSize: '14px' }} />
                             </div>
                             Add New Event
                         </div>
                     }
                     open={isEventModalVisible}
                     onCancel={() => setIsEventModalVisible(false)}
-                    maskClosable={!loading}
-                    closable={!loading}
                     footer={[
                         <Button
                             key="cancel"
                             onClick={() => setIsEventModalVisible(false)}
-                            disabled={loading}
                             style={{
-                                borderRadius: '10px',
-                                height: '44px',
-                                fontWeight: 600,
+                                borderRadius: '6px',
+                                height: '36px',
+                                fontWeight: 500,
+                                fontFamily: FONT_FAMILY,
                             }}
                         >
                             Cancel
@@ -1853,55 +1854,56 @@ const Planner = () => {
                         <Button
                             key="submit"
                             type="primary"
-                            loading={loading}
                             onClick={handleAddEvent}
-                            disabled={loading}
                             style={{
                                 backgroundColor: COLORS.accent,
                                 borderColor: COLORS.accent,
-                                borderRadius: '10px',
-                                height: '44px',
-                                fontWeight: 600,
+                                borderRadius: '6px',
+                                height: '36px',
+                                fontWeight: 500,
+                                fontFamily: FONT_FAMILY,
                             }}
                         >
                             Add Event
                         </Button>,
                     ]}
-                    width={600}
+                    width={500}
                 >
-                    <Form form={eventForm} layout="vertical" style={{ marginTop: SPACING.lg }}>
+                    <Form form={eventForm} layout="vertical" style={{ marginTop: SPACING.sm, fontFamily: FONT_FAMILY }}>
                         <Form.Item
                             name="title"
-                            label={<Text strong style={{ fontSize: '15px' }}>Event Title</Text>}
+                            label={<Text strong style={{ fontSize: '13px', fontFamily: FONT_FAMILY }}>Event Title</Text>}
                             rules={[{ required: true, message: "Please enter the event title" }]}
                         >
                             <Input
                                 placeholder="Event title"
                                 style={{
-                                    borderRadius: '10px',
-                                    height: '44px',
-                                    fontSize: '15px',
+                                    borderRadius: '6px',
+                                    height: '36px',
+                                    fontSize: '13px',
+                                    fontFamily: FONT_FAMILY,
                                 }}
                             />
                         </Form.Item>
                         <Form.Item
                             name="date"
-                            label={<Text strong style={{ fontSize: '15px' }}>Date</Text>}
+                            label={<Text strong style={{ fontSize: '13px', fontFamily: FONT_FAMILY }}>Date</Text>}
                             rules={[{ required: true, message: "Please select a date" }]}
                             initialValue={dayjs()}
                         >
                             <DatePicker
                                 style={{
                                     width: "100%",
-                                    borderRadius: '10px',
-                                    height: '44px',
+                                    borderRadius: '6px',
+                                    height: '36px',
+                                    fontFamily: FONT_FAMILY,
                                 }}
                                 disabledDate={(current) => current && current < dayjs().startOf("day")}
                             />
                         </Form.Item>
                         <Form.Item
                             name="time"
-                            label={<Text strong style={{ fontSize: '15px' }}>Time</Text>}
+                            label={<Text strong style={{ fontSize: '13px', fontFamily: FONT_FAMILY }}>Time</Text>}
                             rules={[{ required: true, message: "Please select a time" }]}
                             initialValue={dayjs().add(10, "minute").startOf("minute")}
                         >
@@ -1912,114 +1914,9 @@ const Planner = () => {
                                 showSecond={false}
                                 style={{
                                     width: "100%",
-                                    borderRadius: '10px',
-                                    height: '44px',
-                                }}
-                            />
-                        </Form.Item>
-                    </Form>
-                </Modal>
-                <Modal
-                    title={
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: SPACING.sm,
-                            fontSize: '20px',
-                            fontWeight: 700,
-                        }}>
-                            <div style={{
-                                width: '36px',
-                                height: '36px',
-                                background: `linear-gradient(135deg, ${COLORS.accent}, ${COLORS.accent}dd)`,
-                                borderRadius: '10px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                            }}>
-                                <FileTextOutlined style={{ color: 'white', fontSize: '18px' }} />
-                            </div>
-                            {editingNote ? "Edit Note" : "Add New Note"}
-                        </div>
-                    }
-                    open={isNoteModalVisible}
-                    onCancel={() => {
-                        noteForm.resetFields();
-                        setIsNoteModalVisible(false);
-                    }}
-                    footer={[
-                        <Button
-                            key="cancel"
-                            onClick={() => {
-                                noteForm.resetFields();
-                                setIsNoteModalVisible(false);
-                            }}
-                            style={{
-                                borderRadius: '10px',
-                                height: '44px',
-                                fontWeight: 600,
-                            }}
-                        >
-                            Cancel
-                        </Button>,
-                        <Button
-                            key="submit"
-                            type="primary"
-                            loading={loading}
-                            onClick={() => {
-                                noteForm.validateFields().then(async (values) => {
-                                    if (editingNote) {
-                                        await updatePlannerNote({ id: editingNote.id, ...values });
-                                        message.success("Note updated");
-                                    } else {
-                                        await addPlannerNotes(values);
-                                        message.success("Note added");
-                                    }
-                                    fetchNotes();
-                                    noteForm.resetFields();
-                                    setEditingNote(null);
-                                    setIsNoteModalVisible(false);
-                                });
-                            }}
-                            style={{
-                                backgroundColor: COLORS.accent,
-                                borderColor: COLORS.accent,
-                                borderRadius: '10px',
-                                height: '44px',
-                                fontWeight: 600,
-                            }}
-                        >
-                            {editingNote ? "Update Note" : "Add Note"}
-                        </Button>
-                    ]}
-                    width={600}
-                >
-                    <Form form={noteForm} layout="vertical" style={{ marginTop: SPACING.lg }}>
-                        <Form.Item
-                            name="title"
-                            label={<Text strong style={{ fontSize: '15px' }}>Note Title</Text>}
-                            rules={[{ required: true, message: "Please enter the note title" }]}
-                        >
-                            <Input
-                                placeholder="Note title"
-                                style={{
-                                    borderRadius: '10px',
-                                    height: '44px',
-                                    fontSize: '15px',
-                                }}
-                            />
-                        </Form.Item>
-                        <Form.Item
-                            name="description"
-                            label={<Text strong style={{ fontSize: '15px' }}>Description</Text>}
-                            rules={[{ required: true, message: "Please enter the note description" }]}
-                        >
-                            <Input.TextArea
-                                rows={4}
-                                placeholder="Note description"
-                                style={{
-                                    borderRadius: '10px',
-                                    fontSize: '15px',
+                                    borderRadius: '6px',
+                                    height: '36px',
+                                    fontFamily: FONT_FAMILY,
                                 }}
                             />
                         </Form.Item>
@@ -2031,20 +1928,21 @@ const Planner = () => {
                         <div style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: SPACING.sm,
-                            fontSize: '20px',
-                            fontWeight: 700,
+                            gap: SPACING.xs,
+                            fontSize: '16px',
+                            fontWeight: 600,
+                            fontFamily: FONT_FAMILY,
                         }}>
                             <div style={{
-                                width: '36px',
-                                height: '36px',
+                                width: '30px',
+                                height: '30px',
                                 background: `linear-gradient(135deg, ${COLORS.success}, ${COLORS.success}dd)`,
-                                borderRadius: '10px',
+                                borderRadius: '8px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                             }}>
-                                <TrophyOutlined style={{ color: 'white', fontSize: '18px' }} />
+                                <TrophyOutlined style={{ color: 'white', fontSize: '14px' }} />
                             </div>
                             {editingGoal ? "Edit Goal" : "Add New Goal"}
                         </div>
@@ -2055,88 +1953,89 @@ const Planner = () => {
                         setEditingGoal(null);
                         goalForm.resetFields();
                     }}
-                    maskClosable={!loading}
-                    closable={!loading}
                     footer={[
                         <Button key="cancel" onClick={() => {
                             setIsGoalModalVisible(false);
                             setEditingGoal(null);
                             goalForm.resetFields();
-                        }} disabled={loading}
+                        }}
                             style={{
-                                borderRadius: '10px',
-                                height: '44px',
-                                fontWeight: 600,
+                                borderRadius: '6px',
+                                height: '36px',
+                                fontWeight: 500,
+                                fontFamily: FONT_FAMILY,
                             }}>
                             Cancel
                         </Button>,
                         <Button
                             key="submit"
                             type="primary"
-                            loading={loading}
                             onClick={handleAddGoal}
-                            disabled={loading}
                             style={{
                                 backgroundColor: COLORS.accent,
                                 borderColor: COLORS.accent,
-                                borderRadius: '10px',
-                                height: '44px',
-                                fontWeight: 600,
+                                borderRadius: '6px',
+                                height: '36px',
+                                fontWeight: 500,
+                                fontFamily: FONT_FAMILY,
                             }}
                         >
                             {editingGoal ? "Update Goal" : "Add Goal"}
                         </Button>,
                     ]}
-                    width={600}
+                    width={500}
                 >
-                    <Form form={goalForm} layout="vertical" style={{ marginTop: SPACING.lg }}>
+                    <Form form={goalForm} layout="vertical" style={{ marginTop: SPACING.sm, fontFamily: FONT_FAMILY }}>
                         <Form.Item
                             name="goal"
-                            label={<Text strong style={{ fontSize: '15px' }}>Goal</Text>}
+                            label={<Text strong style={{ fontSize: '13px', fontFamily: FONT_FAMILY }}>Goal</Text>}
                             rules={[{ required: true, message: "Please enter your goal" }]}
                         >
                             <Input
                                 placeholder="Enter your Goal.."
                                 style={{
-                                    borderRadius: '10px',
-                                    height: '44px',
-                                    fontSize: '15px',
+                                    borderRadius: '6px',
+                                    height: '36px',
+                                    fontSize: '13px',
+                                    fontFamily: FONT_FAMILY,
                                 }}
                             />
                         </Form.Item>
                         <Form.Item
                             name="date"
-                            label={<Text strong style={{ fontSize: '15px' }}>Due Date</Text>}
+                            label={<Text strong style={{ fontSize: '13px', fontFamily: FONT_FAMILY }}>Due Date</Text>}
                             rules={[{ required: true, message: "Please select a due date" }]}
-                            initialValue={dayjs(getDueDateByView(view, currentDate))} // default value
+                            initialValue={dayjs(getDueDateByView(view, currentDate))}
                         >
                             <DatePicker
                                 format="YYYY-MM-DD"
                                 disabledDate={(current) => current && current < dayjs().startOf('day')}
-                                style={{ borderRadius: '10px', height: '44px', width: '100%' }}
+                                style={{ borderRadius: '6px', height: '36px', width: '100%', fontFamily: FONT_FAMILY }}
                             />
                         </Form.Item>
                     </Form>
                 </Modal>
+
                 <Modal
                     title={
                         <div style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: SPACING.sm,
-                            fontSize: '20px',
-                            fontWeight: 700,
+                            gap: SPACING.xs,
+                            fontSize: '16px',
+                            fontWeight: 600,
+                            fontFamily: FONT_FAMILY,
                         }}>
                             <div style={{
-                                width: '36px',
-                                height: '36px',
+                                width: '30px',
+                                height: '30px',
                                 background: `linear-gradient(135deg, ${COLORS.warning}, ${COLORS.warning}dd)`,
-                                borderRadius: '10px',
+                                borderRadius: '8px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                             }}>
-                                <CheckSquareOutlined style={{ color: 'white', fontSize: '18px' }} />
+                                <CheckSquareOutlined style={{ color: 'white', fontSize: '14px' }} />
                             </div>
                             {editingTodo ? "Edit Task" : "Add New Task"}
                         </div>
@@ -2147,74 +2046,72 @@ const Planner = () => {
                         setEditingTodo(null);
                         todoForm.resetFields();
                     }}
-                    maskClosable={!loading}
-                    closable={!loading}
                     footer={[
                         <Button key="cancel" onClick={() => {
                             setIsTodoModalVisible(false);
                             setEditingTodo(null);
                             todoForm.resetFields();
-                        }} disabled={loading}
+                        }}
                             style={{
-                                borderRadius: '10px',
-                                height: '44px',
-                                fontWeight: 600,
+                                borderRadius: '6px',
+                                height: '36px',
+                                fontWeight: 500,
+                                fontFamily: FONT_FAMILY,
                             }}>
                             Cancel
                         </Button>,
                         <Button
                             key="submit"
                             type="primary"
-                            loading={loading}
                             onClick={handleAddTodo}
-                            disabled={loading}
                             style={{
                                 backgroundColor: COLORS.accent,
                                 borderColor: COLORS.accent,
-                                borderRadius: '10px',
-                                height: '44px',
-                                fontWeight: 600,
+                                borderRadius: '6px',
+                                height: '36px',
+                                fontWeight: 500,
+                                fontFamily: FONT_FAMILY,
                             }}
                         >
                             {editingTodo ? "Update Task" : "Add Task"}
                         </Button>,
                     ]}
-                    width={600}
+                    width={500}
                 >
-                    <Form form={todoForm} layout="vertical" style={{ marginTop: SPACING.lg }}>
+                    <Form form={todoForm} layout="vertical" style={{ marginTop: SPACING.sm, fontFamily: FONT_FAMILY }}>
                         <Form.Item
                             name="text"
-                            label={<Text strong style={{ fontSize: '15px' }}>Task</Text>}
+                            label={<Text strong style={{ fontSize: '13px', fontFamily: FONT_FAMILY }}>Task</Text>}
                             rules={[{ required: true, message: "Please enter the task" }]}
                         >
                             <Input
                                 placeholder="Task title"
-                                style={{ borderRadius: '10px', height: '44px', fontSize: '15px' }}
+                                style={{ borderRadius: '6px', height: '36px', fontSize: '13px', fontFamily: FONT_FAMILY }}
                             />
                         </Form.Item>
 
                         <Space direction="horizontal" style={{ width: '100%' }}>
                             <Form.Item
                                 name="date"
-                                label={<Text strong style={{ fontSize: '15px' }}>Due Date</Text>}
+                                label={<Text strong style={{ fontSize: '13px', fontFamily: FONT_FAMILY }}>Due Date</Text>}
                                 rules={[{ required: true, message: "Please select due date" }]}
                                 initialValue={dayjs(getDueDateByView(view, currentDate))}
                             >
                                 <DatePicker
                                     format="YYYY-MM-DD"
                                     disabledDate={(current) => current && current < dayjs().startOf('day')}
-                                    style={{ borderRadius: '10px', height: '44px' }}
+                                    style={{ borderRadius: '6px', height: '36px', fontFamily: FONT_FAMILY }}
                                 />
                             </Form.Item>
 
                             <Form.Item
                                 name="goal_id"
-                                label={<Text strong style={{ fontSize: '15px' }}>Goal</Text>}
+                                label={<Text strong style={{ fontSize: '13px', fontFamily: FONT_FAMILY }}>Goal</Text>}
                             >
                                 <Select
                                     placeholder="Select a goal (optional)"
                                     allowClear
-                                    style={{ borderRadius: '10px', minWidth: '200px', height: '44px' }}
+                                    style={{ borderRadius: '6px', minWidth: '180px', height: '36px', fontFamily: FONT_FAMILY }}
                                 >
                                     {getAvailableGoals().map((goal) => (
                                         <Select.Option key={goal.id} value={goal.id}>
@@ -2227,11 +2124,11 @@ const Planner = () => {
 
                         <Form.Item
                             name="priority"
-                            label={<Text strong style={{ fontSize: '15px' }}>Priority</Text>}
+                            label={<Text strong style={{ fontSize: '13px', fontFamily: FONT_FAMILY }}>Priority</Text>}
                             rules={[{ required: true, message: "Please select a priority" }]}
                             initialValue="medium"
                         >
-                            <Select style={{ borderRadius: '10px' }}>
+                            <Select style={{ borderRadius: '6px', fontFamily: FONT_FAMILY }}>
                                 <Select.Option value="low">Low</Select.Option>
                                 <Select.Option value="medium">Medium</Select.Option>
                                 <Select.Option value="high">High</Select.Option>

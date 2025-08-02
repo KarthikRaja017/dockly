@@ -31,6 +31,7 @@ family_api.add_resource(AddNotes, "/family/add/notes")
 family_api.add_resource(GetNotes, "/family/get/notes")
 family_api.add_resource(UpdateNote, "/family/update/note")
 family_api.add_resource(DeleteNote, "/family/delete/note")
+family_api.add_resource(ShareNote, "/family/share/note")
 
 
 family_api.add_resource(AddNoteCategory, "/family/add/note_category")
@@ -84,3 +85,7 @@ family_api.add_resource(GetMedicalRecordFiles, "/get/family-medical-files")
 family_api.add_resource(AddBeneficiary, "/add/beneficiary")
 family_api.add_resource(GetBeneficiaries, "/get/beneficiaries")
 family_api.add_resource(UpdateBeneficiary, "/update/beneficiary")
+
+family_api.add_resource(AddDevice, "/add/device")
+family_api.add_resource(GetDevices, "/get/devices")
+family_api.add_resource(UpdateDevice, "/update/device")

@@ -1,3 +1,4 @@
+# Route registrations
 from datetime import date, timedelta, datetime
 from email.message import EmailMessage
 import json
@@ -42,6 +43,329 @@ light_colors = [
 ]
 
 
+# New comprehensive endpoint for all planner data
+class GetPlannerDataComprehensive(Resource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        # Get filter parameters
+        show_dockly = request.args.get("show_dockly", "true").lower() == "true"
+        # show_google = request.args.get("show_google", "true").lower() == "true"
+        filtered_emails = request.args.getlist("filtered_emails[]")
+
+        # Initialize response data
+        response_data = {
+            "goals": [],
+            "todos": [],
+            "events": [],
+            "notes": [],
+            "connected_accounts": [],
+            "person_colors": {},
+            "filters": {
+                "show_dockly": show_dockly,
+                # "show_google": show_google,
+                "filtered_emails": filtered_emails,
+            },
+        }
+
+        try:
+            # Fetch all data in parallel queries for better performance
+            query_results = DBHelper.find_multi(
+                {
+                    "weekly_goals": {
+                        "filters": {"user_id": uid, "status": Status.ACTIVE.value},
+                        "select_fields": [
+                            "id",
+                            "goal",
+                            "date",
+                            "time",
+                            "priority",
+                            "goal_status",
+                            "status",
+                            "google_calendar_id",
+                            "synced_to_google",
+                        ],
+                    },
+                    "weekly_todos": {
+                        "filters": {"user_id": uid},
+                        "select_fields": [
+                            "id",
+                            "text",
+                            "date",
+                            "time",
+                            "completed",
+                            "priority",
+                            "goal_id",
+                            "google_calendar_id",
+                            "synced_to_google",
+                        ],
+                    },
+                    "events": {
+                        "filters": {"user_id": uid, "is_active": 1},
+                        "select_fields": [
+                            "id",
+                            "title",
+                            "date",
+                            # "time",
+                            "google_calendar_id",
+                            "synced_to_google",
+                        ],
+                    },
+                    # "notes": {
+                    #     "filters": {"user_id": uid},
+                    #     "select_fields": [
+                    #         "id",
+                    #         "title",
+                    #         "description",
+                    #         "date",
+                    #         "status",
+                    #         "created_at",
+                    #         "updated_at",
+                    #     ],
+                    # },
+                    "connected_accounts": {
+                        "filters": {"user_id": uid, "is_active": Status.ACTIVE.value},
+                        "select_fields": [
+                            "access_token",
+                            "refresh_token",
+                            "email",
+                            "provider",
+                            "user_object",
+                        ],
+                    },
+                }
+            )
+
+            # Process goals
+            if show_dockly:
+                response_data["goals"] = query_results.get("weekly_goals", [])
+
+            # Process todos
+            if show_dockly:
+                response_data["todos"] = query_results.get("weekly_todos", [])
+
+            # Process notes
+            # if show_dockly:
+            #     raw_notes = query_results.get("notes", [])
+            #     formatted_notes = []
+            #     for note in raw_notes:
+            #         formatted_note = dict(note)
+            #         # Convert date objects to strings
+            #         for field in ["date", "created_at", "updated_at"]:
+            #             if formatted_note.get(field) and hasattr(
+            #                 formatted_note[field], "isoformat"
+            #             ):
+            #                 formatted_note[field] = formatted_note[field].isoformat()
+            #         formatted_notes.append(formatted_note)
+            #     response_data["notes"] = formatted_notes
+
+            # Process connected accounts and events
+            connected_accounts_data = query_results.get("connected_accounts", [])
+
+            # Add Dockly as virtual account if enabled
+            if show_dockly:
+                dockly_account = {
+                    "provider": "dockly",
+                    "email": user.get("email", "dockly@user.com"),
+                    "color": "#10B981",
+                    "userName": user.get("user_name", "Dockly User"),
+                    "displayName": user.get("user_name", "Dockly User"),
+                }
+                response_data["connected_accounts"].append(dockly_account)
+
+            # Process Google accounts
+            all_events = []
+            if connected_accounts_data:
+                for i, cred_data in enumerate(connected_accounts_data):
+                    provider = cred_data.get("provider", "google").lower()
+                    email = cred_data.get("email")
+                    color = light_colors[i % len(light_colors)]
+
+                    try:
+                        user_object_data = json.loads(
+                            cred_data.get("user_object", "{}")
+                        )
+                    except:
+                        user_object_data = {}
+
+                    # Add to connected accounts
+                    account_info = {
+                        "provider": provider,
+                        "email": email,
+                        "color": color,
+                        "userName": user_object_data.get("name", email.split("@")[0]),
+                        "displayName": user_object_data.get(
+                            "name", email.split("@")[0]
+                        ),
+                    }
+                    response_data["connected_accounts"].append(account_info)
+
+                    # Set up person colors
+                    response_data["person_colors"][account_info["userName"]] = {
+                        "color": color,
+                        "email": email,
+                    }
+
+                    # Fetch Google Calendar events
+                    if provider == "google":
+                        try:
+                            google_events = (
+                                self._fetch_google_calendar_events_for_account(
+                                    cred_data
+                                )
+                            )
+                            for event in google_events:
+                                event["source_email"] = email
+                                event["account_color"] = color
+                                event["provider"] = provider
+                            all_events.extend(google_events)
+                        except Exception as e:
+                            print(f"Error fetching Google events for {email}: {e}")
+
+            # Process Dockly events if enabled
+            if show_dockly:
+                dockly_events = []
+
+                # Add goals as events
+                for goal in response_data["goals"]:
+                    dockly_events.append(
+                        {
+                            "id": f"goal_{goal.get('id')}",
+                            "summary": goal.get("goal"),
+                            "date": self._format_date(goal.get("date")),
+                            "time": goal.get("time"),
+                            "type": "goal",
+                            "source": "dockly",
+                            "source_email": user.get("email", "dockly@user.com"),
+                            "provider": "dockly",
+                            "account_color": "#10B981",
+                            "priority": self._get_priority_text(goal.get("priority")),
+                            "status": self._get_goal_status_text(
+                                goal.get("goal_status")
+                            ),
+                            "synced_to_google": goal.get("synced_to_google", False),
+                        }
+                    )
+
+                # Add todos as events
+                for todo in response_data["todos"]:
+                    dockly_events.append(
+                        {
+                            "id": f"todo_{todo.get('id')}",
+                            "summary": todo.get("text"),
+                            "date": self._format_date(todo.get("date")),
+                            "time": todo.get("time"),
+                            "type": "todo",
+                            "source": "dockly",
+                            "source_email": user.get("email", "dockly@user.com"),
+                            "provider": "dockly",
+                            "account_color": "#10B981",
+                            "priority": todo.get("priority", "medium"),
+                            "completed": todo.get("completed", False),
+                            "synced_to_google": todo.get("synced_to_google", False),
+                        }
+                    )
+
+                # Add manual events
+                for event in query_results.get("events", []):
+                    dockly_events.append(
+                        {
+                            "id": f"event_{event.get('id')}",
+                            "summary": event.get("title"),
+                            "date": self._format_date(event.get("date")),
+                            "time": event.get("time") or "12:00 PM",
+                            "type": "event",
+                            "source": "dockly",
+                            "source_email": user.get("email", "dockly@user.com"),
+                            "provider": "dockly",
+                            "account_color": "#10B981",
+                            "synced_to_google": event.get("synced_to_google", False),
+                        }
+                    )
+
+                all_events.extend(dockly_events)
+
+            # Filter events by email if specified
+            if filtered_emails:
+                all_events = [
+                    e for e in all_events if e.get("source_email") in filtered_emails
+                ]
+
+            response_data["events"] = all_events
+
+            return {
+                "status": 1,
+                "message": "Planner data fetched successfully",
+                "payload": response_data,
+            }
+
+        except Exception as e:
+            print(f"Error in GetPlannerDataComprehensive: {e}")
+            return {
+                "status": 0,
+                "message": "Failed to fetch planner data",
+                "payload": response_data,
+                "error": str(e),
+            }
+
+    def _fetch_google_calendar_events_for_account(self, cred_data):
+        """Fetch Google Calendar events for a specific account"""
+        try:
+            creds = Credentials(
+                token=cred_data["access_token"],
+                refresh_token=cred_data["refresh_token"],
+                token_uri=uri,
+                client_id=CLIENT_ID,
+                client_secret=CLIENT_SECRET,
+                scopes=SCOPE.split(),
+            )
+
+            service = build("calendar", "v3", credentials=creds)
+
+            # Get events from the past week to future
+            time_min = (datetime.utcnow() - timedelta(days=7)).isoformat() + "Z"
+
+            events_result = (
+                service.events()
+                .list(
+                    calendarId="primary",
+                    timeMin=time_min,
+                    maxResults=100,
+                    singleEvents=True,
+                    orderBy="startTime",
+                )
+                .execute()
+            )
+
+            return events_result.get("items", [])
+
+        except Exception as e:
+            print(f"Error fetching Google Calendar events: {e}")
+            return []
+
+    def _format_date(self, date_obj):
+        """Helper method to format date objects"""
+        if isinstance(date_obj, (datetime, date)):
+            return date_obj.strftime("%Y-%m-%d")
+        elif isinstance(date_obj, str):
+            try:
+                parsed_date = datetime.strptime(date_obj, "%Y-%m-%d")
+                return parsed_date.strftime("%Y-%m-%d")
+            except:
+                return date_obj
+        return str(date_obj) if date_obj else ""
+
+    def _get_goal_status_text(self, status_value):
+        """Convert goal status enum to text"""
+        status_map = {0: "Yet to Start", 1: "In Progress", 2: "Completed"}
+        return status_map.get(status_value, "Yet to Start")
+
+    def _get_priority_text(self, priority_value):
+        """Convert priority enum to text"""
+        priority_map = {0: "low", 1: "medium", 2: "high"}
+        return priority_map.get(priority_value, "low")
+
+
+# Keep all existing classes unchanged
 class AddWeeklyGoals(Resource):
     @auth_required(isOptional=True)
     def post(self, uid, user):

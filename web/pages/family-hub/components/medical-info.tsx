@@ -54,11 +54,11 @@ type ProviderField = {
 
 interface MedicalInfoSectionProps {
     memberId?: string | string[];
+    isEditing?: boolean;
 }
 
-const MedicalInfoPage: React.FC<MedicalInfoSectionProps> = ({ memberId }) => {
+const MedicalInfoPage: React.FC<MedicalInfoSectionProps> = ({ memberId, isEditing = false }) => {
     const [form] = Form.useForm();
-    const [isEditing, setIsEditing] = useState(false);
     const [providerModalVisible, setProviderModalVisible] = useState(false);
     const [providerFields, setProviderFields] = useState<ProviderField[]>([]);
     const [providerForm] = Form.useForm();
@@ -157,7 +157,7 @@ const MedicalInfoPage: React.FC<MedicalInfoSectionProps> = ({ memberId }) => {
 
             if (personalRes.status === 1) {
                 message.success('Medical information saved');
-                setIsEditing(false);
+                // Edit state is now controlled by parent
             } else {
                 message.error(personalRes.message);
             }
@@ -410,10 +410,9 @@ const MedicalInfoPage: React.FC<MedicalInfoSectionProps> = ({ memberId }) => {
         <>
             <Card
                 title={<><MedicineBoxOutlined /> Medical Information</>}
-                extra={isEditing
-                    ? <Button type="primary" onClick={handleSave}>Save</Button>
-                    : <EditOutlined onClick={() => setIsEditing(true)} style={{ color: '#1890ff', cursor: 'pointer' }} />
-                }
+                extra={isEditing && (
+                    <Button type="primary" onClick={handleSave}>Save</Button>
+                )}
                 style={{ borderRadius: 12 }}
             >
                 <Form form={form} layout="vertical">

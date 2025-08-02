@@ -1,5 +1,4 @@
 'use client';
-
 import React, { useState, useEffect } from 'react';
 import {
     Card, Tabs, Button, Typography, Space, Modal, Form, Input, Select, message, Alert, Tooltip
@@ -9,7 +8,7 @@ import {
     LaptopOutlined
 } from '@ant-design/icons';
 import { useParams } from 'next/navigation';
-import { addAccountPassword, getAccountPasswords, resolveFamilyMemberUserId, updateAccountPassword } from '../../../services/family';
+import { addAccountPassword, addDevice, getAccountPasswords, getDevices, resolveFamilyMemberUserId, updateAccountPassword, updateDevice } from '../../../services/family';
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
 
@@ -74,13 +73,27 @@ const AssetsDevicesSection: React.FC<AssetsDevicesSectionProps> = ({ memberId })
     const [showPasswordIndex, setShowPasswordIndex] = useState<number | null>(null);
     const [resolvedUserId, setResolvedUserId] = useState<string | null>(null);
     const [showPasswordId, setShowPasswordId] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState('accounts');
+    const [deviceModalVisible, setDeviceModalVisible] = useState(false);
+    const [deviceForm] = Form.useForm();
+    const [editingDevice, setEditingDevice] = useState<any>(null);
+    const [devices, setDevices] = useState<any[]>([]);
+
     const params = useParams();
     const id = params?.id;
+    const fetchDevices = async (finalUserId?: string) => {
+        const userIdToUse = finalUserId || resolvedUserId;
+        if (!userIdToUse) return;
+
+        const res = await getDevices({ userId: userIdToUse });
+        if (res.status === 1) {
+            setDevices(res.payload || []);
+        }
+    };
 
     useEffect(() => {
         const fetchData = async () => {
             if (!memberId) return;
-
             let finalUserId = memberId;
 
             if (!finalUserId.startsWith('USER')) {
@@ -90,19 +103,34 @@ const AssetsDevicesSection: React.FC<AssetsDevicesSectionProps> = ({ memberId })
 
             setResolvedUserId(finalUserId);
 
-            const fetched = await getAccountPasswords({ userId: finalUserId });
-            if (fetched.status === 1 && fetched.payload) {
-                setAccounts(fetched.payload);
+            const [accountsRes, devicesRes] = await Promise.all([
+                getAccountPasswords({ userId: finalUserId }),
+                getDevices({ userId: finalUserId })
+            ]);
+
+            if (accountsRes.status === 1) {
+                setAccounts(accountsRes.payload || []);
+            }
+
+            if (devicesRes.status === 1) {
+                setDevices(devicesRes.payload || []);
             }
         };
 
         fetchData();
     }, [memberId]);
 
+
     const handleAdd = () => {
-        form.resetFields();
-        setEditingIndex(null);
-        setModalVisible(true);
+        if (activeTab === 'accounts') {
+            form.resetFields();
+            setEditingIndex(null);
+            setModalVisible(true);
+        } else if (activeTab === 'devices') {
+            deviceForm.resetFields();
+            setEditingDevice(null);
+            setDeviceModalVisible(true);
+        }
     };
 
     const handleEdit = (index: number) => {
@@ -146,10 +174,53 @@ const AssetsDevicesSection: React.FC<AssetsDevicesSectionProps> = ({ memberId })
             }
 
             setModalVisible(false);
+
         } catch (error) {
             message.error('Something went wrong');
         }
     };
+    const handleDeviceSubmit = async (values: any) => {
+        if (!resolvedUserId) return;
+
+        const payload = {
+            userId: resolvedUserId,
+            deviceName: values.deviceName,
+            deviceModel: values.deviceModel,
+            addedBy: resolvedUserId,
+            editedBy: resolvedUserId,
+        };
+
+        try {
+            if (editingDevice) {
+                const response = await updateDevice({ ...payload, id: editingDevice.id });
+                if (response.status === 1) {
+                    const updated = devices.map((d) =>
+                        d.id === editingDevice.id ? { ...d, ...payload } : d
+                    );
+                    setDevices(updated);
+                    message.success('Device updated');
+                }
+            } else {
+                const response = await addDevice(payload);
+                if (response.status === 1) {
+                    const newItem = { ...payload, id: response.payload.id };
+                    setDevices([...devices, newItem]);
+                    message.success('Device added');
+                }
+            }
+            setDeviceModalVisible(false);
+            await fetchDevices();
+        } catch (e) {
+            message.error('Error saving device');
+        }
+    };
+
+    const handleDeviceEdit = (device: any) => {
+        deviceForm.setFieldsValue(device);
+        setEditingDevice(device);
+        setDeviceModalVisible(true);
+    };
+
 
     const handleCopy = (password: string) => {
         navigator.clipboard.writeText(password);
@@ -258,14 +329,14 @@ const AssetsDevicesSection: React.FC<AssetsDevicesSectionProps> = ({ memberId })
                 style={{ width: '100%' }}
                 bodyStyle={{ padding: 6 }}
             >
-                <Tabs defaultActiveKey="accounts">
+                <Tabs defaultActiveKey="accounts" onChange={(key) => setActiveTab(key)}>
                     <TabPane tab="Accounts & Passwords" key="accounts">
                         {renderAccounts()}
                     </TabPane>
                     <TabPane tab="Devices" key="devices">
-                        {staticDevices.map((item, idx) => (
+                        {devices.map((device) => (
                             <Card
-                                key={idx}
+                                key={device.id}
                                 style={{ marginBottom: 6, borderRadius: 8 }}
                                 bodyStyle={{ padding: 8 }}
                             >
@@ -282,17 +353,28 @@ const AssetsDevicesSection: React.FC<AssetsDevicesSectionProps> = ({ memberId })
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
                                                 fontSize: 12,
-                                                marginRight: 8
+                                                marginRight: 8,
                                             }}
                                         >
-                                            {item.icon}
+                                            💻
                                         </div>
                                         <div>
-                                            <div style={{ fontSize: 12, fontWeight: 500 }}>{item.name}</div>
-                                            <div style={{ fontSize: 10, color: '#8c8c8c' }}>{item.meta}</div>
+                                            <div style={{ fontSize: 12, fontWeight: 500 }}>{device.device_name}</div>
+                                            <div style={{ fontSize: 10, color: '#8c8c8c' }}>{device.device_model}</div>
                                         </div>
                                     </div>
-                                    <Button size="small" type="text" style={{ fontSize: 10, padding: '2px 6px' }}>{item.action}</Button>
+                                    <Button
+                                        size="small"
+                                        type="text"
+                                        style={{ fontSize: 10, padding: '2px 6px' }}
+                                        onClick={() => handleDeviceEdit({
+                                            ...device,
+                                            deviceName: device.device_name,
+                                            deviceModel: device.device_model,
+                                        })}
+                                    >
+                                        Edit
+                                    </Button>
                                 </div>
                             </Card>
                         ))}
@@ -328,6 +410,22 @@ const AssetsDevicesSection: React.FC<AssetsDevicesSectionProps> = ({ memberId })
                     </Form.Item>
                     <Form.Item name="url" label="URL (Optional)">
                         <Input placeholder="e.g., https://schoolportal.com" />
+                    </Form.Item>
+                </Form>
+            </Modal>
+            <Modal
+                title={editingDevice ? 'Edit Device' : 'Add New Device'}
+                open={deviceModalVisible}
+                onCancel={() => setDeviceModalVisible(false)}
+                onOk={() => deviceForm.submit()}
+                okText="Save"
+            >
+                <Form form={deviceForm} onFinish={handleDeviceSubmit} layout="vertical">
+                    <Form.Item name="deviceName" label="Device Name" rules={[{ required: true }]}>
+                        <Input placeholder="e.g., iPhone 14" />
+                    </Form.Item>
+                    <Form.Item name="deviceModel" label="Model" rules={[{ required: true }]}>
+                        <Input placeholder="e.g., SE Gen 3" />
                     </Form.Item>
                 </Form>
             </Modal>

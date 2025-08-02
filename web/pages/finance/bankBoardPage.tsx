@@ -1,3 +1,4 @@
+
 "use client";
 import { useEffect, useState } from "react";
 import {
@@ -7,23 +8,38 @@ import {
   Button,
   Typography,
   Result,
+  message,
+  Spin,
 } from "antd";
 import Link from "next/link";
 import { getBankAccount } from "../../services/apiConfig";
 import {
+  ConnectorSDKCallbackMetadata,
   QuilttButton,
   useQuilttSession,
 } from "@quiltt/react";
+import FinanceIntroBoard from "./financeBoard";
 import BankPage from "./bankPage";
 import { useRouter } from "next/navigation";
-import { useGlobalLoading } from "../../app/loadingContext";
-import { useCurrentUser } from "../../app/userContext";
+import DocklyLoader from "../../utils/docklyLoader";
 
 const { Title } = Typography;
 export default function BankBoardPage() {
+  const [currentStep, setCurrentStep] = useState(0);
+  const [profileId, setProfileId] = useState("");
+  const [emailId, setEmailId] = useState("");
+  const [isFinanceAccount, setIsFinanceAccount] = useState(false);
+  console.log("🚀 ~ BankBoardPage ~ isFinanceAccount:", isFinanceAccount)
   const [bankDetails, setBankDetails] = useState<any>(null);
-  const { loading, setLoading } = useGlobalLoading();
-  const username = useCurrentUser()?.user_name || "";
+  console.log("🚀 ~ BankBoardPage ~ bankDetails:", bankDetails)
+  const [loading, setLoading] = useState(true); // <-- Add loading state
+  const [connectionId, setConnectionId] = useState<string>();
+  const [username, setUsername] = useState<string>("");
+
+  useEffect(() => {
+    const username = localStorage.getItem("username") || "";
+    setUsername(username);
+  }, []);
 
   const { session } = useQuilttSession();
   const router = useRouter();
@@ -47,9 +63,17 @@ export default function BankBoardPage() {
 
   useEffect(() => {
     if (!loading && (!bankDetails || bankDetails.length === 0)) {
-      // router.push(`/${username}/finance-hub/setup`);
+      router.push(`/${username}/finance-hub/setup`);
     }
   }, [loading, bankDetails]);
+
+  if (loading) {
+    return (
+      // <div>
+      <DocklyLoader />
+      // </div>
+    ); // Or a spinner
+  }
 
   return (
     <div style={{ background: "#f0f2f5", minHeight: "100vh" }}>
@@ -192,3 +216,4 @@ const FinanceProfileSetup = (props: any) => {
     </>
   );
 };
+

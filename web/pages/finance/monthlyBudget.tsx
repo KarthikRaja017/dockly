@@ -1,296 +1,398 @@
-// 'use client';
 
-// import React, { useState, useEffect } from 'react';
-// import {
-//   Card, Typography, Spin, Button, InputNumber, message, Table,
-//   Avatar, Modal, Col, Row, Progress
-// } from 'antd';
-// import { HomeOutlined } from '@ant-design/icons';
-// import { generateMonthlyBudget, updateMonthlyBudget } from '../../services/apiConfig';
+import React, { useState, useEffect } from 'react';
+import { Card, Progress, Typography, Row, Col, Avatar, Spin, Button, InputNumber, message, Table } from 'antd';
+import { HomeOutlined } from '@ant-design/icons'; // Using HomeOutlined as a generic icon
+import { generateMonthlyBudget, updateMonthlyBudget } from '../../services/apiConfig';
 
-// const { Title, Text } = Typography;
+const { Title, Text } = Typography;
 
-// const categoryIcons = {
-//   "All Expenses": <HomeOutlined style={{ fontSize: 20, color: '#4b5563' }} />,
-// };
+interface Description {
+  spent: number;
+  budget: number;
+  count: number;
+}
 
-// // Types
-// interface Description {
-//   spent: number;
-//   budget: number;
-//   count: number;
-// }
-// interface Transaction {
-//   description: string;
-//   amount: number;
-//   date: string;
-// }
-// interface BudgetCategory {
-//   spent: number;
-//   budget: number;
-//   descriptions: Record<string, Description>;
-//   all_transactions: Record<string, Transaction[]>;
-// }
-// interface BudgetSummary {
-//   spent: number;
-//   total: number;
-// }
+interface BudgetCategory {
+  spent: number;
+  budget: number;
+  descriptions: { [key: string]: Description };
+}
 
-// const MonthlyBudget: React.FC<{ uid: string }> = ({ uid }) => {
-//   const [categories, setCategories] = useState<{ [key: string]: BudgetCategory }>({});
-//   const [budgetSummary, setBudgetSummary] = useState<Record<string, BudgetSummary>>({});
-//   const [loading, setLoading] = useState(true);
-//   const [error, setError] = useState<string | null>(null);
-//   const [isEditing, setIsEditing] = useState(false);
-//   const [editedBudgets, setEditedBudgets] = useState<any>({});
-//   const [isModalVisible, setIsModalVisible] = useState(false);
-//   const [modalTransactions, setModalTransactions] = useState<Transaction[]>([]);
-//   const [modalCategory, setModalCategory] = useState<string>('');
+interface BudgetSummary {
+  spent: number;
+  total: number;
+}
 
-//   useEffect(() => {
-//     const fetchData = async () => {
-//       try {
-//         setLoading(true);
-//         setError(null);
-//         const res = await generateMonthlyBudget({ user_id: uid });
+const categoryIcons: { [key: string]: React.ReactNode } = {
+  "All Expenses": <HomeOutlined style={{ fontSize: 20, color: '#4b5563' }} />,
+};
 
-//         if (!res || res.status !== 1) throw new Error(res?.error || 'Failed to load data');
+const MonthlyBudget: React.FC<{ uid: string }> = ({ uid }) => {
+  const [categories, setCategories] = useState<{ [key: string]: BudgetCategory }>({});
+  const [budgetSummary, setBudgetSummary] = useState<{ [key: string]: BudgetSummary }>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedBudgets, setEditedBudgets] = useState<{ [key: string]: { budget: number; descriptions: { [key: string]: number } } }>({});
 
-//         const budgetData = res.budget_categories || {};
-//         setCategories(budgetData);
+  useEffect(() => {
+    const fetchBudgetData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-//         const allExpenses = budgetData["All Expenses"];
-//         const descriptions = allExpenses?.descriptions || {};
+        const response = await generateMonthlyBudget({ user_id: uid });
+        if (!response || response.status !== 1) {
+          throw new Error(response?.error || "Invalid response from server");
+        }
 
-//         setBudgetSummary({
-//           Needs: { spent: descriptions.Needs?.spent || 0, total: descriptions.Needs?.budget || 0 },
-//           Wants: { spent: descriptions.Wants?.spent || 0, total: descriptions.Wants?.budget || 0 },
-//           Savings: { spent: descriptions.Savings?.spent || 0, total: descriptions.Savings?.budget || 0 },
-//           Other: { spent: descriptions.Other?.spent || 0, total: descriptions.Other?.budget || 0 }
-//         });
+        setCategories(response.budget_categories || {});
+        setBudgetSummary(response.budget_summary || {});
+        setEditedBudgets(response.budget_categories || {});
+        setLoading(false);
+      } catch (err: any) {
+        setError(err.message || 'Failed to load budget data');
+        setLoading(false);
+      }
+    };
 
-//         setEditedBudgets({
-//           "All Expenses": {
-//             budget: allExpenses?.budget || 0,
-//             descriptions: {
-//               Needs: descriptions.Needs?.budget || 0,
-//               Wants: descriptions.Wants?.budget || 0,
-//               Savings: descriptions.Savings?.budget || 0,
-//               Other: descriptions.Other?.budget || 0,
-//             }
-//           }
-//         });
-//       } catch (err: any) {
-//         setError(err.message || 'Error loading budget');
-//       } finally {
-//         setLoading(false);
-//       }
-//     };
+    fetchBudgetData();
+  }, [uid]);
 
-//     fetchData();
-//   }, [uid]);
+  const handleEditClick = () => {
+    setIsEditing(true);
+    setEditedBudgets(
+      Object.fromEntries(
+        Object.entries(categories).map(([catKey, catValue]) => [
+          catKey,
+          {
+            budget: catValue.budget,
+            descriptions: Object.fromEntries(
+              Object.entries(catValue.descriptions).map(([descKey, descValue]) => [
+                descKey,
+                descValue.budget
+              ])
+            )
+          }
+        ])
+      )
+    );
+  };
+  const handleBudgetChange = (category: string, value: number | null) => {
+    if (value === null) return;
 
-//   const calculatePercentages = (desc: Record<string, number>) => {
-//     const total = Object.values(desc).reduce((a, b) => a + b, 0) || 1;
-//     return {
-//       Needs: ((desc.Needs / total) * 100).toFixed(1) + '%',
-//       Wants: ((desc.Wants / total) * 100).toFixed(1) + '%',
-//       Savings: ((desc.Savings / total) * 100).toFixed(1) + '%',
-//       Other: ((desc.Other / total) * 100).toFixed(1) + '%',
-//     };
-//   };
+    setEditedBudgets(prev => {
+      const prevCategory = prev[category] || {};
+      const descriptions = prevCategory.descriptions || {};
+      const numDescriptions = Object.keys(descriptions).length || 1;
+      const perDescriptionBudget = value / numDescriptions;
 
-//   const handleEditClick = () => {
-//     const all = categories["All Expenses"];
-//     setIsEditing(true);
-//     setEditedBudgets({
-//       "All Expenses": {
-//         budget: all.budget,
-//         descriptions: {
-//           Needs: all.descriptions.Needs?.budget || 0,
-//           Wants: all.descriptions.Wants?.budget || 0,
-//           Savings: all.descriptions.Savings?.budget || 0,
-//           Other: all.descriptions.Other?.budget || 0,
-//         }
-//       }
-//     });
-//   };
+      const updatedDescriptions = Object.fromEntries(
+        Object.entries(descriptions).map(([desc]) => [
+          desc,
+          perDescriptionBudget
+        ])
+      );
 
-//   const handleBudgetChange = (category: string, value: number | null) => {
-//     if (value === null) return;
-//     const desc = editedBudgets[category].descriptions;
-//     const sum = Object.values(desc).reduce((a: number, b) => a + (b as number), 0) || 1;
+      return {
+        ...prev,
+        [category]: {
+          ...prevCategory,
+          budget: value,
+          descriptions: updatedDescriptions
+        }
+      };
+    });
+  };
 
-//     setEditedBudgets({
-//       [category]: {
-//         budget: value,
-//         descriptions: Object.fromEntries(
-//           Object.entries(desc).map(([k, v]) => [
-//             k,
-//             Math.round(((Number(v) / Number(sum)) * Number(value || 0) * 100)) / 100,
-//           ])
-//         )
-//       }
-//     });
-//   };
+  const handleDescriptionBudgetChange = (
+    category: string,
+    description: string,
+    value: number | null
+  ) => {
+    if (value === null) return;
 
-//   const handleDescriptionBudgetChange = (category: string, desc: string, value: number | null) => {
-//     if (value === null) return;
-//     const newDesc = { ...editedBudgets[category].descriptions, [desc]: value };
-//     const total = Object.values(newDesc).reduce((a: number, b) => a + (b as number), 0);
-//     setEditedBudgets({
-//       [category]: {
-//         budget: total,
-//         descriptions: newDesc
-//       }
-//     });
-//   };
+    setEditedBudgets(prev => {
+      const prevCategory = prev[category] || {};
+      const prevDescriptions = prevCategory.descriptions || {};
 
-//   const handleSave = async () => {
-//     try {
-//       const res = await updateMonthlyBudget({ user_id: uid, budget_categories: editedBudgets });
-//       if (res.status === 1) {
-//         message.success('Budget updated!');
-//         setIsEditing(false);
-//         window.location.reload(); // or re-fetch state
-//       } else {
-//         throw new Error(res.error || 'Failed to update');
-//       }
-//     } catch (err: any) {
-//       message.error(err.message || 'Update failed');
-//     }
-//   };
+      return {
+        ...prev,
+        [category]: {
+          ...prevCategory,
+          descriptions: {
+            ...prevDescriptions,
+            [description]: value
+          }
+        }
+      };
+    });
+  };
 
-//   const handleCancel = () => {
-//     setIsEditing(false);
-//   };
+  const handleSave = async () => {
+    try {
+      const updateData = {
+        user_id: uid,
+        budget_categories: editedBudgets
+      };
+      const response = await updateMonthlyBudget(updateData);
+      if (response.status === 1) {
+        // Convert editedBudgets to BudgetCategory shape
+        const updatedCategories: { [key: string]: BudgetCategory } = Object.fromEntries(
+          Object.entries(editedBudgets).map(([catKey, catValue]) => [
+            catKey,
+            {
+              spent: categories[catKey]?.spent || 0,
+              budget: catValue.budget,
+              descriptions: Object.fromEntries(
+                Object.entries(catValue.descriptions).map(([descKey, descBudget]) => [
+                  descKey,
+                  {
+                    spent: categories[catKey]?.descriptions?.[descKey]?.spent || 0,
+                    budget: descBudget,
+                    count: categories[catKey]?.descriptions?.[descKey]?.count || 0,
+                  }
+                ])
+              )
+            }
+          ])
+        );
+        setCategories(updatedCategories);
+        recalculateSummary();
+        setIsEditing(false);
+        message.success('Budget updated successfully');
+      } else {
+        throw new Error(response.error || 'Failed to update budget');
+      }
+    } catch (err: any) {
+      message.error(err.message || 'Failed to update budget');
+    }
+  };
 
-//   const showTransactions = (category: string) => {
-//     const txns = categories["All Expenses"]?.all_transactions?.[category] || [];
-//     if (txns.length) {
-//       setModalCategory(category);
-//       setModalTransactions(txns);
-//       setIsModalVisible(true);
-//     }
-//   };
+  const handleCancel = () => {
+    setIsEditing(false);
+    setEditedBudgets(
+      Object.fromEntries(
+        Object.entries(categories).map(([catKey, catValue]) => [
+          catKey,
+          {
+            budget: catValue.budget,
+            descriptions: Object.fromEntries(
+              Object.entries(catValue.descriptions).map(([descKey, descValue]) => [
+                descKey,
+                descValue.budget
+              ])
+            )
+          }
+        ])
+      )
+    );
+  };
 
-//   const data = categories["All Expenses"];
-//   const tableData: any[] = [];
-//   if (data) {
-//     const percents = calculatePercentages(
-//       Object.fromEntries(
-//         Object.entries(data.descriptions).map(([k, v]) => [k, v.budget])
-//       )
-//     );
+  const recalculateSummary = () => {
+    const totalBudget = sum(Object.values(editedBudgets), 'budget');
+    const needsBudget = sum(Object.values(editedBudgets).map(c => ({ budget: c.budget || 0 })), 'budget');
+    const savingsBudget = totalBudget * 0.2;
 
-//     tableData.push({
-//       key: 'all',
-//       name: <><Avatar size={20} icon={categoryIcons["All Expenses"]} /> All Expenses</>,
-//       spent: `$${data.spent.toFixed(2)}`,
-//       budget: isEditing ? (
-//         <InputNumber
-//           value={editedBudgets["All Expenses"].budget}
-//           onChange={(val) => handleBudgetChange("All Expenses", val)}
-//           formatter={(val) => `$ ${val}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-//           parser={(val) => parseFloat(val?.replace(/\$\s?|(,*)/g, '') || '0')}
-//         />
-//       ) : `$${data.budget.toFixed(2)}`
-//     });
+    setBudgetSummary({
+      Needs: { spent: sum(Object.values(categories).map(c => c.spent || 0), ''), total: needsBudget },
+      Savings: { spent: 0, total: savingsBudget }
+    });
+  };
 
-//     ["Needs", "Wants", "Savings", "Other"].forEach((cat) => {
-//       const d = data.descriptions[cat];
-//       tableData.push({
-//         key: cat,
-//         name: <Text onClick={() => showTransactions(cat)} style={{ marginLeft: 24, color: '#3b82f6', cursor: 'pointer' }}>{cat}</Text>,
-//         spent: `$${d.spent.toFixed(2)}`,
-//         budget: isEditing ? (
-//           <InputNumber
-//             value={editedBudgets["All Expenses"].descriptions[cat]}
-//             onChange={(val) => handleDescriptionBudgetChange("All Expenses", cat, val)}
-//             formatter={(val) => `$ ${val}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-//             parser={(val) => parseFloat(val?.replace(/\$\s?|(,*)/g, '') || '0')}
-//           />
-//         ) : `$${d.budget.toFixed(2)}`
-//       });
-//     });
-//   }
+  const sum = (items: any[], key: string) => items.reduce((sum, item) => sum + (item[key] || 0), 0);
 
-//   if (loading) return <Spin style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center' }} />;
+  // Prepare table data
+  const tableData: any[] = [];
+  const data: BudgetCategory = (isEditing ? editedBudgets : categories)["All Expenses"] as BudgetCategory || { spent: 0, budget: 0, descriptions: {} };
+  if (data && Object.keys(data.descriptions).length > 0) {
+    tableData.push({
+      key: "All Expenses",
+      key1: 'spent',
+      key2: 'budget',
+      name: <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Avatar size={20} icon={categoryIcons["All Expenses"]} />All Expenses</div>,
+      spent: `$${('spent' in data ? (data as BudgetCategory).spent : 0).toFixed(2)}`,
+      budget: `$${data.budget.toFixed(2)}`,
+      count: '',
+      isCategory: true,
+      edit: isEditing ? <InputNumber
+        value={editedBudgets["All Expenses"]?.budget || 0}
+        onChange={(value) => handleBudgetChange("All Expenses", value)}
+        min={0}
+        formatter={(value) => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+        parser={(value) => value ? value.replace(/\$\s?|(,*)/g, '') as unknown as number : 0}
+        style={{ width: 100 }}
+      /> : null,
+    });
+    Object.entries(data.descriptions || {}).forEach(([desc, descData]) => {
+      if (descData.count > 5) { // Filter for > 5 repetitions
+        tableData.push({
+          key: `desc-${desc}`,
+          name: <Text style={{ marginLeft: 24 }}>{desc}</Text>,
+          spent: `$${descData.spent.toFixed(2)}`,
+          budget: `$${descData.budget.toFixed(2)}`,
+          count: `(Repeated ${descData.count} times)`,
+          isCategory: false,
+          edit: isEditing ? <InputNumber
+            value={editedBudgets["All Expenses"]?.descriptions[desc] || 0}
+            onChange={(value) => handleDescriptionBudgetChange("All Expenses", desc, value)}
+            min={0}
+            formatter={(value) => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+            parser={(value) => value ? value.replace(/\$\s?|(,*)/g, '') as unknown as number : 0}
+            style={{ width: 100 }}
+          /> : null,
+        });
+      }
+    });
+  }
 
-//   return (
-//     <Card style={{ margin: 24 }}>
-//       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-//         <Title level={4}>Monthly Budget</Title>
-//         {!isEditing && <Text style={{ color: '#3b82f6', cursor: 'pointer' }} onClick={handleEditClick}>Edit Budget</Text>}
-//       </div>
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <Spin size="large" />
+      </div>
+    );
+  }
 
-//       <Row gutter={16}>
-//         {["Needs", "Wants", "Savings", "Other"].map((label) => {
-//           const { spent = 0, total = 0 } = budgetSummary[label] || {};
-//           const percentUsed = total ? Math.round((spent / total) * 100) : 0;
-//           const percentLabel = ((total / Object.values(budgetSummary).reduce((s, x) => s + x.total, 1)) * 100).toFixed(1) + '%';
+  if (error) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <Card style={{ maxWidth: 400, textAlign: 'center' }}>
+          <Text style={{ color: '#f5222d' }}>{error}</Text>
+          <Button type="primary" onClick={() => window.location.reload()} style={{ marginTop: 16 }}>
+            Retry
+          </Button>
+        </Card>
+      </div>
+    );
+  }
 
-//           return (
-//             <Col span={6} key={label}>
-//               <Card style={{ height: 200, background: '#f9fafb' }}>
-//                 <Title level={5}>{label}</Title>
-//                 <Text>{percentLabel}</Text>
-//                 <div><Text>${spent.toFixed(2)} / ${total.toFixed(2)}</Text></div>
-//                 <Progress percent={percentUsed} />
-//               </Card>
-//             </Col>
-//           );
-//         })}
-//       </Row>
-
-//       <Title level={5} style={{ marginTop: 24 }}>Spending by Category</Title>
-//       <Table
-//         dataSource={tableData}
-//         pagination={false}
-//         showHeader={false}
-//         columns={[
-//           { title: 'Category', dataIndex: 'name', key: 'name' },
-//           { title: 'Spent', dataIndex: 'spent', key: 'spent', align: 'right' },
-//           { title: 'Budget', dataIndex: 'budget', key: 'budget', align: 'right' },
-//         ]}
-//       />
-
-//       <Modal
-//         title={`Transactions for ${modalCategory}`}
-//         open={isModalVisible}
-//         onCancel={() => setIsModalVisible(false)}
-//         footer={null}
-//       >
-//         <Table
-//           dataSource={modalTransactions.map((txn, idx) => ({ ...txn, key: idx }))}
-//           columns={[
-//             { title: 'Description', dataIndex: 'description' },
-//             { title: 'Amount', dataIndex: 'amount', align: 'right', render: val => `$${val.toFixed(2)}` },
-//             { title: 'Date', dataIndex: 'date', align: 'right' },
-//           ]}
-//           pagination={{ pageSize: 8 }}
-//         />
-//       </Modal>
-
-//       {isEditing && (
-//         <div style={{ textAlign: 'right', marginTop: 16 }}>
-//           <Button onClick={handleCancel} style={{ marginRight: 8 }}>Cancel</Button>
-//           <Button type="primary" onClick={handleSave}>Save</Button>
-//         </div>
-//       )}
-//     </Card>
-//   );
-// };
-
-// export default MonthlyBudget;
-
-
-const MonthlyBudget = () => {
   return (
-    <div>
-      <h1>Monthly Budget</h1>
-      <p>Coming soon...</p>
-    </div>
+    <Card
+      style={{
+        background: 'linear-gradient(145deg, rgb(255, 255, 255), rgb(249, 250, 251))',
+        borderRadius: '16px',
+        padding: '1.5rem',
+        boxShadow: 'rgba(0, 0, 0, 0.1) 0px 8px 24px',
+        maxWidth: '100%',
+        // width: 'min(400px, 90vw)',
+        minHeight: '716px',
+        maxHeight: '80vh',
+        margin: '20px',
+        overflowY: 'auto',
+        transition: '0.3s',
+        marginTop: '25px',
+      }}
+      bodyStyle={{ padding: 0 }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
+        <Title level={4} style={{ margin: 0 }}>Monthly Budget</Title>
+        <Text
+          style={{ color: '#3b82f6', cursor: 'pointer' }}
+          onClick={handleEditClick}
+        >
+          Edit Budget
+        </Text>
+      </div>
+
+      {/* Budget Summary */}
+      <Row gutter={16} style={{ marginBottom: 32 }}>
+        {Object.entries(budgetSummary).map(([label, data]) => (
+          <Col span={12} key={label}>
+            <Card
+              style={{
+                borderRadius: 12,
+                background: label === 'Needs' ? '#eff6ff' : '#d1fae5',
+                borderColor: label === 'Needs' ? '#3b82f6' : '#10b981',
+              }}
+              bodyStyle={{ padding: 16 }}
+            >
+              <Title level={4} style={{ marginBottom: 8 }}>
+                {label === 'Needs' ? '80%' : '20%'}
+              </Title>
+              <Text strong>{label}</Text>
+              <div style={{ marginTop: 8, marginBottom: 8 }}>
+                <Text>${data.spent.toFixed(2)} of ${data.total.toFixed(2)}</Text>
+              </div>
+              <Progress
+                percent={Math.round((data.spent / data.total) * 100)}
+                strokeColor={label === 'Needs' ? '#3b82f6' : '#10b981'}
+                trailColor="#f1f5f9"
+                showInfo={false}
+              />
+              <Text style={{ fontSize: 12 }}>
+                {Math.round((data.spent / data.total) * 100)}% {label === 'Savings' ? 'saved' : 'used'}
+              </Text>
+            </Card>
+          </Col>
+        ))}
+      </Row>
+      <Title level={5} style={{ marginBottom: 16 }}>Spending by Category</Title>
+
+      <Table
+        dataSource={tableData}
+        pagination={false}
+        showHeader={false}
+        columns={[
+          {
+            title: 'Name',
+            dataIndex: 'name',
+            key: 'name',
+          },
+          {
+            title: 'Spent',
+            dataIndex: 'spent',
+            key: 'spent',
+            align: 'right',
+          },
+          {
+            title: 'Budget',
+            dataIndex: 'budget',
+            key: 'budget',
+            align: 'right',
+          },
+          // {
+          //   title: 'Count',
+          //   dataIndex: 'count',
+          //   key: 'count',
+          //   align: 'right',
+          // },
+          {
+            title: 'Edit',
+            dataIndex: 'edit',
+            key: 'edit',
+            align: 'right',
+            render: (text) => text,
+          },
+        ]}
+        rowClassName={(record) => (record.isCategory ? 'category-row' : 'description-row')}
+      />
+
+      <style>
+        {`
+          .category-row {
+            font-weight: bold;
+            background-color: #f9fafb;
+          }
+          .description-row {
+            margin-left: 20px;
+          }
+        `}
+      </style>
+
+      {isEditing && (
+        <div style={{ textAlign: 'right', marginTop: 16 }}>
+          <Button onClick={handleCancel} style={{ marginRight: 8 }}>
+            Cancel
+          </Button>
+          <Button type="primary" onClick={handleSave}>
+            Save
+          </Button>
+        </div>
+      )}
+    </Card>
   );
 };
+
 export default MonthlyBudget;
+

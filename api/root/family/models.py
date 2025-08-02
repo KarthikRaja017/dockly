@@ -245,19 +245,36 @@ class GetFamilyMembers(Resource):
         notifications = DBHelper.find_all(
             table_name="notifications",
             filters={"sender_id": uid},  # include all (pending or accepted)
-            select_fields=["metadata"],
+            select_fields=["metadata", "status"],  # Added status field
         )
 
         email_to_metadata = {}
+        pending_invites = []  # Store pending invites separately
+
         for notif in notifications:
             meta = notif.get("metadata", {})
             input_data = meta.get("input_data", {})
             email = input_data.get("email", "")
+
             if email:
                 email_to_metadata[email.lower().strip()] = {
                     "sharedItems": input_data.get("sharedItems", {}),
                     "permissions": input_data.get("permissions", {}),
                 }
+
+            # Collect pending invites here instead of separate query
+            if notif.get("status") == "pending" and input_data:
+                pending_invites.append(
+                    {
+                        "name": input_data.get("name", "Unknown"),
+                        "relationship": clean_relationship(
+                            input_data.get("relationship", "Unknown")
+                        ),
+                        "status": "pending",
+                        "email": input_data.get("email", ""),
+                        "id": input_data.get("id", ""),
+                    }
+                )
 
         # Step 1: Get family group id of the user
         gid = DBHelper.find_one(
@@ -279,6 +296,7 @@ class GetFamilyMembers(Resource):
                             "id": uid,
                         }
                     ]
+                    + pending_invites  # Include pending invites even without group
                 },
             }
 
@@ -333,29 +351,8 @@ class GetFamilyMembers(Resource):
             except ValueError:
                 pass  # Invalid duser, skip
 
-        # Step 4: Add pending invites
-        for notif in notifications:
-            meta = notif.get("metadata", {})
-            input_data = meta.get("input_data", {})
-            email = input_data.get("email", "").lower().strip()
-            if not email:
-                continue
-            if any(mem.get("email", "").lower() == email for mem in familyMembers):
-                continue  # already included
-
-            familyMembers.append(
-                {
-                    "name": input_data.get("name", "Unknown"),
-                    "relationship": clean_relationship(
-                        input_data.get("relationship", "Unknown")
-                    ),
-                    "status": "pending",
-                    "email": email,
-                    "id": input_data.get("id", ""),
-                    "sharedItems": input_data.get("sharedItems", {}),
-                    "permissions": input_data.get("permissions", {}),
-                }
-            )
+        # Step 4: Add pending invites (already collected in Step 0)
+        familyMembers.extend(pending_invites)
 
         # Step 5: Remove duplicate emails and hide email from output
         unique_members = []
@@ -1120,6 +1117,75 @@ class AddNotes(Resource):
             }
         except Exception as e:
             return {"status": 0, "message": f"Failed to add note: {str(e)}"}, 500
+
+
+class EmailSender:
+    def __init__(self):
+        self.smtp_server = SMTP_SERVER
+        self.smtp_port = SMTP_PORT
+        self.smtp_user = EMAIL_SENDER
+        self.smtp_password = EMAIL_PASSWORD
+
+    def send_note_email(self, recipient_email, note):
+        msg = EmailMessage()
+        msg["Subject"] = f"Shared Note: {note['title']}"
+        msg["From"] = self.smtp_user
+        msg["To"] = recipient_email
+
+        hub_name = note.get("hub", "FAMILY")
+        created = note.get("created_at") or ""
+        if created:
+            created = created.split("T")[0]
+
+        msg.set_content(
+            f"""
+Hi there!
+
+I wanted to share this note with you:
+
+Title: {note['title']}
+Description: {note['description']}
+Hub: {hub_name}
+Created: {created}
+
+Best regards!
+""".strip()
+        )
+
+        try:
+            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
+                server.starttls()
+                server.login(self.smtp_user, self.smtp_password)
+                server.send_message(msg)
+            return True, "Email sent successfully"
+        except Exception as e:
+            return False, str(e)
+
+
+class ShareNote(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        try:
+            data = request.get_json(force=True)
+        except Exception as e:
+            return {"status": 0, "message": f"Invalid JSON: {str(e)}"}, 400
+
+        email = data.get("email")
+        note = data.get("note")
+
+        if not email or not note:
+            return {
+                "status": 0,
+                "message": "Both 'email' and 'note' are required.",
+            }, 422
+
+        email_sender = EmailSender()
+        success, message = email_sender.send_note_email(email, note)
+
+        if success:
+            return {"status": 1, "message": "Note shared via email."}
+        else:
+            return {"status": 0, "message": f"Failed to send email: {message}"}, 500
 
 
 class GetNotes(Resource):
@@ -2903,3 +2969,108 @@ class UpdateBeneficiary(Resource):
                 "status": 0,
                 "message": f"Failed to update beneficiary: {str(e)}",
             }, 500
+
+
+class AddDevice(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        try:
+            data = request.get_json(silent=True)
+            if not data:
+                return {"status": 0, "message": "No input data provided"}, 400
+
+            device = data.get("device", {})
+            if not device:
+                return {"status": 0, "message": "No device data provided"}, 400
+
+            required_fields = ["deviceName", "deviceModel", "userId", "addedBy"]
+            missing = [field for field in required_fields if field not in device]
+            if missing:
+                return {
+                    "status": 0,
+                    "message": f"Missing fields: {', '.join(missing)}",
+                }, 400
+
+            now = datetime.now().isoformat()
+
+            device_id = DBHelper.insert(
+                table_name="user_devices",
+                return_column="id",
+                user_id=uid,
+                family_member_user_id=device["userId"],
+                device_name=device["deviceName"],
+                device_model=device["deviceModel"],
+                added_by=device["addedBy"],
+                added_time=now,
+                edited_by=device.get("editedBy", device["addedBy"]),
+                updated_at=now,
+            )
+
+            return {
+                "status": 1,
+                "message": "Device added successfully",
+                "payload": {"id": device_id},
+            }, 200
+
+        except Exception as e:
+            return {"status": 0, "message": f"Failed to add device: {str(e)}"}, 500
+
+
+class GetDevices(Resource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        try:
+            user_id = request.args.get("userId")
+            if not user_id:
+                return {"status": 0, "message": "Missing userId"}, 400
+
+            results = DBHelper.find_all(
+                table_name="user_devices", filters={"family_member_user_id": user_id}
+            )
+
+            for device in results:
+                for key in device:
+                    if isinstance(device[key], datetime):
+                        device[key] = device[key].isoformat()
+
+            return {
+                "status": 1,
+                "message": "Devices fetched successfully",
+                "payload": results,
+            }, 200
+
+        except Exception as e:
+            return {"status": 0, "message": f"Failed to fetch devices: {str(e)}"}, 500
+
+
+class UpdateDevice(Resource):
+    @auth_required(isOptional=True)
+    def put(self, uid, user):
+        try:
+            data = request.get_json(silent=True)
+            if not data:
+                return {"status": 0, "message": "No input data provided"}, 400
+
+            device = data.get("device", {})
+            if not device or "id" not in device:
+                return {"status": 0, "message": "Missing device ID or data"}, 400
+
+            update_fields = {
+                "device_name": device.get("deviceName"),
+                "device_model": device.get("deviceModel"),
+                "edited_by": device.get("editedBy", uid),
+                "updated_at": datetime.now().isoformat(),
+            }
+
+            update_fields = {k: v for k, v in update_fields.items() if v is not None}
+
+            DBHelper.update_one(
+                table_name="user_devices",
+                filters={"id": device["id"]},
+                updates=update_fields,
+            )
+
+            return {"status": 1, "message": "Device updated successfully"}, 200
+
+        except Exception as e:
+            return {"status": 0, "message": f"Failed to update device: {str(e)}"}, 500

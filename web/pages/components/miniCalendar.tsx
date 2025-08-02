@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 
-// Professional color palette
 const COLORS = {
     primary: '#1C1C1E',
     secondary: '#48484A',
@@ -19,18 +18,16 @@ const COLORS = {
     textSecondary: '#6D6D80',
     textTertiary: '#8E8E93',
     overlay: 'rgba(0, 0, 0, 0.4)',
-    shadowLight: 'rgba(0, 0, 0, 0.05)',
-    shadowMedium: 'rgba(0, 0, 0, 0.1)',
-    shadowHeavy: 'rgba(0, 0, 0, 0.15)',
+    shadowLight: 'rgba(0, 0, 0, 0.03)',
+    shadowMedium: 'rgba(0, 0, 0, 0.06)',
 };
 
 const SPACING = {
-    xs: 4,
-    sm: 8,
-    md: 16,
-    lg: 24,
-    xl: 32,
-    xxl: 48,
+    xs: 2,
+    sm: 4,
+    md: 8,
+    lg: 12,
+    xl: 16,
 };
 
 interface Event {
@@ -63,11 +60,11 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
         setDisplayDate(new Date(currentDate));
     }, [currentDate]);
 
-    const formatDateString = (date: Date): string => {
-        return `${date.getFullYear()}-${(date.getMonth() + 1)
+    const formatDateString = (date: Date) =>
+        `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date
+            .getDate()
             .toString()
-            .padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
-    };
+            .padStart(2, '0')}`;
 
     const getMonthDays = (date: Date): Date[] => {
         const year = date.getFullYear();
@@ -90,7 +87,7 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
 
     const monthDays = getMonthDays(displayDate);
     const totalRows = Math.ceil(monthDays.length / 7);
-    const cellHeight = Math.floor((300 - 100) / totalRows);
+    const cellHeight = Math.floor((260 - 60) / totalRows);
 
     const navigateMonth = (direction: 'prev' | 'next') => {
         const newDate = new Date(displayDate);
@@ -112,92 +109,77 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
         <div
             style={{
                 background: COLORS.surface,
-                borderRadius: '16px',
-                padding: SPACING.md,
+                borderRadius: 12,
+                padding: SPACING.lg,
                 border: `1px solid ${COLORS.borderLight}`,
-                boxShadow: `0 2px 8px ${COLORS.shadowLight}`,
-                maxWidth: '450px',
-                height: '380px',
-                display: 'flex',
-                flexDirection: 'column',
-                boxSizing: 'border-box',
+                boxShadow: `0 1px 4px ${COLORS.shadowLight}`,
+                maxWidth: 390,
+                fontFamily:
+                    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                fontSize: 12,
             }}
         >
             {/* Header */}
-            <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: SPACING.md,
-                padding: `${SPACING.sm}px 0`,
-            }}>
+            <div
+                style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: SPACING.md,
+                }}
+            >
                 <button
                     onClick={() => navigateMonth('prev')}
-                    style={{
-                        ...navBtnStyle,
-                        background: COLORS.surfaceSecondary,
-                        color: COLORS.textSecondary,
-                        border: `1px solid ${COLORS.borderLight}`,
-                    }}
+                    style={{ ...navBtnStyle }}
                 >
                     <ChevronLeft size={14} />
                 </button>
-                <div style={{
-                    fontSize: '16px',
-                    fontWeight: 700,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: SPACING.sm,
-                    color: COLORS.text,
-                }}>
-                    <Calendar size={16} />
-                    {displayDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                <div
+                    style={{
+                        fontWeight: 600,
+                        fontSize: 14,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                    }}
+                >
+                    <Calendar size={14} />
+                    {displayDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                 </div>
                 <button
                     onClick={() => navigateMonth('next')}
-                    style={{
-                        ...navBtnStyle,
-                        background: COLORS.surfaceSecondary,
-                        color: COLORS.textSecondary,
-                        border: `1px solid ${COLORS.borderLight}`,
-                    }}
+                    style={{ ...navBtnStyle }}
                 >
                     <ChevronRight size={14} />
                 </button>
             </div>
 
             {/* Weekdays */}
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(7, 1fr)',
-                fontSize: '11px',
-                color: COLORS.textSecondary,
-                marginBottom: SPACING.sm,
-                textAlign: 'center',
-                fontWeight: 600,
-                padding: `${SPACING.sm}px 0`,
-                borderBottom: `1px solid ${COLORS.borderLight}`,
-            }}>
+            <div
+                style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(7, 1fr)',
+                    textAlign: 'center',
+                    fontWeight: 500,
+                    color: COLORS.textSecondary,
+                    marginBottom: SPACING.sm,
+                }}
+            >
                 {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-                    <div
-                        key={`${d}-${i}`}
-                        style={{
-                            color: i === 0 || i === 6 ? COLORS.accent : COLORS.textSecondary,
-                            fontWeight: 600,
-                        }}
-                    >
+                    <div key={i} style={{ color: i === 0 || i === 6 ? COLORS.accent : COLORS.textSecondary }}>
                         {d}
                     </div>
                 ))}
             </div>
 
             {/* Calendar Grid */}
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(7, 1fr)',
-                gap: SPACING.xs,
-                flexGrow: 1,
-            }}>
+            <div
+                style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(7, 1fr)',
+                    gap: 2,
+                }}
+            >
                 {monthDays.map((date, idx) => {
                     const eventsToday = getEventsForDate(date);
                     const isCurrent = isCurrentMonth(date);
@@ -212,20 +194,18 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
                             style={{
                                 position: 'relative',
                                 height: `${cellHeight}px`,
-                                fontSize: '12px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                borderRadius: '10px',
-                                fontWeight: today ? 700 : 500,
+                                borderRadius: 6,
+                                fontWeight: today ? 600 : 400,
+                                textAlign: 'center',
+                                lineHeight: `${cellHeight}px`,
                                 cursor: isCurrent && !past ? 'pointer' : 'default',
                                 background: selected
-                                    ? `linear-gradient(135deg, ${COLORS.accent}, ${COLORS.accent}dd)`
+                                    ? COLORS.accent
                                     : today
                                         ? `${COLORS.accent}10`
                                         : 'transparent',
                                 color: selected
-                                    ? COLORS.surface
+                                    ? '#fff'
                                     : today
                                         ? COLORS.accent
                                         : past
@@ -235,7 +215,6 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
                                                 : COLORS.textTertiary,
                                 border: today && !selected ? `1px solid ${COLORS.accent}` : 'none',
                                 transition: 'all 0.2s ease-in-out',
-                                boxShadow: selected ? `0 2px 8px ${COLORS.accent}30` : 'none',
                             }}
                             onMouseEnter={(e) => {
                                 if (isCurrent && !past && !selected) {
@@ -250,35 +229,40 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
                         >
                             {date.getDate()}
                             {eventsToday.length > 0 && (
-                                <div style={{
-                                    position: 'absolute',
-                                    bottom: SPACING.xs,
-                                    left: '50%',
-                                    transform: 'translateX(-50%)',
-                                    display: 'flex',
-                                    gap: '1px',
-                                    maxWidth: '24px',
-                                    flexWrap: 'wrap',
-                                    justifyContent: 'center'
-                                }}>
+                                <div
+                                    style={{
+                                        position: 'absolute',
+                                        bottom: 3,
+                                        left: '50%',
+                                        transform: 'translateX(-50%)',
+                                        display: 'flex',
+                                        gap: 1,
+                                        flexWrap: 'wrap',
+                                        justifyContent: 'center',
+                                    }}
+                                >
                                     {eventsToday.slice(0, 3).map((event, i) => (
-                                        <div key={i} style={{
-                                            width: '4px',
-                                            height: '4px',
-                                            borderRadius: '50%',
-                                            backgroundColor: selected ? COLORS.surface : (event.color || COLORS.accent),
-                                            boxShadow: `0 0 4px ${event.color || COLORS.accent}30`,
-                                            opacity: 0.9
-                                        }} />
+                                        <div
+                                            key={i}
+                                            style={{
+                                                width: 3,
+                                                height: 3,
+                                                borderRadius: '50%',
+                                                backgroundColor: selected ? '#fff' : event.color || COLORS.accent,
+                                                opacity: 0.9,
+                                            }}
+                                        />
                                     ))}
                                     {eventsToday.length > 3 && (
-                                        <div style={{
-                                            width: '4px',
-                                            height: '4px',
-                                            borderRadius: '50%',
-                                            backgroundColor: selected ? COLORS.surface : COLORS.textSecondary,
-                                            opacity: 0.7
-                                        }} />
+                                        <div
+                                            style={{
+                                                width: 3,
+                                                height: 3,
+                                                borderRadius: '50%',
+                                                backgroundColor: COLORS.textSecondary,
+                                                opacity: 0.7,
+                                            }}
+                                        />
                                     )}
                                 </div>
                             )}
@@ -291,16 +275,16 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
 };
 
 const navBtnStyle: React.CSSProperties = {
-    padding: '8px 10px',
+    padding: '4px 6px',
+    borderRadius: 6,
+    background: '#F1F1F5',
     border: 'none',
-    borderRadius: '8px',
+    color: '#555',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    transition: 'all 0.2s ease-in-out',
-    fontSize: '12px',
-    fontWeight: 500,
+    transition: 'background 0.2s',
 };
 
 export default MiniCalendar;

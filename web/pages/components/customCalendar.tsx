@@ -34,14 +34,16 @@ const COLORS = {
     shadowHeavy: 'rgba(0, 0, 0, 0.12)',
 };
 
-const SPACING = {
-    xs: 4,
-    sm: 8,
-    md: 16,
-    lg: 24,
-    xl: 32,
-    xxl: 48,
+const COMPACT_SPACING = {
+    xs: 2,
+    sm: 4,
+    md: 8,
+    lg: 12,
+    xl: 16,
+    xxl: 20,
 };
+
+const FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 
 interface Event {
     id: string;
@@ -595,22 +597,22 @@ const CustomCalendar: React.FC<CalendarProps> = ({
     }) => {
         const sizeStyles = {
             small: {
+                padding: "4px 8px",
+                fontSize: "10px",
+                borderRadius: "6px",
+                borderLeftWidth: "3px",
+            },
+            normal: {
                 padding: "8px 12px",
-                fontSize: "11px",
+                fontSize: "12px",
                 borderRadius: "8px",
                 borderLeftWidth: "4px",
             },
-            normal: {
-                padding: "14px 16px",
-                fontSize: "13px",
-                borderRadius: "12px",
-                borderLeftWidth: "5px",
-            },
             large: {
-                padding: "18px 22px",
-                fontSize: "16px",
-                borderRadius: "16px",
-                borderLeftWidth: "6px",
+                padding: "12px 16px",
+                fontSize: "14px",
+                borderRadius: "10px",
+                borderLeftWidth: "5px",
             },
         };
 
@@ -622,36 +624,37 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                 onMouseEnter={() => setHoveredEvent(event.id)}
                 onMouseLeave={() => setHoveredEvent(null)}
                 style={{
+                    fontFamily: FONT_FAMILY,
                     background: `linear-gradient(135deg, ${event.color}15, ${event.color}08)`,
                     borderLeft: `${sizeStyles[size].borderLeftWidth} solid ${event.color}`,
                     border: `1px solid ${event.color}20`,
                     ...sizeStyles[size],
                     cursor: "pointer",
-                    lineHeight: "1.5",
-                    transform: hoveredEvent === event.id ? "translateY(-2px) scale(1.02)" : "scale(1)",
+                    lineHeight: "1.4",
+                    transform: hoveredEvent === event.id ? "translateY(-1px) scale(1.01)" : "scale(1)",
                     boxShadow: hoveredEvent === event.id
-                        ? `0 8px 25px ${event.color}30, 0 4px 12px ${event.color}20`
-                        : `0 2px 8px ${event.color}15`,
-                    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                        ? `0 4px 15px ${event.color}25, 0 2px 8px ${event.color}15`
+                        : `0 1px 4px ${event.color}10`,
+                    transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
                     position: "relative",
                     overflow: "hidden",
-                    marginBottom: size === "small" ? "6px" : "10px",
-                    backdropFilter: "blur(10px)",
+                    marginBottom: size === "small" ? "3px" : "6px",
+                    backdropFilter: "blur(8px)",
                 }}
             >
                 {showTime && (
                     <div
                         style={{
-                            fontWeight: "700",
+                            fontWeight: "600",
                             color: event.color,
-                            marginBottom: size === "small" ? "3px" : "6px",
-                            fontSize: size === "small" ? "10px" : sizeStyles[size].fontSize,
+                            marginBottom: size === "small" ? "2px" : "4px",
+                            fontSize: size === "small" ? "9px" : sizeStyles[size].fontSize,
                             display: "flex",
                             alignItems: "center",
-                            gap: "4px",
+                            gap: "3px",
                         }}
                     >
-                        <Clock size={size === "small" ? 10 : 12} />
+                        <Clock size={size === "small" ? 8 : 10} />
                         {event.startTime}
                     </div>
                 )}
@@ -663,25 +666,25 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: size === "small" ? "nowrap" : "normal",
-                        marginBottom: "4px",
+                        marginBottom: "2px",
                     }}
                 >
                     {event.title}
                 </div>
                 <div
                     style={{
-                        fontSize: size === "small" ? "9px" : "11px",
+                        fontSize: size === "small" ? "8px" : "10px",
                         color: COLORS.textSecondary,
                         fontWeight: "500",
                         display: "flex",
                         alignItems: "center",
-                        gap: "4px",
+                        gap: "2px",
                     }}
                 >
-                    <User size={size === "small" ? 8 : 10} />
+                    <User size={size === "small" ? 7 : 8} />
                     {accountInfo?.displayName || event.person}
                     {accountInfo && (
-                        <span style={{ fontSize: "8px", opacity: 0.7 }}>
+                        <span style={{ fontSize: "7px", opacity: 0.7 }}>
                             ({accountInfo.provider})
                         </span>
                     )}
@@ -694,7 +697,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             left: 0,
                             right: 0,
                             bottom: 0,
-                            background: `linear-gradient(45deg, ${event.color}08, transparent)`,
+                            background: `linear-gradient(45deg, ${event.color}06, transparent)`,
                             pointerEvents: "none",
                         }}
                     />
@@ -729,59 +732,60 @@ const CustomCalendar: React.FC<CalendarProps> = ({
             <div
                 onClick={onClick}
                 style={{
+                    fontFamily: FONT_FAMILY,
                     background: isToday
-                        ? `linear-gradient(135deg, ${COLORS.accent}15, ${COLORS.accent}08)`
+                        ? `linear-gradient(135deg, ${COLORS.accent}12, ${COLORS.accent}06)`
                         : `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`,
-                    borderRadius: compactMode ? "12px" : "16px",
-                    padding: compactMode ? "12px" : "20px",
+                    borderRadius: compactMode ? "8px" : "12px",
+                    padding: compactMode ? "6px" : "12px",
                     border: isToday
-                        ? `2px solid ${COLORS.accent}`
+                        ? `1.5px solid ${COLORS.accent}`
                         : `1px solid ${COLORS.borderLight}`,
                     display: "flex",
                     flexDirection: "column",
-                    height: compactMode ? "160px" : "450px",
+                    height: compactMode ? "120px" : "300px",
                     boxShadow: isToday
-                        ? `0 8px 25px ${COLORS.accent}15, 0 4px 12px ${COLORS.accent}10`
-                        : `0 4px 12px ${COLORS.shadowLight}, 0 2px 4px ${COLORS.shadowLight}`,
-                    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                        ? `0 3px 12px ${COLORS.accent}12, 0 1px 4px ${COLORS.accent}08`
+                        : `0 1px 4px ${COLORS.shadowLight}`,
+                    transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
                     cursor: isPast ? "not-allowed" : "pointer",
                     position: "relative",
                     overflow: "hidden",
                     opacity: (isCurrentMonth && !isPast) ? 1 : 0.5,
-                    backdropFilter: "blur(10px)",
+                    backdropFilter: "blur(8px)",
                 }}
                 onMouseEnter={(e) => {
                     if (isCurrentMonth && !isPast) {
-                        e.currentTarget.style.transform = "translateY(-4px) scale(1.02)";
+                        e.currentTarget.style.transform = "translateY(-2px) scale(1.01)";
                         e.currentTarget.style.boxShadow = isToday
-                            ? `0 12px 35px ${COLORS.accent}25, 0 8px 20px ${COLORS.accent}15`
-                            : `0 12px 35px ${COLORS.shadowMedium}, 0 8px 20px ${COLORS.shadowLight}`;
+                            ? `0 6px 20px ${COLORS.accent}20, 0 3px 8px ${COLORS.accent}12`
+                            : `0 4px 16px ${COLORS.shadowMedium}`;
                     }
                 }}
                 onMouseLeave={(e) => {
                     e.currentTarget.style.transform = "translateY(0) scale(1)";
                     e.currentTarget.style.boxShadow = isToday
-                        ? `0 8px 25px ${COLORS.accent}15, 0 4px 12px ${COLORS.accent}10`
-                        : `0 4px 12px ${COLORS.shadowLight}, 0 2px 4px ${COLORS.shadowLight}`;
+                        ? `0 3px 12px ${COLORS.accent}12, 0 1px 4px ${COLORS.accent}08`
+                        : `0 1px 4px ${COLORS.shadowLight}`;
                 }}
             >
                 <div
                     style={{
-                        fontSize: compactMode ? "16px" : "28px",
-                        fontWeight: isToday ? "800" : "700",
+                        fontSize: compactMode ? "14px" : "20px",
+                        fontWeight: isToday ? "700" : "600",
                         color: isToday ? COLORS.accent : isPast ? COLORS.textTertiary : COLORS.text,
-                        marginBottom: compactMode ? "8px" : "16px",
+                        marginBottom: compactMode ? "4px" : "8px",
                         transition: "color 0.2s ease",
                         display: "flex",
                         alignItems: "center",
-                        gap: "8px",
+                        gap: "4px",
                     }}
                 >
                     {date.getDate()}
                     {isToday && (
                         <div style={{
-                            width: "6px",
-                            height: "6px",
+                            width: "4px",
+                            height: "4px",
                             backgroundColor: COLORS.accent,
                             borderRadius: "50%",
                             animation: "pulse 2s infinite"
@@ -792,18 +796,18 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                 <div
                     style={{
                         flex: 1,
-                        marginBottom: showMeals && meals.length > 0 ? "16px" : "0",
+                        marginBottom: showMeals && meals.length > 0 ? "8px" : "0",
                         overflowY: "auto",
                         scrollbarWidth: "thin",
                         scrollbarColor: `${COLORS.border} transparent`,
-                        paddingRight: "4px",
+                        paddingRight: "2px",
                     }}
                 >
-                    {events.slice(0, compactMode ? 2 : 6).map((event, eventIndex) => (
+                    {events.slice(0, compactMode ? 2 : 4).map((event, eventIndex) => (
                         <div
                             key={event.id}
                             style={{
-                                animation: `slideInUp 0.4s ease ${eventIndex * 0.1}s both`,
+                                animation: `slideInUp 0.3s ease ${eventIndex * 0.05}s both`,
                             }}
                         >
                             <EventCard
@@ -814,46 +818,46 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             />
                         </div>
                     ))}
-                    {events.length > (compactMode ? 2 : 6) && (
+                    {events.length > (compactMode ? 2 : 4) && (
                         <div
                             style={{
-                                fontSize: "11px",
+                                fontSize: "9px",
                                 color: COLORS.textSecondary,
-                                padding: "6px 12px",
+                                padding: "3px 6px",
                                 fontWeight: "600",
                                 backgroundColor: COLORS.surfaceSecondary,
-                                borderRadius: "8px",
+                                borderRadius: "4px",
                                 textAlign: "center",
                                 animation: "pulse 2s infinite",
                             }}
                         >
-                            +{events.length - (compactMode ? 2 : 6)} more events
+                            +{events.length - (compactMode ? 2 : 4)} more
                         </div>
                     )}
 
                     {dayGoals.length > 0 && (
-                        <div style={{ marginTop: "8px" }}>
+                        <div style={{ marginTop: "4px" }}>
                             <div style={{
-                                fontSize: "10px",
-                                fontWeight: "700",
+                                fontSize: "8px",
+                                fontWeight: "600",
                                 color: COLORS.success,
-                                marginBottom: "4px",
+                                marginBottom: "2px",
                                 textTransform: "uppercase",
-                                letterSpacing: "0.5px"
+                                letterSpacing: "0.3px"
                             }}>
                                 Goals
                             </div>
-                            {dayGoals.slice(0, 2).map((goal, index) => (
+                            {dayGoals.slice(0, 1).map((goal, index) => (
                                 <div
                                     key={goal.id}
                                     style={{
-                                        fontSize: "10px",
+                                        fontSize: "8px",
                                         color: COLORS.success,
-                                        padding: "4px 8px",
-                                        backgroundColor: `${COLORS.success}15`,
-                                        borderRadius: "6px",
-                                        marginBottom: "4px",
-                                        border: `1px solid ${COLORS.success}30`,
+                                        padding: "2px 4px",
+                                        backgroundColor: `${COLORS.success}12`,
+                                        borderRadius: "3px",
+                                        marginBottom: "2px",
+                                        border: `1px solid ${COLORS.success}25`,
                                         textDecoration: goal.completed ? "line-through" : "none",
                                         opacity: goal.completed ? 0.7 : 1,
                                     }}
@@ -865,28 +869,28 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     )}
 
                     {dayTodos.length > 0 && (
-                        <div style={{ marginTop: "8px" }}>
+                        <div style={{ marginTop: "4px" }}>
                             <div style={{
-                                fontSize: "10px",
-                                fontWeight: "700",
+                                fontSize: "8px",
+                                fontWeight: "600",
                                 color: COLORS.warning,
-                                marginBottom: "4px",
+                                marginBottom: "2px",
                                 textTransform: "uppercase",
-                                letterSpacing: "0.5px"
+                                letterSpacing: "0.3px"
                             }}>
                                 To-dos
                             </div>
-                            {dayTodos.slice(0, 2).map((todo, index) => (
+                            {dayTodos.slice(0, 1).map((todo, index) => (
                                 <div
                                     key={todo.id}
                                     style={{
-                                        fontSize: "10px",
+                                        fontSize: "8px",
                                         color: getPriorityColor(todo.priority),
-                                        padding: "4px 8px",
-                                        backgroundColor: `${getPriorityColor(todo.priority)}15`,
-                                        borderRadius: "6px",
-                                        marginBottom: "4px",
-                                        border: `1px solid ${getPriorityColor(todo.priority)}30`,
+                                        padding: "2px 4px",
+                                        backgroundColor: `${getPriorityColor(todo.priority)}12`,
+                                        borderRadius: "3px",
+                                        marginBottom: "2px",
+                                        border: `1px solid ${getPriorityColor(todo.priority)}25`,
                                         textDecoration: todo.completed ? "line-through" : "none",
                                         opacity: todo.completed ? 0.7 : 1,
                                     }}
@@ -914,28 +918,29 @@ const CustomCalendar: React.FC<CalendarProps> = ({
         return (
             <div
                 style={{
+                    fontFamily: FONT_FAMILY,
                     display: "flex",
                     flexDirection: "column",
                     height: "100%",
                     opacity: isNavigating ? 0.7 : 1,
-                    transform: isNavigating ? "translateX(10px)" : "translateX(0)",
-                    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                    transform: isNavigating ? "translateX(5px)" : "translateX(0)",
+                    transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
                 }}
             >
                 {/* Week Header */}
                 <div
                     style={{
                         display: "grid",
-                        gridTemplateColumns: "80px repeat(7, 1fr)",
+                        gridTemplateColumns: "60px repeat(7, 1fr)",
                         background: `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`,
-                        borderBottom: `2px solid ${COLORS.borderLight}`,
+                        borderBottom: `1px solid ${COLORS.borderLight}`,
                         position: "sticky",
                         top: 0,
                         zIndex: 10,
-                        backdropFilter: "blur(10px)",
+                        backdropFilter: "blur(8px)",
                     }}
                 >
-                    <div style={{ padding: "16px 12px" }}></div>
+                    <div style={{ padding: "8px 6px" }}></div>
                     {weekDays.map((day, index) => {
                         const isToday = day.toDateString() === new Date().toDateString();
                         const dayGoals = getGoalsForDate(day);
@@ -945,45 +950,45 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             <div
                                 key={index}
                                 style={{
-                                    padding: "16px 12px",
+                                    padding: "8px 6px",
                                     textAlign: "center",
                                     borderLeft: index > 0 ? `1px solid ${COLORS.borderLight}` : "none",
                                     transition: "all 0.2s ease",
-                                    background: isToday ? `linear-gradient(135deg, ${COLORS.accent}15, ${COLORS.accent}08)` : "transparent",
+                                    background: isToday ? `linear-gradient(135deg, ${COLORS.accent}12, ${COLORS.accent}06)` : "transparent",
                                     position: "relative",
                                 }}
                             >
                                 <div style={{
-                                    fontSize: "12px",
+                                    fontSize: "10px",
                                     color: COLORS.textSecondary,
-                                    marginBottom: "6px",
-                                    fontWeight: "700",
+                                    marginBottom: "3px",
+                                    fontWeight: "600",
                                     textTransform: "uppercase",
-                                    letterSpacing: "0.5px"
+                                    letterSpacing: "0.3px"
                                 }}>
                                     {day.toLocaleDateString('en-US', { weekday: 'short' })}
                                 </div>
                                 <div style={{
-                                    fontSize: "24px",
-                                    fontWeight: "700",
+                                    fontSize: "18px",
+                                    fontWeight: "600",
                                     color: isToday ? COLORS.accent : COLORS.text,
                                     position: "relative",
-                                    marginBottom: "8px"
+                                    marginBottom: "4px"
                                 }}>
                                     {isToday ? (
                                         <div style={{
                                             background: `linear-gradient(135deg, ${COLORS.accent}, ${COLORS.accent}dd)`,
                                             color: "white",
                                             borderRadius: "50%",
-                                            width: "36px",
-                                            height: "36px",
+                                            width: "28px",
+                                            height: "28px",
                                             display: "flex",
                                             alignItems: "center",
                                             justifyContent: "center",
                                             margin: "0 auto",
-                                            fontSize: "16px",
-                                            fontWeight: "700",
-                                            boxShadow: `0 4px 12px ${COLORS.accent}30`,
+                                            fontSize: "14px",
+                                            fontWeight: "600",
+                                            boxShadow: `0 2px 8px ${COLORS.accent}25`,
                                             animation: "pulse 2s infinite"
                                         }}>
                                             {day.getDate()}
@@ -993,11 +998,11 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                     )}
                                 </div>
 
-                                <div style={{ display: "flex", justifyContent: "center", gap: "4px" }}>
+                                <div style={{ display: "flex", justifyContent: "center", gap: "2px" }}>
                                     {dayGoals.length > 0 && (
                                         <div style={{
-                                            width: "6px",
-                                            height: "6px",
+                                            width: "4px",
+                                            height: "4px",
                                             backgroundColor: COLORS.success,
                                             borderRadius: "50%",
                                             animation: "pulse 2s infinite"
@@ -1005,8 +1010,8 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                     )}
                                     {dayTodos.length > 0 && (
                                         <div style={{
-                                            width: "6px",
-                                            height: "6px",
+                                            width: "4px",
+                                            height: "4px",
                                             backgroundColor: COLORS.warning,
                                             borderRadius: "50%",
                                             animation: "pulse 2s infinite"
@@ -1022,14 +1027,14 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                 <div
                     style={{
                         display: "grid",
-                        gridTemplateColumns: "80px repeat(7, 1fr)",
+                        gridTemplateColumns: "60px repeat(7, 1fr)",
                         backgroundColor: COLORS.surface,
                         borderBottom: `1px solid ${COLORS.borderLight}`,
-                        padding: "6px 0",
+                        padding: "3px 0",
                     }}
                 >
                     <div style={{
-                        fontSize: "12px",
+                        fontSize: "10px",
                         fontWeight: 600,
                         textAlign: "center",
                         color: COLORS.textSecondary
@@ -1045,7 +1050,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                         });
 
                         return (
-                            <div key={index} style={{ position: "relative", padding: "2px 4px", height: "36px" }}>
+                            <div key={index} style={{ position: "relative", padding: "1px 2px", height: "24px" }}>
                                 {eventsForDay.map((event, i) => (
                                     <div
                                         key={`${event.id}-${i}`}
@@ -1054,12 +1059,12 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                             position: "absolute",
                                             left: 0,
                                             right: 0,
-                                            top: `${i * 22}px`,
+                                            top: `${i * 14}px`,
                                             backgroundColor: event.color,
                                             color: "#fff",
-                                            fontSize: "11px",
-                                            padding: "2px 6px",
-                                            borderRadius: "6px",
+                                            fontSize: "9px",
+                                            padding: "1px 4px",
+                                            borderRadius: "4px",
                                             fontWeight: 600,
                                             whiteSpace: "nowrap",
                                             overflow: "hidden",
@@ -1088,29 +1093,29 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     <div
                         style={{
                             display: "grid",
-                            gridTemplateColumns: "80px repeat(7, 1fr)",
-                            minHeight: `${24 * 60}px`,
+                            gridTemplateColumns: "60px repeat(7, 1fr)",
+                            minHeight: `${24 * 50}px`,
                         }}
                     >
                         {/* Time Labels */}
                         <div style={{
-                            borderRight: `2px solid ${COLORS.borderLight}`,
+                            borderRight: `1px solid ${COLORS.borderLight}`,
                             background: `linear-gradient(135deg, ${COLORS.surfaceSecondary}, ${COLORS.borderLight})`
                         }}>
                             {hours.map((hour) => (
                                 <div
                                     key={hour}
                                     style={{
-                                        height: "60px",
+                                        height: "50px",
                                         display: "flex",
                                         alignItems: "flex-start",
                                         justifyContent: "flex-end",
-                                        paddingRight: "12px",
-                                        paddingTop: "6px",
-                                        fontSize: "11px",
+                                        paddingRight: "6px",
+                                        paddingTop: "3px",
+                                        fontSize: "9px",
                                         color: COLORS.textSecondary,
                                         borderBottom: `1px solid ${COLORS.borderLight}`,
-                                        fontWeight: "600"
+                                        fontWeight: "500"
                                     }}
                                 >
                                     {hour === 0 ? '' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`}
@@ -1129,7 +1134,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                     style={{
                                         borderLeft: dayIndex > 0 ? `1px solid ${COLORS.borderLight}` : "none",
                                         position: "relative",
-                                        background: isToday ? `linear-gradient(180deg, ${COLORS.accent}05, transparent)` : "transparent",
+                                        background: isToday ? `linear-gradient(180deg, ${COLORS.accent}04, transparent)` : "transparent",
                                         opacity: isPast ? 0.5 : 1
                                     }}
                                 >
@@ -1149,7 +1154,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                                     }
                                                 }}
                                                 style={{
-                                                    height: "60px",
+                                                    height: "50px",
                                                     borderBottom: `1px solid ${COLORS.borderLight}`,
                                                     cursor: isPastSlot ? "not-allowed" : "pointer",
                                                     position: "relative",
@@ -1158,7 +1163,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                                 }}
                                                 onMouseEnter={(e) => {
                                                     if (!isPastSlot) {
-                                                        e.currentTarget.style.backgroundColor = `${COLORS.accent}10`;
+                                                        e.currentTarget.style.backgroundColor = `${COLORS.accent}08`;
                                                     }
                                                 }}
                                                 onMouseLeave={(e) => {
@@ -1174,8 +1179,8 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                         const endMinutes = event.endTime ? parseTimeToMinutes(event.endTime) : startMinutes + 60;
                                         const duration = endMinutes - startMinutes;
 
-                                        const topPosition = (startMinutes / 60) * 60;
-                                        const eventHeight = Math.max((duration / 60) * 60 - 4, 24);
+                                        const topPosition = (startMinutes / 60) * 50;
+                                        const eventHeight = Math.max((duration / 60) * 50 - 2, 20);
 
                                         return (
                                             <div
@@ -1187,47 +1192,47 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                                 style={{
                                                     position: "absolute",
                                                     top: `${topPosition}px`,
-                                                    left: `${eventIndex * 3 + 4}px`,
-                                                    right: "4px",
+                                                    left: `${eventIndex * 2 + 2}px`,
+                                                    right: "2px",
                                                     height: `${eventHeight}px`,
                                                     background: `linear-gradient(135deg, ${event.color}, ${event.color}dd)`,
                                                     color: "white",
-                                                    padding: "6px 10px",
-                                                    borderRadius: "8px",
+                                                    padding: "3px 6px",
+                                                    borderRadius: "5px",
                                                     cursor: "pointer",
-                                                    fontSize: "12px",
+                                                    fontSize: "10px",
                                                     fontWeight: "600",
                                                     overflow: "hidden",
-                                                    boxShadow: `0 4px 12px ${event.color}40, 0 2px 4px ${event.color}20`,
-                                                    transition: "all 0.3s ease",
+                                                    boxShadow: `0 2px 6px ${event.color}30, 0 1px 2px ${event.color}15`,
+                                                    transition: "all 0.2s ease",
                                                     zIndex: 5,
-                                                    animation: `slideInUp 0.4s ease ${eventIndex * 0.1}s both`,
+                                                    animation: `slideInUp 0.3s ease ${eventIndex * 0.05}s both`,
                                                     border: `1px solid ${event.color}`,
                                                 }}
                                                 onMouseEnter={(e) => {
-                                                    e.currentTarget.style.transform = "scale(1.03) translateY(-2px)";
-                                                    e.currentTarget.style.boxShadow = `0 8px 25px ${event.color}50, 0 4px 12px ${event.color}30`;
+                                                    e.currentTarget.style.transform = "scale(1.02) translateY(-1px)";
+                                                    e.currentTarget.style.boxShadow = `0 4px 12px ${event.color}40, 0 2px 6px ${event.color}25`;
                                                 }}
                                                 onMouseLeave={(e) => {
                                                     e.currentTarget.style.transform = "scale(1) translateY(0)";
-                                                    e.currentTarget.style.boxShadow = `0 4px 12px ${event.color}40, 0 2px 4px ${event.color}20`;
+                                                    e.currentTarget.style.boxShadow = `0 2px 6px ${event.color}30, 0 1px 2px ${event.color}15`;
                                                 }}
                                             >
                                                 <div style={{
-                                                    fontSize: "10px",
+                                                    fontSize: "8px",
                                                     fontWeight: "500",
-                                                    marginBottom: "2px",
+                                                    marginBottom: "1px",
                                                     opacity: 0.9,
                                                     display: "flex",
                                                     alignItems: "center",
-                                                    gap: "3px"
+                                                    gap: "2px"
                                                 }}>
-                                                    <Clock size={8} />
+                                                    <Clock size={6} />
                                                     {event.startTime}
                                                 </div>
                                                 <div style={{
-                                                    fontWeight: "700",
-                                                    lineHeight: "1.3",
+                                                    fontWeight: "600",
+                                                    lineHeight: "1.2",
                                                     overflow: "hidden",
                                                     textOverflow: "ellipsis",
                                                     whiteSpace: "nowrap"
@@ -1253,38 +1258,39 @@ const CustomCalendar: React.FC<CalendarProps> = ({
         return (
             <div
                 style={{
+                    fontFamily: FONT_FAMILY,
                     display: "flex",
                     flexDirection: "column",
                     height: "100%",
                     opacity: isNavigating ? 0.7 : 1,
-                    transform: isNavigating ? "scale(0.98)" : "scale(1)",
-                    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                    padding: SPACING.md,
+                    transform: isNavigating ? "scale(0.99)" : "scale(1)",
+                    transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                    padding: COMPACT_SPACING.md,
                 }}
             >
                 <div
                     style={{
                         display: "grid",
                         gridTemplateColumns: "repeat(7, 1fr)",
-                        gap: "2px",
+                        gap: "1px",
                         background: `linear-gradient(135deg, ${COLORS.surfaceSecondary}, ${COLORS.borderLight})`,
-                        borderRadius: "16px",
+                        borderRadius: "10px",
                         overflow: "hidden",
-                        marginBottom: "16px",
-                        boxShadow: `0 4px 12px ${COLORS.shadowLight}`,
+                        marginBottom: "8px",
+                        boxShadow: `0 2px 6px ${COLORS.shadowLight}`,
                     }}
                 >
                     {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day) => (
                         <div
                             key={day}
                             style={{
-                                padding: "16px",
+                                padding: "8px",
                                 background: `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`,
                                 textAlign: "center",
-                                fontWeight: "700",
+                                fontWeight: "600",
                                 color: COLORS.text,
-                                fontSize: "13px",
-                                letterSpacing: "0.5px",
+                                fontSize: "11px",
+                                letterSpacing: "0.3px",
                             }}
                         >
                             {day.slice(0, 3)}
@@ -1298,14 +1304,14 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                         overflowY: "auto",
                         scrollbarWidth: "thin",
                         scrollbarColor: `${COLORS.border} transparent`,
-                        paddingRight: "4px",
+                        paddingRight: "2px",
                     }}
                 >
                     <div
                         style={{
                             display: "grid",
                             gridTemplateColumns: "repeat(7, 1fr)",
-                            gap: "6px",
+                            gap: "3px",
                             minHeight: "fit-content",
                         }}
                     >
@@ -1346,38 +1352,39 @@ const CustomCalendar: React.FC<CalendarProps> = ({
         return (
             <div
                 style={{
+                    fontFamily: FONT_FAMILY,
                     display: "flex",
                     flexDirection: "column",
                     height: "100%",
                     opacity: isNavigating ? 0.7 : 1,
-                    transform: isNavigating ? "translateY(10px)" : "translateY(0)",
-                    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                    padding: SPACING.md,
+                    transform: isNavigating ? "translateY(5px)" : "translateY(0)",
+                    transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                    padding: COMPACT_SPACING.md,
                 }}
             >
                 <div
                     style={{
                         textAlign: "center",
-                        padding: "24px",
+                        padding: "16px",
                         background: `linear-gradient(135deg, ${COLORS.accent}, ${COLORS.accent}dd)`,
                         color: "white",
-                        borderRadius: "20px",
-                        marginBottom: "20px",
-                        boxShadow: `0 8px 25px ${COLORS.accent}30`,
+                        borderRadius: "12px",
+                        marginBottom: "12px",
+                        boxShadow: `0 4px 15px ${COLORS.accent}25`,
                     }}
                 >
                     <div
                         style={{
-                            fontSize: "28px",
-                            fontWeight: "800",
-                            animation: "fadeInDown 0.6s ease",
+                            fontSize: "20px",
+                            fontWeight: "700",
+                            animation: "fadeInDown 0.4s ease",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            gap: "12px",
+                            gap: "8px",
                         }}
                     >
-                        <CalendarIcon size={32} />
+                        <CalendarIcon size={24} />
                         {(currentDate ?? new Date()).toLocaleDateString("en-US", {
                             weekday: "long",
                             month: "long",
@@ -1387,30 +1394,30 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     </div>
                 </div>
 
-                <div style={{ display: "flex", gap: "20px", flex: 1, overflow: "hidden" }}>
+                <div style={{ display: "flex", gap: "12px", flex: 1, overflow: "hidden" }}>
                     <div style={{ flex: 1 }}>
                         <div
                             style={{
                                 background: `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`,
-                                borderRadius: "20px",
-                                padding: "24px",
+                                borderRadius: "12px",
+                                padding: "16px",
                                 border: `1px solid ${COLORS.borderLight}`,
                                 height: "100%",
-                                boxShadow: `0 8px 25px ${COLORS.shadowLight}`,
+                                boxShadow: `0 4px 15px ${COLORS.shadowLight}`,
                                 display: "flex",
                                 flexDirection: "column",
                             }}
                         >
                             <h3
                                 style={{
-                                    margin: "0 0 20px 0",
-                                    fontSize: "22px",
-                                    fontWeight: "800",
+                                    margin: "0 0 12px 0",
+                                    fontSize: "16px",
+                                    fontWeight: "700",
                                     color: COLORS.text,
-                                    animation: "slideInLeft 0.5s ease",
+                                    animation: "slideInLeft 0.3s ease",
                                     display: "flex",
                                     alignItems: "center",
-                                    gap: "8px",
+                                    gap: "6px",
                                 }}
                             >
                                 📅 Events
@@ -1421,22 +1428,22 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                     overflowY: "auto",
                                     scrollbarWidth: "thin",
                                     scrollbarColor: `${COLORS.border} transparent`,
-                                    paddingRight: "8px",
+                                    paddingRight: "4px",
                                 }}
                             >
                                 {dayEvents.length === 0 ? (
                                     <div
                                         style={{
                                             textAlign: "center",
-                                            padding: "60px 20px",
-                                            animation: "fadeIn 0.5s ease",
+                                            padding: "40px 16px",
+                                            animation: "fadeIn 0.3s ease",
                                         }}
                                     >
-                                        <div style={{ fontSize: "48px", marginBottom: "16px" }}>📅</div>
+                                        <div style={{ fontSize: "32px", marginBottom: "8px" }}>📅</div>
                                         <p
                                             style={{
                                                 color: COLORS.textSecondary,
-                                                fontSize: "16px",
+                                                fontSize: "14px",
                                                 fontWeight: "500",
                                             }}
                                         >
@@ -1448,14 +1455,14 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                         style={{
                                             display: "flex",
                                             flexDirection: "column",
-                                            gap: "16px",
+                                            gap: "8px",
                                         }}
                                     >
                                         {dayEvents.map((event, index) => (
                                             <div
                                                 key={event.id}
                                                 style={{
-                                                    animation: `slideInUp 0.5s ease ${index * 0.1}s both`,
+                                                    animation: `slideInUp 0.3s ease ${index * 0.05}s both`,
                                                 }}
                                             >
                                                 <EventCard
@@ -1486,23 +1493,24 @@ const CustomCalendar: React.FC<CalendarProps> = ({
         return (
             <div
                 style={{
+                    fontFamily: FONT_FAMILY,
                     height: "100%",
                     opacity: isNavigating ? 0.7 : 1,
-                    transform: isNavigating ? "scale(0.95)" : "scale(1)",
-                    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                    transform: isNavigating ? "scale(0.98)" : "scale(1)",
+                    transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
                     overflowY: "auto",
                     scrollbarWidth: "thin",
                     scrollbarColor: `${COLORS.border} transparent`,
-                    paddingRight: "8px",
-                    padding: SPACING.md,
+                    paddingRight: "4px",
+                    padding: COMPACT_SPACING.md,
                 }}
             >
                 <div
                     style={{
                         display: "grid",
-                        gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-                        gap: "20px",
-                        padding: "12px",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+                        gap: "12px",
+                        padding: "6px",
                     }}
                 >
                     {months.map((month, index) => {
@@ -1536,37 +1544,37 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                 key={index}
                                 style={{
                                     background: `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`,
-                                    borderRadius: "20px",
-                                    padding: "20px",
+                                    borderRadius: "12px",
+                                    padding: "12px",
                                     border: `1px solid ${COLORS.borderLight}`,
-                                    boxShadow: `0 8px 25px ${COLORS.shadowLight}`,
-                                    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                                    animation: `fadeInUp 0.6s ease ${index * 0.05}s both`,
+                                    boxShadow: `0 4px 15px ${COLORS.shadowLight}`,
+                                    transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                                    animation: `fadeInUp 0.4s ease ${index * 0.03}s both`,
                                     cursor: "pointer",
                                 }}
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.transform = "translateY(-6px) scale(1.02)";
-                                    e.currentTarget.style.boxShadow = `0 16px 35px ${COLORS.shadowMedium}`;
+                                    e.currentTarget.style.transform = "translateY(-3px) scale(1.01)";
+                                    e.currentTarget.style.boxShadow = `0 8px 20px ${COLORS.shadowMedium}`;
                                 }}
                                 onMouseLeave={(e) => {
                                     e.currentTarget.style.transform = "translateY(0) scale(1)";
-                                    e.currentTarget.style.boxShadow = `0 8px 25px ${COLORS.shadowLight}`;
+                                    e.currentTarget.style.boxShadow = `0 4px 15px ${COLORS.shadowLight}`;
                                 }}
                             >
                                 <div
                                     style={{
                                         textAlign: "center",
-                                        fontWeight: "800",
-                                        marginBottom: "16px",
+                                        fontWeight: "700",
+                                        marginBottom: "8px",
                                         color: COLORS.text,
-                                        fontSize: "18px",
+                                        fontSize: "14px",
                                         display: "flex",
                                         alignItems: "center",
                                         justifyContent: "center",
-                                        gap: "8px",
+                                        gap: "4px",
                                     }}
                                 >
-                                    <CalendarIcon size={20} />
+                                    <CalendarIcon size={16} />
                                     {month.toLocaleDateString("en-US", { month: "long" })}
                                 </div>
 
@@ -1574,9 +1582,9 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                     style={{
                                         display: "grid",
                                         gridTemplateColumns: "repeat(7, 1fr)",
-                                        gap: "3px",
-                                        fontSize: "12px",
-                                        marginBottom: "16px",
+                                        gap: "2px",
+                                        fontSize: "10px",
+                                        marginBottom: "8px",
                                     }}
                                 >
                                     {["S", "M", "T", "W", "T", "F", "S"].map((day) => (
@@ -1584,9 +1592,9 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                             key={day}
                                             style={{
                                                 textAlign: "center",
-                                                fontWeight: "700",
+                                                fontWeight: "600",
                                                 color: COLORS.textSecondary,
-                                                padding: "6px",
+                                                padding: "3px",
                                             }}
                                         >
                                             {day}
@@ -1616,29 +1624,29 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                                 }}
                                                 style={{
                                                     textAlign: "center",
-                                                    padding: "6px",
+                                                    padding: "3px",
                                                     background: hasContent
-                                                        ? `linear-gradient(135deg, ${COLORS.accent}15, ${COLORS.accent}08)`
+                                                        ? `linear-gradient(135deg, ${COLORS.accent}12, ${COLORS.accent}06)`
                                                         : "transparent",
-                                                    borderRadius: "6px",
+                                                    borderRadius: "4px",
                                                     opacity: isCurrentMonth ? (isPast ? 0.3 : 1) : 0.4,
-                                                    fontWeight: isToday ? "800" : "500",
+                                                    fontWeight: isToday ? "700" : "500",
                                                     color: isToday ? COLORS.accent : isPast ? COLORS.textTertiary : COLORS.text,
                                                     cursor: (isCurrentMonth && !isPast) ? "pointer" : "not-allowed",
                                                     transition: "all 0.2s ease",
                                                     position: "relative",
-                                                    border: isToday ? `2px solid ${COLORS.accent}` : "1px solid transparent",
+                                                    border: isToday ? `1px solid ${COLORS.accent}` : "1px solid transparent",
                                                 }}
                                                 onMouseEnter={(e) => {
                                                     if (isCurrentMonth && !isPast) {
-                                                        e.currentTarget.style.background = `linear-gradient(135deg, ${COLORS.accent}25, ${COLORS.accent}15)`;
-                                                        e.currentTarget.style.transform = "scale(1.15)";
+                                                        e.currentTarget.style.background = `linear-gradient(135deg, ${COLORS.accent}20, ${COLORS.accent}12)`;
+                                                        e.currentTarget.style.transform = "scale(1.1)";
                                                     }
                                                 }}
                                                 onMouseLeave={(e) => {
                                                     if (isCurrentMonth && !isPast) {
                                                         e.currentTarget.style.background = hasContent
-                                                            ? `linear-gradient(135deg, ${COLORS.accent}15, ${COLORS.accent}08)`
+                                                            ? `linear-gradient(135deg, ${COLORS.accent}12, ${COLORS.accent}06)`
                                                             : "transparent";
                                                         e.currentTarget.style.transform = "scale(1)";
                                                     }
@@ -1647,16 +1655,16 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                                 {day.getDate()}
                                                 <div style={{
                                                     position: "absolute",
-                                                    top: "2px",
-                                                    right: "2px",
+                                                    top: "1px",
+                                                    right: "1px",
                                                     display: "flex",
                                                     gap: "1px"
                                                 }}>
                                                     {dayEvents.length > 0 && (
                                                         <div
                                                             style={{
-                                                                width: "4px",
-                                                                height: "4px",
+                                                                width: "3px",
+                                                                height: "3px",
                                                                 backgroundColor: COLORS.accent,
                                                                 borderRadius: "50%",
                                                                 animation: "pulse 2s infinite",
@@ -1666,8 +1674,8 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                                     {dayGoals.length > 0 && (
                                                         <div
                                                             style={{
-                                                                width: "4px",
-                                                                height: "4px",
+                                                                width: "3px",
+                                                                height: "3px",
                                                                 backgroundColor: COLORS.success,
                                                                 borderRadius: "50%",
                                                                 animation: "pulse 2s infinite",
@@ -1677,8 +1685,8 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                                     {dayTodos.length > 0 && (
                                                         <div
                                                             style={{
-                                                                width: "4px",
-                                                                height: "4px",
+                                                                width: "3px",
+                                                                height: "3px",
                                                                 backgroundColor: COLORS.warning,
                                                                 borderRadius: "50%",
                                                                 animation: "pulse 2s infinite",
@@ -1691,21 +1699,21 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                     })}
                                 </div>
 
-                                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                                     {monthEvents.length > 0 && (
                                         <div
                                             style={{
-                                                fontSize: "12px",
+                                                fontSize: "10px",
                                                 color: COLORS.textSecondary,
                                                 textAlign: "center",
                                                 fontWeight: "600",
-                                                padding: "6px 12px",
-                                                background: `linear-gradient(135deg, ${COLORS.accent}15, ${COLORS.accent}08)`,
-                                                borderRadius: "6px",
+                                                padding: "3px 6px",
+                                                background: `linear-gradient(135deg, ${COLORS.accent}12, ${COLORS.accent}06)`,
+                                                borderRadius: "4px",
                                                 display: "flex",
                                                 alignItems: "center",
                                                 justifyContent: "center",
-                                                gap: "6px",
+                                                gap: "3px",
                                             }}
                                         >
                                             📅 {monthEvents.length} event{monthEvents.length > 1 ? "s" : ""}
@@ -1714,17 +1722,17 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                     {monthGoals.length > 0 && (
                                         <div
                                             style={{
-                                                fontSize: "12px",
+                                                fontSize: "10px",
                                                 color: COLORS.textSecondary,
                                                 textAlign: "center",
                                                 fontWeight: "600",
-                                                padding: "6px 12px",
-                                                background: `linear-gradient(135deg, ${COLORS.success}15, ${COLORS.success}08)`,
-                                                borderRadius: "6px",
+                                                padding: "3px 6px",
+                                                background: `linear-gradient(135deg, ${COLORS.success}12, ${COLORS.success}06)`,
+                                                borderRadius: "4px",
                                                 display: "flex",
                                                 alignItems: "center",
                                                 justifyContent: "center",
-                                                gap: "6px",
+                                                gap: "3px",
                                             }}
                                         >
                                             🎯 {monthGoals.length} goal{monthGoals.length > 1 ? "s" : ""}
@@ -1733,17 +1741,17 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                     {monthTodos.length > 0 && (
                                         <div
                                             style={{
-                                                fontSize: "12px",
+                                                fontSize: "10px",
                                                 color: COLORS.textSecondary,
                                                 textAlign: "center",
                                                 fontWeight: "600",
-                                                padding: "6px 12px",
-                                                background: `linear-gradient(135deg, ${COLORS.warning}15, ${COLORS.warning}08)`,
-                                                borderRadius: "6px",
+                                                padding: "3px 6px",
+                                                background: `linear-gradient(135deg, ${COLORS.warning}12, ${COLORS.warning}06)`,
+                                                borderRadius: "4px",
                                                 display: "flex",
                                                 alignItems: "center",
                                                 justifyContent: "center",
-                                                gap: "6px",
+                                                gap: "3px",
                                             }}
                                         >
                                             ✅ {monthTodos.length} todo{monthTodos.length > 1 ? "s" : ""}
@@ -1772,6 +1780,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
         return (
             <div
                 style={{
+                    fontFamily: FONT_FAMILY,
                     position: "fixed",
                     top: 0,
                     left: 0,
@@ -1782,23 +1791,23 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     alignItems: "center",
                     justifyContent: "center",
                     zIndex: 1000,
-                    backdropFilter: "blur(8px)",
-                    animation: "fadeIn 0.3s ease",
+                    backdropFilter: "blur(6px)",
+                    animation: "fadeIn 0.2s ease",
                 }}
                 onClick={onClose}
             >
                 <div
                     style={{
                         background: `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`,
-                        borderRadius: "20px",
-                        padding: "32px",
-                        maxWidth: "550px",
+                        borderRadius: "16px",
+                        padding: "20px",
+                        maxWidth: "480px",
                         width: "90%",
-                        maxHeight: "85vh",
+                        maxHeight: "80vh",
                         overflowY: "auto",
-                        boxShadow: `0 25px 50px ${COLORS.shadowHeavy}`,
+                        boxShadow: `0 15px 35px ${COLORS.shadowHeavy}`,
                         border: `1px solid ${COLORS.borderLight}`,
-                        animation: "slideInUp 0.4s ease",
+                        animation: "slideInUp 0.3s ease",
                     }}
                     onClick={(e) => e.stopPropagation()}
                 >
@@ -1821,13 +1830,13 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                         onClick={() => setIsPreviewVisible(false)}
                         style={{
                             position: "absolute",
-                            top: "-8px",
-                            right: "-8px",
+                            top: "-6px",
+                            right: "-6px",
                             background: `linear-gradient(135deg, ${COLORS.surfaceSecondary}, ${COLORS.borderLight})`,
                             border: `1px solid ${COLORS.border}`,
                             borderRadius: "50%",
-                            width: "32px",
-                            height: "32px",
+                            width: "28px",
+                            height: "28px",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
@@ -1841,29 +1850,29 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             e.currentTarget.style.background = `linear-gradient(135deg, ${COLORS.surfaceSecondary}, ${COLORS.borderLight})`;
                         }}
                     >
-                        <X size={16} />
+                        <X size={14} />
                     </button>
 
                     <div style={{
                         textAlign: "center",
-                        marginBottom: "24px",
-                        padding: "20px",
-                        background: `linear-gradient(135deg, ${previewingEvent.color}15, ${previewingEvent.color}08)`,
-                        borderRadius: "16px",
-                        border: `2px solid ${previewingEvent.color}30`
+                        marginBottom: "16px",
+                        padding: "12px",
+                        background: `linear-gradient(135deg, ${previewingEvent.color}12, ${previewingEvent.color}06)`,
+                        borderRadius: "10px",
+                        border: `1px solid ${previewingEvent.color}25`
                     }}>
                         <h2
                             style={{
-                                fontSize: "20px",
-                                fontWeight: 700,
+                                fontSize: "16px",
+                                fontWeight: 600,
                                 textAlign: "center",
-                                marginBottom: "12px",
+                                marginBottom: "6px",
                                 wordWrap: "break-word",
                                 overflowWrap: "break-word",
                                 whiteSpace: "normal",
                                 wordBreak: "break-word",
                                 maxWidth: "100%",
-                                lineHeight: "1.4",
+                                lineHeight: "1.3",
                                 color: COLORS.text,
                             }}
                         >
@@ -1874,45 +1883,45 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            gap: "8px",
+                            gap: "6px",
                             color: previewingEvent.color,
                             fontWeight: "600",
-                            fontSize: "16px"
+                            fontSize: "14px"
                         }}>
-                            <Clock size={18} />
+                            <Clock size={14} />
                             {previewingEvent.startTime} - {previewingEvent.endTime}
                         </div>
                     </div>
 
-                    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                         <div style={{
                             display: "flex",
                             alignItems: "center",
-                            gap: "12px",
-                            padding: "16px",
+                            gap: "8px",
+                            padding: "10px",
                             background: `linear-gradient(135deg, ${COLORS.surfaceSecondary}, ${COLORS.borderLight})`,
-                            borderRadius: "12px",
+                            borderRadius: "8px",
                             border: `1px solid ${COLORS.borderLight}`
                         }}>
                             <div style={{
-                                width: "40px",
-                                height: "40px",
+                                width: "32px",
+                                height: "32px",
                                 borderRadius: "50%",
                                 background: `linear-gradient(135deg, ${previewingEvent.color}, ${previewingEvent.color}dd)`,
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
                                 color: "white",
-                                fontWeight: "700",
-                                fontSize: "16px"
+                                fontWeight: "600",
+                                fontSize: "14px"
                             }}>
                                 {(account?.displayName || account?.email || previewingEvent.person).charAt(0).toUpperCase()}
                             </div>
                             <div>
-                                <div style={{ fontWeight: "600", color: COLORS.text, fontSize: "16px" }}>
+                                <div style={{ fontWeight: "600", color: COLORS.text, fontSize: "14px" }}>
                                     {account?.displayName || account?.email || previewingEvent.person}
                                 </div>
-                                <div style={{ color: COLORS.textSecondary, fontSize: "14px" }}>
+                                <div style={{ color: COLORS.textSecondary, fontSize: "12px" }}>
                                     {account?.provider || previewingEvent.provider || "Google"} Account
                                 </div>
                             </div>
@@ -1921,15 +1930,15 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                         <div style={{
                             display: "flex",
                             alignItems: "center",
-                            gap: "12px",
-                            padding: "16px",
+                            gap: "8px",
+                            padding: "10px",
                             background: `linear-gradient(135deg, ${COLORS.surfaceSecondary}, ${COLORS.borderLight})`,
-                            borderRadius: "12px",
+                            borderRadius: "8px",
                             border: `1px solid ${COLORS.borderLight}`
                         }}>
-                            <CalendarIcon size={20} color={COLORS.textSecondary} />
+                            <CalendarIcon size={16} color={COLORS.textSecondary} />
                             <div>
-                                <div style={{ fontWeight: "600", color: COLORS.text }}>
+                                <div style={{ fontWeight: "600", color: COLORS.text, fontSize: "14px" }}>
                                     {previewingEvent.is_all_day
                                         ? `${new Date(previewingEvent.start_date ?? previewingEvent.date).toLocaleDateString("en-US", {
                                             weekday: "long",
@@ -1960,15 +1969,15 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             <div style={{
                                 display: "flex",
                                 alignItems: "center",
-                                gap: "12px",
-                                padding: "16px",
+                                gap: "8px",
+                                padding: "10px",
                                 background: `linear-gradient(135deg, ${COLORS.surfaceSecondary}, ${COLORS.borderLight})`,
-                                borderRadius: "12px",
+                                borderRadius: "8px",
                                 border: `1px solid ${COLORS.borderLight}`
                             }}>
-                                <MapPin size={20} color={COLORS.textSecondary} />
+                                <MapPin size={16} color={COLORS.textSecondary} />
                                 <div>
-                                    <div style={{ fontWeight: "600", color: COLORS.text }}>
+                                    <div style={{ fontWeight: "600", color: COLORS.text, fontSize: "14px" }}>
                                         {previewingEvent.location}
                                     </div>
                                 </div>
@@ -1977,15 +1986,15 @@ const CustomCalendar: React.FC<CalendarProps> = ({
 
                         {previewingEvent.description && (
                             <div style={{
-                                padding: "16px",
+                                padding: "10px",
                                 background: `linear-gradient(135deg, ${COLORS.surfaceSecondary}, ${COLORS.borderLight})`,
-                                borderRadius: "12px",
+                                borderRadius: "8px",
                                 border: `1px solid ${COLORS.borderLight}`
                             }}>
-                                <div style={{ fontWeight: "600", color: COLORS.text, marginBottom: "8px" }}>
+                                <div style={{ fontWeight: "600", color: COLORS.text, marginBottom: "4px", fontSize: "14px" }}>
                                     Description
                                 </div>
-                                <div style={{ color: COLORS.textSecondary, lineHeight: "1.6" }}>
+                                <div style={{ color: COLORS.textSecondary, lineHeight: "1.5", fontSize: "13px" }}>
                                     {previewingEvent.description}
                                 </div>
                             </div>
@@ -2030,9 +2039,9 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                     style={{
                                         display: "flex",
                                         justifyContent: "center",
-                                        gap: "16px",
-                                        marginTop: "20px",
-                                        paddingTop: "20px",
+                                        gap: "12px",
+                                        marginTop: "12px",
+                                        paddingTop: "12px",
                                         borderTop: `1px solid ${COLORS.borderLight}`
                                     }}
                                 >
@@ -2042,22 +2051,22 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                             setIsPreviewVisible(false);
                                         }}
                                         style={{
-                                            padding: "12px 24px",
+                                            padding: "8px 16px",
                                             background: `linear-gradient(135deg, ${COLORS.accent}, ${COLORS.accent}dd)`,
                                             color: "white",
                                             border: "none",
-                                            borderRadius: "12px",
+                                            borderRadius: "8px",
                                             cursor: "pointer",
-                                            fontSize: "14px",
+                                            fontSize: "12px",
                                             fontWeight: "600",
                                             transition: "all 0.2s ease",
-                                            boxShadow: `0 4px 12px ${COLORS.accent}30`,
+                                            boxShadow: `0 2px 8px ${COLORS.accent}25`,
                                             display: "flex",
                                             alignItems: "center",
-                                            gap: "8px"
+                                            gap: "4px"
                                         }}
                                     >
-                                        <Edit size={16} />
+                                        <Edit size={12} />
                                         Edit
                                     </button>
                                 </div>
@@ -2087,11 +2096,12 @@ const CustomCalendar: React.FC<CalendarProps> = ({
 
     return (
         <div style={{
+            fontFamily: FONT_FAMILY,
             background: COLORS.surface,
             // minHeight: "100vh",
             height: '100%',
-            borderRadius: 12,
-            boxShadow: `0 1px 3px ${COLORS.shadowLight}`,
+            borderRadius: 8,
+            boxShadow: `0 1px 2px ${COLORS.shadowLight}`,
             backgroundColor: COLORS.surface,
             border: `1px solid ${COLORS.borderLight}`,
             overflow: 'hidden',
@@ -2101,7 +2111,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
           @keyframes slideInUp {
             from {
               opacity: 0;
-              transform: translateY(30px);
+              transform: translateY(20px);
             }
             to {
               opacity: 1;
@@ -2112,7 +2122,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
           @keyframes slideInLeft {
             from {
               opacity: 0;
-              transform: translateX(-30px);
+              transform: translateX(-20px);
             }
             to {
               opacity: 1;
@@ -2123,7 +2133,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
           @keyframes slideInRight {
             from {
               opacity: 0;
-              transform: translateX(30px);
+              transform: translateX(20px);
             }
             to {
               opacity: 1;
@@ -2134,7 +2144,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
           @keyframes fadeInUp {
             from {
               opacity: 0;
-              transform: translateY(40px);
+              transform: translateY(25px);
             }
             to {
               opacity: 1;
@@ -2145,7 +2155,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
           @keyframes fadeInDown {
             from {
               opacity: 0;
-              transform: translateY(-30px);
+              transform: translateY(-20px);
             }
             to {
               opacity: 1;
@@ -2165,7 +2175,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
           @keyframes fadeInLeft {
             from {
               opacity: 0;
-              transform: translateX(-20px);
+              transform: translateX(-15px);
             }
             to {
               opacity: 1;
@@ -2180,12 +2190,12 @@ const CustomCalendar: React.FC<CalendarProps> = ({
             }
             50% {
               opacity: 0.7;
-              transform: scale(1.05);
+              transform: scale(1.03);
             }
           }
 
           ::-webkit-scrollbar {
-            width: 8px;
+            width: 6px;
           }
           
           ::-webkit-scrollbar-track {
@@ -2194,8 +2204,8 @@ const CustomCalendar: React.FC<CalendarProps> = ({
           
           ::-webkit-scrollbar-thumb {
             background: linear-gradient(135deg, ${COLORS.border}, ${COLORS.textTertiary});
-            border-radius: 4px;
-            transition: background 0.3s ease;
+            border-radius: 3px;
+            transition: background 0.2s ease;
           }
           
           ::-webkit-scrollbar-thumb:hover {
@@ -2204,114 +2214,115 @@ const CustomCalendar: React.FC<CalendarProps> = ({
         `}
             </style>
 
-            <div style={{ padding: SPACING.lg }}>
+            <div style={{ padding: COMPACT_SPACING.lg }}>
                 {/* Enhanced Header */}
                 <div
                     style={{
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
-                        marginBottom: "24px",
+                        marginBottom: "16px",
                         flexWrap: "wrap",
-                        gap: "20px",
+                        gap: "12px",
                     }}
                 >
-                    <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                         <button
                             onClick={() => { if (setCurrentDate) setCurrentDate(new Date()); }}
                             style={{
-                                padding: "12px 20px",
+                                padding: "8px 12px",
                                 background: `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`,
                                 border: `1px solid ${COLORS.borderLight}`,
-                                borderRadius: "12px",
+                                borderRadius: "8px",
                                 cursor: "pointer",
-                                fontSize: "14px",
+                                fontSize: "12px",
                                 fontWeight: "600",
                                 color: COLORS.text,
-                                transition: "all 0.3s ease",
-                                boxShadow: `0 2px 8px ${COLORS.shadowLight}`,
+                                transition: "all 0.2s ease",
+                                boxShadow: `0 1px 4px ${COLORS.shadowLight}`,
+                                fontFamily: FONT_FAMILY,
                             }}
                             onMouseEnter={(e) => {
                                 e.currentTarget.style.background = `linear-gradient(135deg, ${COLORS.surfaceSecondary}, ${COLORS.borderLight})`;
-                                e.currentTarget.style.transform = "translateY(-2px)";
-                                e.currentTarget.style.boxShadow = `0 4px 12px ${COLORS.shadowMedium}`;
+                                e.currentTarget.style.transform = "translateY(-1px)";
+                                e.currentTarget.style.boxShadow = `0 2px 8px ${COLORS.shadowMedium}`;
                             }}
                             onMouseLeave={(e) => {
                                 e.currentTarget.style.background = `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`;
                                 e.currentTarget.style.transform = "translateY(0)";
-                                e.currentTarget.style.boxShadow = `0 2px 8px ${COLORS.shadowLight}`;
+                                e.currentTarget.style.boxShadow = `0 1px 4px ${COLORS.shadowLight}`;
                             }}
                         >
                             Today
                         </button>
-                        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                             <button
                                 onClick={() => navigateDate("prev")}
                                 style={{
-                                    padding: "12px",
+                                    padding: "8px",
                                     background: `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`,
                                     border: `1px solid ${COLORS.borderLight}`,
-                                    borderRadius: "12px",
+                                    borderRadius: "8px",
                                     cursor: "pointer",
                                     display: "flex",
                                     alignItems: "center",
                                     justifyContent: "center",
-                                    transition: "all 0.3s ease",
-                                    boxShadow: `0 2px 8px ${COLORS.shadowLight}`,
+                                    transition: "all 0.2s ease",
+                                    boxShadow: `0 1px 4px ${COLORS.shadowLight}`,
                                 }}
                                 onMouseEnter={(e) => {
                                     e.currentTarget.style.background = `linear-gradient(135deg, ${COLORS.surfaceSecondary}, ${COLORS.borderLight})`;
-                                    e.currentTarget.style.transform = "translateY(-2px)";
+                                    e.currentTarget.style.transform = "translateY(-1px)";
                                 }}
                                 onMouseLeave={(e) => {
                                     e.currentTarget.style.background = `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`;
                                     e.currentTarget.style.transform = "translateY(0)";
                                 }}
                             >
-                                <ChevronLeft size={18} />
+                                <ChevronLeft size={16} />
                             </button>
                             <button
                                 onClick={() => navigateDate("next")}
                                 style={{
-                                    padding: "12px",
+                                    padding: "8px",
                                     background: `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`,
                                     border: `1px solid ${COLORS.borderLight}`,
-                                    borderRadius: "12px",
+                                    borderRadius: "8px",
                                     cursor: "pointer",
                                     display: "flex",
                                     alignItems: "center",
                                     justifyContent: "center",
-                                    transition: "all 0.3s ease",
-                                    boxShadow: `0 2px 8px ${COLORS.shadowLight}`,
+                                    transition: "all 0.2s ease",
+                                    boxShadow: `0 1px 4px ${COLORS.shadowLight}`,
                                 }}
                                 onMouseEnter={(e) => {
                                     e.currentTarget.style.background = `linear-gradient(135deg, ${COLORS.surfaceSecondary}, ${COLORS.borderLight})`;
-                                    e.currentTarget.style.transform = "translateY(-2px)";
+                                    e.currentTarget.style.transform = "translateY(-1px)";
                                 }}
                                 onMouseLeave={(e) => {
                                     e.currentTarget.style.background = `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`;
                                     e.currentTarget.style.transform = "translateY(0)";
                                 }}
                             >
-                                <ChevronRight size={18} />
+                                <ChevronRight size={16} />
                             </button>
                         </div>
                         <h3 style={{
                             margin: 0,
                             color: COLORS.text,
-                            fontSize: "26px",
+                            fontSize: "20px",
                             fontWeight: "700",
                             display: "flex",
                             alignItems: "center",
-                            gap: "8px",
+                            gap: "6px",
                         }}>
-                            <CalendarIcon size={28} />
+                            <CalendarIcon size={22} />
                             {view === "Year"
                                 ? (currentDate ?? new Date()).getFullYear()
                                 : formatDate(currentDate ?? new Date())}
                         </h3>
                     </div>
-                    <div style={{ display: "flex", gap: "6px" }}>
+                    <div style={{ display: "flex", gap: "4px" }}>
                         <Select
                             value={view}
                             onChange={(value) => {
@@ -2321,22 +2332,22 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                 }
                             }}
                             style={{
-                                width: 180,
-                                borderRadius: 12,
+                                width: 140,
+                                borderRadius: 8,
                                 background: `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`,
-                                boxShadow: `0 2px 8px ${COLORS.shadowLight}`,
+                                boxShadow: `0 1px 4px ${COLORS.shadowLight}`,
                                 fontWeight: 600,
-                                fontSize: 14
+                                fontSize: 12
                             }}
                             onMouseEnter={(e) => {
                                 e.currentTarget.style.background = `linear-gradient(135deg, ${COLORS.surfaceSecondary}, ${COLORS.borderLight})`;
-                                e.currentTarget.style.transform = "translateY(-2px)";
-                                e.currentTarget.style.boxShadow = `0 4px 12px ${COLORS.shadowMedium}`;
+                                e.currentTarget.style.transform = "translateY(-1px)";
+                                e.currentTarget.style.boxShadow = `0 2px 8px ${COLORS.shadowMedium}`;
                             }}
                             onMouseLeave={(e) => {
                                 e.currentTarget.style.background = `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`;
                                 e.currentTarget.style.transform = "translateY(0)";
-                                e.currentTarget.style.boxShadow = `0 2px 8px ${COLORS.shadowLight}`;
+                                e.currentTarget.style.boxShadow = `0 1px 4px ${COLORS.shadowLight}`;
                             }}
                             prefix={<CalendarOutlined />}
                         >
@@ -2353,14 +2364,20 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             style={{
                                 backgroundColor: COLORS.accent,
                                 borderColor: COLORS.accent,
-                                borderRadius: '8px',
+                                borderRadius: '6px',
+                                height: '32px',
+                                width: '32px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: 0
                             }}
                         />
                     </div>
                 </div>
 
                 {/* Enhanced Quick Add Event */}
-                <div style={{ marginTop: '24px' }}>
+                <div style={{ marginTop: '16px' }}>
                     <SmartInputBox
                         source={source}
                         allowMentions={allowMentions}
@@ -2376,13 +2393,13 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                 <div
                     style={{
                         background: `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`,
-                        borderRadius: "20px",
+                        borderRadius: "12px",
                         border: `1px solid ${COLORS.borderLight}`,
-                        height: "650px",
+                        height: "550px",
                         display: "flex",
                         flexDirection: "column",
-                        animation: "fadeInUp 0.6s ease",
-                        boxShadow: `0 8px 25px ${COLORS.shadowLight}`,
+                        animation: "fadeInUp 0.4s ease",
+                        boxShadow: `0 4px 15px ${COLORS.shadowLight}`,
                         overflow: "hidden",
                     }}
                 >
@@ -2399,7 +2416,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
             {/* Enhanced Event Form Modal */}
             <Modal
                 title={
-                    <Space>
+                    <Space style={{ fontFamily: FONT_FAMILY }}>
                         <PlusOutlined />
                         {editingEvent ? 'Edit Event' : 'Create New Event'}
                     </Space>
@@ -2413,18 +2430,20 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     setIsAllDay(false);
                 }}
                 okText={editingEvent ? 'Update Event' : 'Create Event'}
-                width={600}
+                width={520}
                 okButtonProps={{
                     style: {
                         backgroundColor: COLORS.accent,
                         borderColor: COLORS.accent,
+                        fontFamily: FONT_FAMILY,
                     }
                 }}
+                style={{ fontFamily: FONT_FAMILY }}
             >
                 <Form
                     form={form}
                     layout="vertical"
-                    style={{ marginTop: 16 }}
+                    style={{ marginTop: 12, fontFamily: FONT_FAMILY }}
                     initialValues={{
                         person: getPersonNames()[0] || 'Family'
                     }}
@@ -2434,18 +2453,18 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                         label="Event Title"
                         rules={[{ required: true, message: 'Please enter event title' }]}
                     >
-                        <Input placeholder="Add a descriptive title" />
+                        <Input placeholder="Add a descriptive title" style={{ fontFamily: FONT_FAMILY }} />
                     </Form.Item>
 
                     {isAllDay ? (
-                        <Row gutter={16}>
+                        <Row gutter={12}>
                             <Col span={12}>
                                 <Form.Item
                                     name="startDate"
                                     label="Start Date"
                                     rules={[{ required: true, message: 'Please select start date' }]}
                                 >
-                                    <DatePicker style={{ width: '100%' }} disabledDate={(current) => current && current < dayjs().startOf('day')} />
+                                    <DatePicker style={{ width: '100%', fontFamily: FONT_FAMILY }} disabledDate={(current) => current && current < dayjs().startOf('day')} />
                                 </Form.Item>
                             </Col>
                             <Col span={12}>
@@ -2454,19 +2473,19 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                     label="End Date"
                                     rules={[{ required: true, message: 'Please select end date' }]}
                                 >
-                                    <DatePicker style={{ width: '100%' }} disabledDate={(current) => current && current < dayjs().startOf('day')} />
+                                    <DatePicker style={{ width: '100%', fontFamily: FONT_FAMILY }} disabledDate={(current) => current && current < dayjs().startOf('day')} />
                                 </Form.Item>
                             </Col>
                         </Row>
                     ) : (
-                        <Row gutter={16}>
+                        <Row gutter={8}>
                             <Col span={8}>
                                 <Form.Item
                                     name="date"
                                     label="Date"
                                     rules={[{ required: true, message: 'Please select date' }]}
                                 >
-                                    <DatePicker style={{ width: '100%' }} disabledDate={(current) => current && current < dayjs().startOf('day')} />
+                                    <DatePicker style={{ width: '100%', fontFamily: FONT_FAMILY }} disabledDate={(current) => current && current < dayjs().startOf('day')} />
                                 </Form.Item>
                             </Col>
                             <Col span={8}>
@@ -2475,7 +2494,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                     label={<Space><ClockCircleOutlined />Start Time</Space>}
                                     rules={[{ required: true, message: 'Please select start time' }]}
                                 >
-                                    <TimePicker style={{ width: '100%' }} format="hh:mm A" use12Hours />
+                                    <TimePicker style={{ width: '100%', fontFamily: FONT_FAMILY }} format="hh:mm A" use12Hours />
                                 </Form.Item>
                             </Col>
                             <Col span={8}>
@@ -2484,26 +2503,26 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                     label={<Space><ClockCircleOutlined />End Time</Space>}
                                     rules={[{ required: true, message: 'Please select end time' }]}
                                 >
-                                    <TimePicker style={{ width: '100%' }} format="hh:mm A" use12Hours />
+                                    <TimePicker style={{ width: '100%', fontFamily: FONT_FAMILY }} format="hh:mm A" use12Hours />
                                 </Form.Item>
                             </Col>
                         </Row>
                     )}
 
                     <Form.Item>
-                        <Checkbox checked={isAllDay} onChange={(e) => setIsAllDay(e.target.checked)}>
+                        <Checkbox checked={isAllDay} onChange={(e) => setIsAllDay(e.target.checked)} style={{ fontFamily: FONT_FAMILY }}>
                             All day
                         </Checkbox>
                     </Form.Item>
 
-                    <Row gutter={16}>
+                    <Row gutter={12}>
                         <Col span={12}>
                             <Form.Item
                                 name="person"
                                 label="Assigned to"
                                 rules={[{ required: true, message: 'Please select person' }]}
                             >
-                                <Select placeholder="Select person">
+                                <Select placeholder="Select person" style={{ fontFamily: FONT_FAMILY }}>
                                     {Object.keys(personColors).map(userName => {
                                         const account = getConnectedAccount(userName) ||
                                             connectedAccounts.find(acc => acc.email === getPersonData(userName).email);
@@ -2524,7 +2543,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
 
                         <Col span={12}>
                             <Form.Item name="invitee" label="Invite">
-                                <Input placeholder="Add email" />
+                                <Input placeholder="Add email" style={{ fontFamily: FONT_FAMILY }} />
                             </Form.Item>
                         </Col>
                     </Row>
@@ -2533,11 +2552,11 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                         name="location"
                         label={<Space><EnvironmentOutlined />Location</Space>}
                     >
-                        <Input placeholder="Add location or meeting link" />
+                        <Input placeholder="Add location or meeting link" style={{ fontFamily: FONT_FAMILY }} />
                     </Form.Item>
 
                     <Form.Item name="description" label="Description">
-                        <TextArea rows={4} placeholder="Add notes, agenda, or additional details" />
+                        <TextArea rows={3} placeholder="Add notes, agenda, or additional details" style={{ fontFamily: FONT_FAMILY }} />
                     </Form.Item>
                 </Form>
             </Modal>

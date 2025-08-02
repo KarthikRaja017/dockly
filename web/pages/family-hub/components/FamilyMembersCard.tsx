@@ -136,8 +136,8 @@ const FamilyMembersCard: React.FC<FamilyMembersCardProps> = ({
                                         right: 8,
                                         backgroundColor: '#f59e0b',
                                         color: 'white',
-                                        fontSize: '9px',
-                                        padding: '2px 6px',
+                                        fontSize: '7px',
+                                        padding: '1px 4px',
                                         borderRadius: '12px',
                                         fontWeight: 500,
                                         textTransform: 'uppercase'

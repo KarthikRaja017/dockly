@@ -232,38 +232,38 @@ const FamilyHubPage: React.FC = () => {
         padding: 0
     };
 
+    // Dynamic title and icon based on selected member
+    const getPageTitle = () => {
+        return selectedMemberId ? 'Profile Details' : 'Family Hub';
+    };
+
+    const getPageIcon = () => {
+        return selectedMemberId ? '👤' : '👨‍👩‍👧‍👦';
+    };
+
     return (
         <Layout style={{ minHeight: '100vh', marginTop: '62px', marginLeft: '40px' }}>
             <Layout>
                 <Content style={contentStyle}>
-                    <div style={headerStyle}>
-                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                            <Button type="link" icon={<LeftOutlined />} style={{ padding: 0, marginRight: '16px' }}>
-                                Back to Dashboard
-                            </Button>
-                        </div>
-                        <Space>
-                            <Button icon={<ShareAltOutlined />} size="small">Share</Button>
-                            <Button type="primary" icon={<CalendarOutlined />} size="small">Planner</Button>
-                        </Space>
-                    </div>
-
                     <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
                         <div style={{
                             width: '40px',
                             height: '40px',
-                            backgroundColor: '#eef1ff',
-                            color: '#3355ff',
+                            backgroundColor: selectedMemberId ? '#f3f4f6' : '#eef1ff',
+                            color: selectedMemberId ? '#6b7280' : '#3355ff',
                             borderRadius: '8px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             fontSize: '20px',
-                            marginRight: '12px'
+                            marginRight: '12px',
+                            transition: 'all 0.3s ease'
                         }}>
-                            👨‍👩‍👧‍👦
+                            {getPageIcon()}
                         </div>
-                        <Title level={3} style={{ margin: 0 }}>Family Hub</Title>
+                        <Title level={3} style={{ margin: 0, transition: 'all 0.3s ease' }}>
+                            {getPageTitle()}
+                        </Title>
                     </div>
 
                     <FamilyMembersCard

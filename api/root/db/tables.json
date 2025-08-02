@@ -519,6 +519,19 @@
     },
 
     {
+      "table_name": "user_finance_details",
+      "columns": [
+        "user_id VARCHAR REFERENCES users(uid)",
+        "id SERIAL PRIMARY KEY",
+        "isFinanceUser INT",
+        "profile_id VARCHAR",
+        "expiresAt TIMESTAMP",
+        "created_at TIMESTAMP",
+        "updated_at TIMESTAMP"
+      ]
+    },
+
+    {
       "table_name": "projects",
       "columns": [
         "project_id VARCHAR(255) PRIMARY KEY",
@@ -699,20 +712,6 @@
       ]
     },
     {
-      "table_name": "user_finance_details",
-      "columns": [
-        "user_id UUID PRIMARY KEY DEFAULT gen_random_uuid()",
-        "profile_id TEXT UNIQUE NOT NULL",
-        "expiresat TIMESTAMPTZ",
-        "isfinanceuser INTEGER DEFAULT 1",
-        "created_at TIMESTAMPTZ DEFAULT now()",
-        "updated_at TIMESTAMPTZ DEFAULT now()",
-        "last_sync_at TIMESTAMPTZ",
-        "sync_status TEXT DEFAULT 'pending'",
-        "preferences JSONB DEFAULT '{}'::jsonb"
-      ]
-    },
-    {
       "table_name": "institutions",
       "columns": [
         "id TEXT PRIMARY KEY",
@@ -721,102 +720,6 @@
         "primary_color TEXT",
         "homepage_url TEXT",
         "country_code TEXT DEFAULT 'US'",
-        "created_at TIMESTAMPTZ DEFAULT now()",
-        "updated_at TIMESTAMPTZ DEFAULT now()"
-      ]
-    },
-    {
-      "table_name": "connections",
-      "columns": [
-        "id TEXT PRIMARY KEY",
-        "user_id UUID REFERENCES user_finance_details(user_id) ON DELETE CASCADE",
-        "institution_id TEXT REFERENCES institutions(id)",
-        "status TEXT NOT NULL DEFAULT 'pending'",
-        "features TEXT[]",
-        "externally_managed BOOLEAN DEFAULT false",
-        "error_message TEXT",
-        "last_synced_at TIMESTAMPTZ",
-        "created_at TIMESTAMPTZ DEFAULT now()",
-        "updated_at TIMESTAMPTZ DEFAULT now()"
-      ]
-    },
-    {
-      "table_name": "account_types",
-      "columns": [
-        "id UUID PRIMARY KEY DEFAULT gen_random_uuid()",
-        "name TEXT UNIQUE NOT NULL",
-        "category TEXT NOT NULL",
-        "description TEXT",
-        "is_asset BOOLEAN DEFAULT true",
-        "display_order INTEGER DEFAULT 0"
-      ]
-    },
-    {
-      "table_name": "accounts",
-      "columns": [
-        "id TEXT PRIMARY KEY",
-        "user_id UUID REFERENCES user_finance_details(user_id) ON DELETE CASCADE",
-        "connection_id TEXT REFERENCES connections(id) ON DELETE CASCADE",
-        "account_type_id UUID REFERENCES account_types(id)",
-        "name TEXT NOT NULL",
-        "provider TEXT",
-        "currency_code TEXT DEFAULT 'USD'",
-        "account_number_last_four TEXT",
-        "routing_number TEXT",
-        "is_primary BOOLEAN DEFAULT false",
-        "is_active BOOLEAN DEFAULT true",
-        "transacted_first_on DATE",
-        "transacted_last_on DATE",
-        "verified BOOLEAN DEFAULT false",
-        "created_at TIMESTAMPTZ DEFAULT now()",
-        "updated_at TIMESTAMPTZ DEFAULT now()"
-      ]
-    },
-    {
-      "table_name": "account_balances",
-      "columns": [
-        "id UUID PRIMARY KEY DEFAULT gen_random_uuid()",
-        "account_id TEXT REFERENCES accounts(id) ON DELETE CASCADE",
-        "balance_at TIMESTAMPTZ NOT NULL",
-        "current_balance DECIMAL(15,2)",
-        "available_balance DECIMAL(15,2)",
-        "source TEXT",
-        "created_at TIMESTAMPTZ DEFAULT now()"
-      ]
-    },
-    {
-      "table_name": "transaction_categories",
-      "columns": [
-        "id UUID PRIMARY KEY DEFAULT gen_random_uuid()",
-        "name TEXT NOT NULL",
-        "parent_id UUID REFERENCES transaction_categories(id)",
-        "budget_type TEXT CHECK (budget_type IN ('needs', 'wants', 'savings')) DEFAULT 'wants'",
-        "high_level_category_id TEXT",
-        "detail_category_id TEXT",
-        "icon TEXT DEFAULT '📊'",
-        "color TEXT DEFAULT '#3B82F6'",
-        "is_active BOOLEAN DEFAULT true",
-        "created_at TIMESTAMPTZ DEFAULT now()"
-      ]
-    },
-    {
-      "table_name": "transactions",
-      "columns": [
-        "id TEXT PRIMARY KEY",
-        "user_id UUID REFERENCES user_finance_details(user_id) ON DELETE CASCADE",
-        "account_id TEXT REFERENCES accounts(id) ON DELETE CASCADE",
-        "amount DECIMAL(15,2) NOT NULL",
-        "date DATE NOT NULL",
-        "description TEXT NOT NULL",
-        "original_description TEXT",
-        "simple_description TEXT",
-        "status TEXT DEFAULT 'posted'",
-        "currency_code TEXT DEFAULT 'USD'",
-        "entry_type TEXT",
-        "category_id UUID REFERENCES transaction_categories(id)",
-        "is_recurring BOOLEAN DEFAULT false",
-        "is_transfer BOOLEAN DEFAULT false",
-        "transfer_account_id TEXT",
         "created_at TIMESTAMPTZ DEFAULT now()",
         "updated_at TIMESTAMPTZ DEFAULT now()"
       ]
@@ -968,8 +871,22 @@
         "primary_beneficiary VARCHAR(255) NOT NULL",
         "secondary_beneficiary VARCHAR(20)",
         "updated VARCHAR(20)",
-        "created_at TIMESTAMPTZ DEFAULT now()",
-        "updated_at TIMESTAMPTZ DEFAULT now()"
+        "created_at TIMESTAMP DEFAULT now()",
+        "updated_at TIMESTAMP DEFAULT now()"
+      ]
+    },
+    {
+      "table_name": "user_devices",
+      "columns": [
+        "id SERIAL PRIMARY KEY",
+        "user_id VARCHAR(255) REFERENCES users(uid) ON DELETE CASCADE",
+        "family_member_user_id VARCHAR(255)",
+        "device_name VARCHAR(255) NOT NULL",
+        "device_model VARCHAR(255) NOT NULL",
+        "added_by VARCHAR(255)",
+        "added_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP",
+        "edited_by VARCHAR(255)",
+        "updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP"
       ]
     }
   ]

@@ -18,8 +18,12 @@ from .models import (
     UpdateWeeklyGoals,
     UpdateWeeklyTodos,
     GetCalendarEvents,
+    GetPlannerDataComprehensive,  # New comprehensive endpoint
 )
 from . import planner_api
+
+# New comprehensive endpoint for optimal loading
+planner_api.add_resource(GetPlannerDataComprehensive, "/get/planner-data-comprehensive")
 
 planner_api.add_resource(AddEvents, "/add/events")
 

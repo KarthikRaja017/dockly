@@ -17,7 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <LoadingProvider>
           <DocklyLoader />
-          <NotificationInitializer />
+          {/* <NotificationInitializer /> */}
           <AuthProvider>
             {children}
           </AuthProvider>

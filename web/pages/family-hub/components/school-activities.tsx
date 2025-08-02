@@ -48,7 +48,11 @@ interface Activity {
     links: ResourceLink[];
 }
 
-export default function SchoolActivities() {
+interface SchoolActivitiesProps {
+    isEditing?: boolean;
+}
+
+export default function SchoolActivities({ isEditing = false }: SchoolActivitiesProps) {
     const [schools, setSchools] = useState<SchoolInfo[]>([]);
     const [activities, setActivities] = useState<Activity[]>([]);
 
@@ -158,11 +162,15 @@ export default function SchoolActivities() {
                                     <Col xs={24} sm={12} key={i}>
                                         <div>
                                             <Text type="secondary" style={{ fontSize: 10, display: 'block', marginBottom: 1 }}>{field.label}</Text>
-                                            <Input size="small" value={field.value} onChange={(e) => {
-                                                const updated = [...schools];
-                                                updated[index].customFields[i].value = e.target.value;
-                                                setSchools(updated);
-                                            }} />
+                                            <Input
+                                                size="small"
+                                                value={field.value}
+                                                readOnly={!isEditing}
+                                                onChange={(e) => {
+                                                    const updated = [...schools];
+                                                    updated[index].customFields[i].value = e.target.value;
+                                                    setSchools(updated);
+                                                }} />
                                         </div>
                                     </Col>
                                 ))}
@@ -181,28 +189,32 @@ export default function SchoolActivities() {
                                 </div>
                             )}
 
-                            <div style={{ marginTop: 8 }}>
-                                <span
-                                    style={{ fontSize: 10, color: '#1890ff', cursor: 'pointer', marginRight: 8 }}
-                                    onClick={() => setCustomFieldModalVisible(`school-${index}`)}
-                                >
-                                    + Add custom field
-                                </span>
-                                <span
-                                    style={{ fontSize: 10, color: '#1890ff', cursor: 'pointer' }}
-                                    onClick={() => setLinkModalVisible(`school-${index}`)}
-                                >
-                                    + Add link
-                                </span>
-                            </div>
+                            {isEditing && (
+                                <div style={{ marginTop: 8 }}>
+                                    <span
+                                        style={{ fontSize: 10, color: '#1890ff', cursor: 'pointer', marginRight: 8 }}
+                                        onClick={() => setCustomFieldModalVisible(`school-${index}`)}
+                                    >
+                                        + Add custom field
+                                    </span>
+                                    <span
+                                        style={{ fontSize: 10, color: '#1890ff', cursor: 'pointer' }}
+                                        onClick={() => setLinkModalVisible(`school-${index}`)}
+                                    >
+                                        + Add link
+                                    </span>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </Card>
             ))}
 
-            <Button type="dashed" block onClick={() => setSchoolModalVisible(true)} style={{ borderRadius: 8 }}>
-                + Add School
-            </Button>
+            {isEditing && (
+                <Button type="dashed" block onClick={() => setSchoolModalVisible(true)} style={{ borderRadius: 8 }}>
+                    + Add School
+                </Button>
+            )}
         </div>
     );
 
@@ -228,11 +240,15 @@ export default function SchoolActivities() {
                                     <Col xs={24} sm={12} key={i}>
                                         <div>
                                             <Text type="secondary" style={{ fontSize: 10, display: 'block', marginBottom: 1 }}>{field.label}</Text>
-                                            <Input size="small" value={field.value} onChange={(e) => {
-                                                const updated = [...activities];
-                                                updated[index].customFields[i].value = e.target.value;
-                                                setActivities(updated);
-                                            }} />
+                                            <Input
+                                                size="small"
+                                                value={field.value}
+                                                readOnly={!isEditing}
+                                                onChange={(e) => {
+                                                    const updated = [...activities];
+                                                    updated[index].customFields[i].value = e.target.value;
+                                                    setActivities(updated);
+                                                }} />
                                         </div>
                                     </Col>
                                 ))}
@@ -251,28 +267,32 @@ export default function SchoolActivities() {
                                 </div>
                             )}
 
-                            <div style={{ marginTop: 8 }}>
-                                <span
-                                    style={{ fontSize: 10, color: '#1890ff', cursor: 'pointer', marginRight: 8 }}
-                                    onClick={() => setCustomFieldModalVisible(`activity-${index}`)}
-                                >
-                                    + Add custom field
-                                </span>
-                                <span
-                                    style={{ fontSize: 10, color: '#1890ff', cursor: 'pointer' }}
-                                    onClick={() => setLinkModalVisible(`activity-${index}`)}
-                                >
-                                    + Add link
-                                </span>
-                            </div>
+                            {isEditing && (
+                                <div style={{ marginTop: 8 }}>
+                                    <span
+                                        style={{ fontSize: 10, color: '#1890ff', cursor: 'pointer', marginRight: 8 }}
+                                        onClick={() => setCustomFieldModalVisible(`activity-${index}`)}
+                                    >
+                                        + Add custom field
+                                    </span>
+                                    <span
+                                        style={{ fontSize: 10, color: '#1890ff', cursor: 'pointer' }}
+                                        onClick={() => setLinkModalVisible(`activity-${index}`)}
+                                    >
+                                        + Add link
+                                    </span>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </Card>
             ))}
 
-            <Button type="dashed" block onClick={() => setActivityModalVisible(true)} style={{ borderRadius: 8 }}>
-                + Add Activity
-            </Button>
+            {isEditing && (
+                <Button type="dashed" block onClick={() => setActivityModalVisible(true)} style={{ borderRadius: 8 }}>
+                    + Add Activity
+                </Button>
+            )}
         </div>
     );
 
@@ -284,9 +304,6 @@ export default function SchoolActivities() {
                         <BookOutlined style={{ marginRight: 8 }} />
                         School & Activities
                     </span>
-                }
-                extra={
-                    <EditOutlined style={{ cursor: 'pointer', color: '#1890ff' }} />
                 }
                 style={{ borderRadius: 12 }}
                 bodyStyle={{ padding: 12 }}

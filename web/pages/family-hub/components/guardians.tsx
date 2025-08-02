@@ -20,6 +20,7 @@ import {
 import { addBeneficiary, deleteFamilyDocument, getBeneficiaries, getFamilyDocuments, getGuardians, updateBeneficiary, uploadFamilyDocument } from '../../../services/family';
 import EstatePlanningCard from './estateplanning';
 import type { UploadRequestOption } from 'rc-upload/lib/interface';
+import FamilyInviteForm from '../FamilyInviteForm';
 
 interface DriveFile {
     id: string;
@@ -39,6 +40,8 @@ const GuardianSection: React.FC = () => {
     const [beneficiaries, setBeneficiaries] = useState<any[]>([]);
     const [editingBeneficiary, setEditingBeneficiary] = useState<any | null>(null);
     const [beneficiaryModalVisible, setBeneficiaryModalVisible] = useState(false);
+    const [guardianInviteVisible, setGuardianInviteVisible] = useState(false);
+    const [form] = Form.useForm(); // Add form instance
 
     useEffect(() => {
         async function fetchGuardians() {
@@ -123,6 +126,18 @@ const GuardianSection: React.FC = () => {
         }
     };
 
+    // Add effect to update form when editingBeneficiary changes
+    useEffect(() => {
+        if (editingBeneficiary && beneficiaryModalVisible) {
+            form.setFieldsValue({
+                account: editingBeneficiary.account,
+                primary_beneficiary: editingBeneficiary.primary_beneficiary,
+                secondary_beneficiary: editingBeneficiary.secondary_beneficiary,
+            });
+        } else if (!editingBeneficiary && beneficiaryModalVisible) {
+            form.resetFields();
+        }
+    }, [editingBeneficiary, beneficiaryModalVisible, form]);
 
     function getAccessTagColor(itemKey: string) {
         switch (itemKey.toLowerCase()) {
@@ -217,7 +232,10 @@ const GuardianSection: React.FC = () => {
                             // borderBottom: '1px solid #e5e7eb',
                             // backgroundColor: '#f0f4f8',
                             margin: '-24px -24px 12px -24px',
-                            padding: '12px 16px'
+                            padding: '12px 16px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
                         }}>
                             <Title level={4} style={{
                                 margin: 0,
@@ -226,8 +244,18 @@ const GuardianSection: React.FC = () => {
                                 gap: '6px',
                                 fontSize: '14px'
                             }}>
-                                🛡️ Guardians & Access Management
+                                🛡 Guardians & Access Management
                             </Title>
+                            <Button
+                                type="primary"
+                                icon={<PlusOutlined />}
+                                size="small"
+                                onClick={() => setGuardianInviteVisible(true)}
+                                style={{
+                                    borderRadius: '6px',
+                                    fontSize: '12px'
+                                }}
+                            />
                             {/* {getStatusBadge('complete')} */}
                         </div>
 
@@ -487,18 +515,18 @@ const GuardianSection: React.FC = () => {
                     </Modal>
                     <Modal
                         open={beneficiaryModalVisible}
-                        onCancel={() => setBeneficiaryModalVisible(false)}
+                        onCancel={() => {
+                            setBeneficiaryModalVisible(false);
+                            setEditingBeneficiary(null);
+                            form.resetFields();
+                        }}
                         title={editingBeneficiary ? "Edit Beneficiary" : "Add Beneficiary"}
                         footer={null}
                         style={{ top: 20 }}
                     >
                         <Form
+                            form={form}
                             layout="vertical"
-                            initialValues={{
-                                account: editingBeneficiary?.account,
-                                primary_beneficiary: editingBeneficiary?.primary_beneficiary,
-                                secondary_beneficiary: editingBeneficiary?.secondary_beneficiary,
-                            }}
                             onFinish={async (values) => {
                                 const beneficiary = {
                                     userId: localStorage.getItem("userId"),
@@ -510,12 +538,21 @@ const GuardianSection: React.FC = () => {
                                 };
 
                                 if (editingBeneficiary) {
-                                    await updateBeneficiary({ beneficiary });
+                                    // Include the id field when updating
+                                    const updatedBeneficiary = {
+                                        ...beneficiary,
+                                        id: editingBeneficiary.id, // Add the required id field
+                                    };
+                                    await updateBeneficiary({ beneficiary: updatedBeneficiary });
                                 } else {
                                     await addBeneficiary({ beneficiary });
                                 }
 
                                 setBeneficiaryModalVisible(false);
+                                setEditingBeneficiary(null);
+                                form.resetFields();
+
+                                // Refresh the beneficiaries list
                                 const res = await getBeneficiaries(localStorage.getItem("userId")!);
                                 if (res.status === 1) setBeneficiaries(res.payload);
                             }}
@@ -556,6 +593,18 @@ const GuardianSection: React.FC = () => {
                 </Col>
 
             </Row>
+
+            {/* Guardian Invite Modal */}
+            <FamilyInviteForm
+                visible={guardianInviteVisible}
+                onCancel={() => setGuardianInviteVisible(false)}
+                onSubmit={(formData) => {
+                    console.log('Guardian invited:', formData);
+                    // Handle guardian invitation submission here
+                    setGuardianInviteVisible(false);
+                }}
+                isGuardianMode={true}
+            />
         </div>
     );
 }

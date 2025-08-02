@@ -147,6 +147,21 @@ const CustomHeader = ({
 
   return (
     <>
+      <style jsx>{`
+        @keyframes logo-collapsed {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+        
+        .logo-collapsed {
+          animation: logo-collapsed 8s linear infinite;
+          transform-origin: center;
+        }
+      `}</style>
       <div
         style={{
           position: "fixed",
@@ -176,17 +191,44 @@ const CustomHeader = ({
             }}
           />
           {hidden && (
-            <img
-              src="/dockly-full.png"
-              alt="Logo"
-              style={{
-                width: "200px",
-                marginLeft: "-60px",
-                marginTop: "-50px",
-                marginBottom: "-40px",
-                marginRight: "-40px",
-              }}
-            />
+            // <img
+            //   src="/dockly-logo-full.png"
+            //   alt="Logo"
+            //   style={{
+            // width: "150px",
+            // marginLeft: "-30px",
+            // marginTop: "-40px",
+            // marginBottom: "-40px",
+            // marginRight: "-40px",
+            //   }}
+            // />
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <img
+                src={"/dockly-logo.png"}
+                alt="Dockly Logo"
+                className={"logo-collapsed"}
+                style={{
+                  width: "150px",
+                  marginLeft: "-75px",
+                  marginTop: "-40px",
+                  marginBottom: "-40px",
+                  // marginRight: "-40px",
+                }}
+              />
+              <Text
+                style={{
+                  color: PRIMARY_COLOR,
+                  marginLeft: '-50px',
+                  marginTop: 0,
+                  fontSize: '18px',
+                  fontWeight: 700,
+                  letterSpacing: '0.5px',
+                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+                }}
+              >
+                DOCKLY
+              </Text>
+            </div>
           )}
         </div>
 

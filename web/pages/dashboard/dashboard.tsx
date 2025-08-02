@@ -1,5 +1,6 @@
 
-'use client';
+
+"use client"
 import React, { useState, useEffect } from 'react';
 import {
   Layout,
@@ -70,7 +71,6 @@ import type { MenuProps } from 'antd';
 import WeatherWidget from './WeatherWidget';
 import MarketsWidget from './MarketsWidget';
 import TopNewsWidget from './TopNewsWidget';
-
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text, Paragraph } = Typography;
@@ -304,18 +304,12 @@ function App() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f9fafa', marginTop: 70 }}>
+    <div style={{ minHeight: '100vh', background: '#f5f5f7', marginTop: 70 }}>
       {/* Mobile Overlay */}
       <div style={mobileOverlayStyle} onClick={() => setMobileMenuVisible(false)} />
 
-      {/* Sidebar */}
-
-
       {/* Main Content */}
-      <Layout style={{ background: '#f9fafa' }}>
-        {/* Header */}
-
-
+      <Layout style={{}}>
         {/* Content */}
         <Content style={{ padding: '24px', overflow: 'auto' }}>
           <div style={{ maxWidth: '1800px', margin: '0 50px' }}>
@@ -332,21 +326,17 @@ function App() {
               </Text>
             </div>
 
-            {/* Top Widgets */}
-            {/* <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}> */}
-            {/* Weather Widget */}
-            <div style={{
+            {/* Top Widgets with Hover Effect - NO MARGIN BOTTOM INITIALLY */}
+            <div className="widgets-container" style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
               gap: '24px',
-              marginBottom: '40px',
+              marginBottom: '10px', // Changed from '10px' to '0px'
             }}>
               <WeatherWidget />
               <TopNewsWidget />
               <MarketsWidget />
             </div>
-
-            {/* </Row> */}
 
             {/* Command Center */}
             <Card
@@ -818,7 +808,7 @@ function App() {
         </Content>
       </Layout>
 
-      {/* Custom Animations */}
+      {/* Custom Animations and Hover Effects */}
       <style>{`
         @keyframes fadeIn {
           from { 
@@ -829,6 +819,40 @@ function App() {
             opacity: 1; 
             transform: translateY(0); 
           }
+        }
+        
+        @keyframes fadeInUp {
+          0% {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        /* Widget Container Hover Effects */
+        .widgets-container {
+          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .widgets-container .widget-card {
+          height: 160px; /* Shorter initial height */
+          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          transform-origin: center;
+          overflow: hidden;
+        }
+        
+        /* When hovering over the widgets container, all widgets grow and container gets margin */
+        .widgets-container:hover {
+          margin-bottom: 24px; /* Creates space between widgets and command center */
+        }
+        
+        .widgets-container:hover .widget-card {
+          height: 280px; /* Taller height on hover */
+          transform: translateY(-8px) scale(1.02);
+          box-shadow: 0 20px 40px rgba(0,0,0,0.12), 0 8px 16px rgba(0,0,0,0.08);
         }
         
         .ant-card {
@@ -862,6 +886,14 @@ function App() {
           .ant-layout-sider.mobile-open {
             transform: translateX(0);
           }
+          
+          .widgets-container .widget-card {
+            height: 140px; /* Shorter for mobile */
+          }
+          
+          .widgets-container:hover .widget-card {
+            height: 240px; /* Taller on hover for mobile */
+          }
         }
         
         /* Custom scrollbar */
@@ -889,3 +921,5 @@ function App() {
 }
 
 export default App;
+
+

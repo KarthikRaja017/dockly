@@ -14,6 +14,7 @@ import {
     message
 } from 'antd';
 import {
+    EditOutlined,
     FileTextOutlined,
     PlusOutlined
 } from '@ant-design/icons';
@@ -46,6 +47,7 @@ const ProfileClient: React.FC<ProfileClientProps> = ({ memberId }) => {
     const [localUserName, setLocalUserName] = useState<string | null>(null);
     const [documentRecords, setDocumentRecords] = useState<any[]>([]);
     const [uploading, setUploading] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
 
     useEffect(() => {
         const fetchResolvedUserId = async () => {
@@ -165,7 +167,7 @@ const ProfileClient: React.FC<ProfileClientProps> = ({ memberId }) => {
                             fontWeight: 600
                         }}
                     >
-                        {(personalInfo?.firstName?.[0] ?? 'F').toUpperCase()}
+                        {(localUserName?.[0] ?? 'F').toUpperCase()}
                     </Avatar>
                     <div style={{ flex: 1, minWidth: 0 }}>
                         <Title level={3} style={{ color: 'white', margin: 0, fontSize: 20 }}>
@@ -181,6 +183,18 @@ const ProfileClient: React.FC<ProfileClientProps> = ({ memberId }) => {
                                 .join(' • ')}
                         </Text>
                     </div>
+                    <Button
+                        type={isEditing ? "primary" : "default"}
+                        icon={<EditOutlined />}
+                        onClick={() => setIsEditing(!isEditing)}
+                        style={{
+                            backgroundColor: isEditing ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.1)',
+                            borderColor: 'rgba(255, 255, 255, 0.3)',
+                            color: 'white'
+                        }}
+                    >
+                        {isEditing ? 'Done' : 'Edit'}
+                    </Button>
                 </div>
             </Card>
 
@@ -193,11 +207,11 @@ const ProfileClient: React.FC<ProfileClientProps> = ({ memberId }) => {
                         padding: '8px',
                         border: '1px solid #f0f0f0',
                         borderRadius: '8px',
-                        backgroundColor: '#fafafa'
+                        backgroundColor: '#ffffffff'
                     }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                            {resolvedUserId && <PersonalInfoSection memberId={resolvedUserId} />}
-                            {resolvedUserId && <MedicalInfoPage memberId={resolvedUserId} />}
+                            {resolvedUserId && <PersonalInfoSection memberId={resolvedUserId} isEditing={isEditing} />}
+                            {resolvedUserId && <MedicalInfoPage memberId={resolvedUserId} isEditing={isEditing} />}
                         </div>
                     </div>
                 </Col>
@@ -231,7 +245,7 @@ const ProfileClient: React.FC<ProfileClientProps> = ({ memberId }) => {
                                     documentRecords.map((doc, index) => {
                                         const ext = doc.name.split('.').pop();
                                         const iconMap: Record<string, string> = {
-                                            pdf: '📄', jpg: '📷', jpeg: '📷', png: '🖼️', docx: '📝', txt: '📃', default: '📁'
+                                            pdf: '📄', jpg: '📷', jpeg: '📷', png: '🖼', docx: '📝', txt: '📃', default: '📁'
                                         };
                                         const icon = iconMap[ext?.toLowerCase()] || iconMap.default;
 
@@ -265,7 +279,7 @@ const ProfileClient: React.FC<ProfileClientProps> = ({ memberId }) => {
                         </Card>
 
                         {resolvedUserId && <AssetsDevicesSection memberId={resolvedUserId} />}
-                        <SchoolActivities />
+                        <SchoolActivities isEditing={isEditing} />
                     </div>
                 </Col>
             </Row>

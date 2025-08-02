@@ -21,6 +21,7 @@ import { useCurrentUser } from "../../app/userContext";
 import { getUserHubs } from "../../services/dashboard";
 import { useGlobalLoading } from "../../app/loadingContext";
 import DocklyLoader from "../../utils/docklyLoader";
+import { PRIMARY_COLOR } from "../../app/comman";
 
 const { Text } = Typography;
 const { Sider } = Layout;
@@ -102,137 +103,182 @@ const Sidebar = forwardRef<HTMLDivElement, { collapsed: boolean }>(({ collapsed 
     setLoading(false);
   };
 
-  useEffect(() => {
-    getUserMenus();
-  }, []);
+  // useEffect(() => {
+  //   getUserMenus();
+  // }, []);
 
-  if (loading) return <DocklyLoader />;
+  // if (loading) return <DocklyLoader />;
 
   return (
-    <Sider
-      ref={ref as RefObject<HTMLDivElement>}
-      width={200}
-      collapsedWidth={80}
-      collapsed={collapsed}
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        height: "100vh",
-        backgroundColor: "#f9fafa",
-        padding: "6px 0",
-        borderRight: "1px solid #f0f0f0",
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
-        zIndex: 1000,
-      }}
-    >
-      <div
+    <>
+      <style jsx>{`
+        @keyframes logo-collapsed {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+        
+        .logo-collapsed {
+          animation: logo-collapsed 8s linear infinite;
+          transform-origin: center;
+        }
+      `}</style>
+      <Sider
+        ref={ref as RefObject<HTMLDivElement>}
+        width={200}
+        collapsedWidth={80}
+        collapsed={collapsed}
         style={{
-          cursor: "pointer",
+          position: "fixed",
+          top: 0,
+          left: 0,
+          height: "100vh",
+          backgroundColor: "#f9fafa",
+          padding: "6px 0",
+          borderRight: "1px solid #f0f0f0",
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+          zIndex: 1000,
         }}
-        onClick={() => router.push(`/${username}/dashboard`)}
       >
-        <img
-          src={collapsed ? "/dockly.png" : "/dockly-full.png"}
-          alt="Dockly Logo"
+        <div
           style={{
-            width: collapsed ? 148 : 160,
-            transition: "all 0.3s ease-in-out",
-            marginLeft: collapsed ? -38 : 0,
-          }}
-        />
-      </div>
-
-      {menuGroup("Command Center", [
-        {
-          key: "dashboard",
-          icon: <AppstoreOutlined style={{ color: "#1677ff" }} />,
-          label: "Dashboard",
-        },
-        {
-          key: "planner",
-          icon: <CalendarOutlined style={{ color: "#9254de" }} />,
-          label: "Planner",
-        },
-      ])}
-
-      {menuGroup("Hubs", [
-        {
-          key: "family-hub",
-          icon: <TeamOutlined style={{ color: "#eb2f96" }} />,
-          label: "Family",
-        },
-        {
-          key: "finance-hub",
-          icon: <DollarOutlined style={{ color: "#13c2c2" }} />,
-          label: "Finance",
-        },
-        {
-          key: "home-hub",
-          icon: <HomeOutlined style={{ color: "#fa8c16" }} />,
-          label: "Home",
-        },
-        {
-          key: "health-hub",
-          icon: <HeartOutlined style={{ color: "#f5222d" }} />,
-          label: "Health",
-        },
-      ])}
-
-      {menuGroup("Utilities", [
-        {
-          key: "notes",
-          icon: <FileTextOutlined style={{ color: "#722ed1" }} />,
-          label: "Notes & Lists",
-        },
-        {
-          key: "bookmarks",
-          icon: <BookOutlined style={{ color: "#faad14" }} />,
-          label: "Bookmarks",
-        },
-        {
-          key: "files",
-          icon: <FolderOpenOutlined style={{ color: "#52c41a" }} />,
-          label: "Files",
-        },
-        {
-          key: "vault",
-          icon: <LockOutlined style={{ color: "#595959" }} />,
-          label: "Vault",
-        },
-      ])}
-
-      {collapsed ? <GiftOutlined style={{ color: "#ad4e00", marginLeft: 25, marginTop: 25 }} /> : (
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          style={{
-            background: "#fff7e6",
-            padding: "10px 14px",
-            margin: "16px",
-            borderRadius: 8,
-            color: "#ad4e00",
-            fontWeight: 600,
-            fontSize: 13,
-            textAlign: "center",
             cursor: "pointer",
             display: "flex",
-            alignItems: "center",
             justifyContent: "center",
-            gap: 6,
           }}
+          onClick={() => router.push(`/${username}/dashboard`)}
         >
-          <GiftOutlined />
-          Refer Dockly
-        </motion.div>
-      )}
+          {/* <img
+            src={collapsed ? "/dockly-logo.png" : "/dockly-logo-full.png"}
+            alt="Dockly Logo"
+            className={collapsed ? "logo-collapsed" : "logo"}
+            style={{
+              width: collapsed ? 148 : 160,
+              transition: "all 0.3s ease-in-out",
+              marginLeft: collapsed ? -38 : 0,
+            }}
+          /> */}
+          <img
+            src={"/dockly-logo.png"}
+            alt="Dockly Logo"
+            className={"logo-collapsed"}
+            style={{
+              width: 148,
+              transition: "all 0.3s ease-in-out",
+              marginLeft: collapsed ? "-8px" : "-98px",
+            }}
+          />
+          {!collapsed && (
+            <Text
+              style={{
+                color: PRIMARY_COLOR,
+                marginLeft: '-50px',
+                marginTop: 25,
+                fontSize: '18px',
+                fontWeight: 700,
+                letterSpacing: '0.5px',
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+              }}
+            >
+              DOCKLY
+            </Text>
+          )}
+        </div>
 
-      {/* <Divider style={{ margin: "10px 0" }} /> */}
+        {menuGroup("Command Center", [
+          {
+            key: "dashboard",
+            icon: <AppstoreOutlined style={{ color: "#1677ff" }} />,
+            label: "Dashboard",
+          },
+          {
+            key: "planner",
+            icon: <CalendarOutlined style={{ color: "#9254de" }} />,
+            label: "Planner",
+          },
+        ])}
+
+        {menuGroup("Hubs", [
+          {
+            key: "family-hub",
+            icon: <TeamOutlined style={{ color: "#eb2f96" }} />,
+            label: "Family",
+          },
+          {
+            key: "finance-hub",
+            icon: <DollarOutlined style={{ color: "#13c2c2" }} />,
+            label: "Finance",
+          },
+          {
+            key: "home-hub",
+            icon: <HomeOutlined style={{ color: "#fa8c16" }} />,
+            label: "Home",
+          },
+          {
+            key: "health-hub",
+            icon: <HeartOutlined style={{ color: "#f5222d" }} />,
+            label: "Health",
+          },
+        ])}
+
+        {menuGroup("Utilities", [
+          {
+            key: "notes",
+            icon: <FileTextOutlined style={{ color: "#722ed1" }} />,
+            label: "Notes & Lists",
+          },
+          {
+            key: "bookmarks",
+            icon: <BookOutlined style={{ color: "#faad14" }} />,
+            label: "Bookmarks",
+          },
+          {
+            key: "files",
+            icon: <FolderOpenOutlined style={{ color: "#52c41a" }} />,
+            label: "Files",
+          },
+          {
+            key: "vault",
+            icon: <LockOutlined style={{ color: "#595959" }} />,
+            label: "Vault",
+          },
+        ])}
+
+        {collapsed ? <GiftOutlined style={{ color: "#ad4e00", marginLeft: 25, marginTop: 25 }} /> : (
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            style={{
+              background: "#fff7e6",
+              padding: "10px 14px",
+              margin: "16px",
+              borderRadius: 8,
+              color: "#ad4e00",
+              fontWeight: 600,
+              fontSize: 13,
+              textAlign: "center",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+            }}
+          >
+            <GiftOutlined />
+            Refer Dockly
+          </motion.div>
+        )}
+
+        {/* <Divider style={{ margin: "10px 0" }} /> */}
 
 
-    </Sider>
+      </Sider>
+    </>
   );
 });
 

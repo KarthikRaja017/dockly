@@ -44,10 +44,10 @@ interface FormValues {
 }
 interface PersonalInfoSectionProps {
     memberId?: string | string[];
+    isEditing?: boolean;
 }
 
-const PersonalInfoSection: React.FC<PersonalInfoSectionProps> = ({ memberId }) => {
-    const [isEditing, setIsEditing] = useState(false);
+const PersonalInfoSection: React.FC<PersonalInfoSectionProps> = ({ memberId, isEditing = false }) => {
     const [form] = Form.useForm<FormValues>();
     const userId = Array.isArray(memberId) ? memberId[0] : memberId || '';
     const [personalId, setPersonalId] = useState<string | null>(null);
@@ -70,7 +70,6 @@ const PersonalInfoSection: React.FC<PersonalInfoSectionProps> = ({ memberId }) =
         fetchPersonalInfo();
     }, [form, userId]);
 
-    const toggleEdit = () => setIsEditing((prev) => !prev);
 
     const onFinish = async (values: FormValues) => {
         try {
@@ -86,7 +85,7 @@ const PersonalInfoSection: React.FC<PersonalInfoSectionProps> = ({ memberId }) =
                 : await addPersonalInfo({ personal_info: payload });
 
             if (response.status === 1) {
-                setIsEditing(false);
+                // Edit state is now controlled by parent
             } else {
                 console.error('Save failed:', response.message);
             }
@@ -99,25 +98,25 @@ const PersonalInfoSection: React.FC<PersonalInfoSectionProps> = ({ memberId }) =
     const basicInfoPanel = (
         <>
             <Row gutter={16}>
-                <Col xs={24} sm={12}><Form.Item label="First Name" name="firstName"><Input readOnly={!isEditing} /></Form.Item></Col>
-                <Col xs={24} sm={12}><Form.Item label="Middle Name" name="middleName"><Input readOnly={!isEditing} /></Form.Item></Col>
+                <Col xs={24} sm={12}><Form.Item label="First Name" name="firstName"><Input readOnly={!isEditing} style={{ cursor: isEditing ? 'text' : 'default' }} /></Form.Item></Col>
+                <Col xs={24} sm={12}><Form.Item label="Middle Name" name="middleName"><Input readOnly={!isEditing} style={{ cursor: isEditing ? 'text' : 'default' }} /></Form.Item></Col>
             </Row>
             <Row gutter={16}>
-                <Col xs={24} sm={12}><Form.Item label="Last Name" name="lastName"><Input readOnly={!isEditing} /></Form.Item></Col>
-                <Col xs={24} sm={12}><Form.Item label="Preferred Name" name="preferredName"><Input readOnly={!isEditing} /></Form.Item></Col>
+                <Col xs={24} sm={12}><Form.Item label="Last Name" name="lastName"><Input readOnly={!isEditing} style={{ cursor: isEditing ? 'text' : 'default' }} /></Form.Item></Col>
+                <Col xs={24} sm={12}><Form.Item label="Preferred Name" name="preferredName"><Input readOnly={!isEditing} style={{ cursor: isEditing ? 'text' : 'default' }} /></Form.Item></Col>
             </Row>
             <Row gutter={16}>
-                <Col xs={24} sm={12}><Form.Item label="Nickname(s)" name="nicknames"><Input readOnly={!isEditing} /></Form.Item></Col>
-                <Col xs={24} sm={12}><Form.Item label="Relationship" name="relationship"><Input readOnly={!isEditing} /></Form.Item></Col>
+                <Col xs={24} sm={12}><Form.Item label="Nickname(s)" name="nicknames"><Input readOnly={!isEditing} style={{ cursor: isEditing ? 'text' : 'default' }} /></Form.Item></Col>
+                <Col xs={24} sm={12}><Form.Item label="Relationship" name="relationship"><Input readOnly={!isEditing} style={{ cursor: isEditing ? 'text' : 'default' }} /></Form.Item></Col>
             </Row>
             <Row gutter={16}>
-                <Col xs={24} sm={12}><Form.Item label="Date of Birth" name="dateOfBirth"><Input type="date" readOnly={!isEditing} /></Form.Item></Col>
-                <Col xs={24} sm={12}><Form.Item label="Age" name="age"><Input readOnly={!isEditing} /></Form.Item></Col>
+                <Col xs={24} sm={12}><Form.Item label="Date of Birth" name="dateOfBirth"><Input type="date" readOnly={!isEditing} style={{ cursor: isEditing ? 'text' : 'default' }} /></Form.Item></Col>
+                <Col xs={24} sm={12}><Form.Item label="Age" name="age"><Input readOnly={!isEditing} style={{ cursor: isEditing ? 'text' : 'default' }} /></Form.Item></Col>
             </Row>
             <Row gutter={16}>
-                <Col xs={24} sm={12}><Form.Item label="Birthplace" name="birthplace"><Input readOnly={!isEditing} /></Form.Item></Col>
+                <Col xs={24} sm={12}><Form.Item label="Birthplace" name="birthplace"><Input readOnly={!isEditing} style={{ cursor: isEditing ? 'text' : 'default' }} /></Form.Item></Col>
                 <Col xs={24} sm={12}><Form.Item label="Gender" name="gender">
-                    <Select disabled={!isEditing}>
+                    <Select disabled={!isEditing} style={{ cursor: isEditing ? 'pointer' : 'default' }}>
                         <Select.Option value="Female">Female</Select.Option>
                         <Select.Option value="Male">Male</Select.Option>
                         <Select.Option value="Other">Other</Select.Option>
@@ -131,10 +130,10 @@ const PersonalInfoSection: React.FC<PersonalInfoSectionProps> = ({ memberId }) =
     const contactInfoPanel = (
         <>
             <Row gutter={16}>
-                <Col xs={24} sm={12}><Form.Item label="Phone Number" name="phoneNumber"><Input readOnly={!isEditing} /></Form.Item></Col>
-                <Col xs={24} sm={12}><Form.Item label="Primary Email" name="primaryEmail"><Input readOnly={!isEditing} /></Form.Item></Col>
+                <Col xs={24} sm={12}><Form.Item label="Phone Number" name="phoneNumber"><Input readOnly={!isEditing} style={{ cursor: isEditing ? 'text' : 'default' }} /></Form.Item></Col>
+                <Col xs={24} sm={12}><Form.Item label="Primary Email" name="primaryEmail"><Input readOnly={!isEditing} style={{ cursor: isEditing ? 'text' : 'default' }} /></Form.Item></Col>
             </Row>
-            <Form.Item label="Additional Email(s)" name="additionalEmails"><Input readOnly={!isEditing} /></Form.Item>
+            <Form.Item label="Additional Email(s)" name="additionalEmails"><Input readOnly={!isEditing} style={{ cursor: isEditing ? 'text' : 'default' }} /></Form.Item>
         </>
     );
 
@@ -154,16 +153,16 @@ const PersonalInfoSection: React.FC<PersonalInfoSectionProps> = ({ memberId }) =
                 style={{ marginBottom: 16 }}
             />
             <Row gutter={16}>
-                <Col xs={24} sm={12}><Form.Item label="Social Security Number" name="ssn"><Input.Password readOnly={!isEditing} /></Form.Item></Col>
-                <Col xs={24} sm={12}><Form.Item label="Birth Certificate Number" name="birthCertNumber"><Input.Password readOnly={!isEditing} /></Form.Item></Col>
+                <Col xs={24} sm={12}><Form.Item label="Social Security Number" name="ssn"><Input.Password readOnly={!isEditing} style={{ cursor: isEditing ? 'text' : 'default' }} /></Form.Item></Col>
+                <Col xs={24} sm={12}><Form.Item label="Birth Certificate Number" name="birthCertNumber"><Input.Password readOnly={!isEditing} style={{ cursor: isEditing ? 'text' : 'default' }} /></Form.Item></Col>
             </Row>
             <Row gutter={16}>
-                <Col xs={24} sm={12}><Form.Item label="State ID Number" name="stateId"><Input readOnly={!isEditing} /></Form.Item></Col>
-                <Col xs={24} sm={12}><Form.Item label="Passport Number" name="passport"><Input readOnly={!isEditing} /></Form.Item></Col>
+                <Col xs={24} sm={12}><Form.Item label="State ID Number" name="stateId"><Input readOnly={!isEditing} style={{ cursor: isEditing ? 'text' : 'default' }} /></Form.Item></Col>
+                <Col xs={24} sm={12}><Form.Item label="Passport Number" name="passport"><Input readOnly={!isEditing} style={{ cursor: isEditing ? 'text' : 'default' }} /></Form.Item></Col>
             </Row>
             <Row gutter={16}>
-                <Col xs={24} sm={12}><Form.Item label="Driver's License" name="license"><Input readOnly={!isEditing} /></Form.Item></Col>
-                <Col xs={24} sm={12}><Form.Item label="Student ID" name="studentId"><Input readOnly={!isEditing} /></Form.Item></Col>
+                <Col xs={24} sm={12}><Form.Item label="Driver's License" name="license"><Input readOnly={!isEditing} style={{ cursor: isEditing ? 'text' : 'default' }} /></Form.Item></Col>
+                <Col xs={24} sm={12}><Form.Item label="Student ID" name="studentId"><Input readOnly={!isEditing} style={{ cursor: isEditing ? 'text' : 'default' }} /></Form.Item></Col>
             </Row>
         </>
     );
@@ -171,12 +170,12 @@ const PersonalInfoSection: React.FC<PersonalInfoSectionProps> = ({ memberId }) =
     const emergencyContactsPanel = (
         <>
             <Row gutter={16}>
-                <Col xs={24} sm={12}><Form.Item label="Primary Contact" name="primaryContact"><Input readOnly={!isEditing} /></Form.Item></Col>
-                <Col xs={24} sm={12}><Form.Item label="Phone" name="primaryContactPhone"><Input readOnly={!isEditing} /></Form.Item></Col>
+                <Col xs={24} sm={12}><Form.Item label="Primary Contact" name="primaryContact"><Input readOnly={!isEditing} style={{ cursor: isEditing ? 'text' : 'default' }} /></Form.Item></Col>
+                <Col xs={24} sm={12}><Form.Item label="Phone" name="primaryContactPhone"><Input readOnly={!isEditing} style={{ cursor: isEditing ? 'text' : 'default' }} /></Form.Item></Col>
             </Row>
             <Row gutter={16}>
-                <Col xs={24} sm={12}><Form.Item label="Secondary Contact" name="secondaryContact"><Input readOnly={!isEditing} /></Form.Item></Col>
-                <Col xs={24} sm={12}><Form.Item label="Phone" name="secondaryContactPhone"><Input readOnly={!isEditing} /></Form.Item></Col>
+                <Col xs={24} sm={12}><Form.Item label="Secondary Contact" name="secondaryContact"><Input readOnly={!isEditing} style={{ cursor: isEditing ? 'text' : 'default' }} /></Form.Item></Col>
+                <Col xs={24} sm={12}><Form.Item label="Phone" name="secondaryContactPhone"><Input readOnly={!isEditing} style={{ cursor: isEditing ? 'text' : 'default' }} /></Form.Item></Col>
             </Row>
         </>
     );
@@ -186,9 +185,6 @@ const PersonalInfoSection: React.FC<PersonalInfoSectionProps> = ({ memberId }) =
                 <span>
                     <FileTextOutlined style={{ marginRight: 8 }} /> Personal Information
                 </span>
-            }
-            extra={
-                <EditOutlined style={{ cursor: 'pointer', color: '#1890ff' }} onClick={toggleEdit} />
             }
             style={{ borderRadius: 12 }}
         >

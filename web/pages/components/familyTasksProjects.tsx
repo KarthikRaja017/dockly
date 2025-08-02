@@ -248,8 +248,14 @@ const FamilyTasksComponent: React.FC<Props> = ({
                 borderRadius: '12px',
                 border: `1px solid ${COLORS.borderLight}`,
                 boxShadow: `0 2px 8px ${COLORS.shadowLight}`,
+                // width: "950px"
             }}
-            bodyStyle={{ padding: '12px' }}
+            // bodyStyle={{ padding: '12px' }}
+            styles={{
+                body: {
+                    padding: '12px',
+                }
+            }}
         >
             <div style={{
                 display: 'flex',

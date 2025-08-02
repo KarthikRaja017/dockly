@@ -46,15 +46,16 @@ interface FamilyInviteFormProps {
     onSubmit: (formData: FormDataState) => void;
     isEditMode?: boolean;
     initialData?: FormDataState;
+    isGuardianMode?: boolean;
 }
 
-const FamilyInviteForm: React.FC<FamilyInviteFormProps> = ({ visible, onCancel, onSubmit, isEditMode = false, initialData }) => {
+const FamilyInviteForm: React.FC<FamilyInviteFormProps> = ({ visible, onCancel, onSubmit, isEditMode = false, initialData, isGuardianMode = false }) => {
     const [step, setStep] = useState<'add' | 'permissions' | 'share' | 'review' | 'sent'>('add');
     const [selectedMethod, setSelectedMethod] = useState<'Email' | 'Mobile' | 'Access Code'>('Email');
     const [formData, setFormData] = useState<FormDataState>(
         initialData || {
             name: '',
-            relationship: '',
+            relationship: isGuardianMode ? '🛡 Guardian' : '',
             email: '',
             phone: '',
             accessCode: '',
@@ -85,7 +86,7 @@ const FamilyInviteForm: React.FC<FamilyInviteFormProps> = ({ visible, onCancel, 
             setStep('add');
             setFormData({
                 name: '',
-                relationship: '',
+                relationship: isGuardianMode ? '🛡 Guardian' : '',
                 email: '',
                 phone: '',
                 accessCode: '',
@@ -99,7 +100,7 @@ const FamilyInviteForm: React.FC<FamilyInviteFormProps> = ({ visible, onCancel, 
             setFormData(initialData);
             setSelectedMethod(initialData.method);
         }
-    }, [visible, isEditMode, initialData]);
+    }, [visible, isEditMode, initialData, isGuardianMode]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -200,7 +201,7 @@ const FamilyInviteForm: React.FC<FamilyInviteFormProps> = ({ visible, onCancel, 
     const isFormValid = () => {
         return !!(
             formData.name &&
-            formData.relationship &&
+            (isGuardianMode || formData.relationship) &&
             (selectedMethod === 'Email' ? formData.email && validateEmail(formData.email) : true) &&
             (selectedMethod === 'Mobile' ? formData.phone && validatePhone(formData.phone) : true) &&
             (selectedMethod === 'Access Code' ? formData.accessCode : true)
@@ -227,7 +228,7 @@ const FamilyInviteForm: React.FC<FamilyInviteFormProps> = ({ visible, onCancel, 
             >
                 <UserAddOutlined style={{ fontSize: 20 }} />
                 <Title level={4} style={{ color: 'white', margin: 0 }}>
-                    Add Family Member
+                    {isGuardianMode ? 'Add Guardian' : 'Add Family Member'}
                 </Title>
             </div>
 
@@ -263,32 +264,36 @@ const FamilyInviteForm: React.FC<FamilyInviteFormProps> = ({ visible, onCancel, 
                     style={{ margin: '8px 0 24px', borderRadius: 8 }}
                 />
 
-                <Text strong>Select Relationship</Text>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 12, marginBottom: 25 }}>
-                    {[
-                        { label: 'Spouse/Partner', emoji: '❤' },
-                        { label: 'Child', emoji: '😊' },
-                        { label: 'Parent', emoji: '🧑‍🤝‍🧑' },
-                        { label: 'Guardian', emoji: '🛡' },
-                    ].map(({ label, emoji }) => {
-                        const fullLabel = `${emoji} ${label}`;
-                        return (
-                            <Button
-                                key={fullLabel}
-                                type={formData.relationship === fullLabel ? 'primary' : 'default'}
-                                shape="round"
-                                size="middle"
-                                onClick={() => setFormData({ ...formData, relationship: fullLabel })}
-                                style={{
-                                    fontWeight: 500,
-                                    borderColor: formData.relationship === fullLabel ? '#3b82f6' : undefined,
-                                }}
-                            >
-                                {fullLabel}
-                            </Button>
-                        );
-                    })}
-                </div>
+                {!isGuardianMode && (
+                    <>
+                        <Text strong>Select Relationship</Text>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 12, marginBottom: 25 }}>
+                            {[
+                                { label: 'Spouse/Partner', emoji: '❤' },
+                                { label: 'Child', emoji: '😊' },
+                                { label: 'Parent', emoji: '🧑‍🤝‍🧑' },
+                                { label: 'Guardian', emoji: '🛡' },
+                            ].map(({ label, emoji }) => {
+                                const fullLabel = `${emoji} ${label}`;
+                                return (
+                                    <Button
+                                        key={fullLabel}
+                                        type={formData.relationship === fullLabel ? 'primary' : 'default'}
+                                        shape="round"
+                                        size="middle"
+                                        onClick={() => setFormData({ ...formData, relationship: fullLabel })}
+                                        style={{
+                                            fontWeight: 500,
+                                            borderColor: formData.relationship === fullLabel ? '#3b82f6' : undefined,
+                                        }}
+                                    >
+                                        {fullLabel}
+                                    </Button>
+                                );
+                            })}
+                        </div>
+                    </>
+                )}
 
                 {/* Footer Buttons */}
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -401,7 +406,7 @@ const FamilyInviteForm: React.FC<FamilyInviteFormProps> = ({ visible, onCancel, 
                 >
                     <ShareAltOutlined style={{ fontSize: 20 }} />
                     <Title level={4} style={{ color: 'white', margin: 0 }}>
-                        Select What to Share with {formData.name}
+                        {isGuardianMode ? `Select Guardian Access for ${formData.name}` : `Select What to Share with ${formData.name}`}
                     </Title>
                 </div>
 

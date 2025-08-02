@@ -17,5 +17,5 @@ export default function UserRedirectPage() {
     router.replace(`/${username}/dashboard`);
   }, [username]);
 
-  return <DocklyLoader />;
+  return;
 }
