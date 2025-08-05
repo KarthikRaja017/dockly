@@ -1552,8 +1552,8 @@ const Planner = () => {
                     <Col span={6}>
                         <StatisticsCard
                             title="Active Projects"
-                            value={projects.reduce((acc, p) => acc + p.tasks.filter(t => t.completed).length, 0)}
-                            total={projects.reduce((acc, p) => acc + p.tasks.length, 0)}
+                            value={completedProjects}
+                            total={totalProjects}
                             icon={<ProjectOutlined style={{ fontSize: '14px' }} />}
                             color={COLORS.accent}
                         />
