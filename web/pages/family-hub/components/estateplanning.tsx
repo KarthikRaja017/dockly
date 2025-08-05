@@ -12,6 +12,8 @@ import { uploadFamilyDocument } from '../../../services/family';
 
 const { Title, Text } = Typography;
 
+const FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+
 const categories = [
     {
         key: 'livingWill',
@@ -95,10 +97,21 @@ const EstatePlanningCard: React.FC = () => {
                 margin: '-44px -25px 20px -24px',
                 padding: '12px 16px',
             }}>
-                <Title level={5} style={{ display: 'flex', marginBottom: 0, fontSize: '16px' }}>
+                <Title level={5} style={{
+                    display: 'flex',
+                    marginBottom: 0,
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    fontFamily: FONT_FAMILY
+                }}>
                     📄 Estate Planning
                 </Title>
-                <Text type="secondary" style={{ fontSize: '12px' }}>Manage your important legal documents</Text>
+                <Text type="secondary" style={{
+                    fontSize: '12px',
+                    fontFamily: FONT_FAMILY
+                }}>
+                    Manage your important legal documents
+                </Text>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -119,10 +132,18 @@ const EstatePlanningCard: React.FC = () => {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                     {category.icon}
                                     <div>
-                                        <Text strong style={{ fontSize: '14px' }}>{index + 1}. {category.label}</Text>
+                                        <Text strong style={{
+                                            fontSize: '13px',
+                                            fontFamily: FONT_FAMILY
+                                        }}>
+                                            {index + 1}. {category.label}
+                                        </Text>
                                         {hasDocument && (
                                             <div>
-                                                <Text type="secondary" style={{ fontSize: 11 }}>
+                                                <Text type="secondary" style={{
+                                                    fontSize: '11px',
+                                                    fontFamily: FONT_FAMILY
+                                                }}>
                                                     Uploaded: {hasDocument.fileName}
                                                 </Text>
                                             </div>
@@ -137,6 +158,7 @@ const EstatePlanningCard: React.FC = () => {
                                             size="small"
                                             icon={<PlusOutlined />}
                                             onClick={() => handleCreateNew(category.link)}
+                                            style={{ fontFamily: FONT_FAMILY }}
                                         >
                                             Create New
                                         </Button>
@@ -148,6 +170,7 @@ const EstatePlanningCard: React.FC = () => {
                                             size="small"
                                             icon={<EyeOutlined />}
                                             onClick={() => handleViewDocument(hasDocument)}
+                                            style={{ fontFamily: FONT_FAMILY }}
                                         >
                                             View
                                         </Button>
@@ -160,7 +183,12 @@ const EstatePlanningCard: React.FC = () => {
                                             }}
                                             accept=".pdf,.doc,.docx,.txt"
                                         >
-                                            <Button type="primary" size="small" icon={<UploadOutlined />}>
+                                            <Button
+                                                type="primary"
+                                                size="small"
+                                                icon={<UploadOutlined />}
+                                                style={{ fontFamily: FONT_FAMILY }}
+                                            >
                                                 Upload
                                             </Button>
                                         </Upload>

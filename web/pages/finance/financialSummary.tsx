@@ -198,8 +198,7 @@ const FinancialSummary: React.FC = () => {
         };
 
         fetchIncomeExpense();
-    }
-        , []);
+    }, []);
 
     return (
         <div style={{ maxWidth: '400px', margin: 'auto' }}>

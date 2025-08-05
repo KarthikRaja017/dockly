@@ -398,6 +398,8 @@
         "calendar_event_id VARCHAR(255)",
         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
         "synced_to_google BOOLEAN DEFAULT FALSE",
+        "outlook_calendar_id VARCHAR(255)",
+        "synced_to_outlook BOOLEAN DEFAULT FALSE",
         "google_calendar_id VARCHAR(255)",
         "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
       ]
@@ -577,6 +579,8 @@
         "goal_id VARCHAR(255)",
         "synced_to_google BOOLEAN DEFAULT FALSE",
         "google_calendar_id VARCHAR(255)",
+        "outlook_calendar_id VARCHAR(255)",
+        "synced_to_outlook BOOLEAN DEFAULT FALSE",
         "completed BOOLEAN DEFAULT FALSE",
         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
       ]
@@ -592,6 +596,8 @@
         "priority INT",
         "goal_status INT",
         "synced_to_google BOOLEAN DEFAULT FALSE",
+        "outlook_calendar_id VARCHAR(255)",
+        "synced_to_outlook BOOLEAN DEFAULT FALSE",
         "google_calendar_id VARCHAR(255)",
         "status INT",
         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"

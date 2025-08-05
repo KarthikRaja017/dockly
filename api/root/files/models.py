@@ -1791,7 +1791,7 @@ class LogActivity(DriveBaseResource):
                 }
 
             # Insert activity log
-            activity_id = DBHelper.insert_one(
+            activity_id = DBHelper.insert(
                 "drive_activity_log",
                 {
                     "user_id": uid,

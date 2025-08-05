@@ -43,6 +43,7 @@ interface ProfileClientProps {
 
 const ProfileClient: React.FC<ProfileClientProps> = ({ memberId }) => {
     const [resolvedUserId, setResolvedUserId] = useState<string | null>(null);
+    const [resolvedUsername, setResolvedUsername] = useState<string | null>(null);
     const [personalInfo, setPersonalInfo] = useState<any>(null);
     const [localUserName, setLocalUserName] = useState<string | null>(null);
     const [documentRecords, setDocumentRecords] = useState<any[]>([]);
@@ -59,6 +60,7 @@ const ProfileClient: React.FC<ProfileClientProps> = ({ memberId }) => {
                 const res = await resolveFamilyMemberUserId(memberId);
                 if (res.status === 1) {
                     setResolvedUserId(res.payload.userId);
+                    setResolvedUsername(res.payload.userName);
                 }
             }
         };
@@ -167,11 +169,11 @@ const ProfileClient: React.FC<ProfileClientProps> = ({ memberId }) => {
                             fontWeight: 600
                         }}
                     >
-                        {(localUserName?.[0] ?? 'F').toUpperCase()}
+                        {(resolvedUsername?.[0] ?? 'F').toUpperCase()}
                     </Avatar>
                     <div style={{ flex: 1, minWidth: 0 }}>
                         <Title level={3} style={{ color: 'white', margin: 0, fontSize: 20 }}>
-                            {localUserName || personalInfo?.firstName || `${personalInfo?.preferredName ?? ''} ${personalInfo?.lastName ?? ''}` || 'Family Member'}
+                            {resolvedUsername || personalInfo?.firstName || `${personalInfo?.preferredName ?? ''} ${personalInfo?.lastName ?? ''}` || 'Family Member'}
                         </Title>
                         <Text style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: 14 }}>
                             {[

@@ -119,6 +119,7 @@ import {
     type ActivityLog,
     type DuplicateFile
 } from '../../../services/files';
+import DocklyLoader from '../../../utils/docklyLoader';
 
 const PRIMARY_COLOR = '#1890ff';
 
@@ -2286,17 +2287,7 @@ const GoogleDriveManager: React.FC = () => {
 
                 {/* Content */}
                 {loading ? (
-                    <div style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        height: '300px',
-                        gap: '16px'
-                    }}>
-                        <Spin size="large" />
-                        <Text style={{ fontSize: '16px', color: '#5f6368' }}>Loading your files...</Text>
-                    </div>
+                    <DocklyLoader />
                 ) : (
                     <>
                         {/* Folders Section */}

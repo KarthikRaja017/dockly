@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -371,4 +372,5 @@ const WeatherWidget: React.FC = () => {
 };
 
 export default WeatherWidget;
+
 

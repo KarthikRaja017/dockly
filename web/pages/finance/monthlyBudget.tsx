@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, Progress, Typography, Row, Col, Avatar, Spin, Button, InputNumber, message, Table } from 'antd';
 import { HomeOutlined } from '@ant-design/icons'; // Using HomeOutlined as a generic icon
 import { generateMonthlyBudget, updateMonthlyBudget } from '../../services/apiConfig';
+import DocklyLoader from '../../utils/docklyLoader';
 
 const { Title, Text } = Typography;
 
@@ -248,9 +249,7 @@ const MonthlyBudget: React.FC<{ uid: string }> = ({ uid }) => {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <Spin size="large" />
-      </div>
+      <DocklyLoader />
     );
   }
 

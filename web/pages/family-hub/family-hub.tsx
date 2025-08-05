@@ -279,7 +279,7 @@ const FamilyHubPage: React.FC = () => {
                     {/* Only show other sections when no member is selected */}
                     {!selectedMemberId && (
                         <>
-                            <Row gutter={16} style={{ marginBottom: '16px' }}>
+                            <Row gutter={12} style={{ marginBottom: '16px' }}>
                                 <Col xs={24} lg={12}>
                                     <TodaysSchedule />
                                 </Col>
@@ -292,8 +292,8 @@ const FamilyHubPage: React.FC = () => {
                                 style={{
                                     display: 'grid',
                                     gridTemplateColumns: '1fr 400px',
-                                    gap: '14px',
-                                    marginBottom: '24px',
+                                    gap: '8px',
+                                    marginBottom: '8px',
                                 }}
                             >
                                 <FamilyTasks familyMembers={familyMembers.filter(m => m.type === 'family')} />
@@ -304,8 +304,8 @@ const FamilyHubPage: React.FC = () => {
                                 style={{
                                     width: '100%',
                                     height: '100%',
-                                    gap: '24px',
-                                    marginBottom: '24px',
+                                    gap: '8px',
+                                    marginBottom: '8px',
                                 }}
                             >
                                 <GuardianSection />

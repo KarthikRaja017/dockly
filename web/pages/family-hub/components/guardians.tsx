@@ -31,6 +31,7 @@ interface DriveFile {
 const { Title, Text, Paragraph } = Typography;
 const { Panel } = Collapse;
 
+const FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 
 const GuardianSection: React.FC = () => {
     const [guardians, setGuardians] = useState<any[]>([]);
@@ -191,12 +192,13 @@ const GuardianSection: React.FC = () => {
             }}>
                 <Title level={2} style={{
                     margin: 0,
-                    fontSize: '20px',
+                    fontSize: '16px',
                     fontWeight: 700,
                     color: '#111827',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px'
+                    gap: '8px',
+                    fontFamily: FONT_FAMILY
                 }}>
                     <SafetyCertificateOutlined style={{ fontSize: '22px', color: '#007AFF' }} />
                     Guardians & Estate Planning
@@ -208,7 +210,8 @@ const GuardianSection: React.FC = () => {
                         padding: '6px 12px',
                         height: 'auto',
                         fontSize: '12px',
-                        fontWeight: 500
+                        fontWeight: 500,
+                        fontFamily: FONT_FAMILY
                     }}
                 >
                     Export All Documents
@@ -242,7 +245,8 @@ const GuardianSection: React.FC = () => {
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '6px',
-                                fontSize: '14px'
+                                fontSize: '14px',
+                                fontFamily: FONT_FAMILY
                             }}>
                                 🛡 Guardians & Access Management
                             </Title>
@@ -253,7 +257,8 @@ const GuardianSection: React.FC = () => {
                                 onClick={() => setGuardianInviteVisible(true)}
                                 style={{
                                     borderRadius: '6px',
-                                    fontSize: '12px'
+                                    fontSize: '12px',
+                                    fontFamily: FONT_FAMILY
                                 }}
                             />
                             {/* {getStatusBadge('complete')} */}
@@ -272,10 +277,20 @@ const GuardianSection: React.FC = () => {
                                     border: '1px solid #e5e7eb'
                                 }}>
                                     <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 500, color: '#111827', fontSize: '13px' }}>
+                                        <div style={{
+                                            fontWeight: 500,
+                                            color: '#111827',
+                                            fontSize: '13px',
+                                            fontFamily: FONT_FAMILY
+                                        }}>
                                             {guardian.name}
                                         </div>
-                                        <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '1px' }}>
+                                        <div style={{
+                                            fontSize: '11px',
+                                            color: '#6b7280',
+                                            marginTop: '1px',
+                                            fontFamily: FONT_FAMILY
+                                        }}>
                                             {guardian.relationship}
                                         </div>
                                     </div>
@@ -291,6 +306,7 @@ const GuardianSection: React.FC = () => {
                                                         backgroundColor: getAccessTagColor(itemKey).bg,
                                                         color: getAccessTagColor(itemKey).text,
                                                         fontWeight: 500,
+                                                        fontFamily: FONT_FAMILY,
                                                     }}
                                                 >
                                                     {itemKey.charAt(0).toUpperCase() + itemKey.slice(1)}
@@ -305,6 +321,7 @@ const GuardianSection: React.FC = () => {
                                                     backgroundColor: '#f3f4f6',
                                                     color: '#9ca3af',
                                                     fontWeight: 500,
+                                                    fontFamily: FONT_FAMILY,
                                                 }}
                                             >
                                                 No Access
@@ -328,7 +345,8 @@ const GuardianSection: React.FC = () => {
                             fontSize: '11px',
                             color: '#6b7280',
                             margin: 0,
-                            lineHeight: 1.5
+                            lineHeight: 1.5,
+                            fontFamily: FONT_FAMILY
                         }}>
                             Guardians can access specific areas of your Dockly account in case of emergency. Configure their access levels based on your needs.
                         </Paragraph>
@@ -353,7 +371,13 @@ const GuardianSection: React.FC = () => {
                         hoverable
                     >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Title level={4} style={{ margin: 0, fontSize: '14px' }}>💰 Beneficiary Designations</Title>
+                            <Title level={4} style={{
+                                margin: 0,
+                                fontSize: '14px',
+                                fontFamily: FONT_FAMILY
+                            }}>
+                                💰 Beneficiary Designations
+                            </Title>
                             <Button
                                 type="primary"
                                 icon={<PlusOutlined />}
@@ -362,6 +386,7 @@ const GuardianSection: React.FC = () => {
                                     setEditingBeneficiary(null);
                                     setBeneficiaryModalVisible(true);
                                 }}
+                                style={{ fontFamily: FONT_FAMILY }}
                             />
                         </div>
                         <Table
@@ -394,6 +419,7 @@ const GuardianSection: React.FC = () => {
                                                 setEditingBeneficiary(record);
                                                 setBeneficiaryModalVisible(true);
                                             }}
+                                            style={{ fontFamily: FONT_FAMILY }}
                                         >
                                             Edit
                                         </Button>
@@ -434,7 +460,8 @@ const GuardianSection: React.FC = () => {
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '6px',
-                                    fontSize: '14px'
+                                    fontSize: '14px',
+                                    fontFamily: FONT_FAMILY
                                 }}
                             >
                                 📜 Additional Estate Documents
@@ -444,6 +471,7 @@ const GuardianSection: React.FC = () => {
                                 icon={<PlusOutlined />}
                                 size="small"
                                 onClick={() => setUploadModalVisible(true)}
+                                style={{ fontFamily: FONT_FAMILY }}
                             />
                         </div>
                         <div
@@ -468,7 +496,12 @@ const GuardianSection: React.FC = () => {
                                     >
                                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                             <div>
-                                                <div style={{ fontWeight: 500, color: '#111827', fontSize: '12px' }}>
+                                                <div style={{
+                                                    fontWeight: 500,
+                                                    color: '#111827',
+                                                    fontSize: '12px',
+                                                    fontFamily: FONT_FAMILY
+                                                }}>
                                                     <a href={doc.webViewLink} target="_blank" rel="noopener noreferrer">
                                                         {doc.name}
                                                     </a>
@@ -478,7 +511,14 @@ const GuardianSection: React.FC = () => {
                                     </div>
                                 ))
                             ) : (
-                                <div style={{ padding: 8, color: '#6b7280', fontSize: '11px' }}>No documents uploaded yet.</div>
+                                <div style={{
+                                    padding: 8,
+                                    color: '#6b7280',
+                                    fontSize: '11px',
+                                    fontFamily: FONT_FAMILY
+                                }}>
+                                    No documents uploaded yet.
+                                </div>
                             )}
                         </div>
                         {/* <Button
@@ -556,14 +596,17 @@ const GuardianSection: React.FC = () => {
                                 const res = await getBeneficiaries(localStorage.getItem("userId")!);
                                 if (res.status === 1) setBeneficiaries(res.payload);
                             }}
-                            style={{ marginTop: "16px" }}
+                            style={{ marginTop: "16px", fontFamily: FONT_FAMILY }}
                         >
                             <Form.Item
                                 name="account"
                                 label="Account/Policy"
                                 rules={[{ required: true, message: "Please enter account/policy name" }]}
                             >
-                                <Input placeholder="Enter account or policy name" />
+                                <Input
+                                    placeholder="Enter account or policy name"
+                                    style={{ fontFamily: FONT_FAMILY }}
+                                />
                             </Form.Item>
 
                             <Form.Item
@@ -571,19 +614,29 @@ const GuardianSection: React.FC = () => {
                                 label="Primary Beneficiary"
                                 rules={[{ required: true, message: "Please enter primary beneficiary" }]}
                             >
-                                <Input placeholder="Enter primary beneficiary name" />
+                                <Input
+                                    placeholder="Enter primary beneficiary name"
+                                    style={{ fontFamily: FONT_FAMILY }}
+                                />
                             </Form.Item>
 
                             <Form.Item
                                 name="secondary_beneficiary"
                                 label="Secondary Beneficiary"
                             >
-                                <Input placeholder="Enter secondary beneficiary name" />
+                                <Input
+                                    placeholder="Enter secondary beneficiary name"
+                                    style={{ fontFamily: FONT_FAMILY }}
+                                />
                             </Form.Item>
 
                             <Form.Item style={{ marginBottom: 0, textAlign: "right" }}>
                                 <Space>
-                                    <Button type="primary" htmlType="submit">
+                                    <Button
+                                        type="primary"
+                                        htmlType="submit"
+                                        style={{ fontFamily: FONT_FAMILY }}
+                                    >
                                         {editingBeneficiary ? "Update Beneficiary" : "Add Beneficiary"}
                                     </Button>
                                 </Space>
@@ -607,6 +660,6 @@ const GuardianSection: React.FC = () => {
             />
         </div>
     );
-}
+};
 
 export default GuardianSection;

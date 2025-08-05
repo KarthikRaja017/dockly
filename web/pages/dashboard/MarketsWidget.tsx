@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -13,6 +14,8 @@ import {
 } from "lucide-react";
 import { SearchOutlined, DeleteOutlined } from "@ant-design/icons";
 import { Modal, Input, Checkbox, List, message } from "antd";
+
+const FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 
 /* ───────── TYPES & CONSTANTS ───────── */
 type Market = {
@@ -131,7 +134,12 @@ const MarketsWidget: React.FC = () => {
         return (
             <div
                 className="widget-card"
-                style={{ padding: 20, textAlign: "center", color: "#64748b" }}
+                style={{
+                    padding: 20,
+                    textAlign: "center",
+                    color: "#64748b",
+                    fontFamily: FONT_FAMILY
+                }}
             >
                 Loading market data…
             </div>
@@ -152,6 +160,7 @@ const MarketsWidget: React.FC = () => {
                 opacity: 0,
                 animation: "fadeInUp 0.6s ease-out 0.3s forwards",
                 transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+                fontFamily: FONT_FAMILY
             }}
         >
             {/* HEADER */}
@@ -160,14 +169,21 @@ const MarketsWidget: React.FC = () => {
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
-                    marginBottom: 16,
+                    marginBottom: 6,
                 }}
             >
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <div style={{ padding: 4, background: "#f0f9ff", borderRadius: 6 }}>
+                    <div style={{ padding: 1, background: "#f0f9ff", borderRadius: 6 }}>
                         <BarChart3 size={16} color="#0284c7" />
                     </div>
-                    <h3 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Markets</h3>
+                    <h3 style={{
+                        fontSize: 15,
+                        fontWeight: 600,
+                        margin: 0,
+                        fontFamily: FONT_FAMILY
+                    }}>
+                        Markets
+                    </h3>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <div
@@ -188,6 +204,7 @@ const MarketsWidget: React.FC = () => {
                             color: "#10b981",
                             fontWeight: 500,
                             cursor: "pointer",
+                            fontFamily: FONT_FAMILY
                         }}
                     >
                         <TrendingUp size={10} /> Live
@@ -221,17 +238,18 @@ const MarketsWidget: React.FC = () => {
                         style={{
                             backgroundColor: m.isPositive ? "#f0fdf4" : "#fef2f2",
                             borderRadius: "10px",
-                            padding: "10px",
+                            padding: "7.5px",
                             marginBottom: "8px",
                             border: `1px solid ${m.isPositive ? "#bbf7d0" : "#fecaca"}`,
                         }}
                     >
                         <p
                             style={{
-                                fontSize: 12.5,
+                                fontSize: 10,
                                 fontWeight: 600,
                                 color: "#1e293b",
                                 margin: "0 0 4px",
+                                fontFamily: FONT_FAMILY
                             }}
                         >
                             {m.symbol}
@@ -250,12 +268,18 @@ const MarketsWidget: React.FC = () => {
                                         fontSize: 14.5,
                                         fontWeight: 700,
                                         color: m.isPositive ? "#10b981" : "#ef4444",
+                                        fontFamily: FONT_FAMILY
                                     }}
                                 >
                                     {m.price.toFixed(2)}
                                 </span>
                                 <span
-                                    style={{ fontSize: 10, fontWeight: 500, color: "#64748b" }}
+                                    style={{
+                                        fontSize: 10,
+                                        fontWeight: 500,
+                                        color: "#64748b",
+                                        fontFamily: FONT_FAMILY
+                                    }}
                                 >
                                     Active
                                 </span>
@@ -280,6 +304,7 @@ const MarketsWidget: React.FC = () => {
                                             fontSize: 11,
                                             color: m.isPositive ? "#10b981" : "#ef4444",
                                             fontWeight: 600,
+                                            fontFamily: FONT_FAMILY
                                         }}
                                     >
                                         {m.isPositive ? "+" : ""}
@@ -291,6 +316,7 @@ const MarketsWidget: React.FC = () => {
                                         fontSize: 9,
                                         color: m.isPositive ? "#10b981" : "#ef4444",
                                         fontWeight: 500,
+                                        fontFamily: FONT_FAMILY
                                     }}
                                 >
                                     {m.isPositive ? "+" : ""}
@@ -317,9 +343,20 @@ const MarketsWidget: React.FC = () => {
                                 i === markets.length - 2 ? "1px solid #f1f5f9" : "none",
                         }}
                     >
-                        <div style={{ fontSize: 14, fontWeight: 500 }}>{m.symbol}</div>
+                        <div style={{
+                            fontSize: 14,
+                            fontWeight: 500,
+                            fontFamily: FONT_FAMILY
+                        }}>
+                            {m.symbol}
+                        </div>
                         <div style={{ textAlign: "right" }}>
-                            <div style={{ fontWeight: 600 }}>{m.price.toFixed(2)}</div>
+                            <div style={{
+                                fontWeight: 600,
+                                fontFamily: FONT_FAMILY
+                            }}>
+                                {m.price.toFixed(2)}
+                            </div>
                             <div
                                 style={{
                                     display: "flex",
@@ -337,6 +374,7 @@ const MarketsWidget: React.FC = () => {
                                     style={{
                                         fontSize: 12,
                                         color: m.isPositive ? "#10b981" : "#ef4444",
+                                        fontFamily: FONT_FAMILY
                                     }}
                                 >
                                     {m.isPositive ? "+" : ""}
@@ -350,7 +388,11 @@ const MarketsWidget: React.FC = () => {
             {/* MODAL */}
             <Modal
                 title={
-                    <span style={{ fontSize: 18, fontWeight: 600 }}>
+                    <span style={{
+                        fontSize: 18,
+                        fontWeight: 600,
+                        fontFamily: FONT_FAMILY
+                    }}>
                         Customize Market Watchlist
                     </span>
                 }
@@ -381,14 +423,22 @@ const MarketsWidget: React.FC = () => {
                     setSearchTerm("");
                     setResults([]);
                 }}
-                bodyStyle={{ paddingTop: 12, paddingBottom: 0 }}
-                style={{ borderRadius: 12 }}
+                bodyStyle={{
+                    paddingTop: 12,
+                    paddingBottom: 0,
+                    fontFamily: FONT_FAMILY
+                }}
+                style={{
+                    borderRadius: 12,
+                    fontFamily: FONT_FAMILY
+                }}
             >
                 <div
                     style={{
                         opacity: 1,
                         transform: "translateY(0)",
                         transition: "all 0.25s ease",
+                        fontFamily: FONT_FAMILY
                     }}
                 >
                     <div style={{ marginBottom: 16 }}>
@@ -403,6 +453,7 @@ const MarketsWidget: React.FC = () => {
                                 fontWeight: 500,
                                 cursor: "pointer",
                                 transition: "all 0.3s ease",
+                                fontFamily: FONT_FAMILY
                             }}
                         >
                             + Add More
@@ -416,7 +467,10 @@ const MarketsWidget: React.FC = () => {
                                 prefix={<SearchOutlined />}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value.toUpperCase())}
-                                style={{ marginBottom: 12 }}
+                                style={{
+                                    marginBottom: 12,
+                                    fontFamily: FONT_FAMILY
+                                }}
                             />
                             <div
                                 style={{
@@ -424,6 +478,7 @@ const MarketsWidget: React.FC = () => {
                                     overflowY: "auto",
                                     paddingRight: 6,
                                     marginBottom: 16,
+                                    fontFamily: FONT_FAMILY
                                 }}
                             >
                                 {searchResults.map(({ symbol, description }) => (
@@ -437,6 +492,7 @@ const MarketsWidget: React.FC = () => {
                                             borderRadius: 6,
                                             transition: "background 0.2s ease",
                                             marginBottom: 6,
+                                            fontFamily: FONT_FAMILY
                                         }}
                                         onMouseEnter={(e) =>
                                             (e.currentTarget.style.background = "#f5f7fa")
@@ -445,7 +501,10 @@ const MarketsWidget: React.FC = () => {
                                             (e.currentTarget.style.background = "transparent")
                                         }
                                     >
-                                        <span style={{ fontSize: 14 }}>
+                                        <span style={{
+                                            fontSize: 14,
+                                            fontFamily: FONT_FAMILY
+                                        }}>
                                             {symbol} {description && `- ${description}`}
                                         </span>
                                         <button
@@ -475,6 +534,7 @@ const MarketsWidget: React.FC = () => {
                                                 padding: "3px 8px",
                                                 cursor: "pointer",
                                                 transition: "all 0.2s ease",
+                                                fontFamily: FONT_FAMILY
                                             }}
                                         >
                                             Add
@@ -485,8 +545,19 @@ const MarketsWidget: React.FC = () => {
                         </>
                     )}
 
-                    <h4 style={{ marginBottom: 12, fontWeight: 600 }}>Your Favourites</h4>
-                    <div style={{ maxHeight: 280, overflowY: "auto", paddingRight: 6 }}>
+                    <h4 style={{
+                        marginBottom: 12,
+                        fontWeight: 600,
+                        fontFamily: FONT_FAMILY
+                    }}>
+                        Your Favourites
+                    </h4>
+                    <div style={{
+                        maxHeight: 280,
+                        overflowY: "auto",
+                        paddingRight: 6,
+                        fontFamily: FONT_FAMILY
+                    }}>
                         <List
                             itemLayout="horizontal"
                             dataSource={favourites}
@@ -512,6 +583,7 @@ const MarketsWidget: React.FC = () => {
                                             background: "#f9fafb",
                                             boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
                                             transition: "all 0.2s ease",
+                                            fontFamily: FONT_FAMILY
                                         }}
                                         actions={[
                                             <span
@@ -521,6 +593,7 @@ const MarketsWidget: React.FC = () => {
                                                     fontWeight: 600,
                                                     color,
                                                     marginRight: 6,
+                                                    fontFamily: FONT_FAMILY
                                                 }}
                                             >
                                                 {priceText}
@@ -578,7 +651,11 @@ const MarketsWidget: React.FC = () => {
                                                 />
                                             }
                                             title={
-                                                <span style={{ fontWeight: 500, fontSize: 14 }}>
+                                                <span style={{
+                                                    fontWeight: 500,
+                                                    fontSize: 14,
+                                                    fontFamily: FONT_FAMILY
+                                                }}>
                                                     {symbol}
                                                 </span>
                                             }
@@ -595,6 +672,9 @@ const MarketsWidget: React.FC = () => {
                 @keyframes fadeInUp {
                     from { opacity: 0; transform: translateY(10px); }
                     to   { opacity: 1; transform: none; }
+                }
+                body, button, input, textarea {
+                    font-family: ${FONT_FAMILY};
                 }
             `}</style>
         </div>

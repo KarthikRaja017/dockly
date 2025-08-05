@@ -4,6 +4,8 @@ import { Card, Space, Avatar, Tag, Button, Typography } from 'antd';
 import { CalendarOutlined } from '@ant-design/icons';
 const { Text } = Typography;
 
+const FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+
 const TodaysSchedule: React.FC = () => {
     const [activeFilter, setActiveFilter] = useState('All');
 
@@ -74,15 +76,29 @@ const TodaysSchedule: React.FC = () => {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                     <Space>
                         <CalendarOutlined style={{ color: '#3b82f6' }} />
-                        <span style={{ fontSize: '14px', fontWeight: 600, color: '#1f2937' }}>Today's Schedule</span>
+                        <span style={{
+                            fontSize: '14px',
+                            fontWeight: 600,
+                            color: '#1f2937',
+                            fontFamily: FONT_FAMILY
+                        }}>
+                            Today's Schedule
+                        </span>
                     </Space>
-                    <Button type="link" size="small" style={{ color: '#3b82f6', padding: 0, fontSize: '12px' }}>
+                    <Button type="link" size="small" style={{
+                        color: '#3b82f6',
+                        padding: 0,
+                        fontSize: '12px',
+                        fontFamily: FONT_FAMILY
+                    }}>
                         View in Planner →
                     </Button>
                 </div>
             }
-            bodyStyle={{ padding: '12px' }}
-            headStyle={{ padding: '12px', borderBottom: '1px solid #f3f4f6' }}
+            bodyStyle={{ padding: '18px' }}
+            headStyle={{ padding: '16px', borderBottom: '1px solid #f3f4f6' }}
+            // bodyStyle={{ padding: '18px' }}
+            // headStyle={{ padding: '16px', borderBottom: '1px solid #f3f4f6' }}
             style={{ borderRadius: '12px', border: '1px solid #e5e7eb' }}
         >
             {/* Filter Buttons */}
@@ -100,7 +116,8 @@ const TodaysSchedule: React.FC = () => {
                                 height: '24px',
                                 padding: '0 10px',
                                 fontWeight: 500,
-                                fontSize: '11px'
+                                fontSize: '11px',
+                                fontFamily: FONT_FAMILY
                             }}
                             onClick={() => setActiveFilter(filter.key)}
                         >
@@ -117,7 +134,12 @@ const TodaysSchedule: React.FC = () => {
                     <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
                         {/* Time */}
                         <div style={{ minWidth: '50px', textAlign: 'left' }}>
-                            <Text style={{ fontSize: '11px', fontWeight: 500, color: '#374151' }}>
+                            <Text style={{
+                                fontSize: '12px',
+                                fontWeight: 500,
+                                color: '#374151',
+                                fontFamily: FONT_FAMILY
+                            }}>
                                 {item.time}
                             </Text>
                         </div>
@@ -127,7 +149,7 @@ const TodaysSchedule: React.FC = () => {
                             size={28}
                             style={{
                                 backgroundColor: item.avatarColor,
-                                fontSize: '11px',
+                                fontSize: '12px',
                                 fontWeight: 600,
                                 flexShrink: 0
                             }}
@@ -137,17 +159,32 @@ const TodaysSchedule: React.FC = () => {
 
                         {/* Content */}
                         <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ marginBottom: '1px' }}>
-                                <Text strong style={{ fontSize: '12px', color: '#111827', display: 'block', lineHeight: 1.3 }}>
+                            <div style={{ marginBottom: '2px' }}>
+                                <Text strong style={{
+                                    fontSize: '13px',
+                                    color: '#111827',
+                                    display: 'block',
+                                    lineHeight: 1.3,
+                                    fontFamily: FONT_FAMILY
+                                }}>
                                     {item.title}
                                 </Text>
-                                <Text style={{ fontSize: '10px', color: '#6b7280', fontStyle: 'italic' }}>
+                                <Text style={{
+                                    fontSize: '11px',
+                                    color: '#6b7280',
+                                    fontStyle: 'italic',
+                                    fontFamily: FONT_FAMILY
+                                }}>
                                     {item.subtitle}
                                 </Text>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                 <span style={{ color: '#ef4444', fontSize: '10px' }}>📍</span>
-                                <Text style={{ fontSize: '10px', color: '#6b7280' }}>
+                                <Text style={{
+                                    fontSize: '11px',
+                                    color: '#6b7280',
+                                    fontFamily: FONT_FAMILY
+                                }}>
                                     {item.location}
                                 </Text>
                             </div>
@@ -163,7 +200,8 @@ const TodaysSchedule: React.FC = () => {
                                 fontSize: '9px',
                                 fontWeight: 500,
                                 padding: '2px 6px',
-                                margin: 0
+                                margin: 0,
+                                fontFamily: FONT_FAMILY
                             }}
                         >
                             {item.tag}

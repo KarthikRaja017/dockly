@@ -36,6 +36,8 @@ import {
     LinkOutlined,
     BookOutlined,
     DownloadOutlined,
+    ShareAltOutlined,
+    MailOutlined,
 } from "@ant-design/icons";
 import {
     addBookmark,
@@ -44,6 +46,7 @@ import {
     toggleFavorite,
     getCategories,
     getStats,
+    shareBookmarks
 } from "../../../services/bookmarks";
 import { Bookmark, BookmarkFormData } from "../../../types/bookmarks";
 import { useGlobalLoading } from "../../loadingContext";
@@ -53,6 +56,8 @@ import { useCurrentUser } from "../../userContext";
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
+
+const FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 
 const categoryColors: Record<string, string> = {
     Tech: "#af630bff",
@@ -86,6 +91,9 @@ const Bookmarks: React.FC = () => {
     );
     const [form] = Form.useForm();
     const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
+    const [shareModalVisible, setShareModalVisible] = useState(false);
+    const [shareForm] = Form.useForm();
+    const [currentShareBookmark, setCurrentShareBookmark] = useState<Bookmark | null>(null);
     const username = useCurrentUser()?.user_name || "";
 
     const showModal = () => {
@@ -290,6 +298,47 @@ const Bookmarks: React.FC = () => {
         message.success("URL copied to clipboard");
     };
 
+    const handleShareBookmark = (bookmark: Bookmark, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setCurrentShareBookmark(bookmark);
+        setShareModalVisible(true);
+        shareForm.resetFields();
+    };
+
+    const handleShareSubmit = async () => {
+        try {
+            const values = await shareForm.validateFields();
+
+            if (!currentShareBookmark) {
+                message.error("No bookmark selected for sharing");
+                return;
+            }
+
+            setLoading(true);
+
+            const res = await shareBookmarks({
+                email: values.email,
+                bookmark: {
+                    title: currentShareBookmark.title,
+                    url: currentShareBookmark.url,
+                    category: currentShareBookmark.category
+
+                }
+            });
+
+            message.success("Bookmark shared successfully!");
+            setShareModalVisible(false);
+            shareForm.resetFields();
+            setCurrentShareBookmark(null);
+
+        } catch (err) {
+            console.error("Error sharing bookmark:", err);
+            message.error("Failed to share bookmark");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const openCreateModal = () => {
         setModalMode("create");
         form.resetFields();
@@ -391,6 +440,12 @@ const Bookmarks: React.FC = () => {
                 onClick: () => handleCopyUrl(bookmark.url),
             },
             {
+                key: "share",
+                icon: <ShareAltOutlined />,
+                label: "Share",
+                onClick: (e: { domEvent: any; }) => handleShareBookmark(bookmark, e.domEvent as any),
+            },
+            {
                 type: "divider" as const,
             },
             {
@@ -419,6 +474,7 @@ const Bookmarks: React.FC = () => {
                     boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
                     backgroundColor: "#ffffff",
                     height: "235px",
+                    fontFamily: FONT_FAMILY,
                 }}
                 bodyStyle={{
                     padding: "12px",
@@ -454,6 +510,7 @@ const Bookmarks: React.FC = () => {
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
+                                fontFamily: FONT_FAMILY,
                             }}
                         />
                     </Tooltip>,
@@ -471,6 +528,7 @@ const Bookmarks: React.FC = () => {
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
+                                fontFamily: FONT_FAMILY,
                             }}
                             onClick={(e) => e.stopPropagation()}
                         />
@@ -518,6 +576,7 @@ const Bookmarks: React.FC = () => {
                                     borderRadius: "8px",
                                     fontSize: "12px",
                                     padding: "2px 8px",
+                                    fontFamily: FONT_FAMILY,
                                 }}
                             >
                                 {bookmark.category}
@@ -536,13 +595,14 @@ const Bookmarks: React.FC = () => {
                                 display: "-webkit-box",
                                 WebkitLineClamp: 2,
                                 WebkitBoxOrient: "vertical",
+                                fontFamily: FONT_FAMILY,
                             }}
                         >
                             <a
                                 href={bookmark.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                style={{ color: "#1890ff", textDecoration: "none" }}
+                                style={{ color: "#1890ff", textDecoration: "none", fontFamily: FONT_FAMILY }}
                             >
                                 {bookmark.title}
                             </a>
@@ -556,6 +616,7 @@ const Bookmarks: React.FC = () => {
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
                                 whiteSpace: "nowrap",
+                                fontFamily: FONT_FAMILY,
                             }}
                         >
                             {new URL(bookmark.url).hostname}
@@ -579,6 +640,7 @@ const Bookmarks: React.FC = () => {
                                 textOverflow: "ellipsis",
                                 whiteSpace: "nowrap", // Ensure single line with ellipsis
                                 maxWidth: "100%", // Prevent overflow
+                                fontFamily: FONT_FAMILY,
                             }}
                         >
                             {bookmark.description || " "}
@@ -603,6 +665,7 @@ const Bookmarks: React.FC = () => {
                                             overflow: "hidden",
                                             textOverflow: "ellipsis",
                                             whiteSpace: "nowrap",
+                                            fontFamily: FONT_FAMILY,
                                         }}
                                     >
                                         {tag}
@@ -619,6 +682,7 @@ const Bookmarks: React.FC = () => {
                                                 borderRadius: "6px",
                                                 padding: "2px 8px",
                                                 color: "#666",
+                                                fontFamily: FONT_FAMILY,
                                             }}
                                         >
                                             +{bookmark.tags.length - 2}
@@ -657,29 +721,14 @@ const Bookmarks: React.FC = () => {
                                     textDecoration: "none",
                                     fontWeight: 500,
                                     fontSize: "15px",
+                                    fontFamily: FONT_FAMILY,
                                 }}
                             >
                                 {bookmark.title}
                             </a>
                         </div>
-                        {bookmark.description && (
-                            <div
-                                style={{
-                                    color: "#666",
-                                    fontSize: "15px",
-                                    lineHeight: "1.4",
-                                    marginBottom: "4px",
-                                    overflow: "hidden",
-                                    textOverflow: "ellipsis",
-                                    display: "-webkit-box",
-                                    WebkitLineClamp: 1, // Changed to 1 for single-line description
-                                    WebkitBoxOrient: "vertical",
-                                }}
-                            >
-                                {bookmark.description}
-                            </div>
-                        )}
-                        <Text type="secondary" style={{ fontSize: "13px" }}>
+
+                        <Text type="secondary" style={{ fontSize: "13px", fontFamily: FONT_FAMILY }}>
                             {new URL(bookmark.url).hostname}
                         </Text>
                     </div>
@@ -687,14 +736,14 @@ const Bookmarks: React.FC = () => {
             ),
         },
         {
-            title: "Category",
+            title: "ResourceType",
             dataIndex: "category",
             key: "category",
             width: "20%",
             render: (category) => (
                 <Tag
                     color={categoryColors[category] || "#666"}
-                    style={{ borderRadius: "12px", fontSize: "13px" }}
+                    style={{ borderRadius: "12px", fontSize: "13px", fontFamily: FONT_FAMILY }}
                 >
                     {category}
                 </Tag>
@@ -710,7 +759,7 @@ const Bookmarks: React.FC = () => {
                     bookmark.createdAt || bookmark.created_at || bookmark.dateAdded;
                 if (!dateValue) {
                     return (
-                        <Text type="secondary" style={{ fontSize: "16px" }}>
+                        <Text type="secondary" style={{ fontSize: "16px", fontFamily: FONT_FAMILY }}>
                             N/A
                         </Text>
                     );
@@ -719,19 +768,19 @@ const Bookmarks: React.FC = () => {
                     const date = new Date(dateValue);
                     if (isNaN(date.getTime())) {
                         return (
-                            <Text type="secondary" style={{ fontSize: "16px" }}>
+                            <Text type="secondary" style={{ fontSize: "16px", fontFamily: FONT_FAMILY }}>
                                 N/A
                             </Text>
                         );
                     }
                     return (
-                        <Text type="secondary" style={{ fontSize: "14px" }}>
+                        <Text type="secondary" style={{ fontSize: "14px", fontFamily: FONT_FAMILY }}>
                             {date.toLocaleDateString()}
                         </Text>
                     );
                 } catch (error) {
                     return (
-                        <Text type="secondary" style={{ fontSize: "14px" }}>
+                        <Text type="secondary" style={{ fontSize: "14px", fontFamily: FONT_FAMILY }}>
                             N/A
                         </Text>
                     );
@@ -760,10 +809,11 @@ const Bookmarks: React.FC = () => {
                                 )
                             }
                             onClick={() => handleToggleFavorite(bookmark.id)}
+                            style={{ fontFamily: FONT_FAMILY }}
                         />
                     </Tooltip>
                     <Dropdown menu={getDropdownMenu(bookmark)} trigger={["click"]}>
-                        <Button type="text" size="large" icon={<MoreOutlined />} />
+                        <Button type="text" size="large" icon={<MoreOutlined />} style={{ fontFamily: FONT_FAMILY }} />
                     </Dropdown>
                 </Space>
             ),
@@ -778,6 +828,7 @@ const Bookmarks: React.FC = () => {
                 // backgroundColor: "#ffffff",
                 padding: "24px",
                 marginLeft: "40px",
+                fontFamily: FONT_FAMILY,
             }}
         >
             <div
@@ -806,10 +857,10 @@ const Bookmarks: React.FC = () => {
                                 />
                             </Col>
                             <Col>
-                                <Title level={3} style={{ margin: 0, fontSize: 30 }}>
+                                <Title level={3} style={{ margin: 0, fontSize: 30, fontFamily: FONT_FAMILY }}>
                                     {showOnlyFavorites ? "Favorites" : "Bookmarks"}
                                 </Title>
-                                <Text type="secondary">{/* Bookmark count */}</Text>
+                                <Text type="secondary" style={{ fontFamily: FONT_FAMILY }}>{/* Bookmark count */}</Text>
                             </Col>
                         </Row>
                     </Col>
@@ -823,6 +874,7 @@ const Bookmarks: React.FC = () => {
                                     borderRadius: "12px",
                                     background: "#1890ff",
                                     borderColor: "#1890ff",
+                                    fontFamily: FONT_FAMILY,
                                 }}
                                 onClick={openCreateModal}
                             ></Button>
@@ -841,7 +893,8 @@ const Bookmarks: React.FC = () => {
                                     minWidth: '160px',
                                     background: 'linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%)',
                                     boxShadow: '0 2px 8px rgba(24, 144, 255, 0.15)',
-                                    transition: 'all 0.3s ease'
+                                    transition: 'all 0.3s ease',
+                                    fontFamily: FONT_FAMILY,
                                 }}
                                 onMouseEnter={(e) => {
                                     e.currentTarget.style.transform = 'translateY(-2px)';
@@ -865,7 +918,7 @@ const Bookmarks: React.FC = () => {
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             size="large"
-                            style={{ borderRadius: "8px" }}
+                            style={{ borderRadius: "8px", fontFamily: FONT_FAMILY }}
                             disabled={showOnlyFavorites}
                         />
                     </Col>
@@ -874,11 +927,11 @@ const Bookmarks: React.FC = () => {
                             value={selectedCategory}
                             onChange={setSelectedCategory}
                             size="large"
-                            style={{ width: 120 }}
+                            style={{ width: 120, fontFamily: FONT_FAMILY }}
                             disabled={showOnlyFavorites}
                         >
                             {categories.map((cat) => (
-                                <Option key={cat} value={cat}>
+                                <Option key={cat} value={cat} style={{ fontFamily: FONT_FAMILY }}>
                                     {cat}
                                 </Option>
                             ))}
@@ -889,13 +942,13 @@ const Bookmarks: React.FC = () => {
                             value={sortBy}
                             onChange={setSortBy}
                             size="large"
-                            style={{ width: 140 }}
+                            style={{ width: 140, fontFamily: FONT_FAMILY }}
                         >
-                            <Option value="newest">Newest First</Option>
-                            <Option value="oldest">Oldest First</Option>
-                            <Option value="title">Title A-Z</Option>
-                            <Option value="title-desc">Title Z-A</Option>
-                            <Option value="category">Category</Option>
+                            <Option value="newest" style={{ fontFamily: FONT_FAMILY }}>Newest First</Option>
+                            <Option value="oldest" style={{ fontFamily: FONT_FAMILY }}>Oldest First</Option>
+                            <Option value="title" style={{ fontFamily: FONT_FAMILY }}>Title A-Z</Option>
+                            <Option value="title-desc" style={{ fontFamily: FONT_FAMILY }}>Title Z-A</Option>
+                            <Option value="category" style={{ fontFamily: FONT_FAMILY }}>ResourceType</Option>
                         </Select>
                     </Col>
                     <Col>
@@ -908,6 +961,7 @@ const Bookmarks: React.FC = () => {
                                 onClick={() =>
                                     setViewMode(viewMode === "grid" ? "table" : "grid")
                                 }
+                                style={{ fontFamily: FONT_FAMILY }}
                             />
                         </Tooltip>
                     </Col>
@@ -919,12 +973,13 @@ const Bookmarks: React.FC = () => {
                                 textAlign: "center",
                                 borderRadius: "8px",
                                 backgroundColor: "#ffffff",
+                                fontFamily: FONT_FAMILY,
                             }}
                         >
-                            <Title level={3} style={{ margin: 0, color: "#1890ff" }}>
+                            <Title level={3} style={{ margin: 0, color: "#1890ff", fontFamily: FONT_FAMILY }}>
                                 {stats.total_bookmarks}
                             </Title>
-                            <Text type="secondary">Total Bookmarks</Text>
+                            <Text type="secondary" style={{ fontFamily: FONT_FAMILY }}>Total Bookmarks</Text>
                         </Card>
                     </Col>
                     <Col span={6}>
@@ -938,6 +993,7 @@ const Bookmarks: React.FC = () => {
                                     ? "2px solid #1890ff"
                                     : "1px solid #f0f0f0",
                                 transition: "all 0.3s ease",
+                                fontFamily: FONT_FAMILY,
                             }}
                             hoverable
                             onClick={handleFavoritesClick}
@@ -954,10 +1010,10 @@ const Bookmarks: React.FC = () => {
                                 }
                             }}
                         >
-                            <Title level={3} style={{ margin: 0, color: "#ec06b6ff" }}>
+                            <Title level={3} style={{ margin: 0, color: "#ec06b6ff", fontFamily: FONT_FAMILY }}>
                                 {stats.favorite_bookmarks}
                             </Title>
-                            <Text type="secondary">
+                            <Text type="secondary" style={{ fontFamily: FONT_FAMILY }}>
                                 {showOnlyFavorites ? "Showing Favorites" : "Favorites"}
                             </Text>
                         </Card>
@@ -968,12 +1024,13 @@ const Bookmarks: React.FC = () => {
                                 textAlign: "center",
                                 borderRadius: "8px",
                                 // backgroundColor: "#ffffff",
+                                fontFamily: FONT_FAMILY,
                             }}
                         >
-                            <Title level={3} style={{ margin: 0, color: "#52c41a" }}>
+                            <Title level={3} style={{ margin: 0, color: "#52c41a", fontFamily: FONT_FAMILY }}>
                                 {stats.categories_count}
                             </Title>
-                            <Text type="secondary">Categories</Text>
+                            <Text type="secondary" style={{ fontFamily: FONT_FAMILY }}>ResourceTypes</Text>
                         </Card>
                     </Col>
                     <Col span={6}>
@@ -982,12 +1039,13 @@ const Bookmarks: React.FC = () => {
                                 textAlign: "center",
                                 borderRadius: "8px",
                                 backgroundColor: "#ffffff",
+                                fontFamily: FONT_FAMILY,
                             }}
                         >
-                            <Title level={3} style={{ margin: 0, color: "#faad14" }}>
+                            <Title level={3} style={{ margin: 0, color: "#faad14", fontFamily: FONT_FAMILY }}>
                                 {filteredBookmarks.length}
                             </Title>
-                            <Text type="secondary">Filtered Results</Text>
+                            <Text type="secondary" style={{ fontFamily: FONT_FAMILY }}>Filtered Results</Text>
                         </Card>
                     </Col>
                 </Row>
@@ -999,11 +1057,12 @@ const Bookmarks: React.FC = () => {
                             padding: "48px",
                             textAlign: "center",
                             border: "1px solid #f0f0f0",
+                            fontFamily: FONT_FAMILY,
                         }}
                     >
                         <Empty
                             description={
-                                <span style={{ fontSize: "19px", color: "#999" }}>
+                                <span style={{ fontSize: "19px", color: "#999", fontFamily: FONT_FAMILY }}>
                                     {showOnlyFavorites
                                         ? "No favorite bookmarks yet. Start adding some bookmarks to favorites!"
                                         : searchQuery || selectedCategory !== "All"
@@ -1042,16 +1101,143 @@ const Bookmarks: React.FC = () => {
                             showTotal: (total, range) =>
                                 `${range[0]}-${range[1]} of ${total} bookmarks`,
                         }}
-                        style={{ backgroundColor: "#ffffff", borderRadius: "8px" }}
+                        style={{ backgroundColor: "#ffffff", borderRadius: "8px", fontFamily: FONT_FAMILY }}
                         rowHoverable
                     />
                 )}
+
+                {/* Share Bookmark Modal */}
                 <Modal
-                    title={modalMode === "create" ? "Add New Bookmark" : "Edit Bookmark"}
+                    title={
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: FONT_FAMILY }}>
+                            <ShareAltOutlined style={{ color: "#1677ff" }} />
+                            <span>Share Bookmark</span>
+                        </div>
+                    }
+                    open={shareModalVisible}
+                    onCancel={() => {
+                        setShareModalVisible(false);
+                        shareForm.resetFields();
+                        setCurrentShareBookmark(null);
+                    }}
+                    onOk={handleShareSubmit}
+                    centered
+                    width={500}
+                    okText="Share via Email"
+                    confirmLoading={loading}
+                    destroyOnClose
+                    style={{ fontFamily: FONT_FAMILY }}
+                >
+                    {currentShareBookmark && (
+                        <div style={{ marginBottom: 20 }}>
+                            <div
+                                style={{
+                                    padding: 16,
+                                    backgroundColor: "#f8f9fa",
+                                    borderRadius: 8,
+                                    border: "1px solid #e9ecef",
+                                    fontFamily: FONT_FAMILY,
+                                }}
+                            >
+                                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                                    <Avatar
+                                        src={currentShareBookmark.favicon || getFaviconFromUrl(currentShareBookmark.url)}
+                                        size={32}
+                                        style={{ backgroundColor: "#f5f5f5" }}
+                                        icon={<LinkOutlined />}
+                                    />
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontWeight: 600, marginBottom: 4, color: "#333", fontFamily: FONT_FAMILY }}>
+                                            {currentShareBookmark.title}
+                                        </div>
+                                        <div style={{ fontSize: 12, color: "#999", fontFamily: FONT_FAMILY }}>
+                                            {new URL(currentShareBookmark.url).hostname}
+                                        </div>
+                                    </div>
+                                    <Tag
+                                        color={categoryColors[currentShareBookmark.category] || "#666"}
+                                        style={{ borderRadius: "6px", fontSize: "11px", fontFamily: FONT_FAMILY }}
+                                    >
+                                        {currentShareBookmark.category}
+                                    </Tag>
+                                </div>
+
+                                {currentShareBookmark.description && (
+                                    <div style={{ color: "#666", marginBottom: 8, lineHeight: 1.4, fontFamily: FONT_FAMILY }}>
+                                        {currentShareBookmark.description}
+                                    </div>
+                                )}
+
+                                <div style={{ marginBottom: 8 }}>
+                                    <a
+                                        href={currentShareBookmark.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ color: "#1890ff", fontSize: 12, wordBreak: "break-all", fontFamily: FONT_FAMILY }}
+                                    >
+                                        {currentShareBookmark.url}
+                                    </a>
+                                </div>
+
+                                {currentShareBookmark.tags && currentShareBookmark.tags.length > 0 && (
+                                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                                        {currentShareBookmark.tags.map((tag, index) => (
+                                            <Tag
+                                                key={index}
+                                                style={{
+                                                    fontSize: 10,
+                                                    padding: "2px 6px",
+                                                    backgroundColor: "#f0f0f0",
+                                                    border: "1px solid #e0e0e0",
+                                                    borderRadius: 4,
+                                                    fontFamily: FONT_FAMILY,
+                                                }}
+                                            >
+                                                {tag}
+                                            </Tag>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    <Form form={shareForm} layout="vertical">
+                        <Form.Item
+                            name="email"
+                            label={<span style={{ fontFamily: FONT_FAMILY }}>Email Address</span>}
+                            rules={[
+                                { required: true, message: "Please enter an email address" },
+                                { type: "email", message: "Please enter a valid email address" },
+                            ]}
+                        >
+                            <Input
+                                placeholder="Enter recipient's email address"
+                                prefix={<MailOutlined style={{ color: "#999" }} />}
+                                size="large"
+                                style={{ fontFamily: FONT_FAMILY }}
+                            />
+                        </Form.Item>
+                    </Form>
+
+                    <div style={{ fontSize: 12, color: "#666", marginTop: 16, fontFamily: FONT_FAMILY }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
+                            <span>📧</span>
+                            <span>This will open your default email client with the bookmark details</span>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                            <span>✉</span>
+                            <span>You can edit the email before sending</span>
+                        </div>
+                    </div>
+                </Modal>
+
+                <Modal
+                    title={<span style={{ fontFamily: FONT_FAMILY }}>{modalMode === "create" ? "Add New Bookmark" : "Edit Bookmark"}</span>}
                     open={addModalVisible}
                     onCancel={closeModal}
                     footer={null}
-                    style={{ top: 20 }}
+                    style={{ top: 20, fontFamily: FONT_FAMILY }}
                 >
                     <Form
                         form={form}
@@ -1061,16 +1247,16 @@ const Bookmarks: React.FC = () => {
                     >
                         <Form.Item
                             name="title"
-                            label="Title"
+                            label={<span style={{ fontFamily: FONT_FAMILY }}>Title</span>}
                             rules={[
                                 { required: true, message: "Please enter bookmark title" },
                             ]}
                         >
-                            <Input placeholder="Enter bookmark title" />
+                            <Input placeholder="Enter bookmark title" style={{ fontFamily: FONT_FAMILY }} />
                         </Form.Item>
                         <Form.Item
                             name="url"
-                            label="URL"
+                            label={<span style={{ fontFamily: FONT_FAMILY }}>URL</span>}
                             normalize={(value) => normalizeUrl(value)}
                             rules={[
                                 { required: true, message: "Please enter URL" },
@@ -1087,39 +1273,40 @@ const Bookmarks: React.FC = () => {
                                 },
                             ]}
                         >
-                            <Input placeholder="www.example.com" />
+                            <Input placeholder="www.example.com" style={{ fontFamily: FONT_FAMILY }} />
                         </Form.Item>
-                        <Form.Item name="description" label="Description">
+                        <Form.Item name="description" label={<span style={{ fontFamily: FONT_FAMILY }}>Description</span>}>
                             <Input.TextArea
                                 placeholder="Brief description of the bookmark"
                                 rows={3}
+                                style={{ fontFamily: FONT_FAMILY }}
                             />
                         </Form.Item>
                         <Form.Item
                             name="category"
-                            label="Category"
-                            rules={[{ required: true, message: "Please select category" }]}
+                            label={<span style={{ fontFamily: FONT_FAMILY }}>ResourceType</span>}
+                            rules={[{ required: true, message: "Please select ResourceType" }]}
                         >
-                            <Select placeholder="Select category">
-                                <Option value="Tech">Tech</Option>
-                                <Option value="Design">Design</Option>
-                                <Option value="News">News</Option>
-                                <Option value="Social">Social</Option>
-                                <Option value="Tools">Tools</Option>
-                                <Option value="Education">Education</Option>
-                                <Option value="Entertainment">Entertainment</Option>
-                                <Option value="Others">Others</Option>
+                            <Select placeholder="Select ResourceType" style={{ fontFamily: FONT_FAMILY }}>
+                                <Option value="Tech" style={{ fontFamily: FONT_FAMILY }}>Tech</Option>
+                                <Option value="Design" style={{ fontFamily: FONT_FAMILY }}>Design</Option>
+                                <Option value="News" style={{ fontFamily: FONT_FAMILY }}>News</Option>
+                                <Option value="Social" style={{ fontFamily: FONT_FAMILY }}>Social</Option>
+                                <Option value="Tools" style={{ fontFamily: FONT_FAMILY }}>Tools</Option>
+                                <Option value="Education" style={{ fontFamily: FONT_FAMILY }}>Education</Option>
+                                <Option value="Entertainment" style={{ fontFamily: FONT_FAMILY }}>Entertainment</Option>
+                                <Option value="Others" style={{ fontFamily: FONT_FAMILY }}>Others</Option>
                             </Select>
                         </Form.Item>
-                        <Form.Item name="tags" label="Tags">
-                            <Input placeholder="Enter tags separated by commas (e.g., react, frontend, tutorial)" />
+                        <Form.Item name="tags" label={<span style={{ fontFamily: FONT_FAMILY }}>Labels</span>}>
+                            <Input placeholder="Enter labels separated by commas (e.g., react, frontend, tutorial)" style={{ fontFamily: FONT_FAMILY }} />
                         </Form.Item>
                         <Form.Item name="id" hidden>
                             <Input />
                         </Form.Item>
                         <Form.Item style={{ marginBottom: 0, textAlign: "right" }}>
                             <Space>
-                                <Button type="primary" htmlType="submit">
+                                <Button type="primary" htmlType="submit" style={{ fontFamily: FONT_FAMILY }}>
                                     {modalMode === "create" ? "Add Bookmark" : "Update Bookmark"}
                                 </Button>
                             </Space>

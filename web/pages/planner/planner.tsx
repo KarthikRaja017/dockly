@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
     DatePicker,
     Form,
@@ -21,6 +21,17 @@ import {
     Badge,
     Progress,
     Divider,
+    Tabs,
+    Slider,
+    Rate,
+    InputNumber,
+    List,
+    Statistic,
+    Timeline,
+    Tooltip,
+    Popover,
+    Menu,
+    Dropdown,
 } from "antd";
 import {
     CalendarOutlined,
@@ -37,19 +48,38 @@ import {
     ProjectOutlined,
     FileTextOutlined,
     TrophyOutlined,
-    CheckSquareOutlined
+    CheckSquareOutlined,
+    ThunderboltOutlined,
+    HeartOutlined,
+    BulbOutlined,
+    BarChartOutlined,
+    CloudOutlined,
+    BookOutlined,
+    PlayCircleOutlined,
+    PauseCircleOutlined,
+    StopOutlined,
+    ExportOutlined,
+    ImportOutlined,
+    RobotOutlined,
+    LinkOutlined,
+    FireOutlined,
+    SmileOutlined,
+    MehOutlined,
+    FrownOutlined,
+    SoundOutlined,
 } from "@ant-design/icons";
-import { addProject, addTask, getProjects, getTasks, updateTask } from "../../services/family";
-import dayjs from "dayjs";
-import { addEvents, addPlannerNotes, addWeeklyGoal, addWeeklyTodo, deletePlannerNote, getAllPlannerData, getPlannerNotes, getWeeklyTodos, updatePlannerNote, updateWeeklyGoal, updateWeeklyTodo } from "../../services/planner";
 import { Calendar } from "lucide-react";
-import { PRIMARY_COLOR } from "../../app/comman";
+import dayjs from "dayjs";
+import { addEvents, addProject, addTask, addWeeklyGoal, addWeeklyTodo, deletePlannerNote, getAllPlannerData, getProjects, getTasks, updateTask, updateWeeklyGoal, updateWeeklyTodo } from "../../services/planner";
 import { showNotification } from "../../utils/notification";
-import CustomCalendar from "../components/customCalendar";
+import { useCurrentUser } from "../../app/userContext";
+import { useGlobalLoading } from "../../app/loadingContext";
 import MiniCalendar from "../components/miniCalendar";
+import CustomCalendar from "../components/customCalendar";
 import FamilyTasksComponent from "../components/familyTasksProjects";
 import NotesLists from "../family-hub/components/familyNotesLists";
-import { useCurrentUser } from "../../app/userContext";
+import DocklyLoader from "../../utils/docklyLoader";
+
 const { Title, Text } = Typography;
 
 // Enhanced Professional color palette with better contrast
@@ -75,6 +105,10 @@ const COLORS = {
     shadowMedium: 'rgba(0, 0, 0, 0.1)',
     shadowHeavy: 'rgba(0, 0, 0, 0.15)',
     shadowElevated: 'rgba(0, 0, 0, 0.2)',
+    habit: '#8b5cf6',
+    mood: '#ec4899',
+    energy: '#f59e0b',
+    time: '#10b981',
 };
 
 const SPACING = {
@@ -96,7 +130,10 @@ type Task = {
     completed: boolean;
     due: string;
     dueDate?: string;
+    timeSpent?: number; // in minutes
+    estimatedTime?: number; // in minutes
 };
+
 type Project = {
     color?: string;
     project_id: string;
@@ -107,6 +144,8 @@ type Project = {
     tasks: Task[];
     visibility: string;
     source: string;
+    timeSpent?: number;
+    estimatedTime?: number;
 };
 
 interface ConnectedAccount {
@@ -120,52 +159,133 @@ interface ConnectedAccount {
 
 interface ConnectedAccountType {
     email: string;
-    provider: 'google' | 'dockly';
+    provider: 'google' | 'dockly' | 'outlook';
     color: string;
 }
 
-const groupAccountsByEmail = (accounts: ConnectedAccountType[]) => {
-    const map: Record<string, ConnectedAccountType[]> = {};
-    accounts.forEach((acc) => {
-        if (!map[acc.email]) {
-            map[acc.email] = [];
-        }
-        map[acc.email].push(acc);
-    });
-    return Object.entries(map).map(([email, providers]) => ({ email, providers }));
+// Advanced Features Types
+interface HabitTracker {
+    id: string;
+    name: string;
+    description: string;
+    frequency: 'daily' | 'weekly' | 'monthly';
+    target: number;
+    current: number;
+    streak: number;
+    color: string;
+    icon: string;
+    lastCompleted?: string;
+}
+
+interface MoodEntry {
+    id: string;
+    date: string;
+    mood: number; // 1-5 scale
+    energy: number; // 1-5 scale
+    productivity: number; // 1-5 scale
+    notes?: string;
+    weather?: string;
+}
+
+interface TimeEntry {
+    id: string;
+    taskId?: string;
+    projectId?: string;
+    startTime: string;
+    endTime?: string;
+    duration: number; // in minutes
+    description: string;
+    category: 'work' | 'personal' | 'learning' | 'exercise' | 'other';
+}
+
+interface Template {
+    id: string;
+    name: string;
+    type: 'goal' | 'task' | 'project';
+    content: any;
+    category: string;
+    description: string;
+    usage: number;
+}
+
+interface SmartSuggestion {
+    id: string;
+    type: 'goal' | 'task' | 'habit' | 'time-optimization';
+    title: string;
+    description: string;
+    confidence: number;
+    data: any;
+}
+
+const PRIMARY_COLOR = COLORS.accent;
+
+// Updated function to create unique account identifiers
+const createAccountIdentifier = (account: ConnectedAccount): string => {
+    return `${account.email}-${account.provider}`;
 };
 
+// Updated function to get provider icon
+const getProviderIcon = (provider: string) => {
+    switch (provider.toLowerCase()) {
+        case 'google':
+            return <GoogleOutlined />;
+        case 'outlook':
+            return <MailOutlined />;
+        case 'dockly':
+        default:
+            return 'D';
+    }
+};
+
+// Updated function to get provider display name
+const getProviderDisplayName = (provider: string): string => {
+    switch (provider.toLowerCase()) {
+        case 'google':
+            return 'Google';
+        case 'outlook':
+            return 'Outlook';
+        case 'dockly':
+            return 'Dockly';
+        default:
+            return provider.charAt(0).toUpperCase() + provider.slice(1);
+    }
+};
+
+// Enhanced CalendarAccountFilter as Select Component - FIXED INFINITE LOOP
 const CalendarAccountFilter: React.FC<{
     connectedAccounts: ConnectedAccount[];
-    onFilterChange: (filteredAccounts: string[]) => void;
+    onFilterChange: (filteredAccountIds: string[]) => void;
     onConnectAccount: () => void;
 }> = ({ connectedAccounts, onFilterChange, onConnectAccount }) => {
-    const [activeFilters, setActiveFilters] = useState<string[]>(
-        connectedAccounts.map((acc) => acc.email)
+    const [selectedAccounts, setSelectedAccounts] = useState<string[]>(['all']);
+
+    // Memoize account IDs to prevent infinite loops
+    const allAccountIds = useMemo(() =>
+        connectedAccounts.map((acc) => createAccountIdentifier(acc)),
+        [connectedAccounts]
     );
-    const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
 
-    const groupedAccounts = groupAccountsByEmail(connectedAccounts as ConnectedAccountType[]);
+    // Use callback to prevent infinite re-renders
+    const handleFilterUpdate = useCallback(() => {
+        if (connectedAccounts.length > 0 && selectedAccounts.includes('all')) {
+            onFilterChange(allAccountIds);
+        } else if (!selectedAccounts.includes('all')) {
+            onFilterChange(selectedAccounts);
+        }
+    }, [selectedAccounts, connectedAccounts.length, allAccountIds, onFilterChange]);
 
-    const handleFilterToggle = (email: string) => {
-        const newFilters = activeFilters.includes(email)
-            ? activeFilters.filter((f) => f !== email)
-            : [...activeFilters, email];
+    // Fixed useEffect with proper dependencies
+    useEffect(() => {
+        handleFilterUpdate();
+    }, [handleFilterUpdate]);
 
-        setActiveFilters(newFilters);
-        onFilterChange(newFilters);
-    };
-
-    const handleSelectAll = () => {
-        const allEmails = groupedAccounts.map((group) => group.email);
-        setActiveFilters(allEmails);
-        onFilterChange(allEmails);
-    };
-
-    const handleDeselectAll = () => {
-        setActiveFilters([]);
-        onFilterChange([]);
-    };
+    const handleSelectChange = useCallback((values: string[]) => {
+        if (values.includes('all')) {
+            setSelectedAccounts(['all']);
+        } else {
+            setSelectedAccounts(values);
+        }
+    }, []);
 
     if (connectedAccounts.length === 0) {
         return (
@@ -205,161 +325,115 @@ const CalendarAccountFilter: React.FC<{
     }
 
     return (
-        <>
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: SPACING.xs,
-                flexWrap: 'wrap',
-            }}>
-                {groupedAccounts.slice(0, 3).map(({ email, providers }) => {
-                    const isActive = activeFilters.includes(email);
-                    const primaryColor = providers.find((p) => p.provider === 'dockly')
-                        ? PRIMARY_COLOR
-                        : providers.find((p) => p.provider === 'google')?.color || providers[0].color;
-
+        <Select
+            mode="multiple"
+            value={selectedAccounts}
+            onChange={handleSelectChange}
+            placeholder="Select accounts"
+            style={{
+                minWidth: '200px',
+                maxWidth: '350px',
+                fontFamily: FONT_FAMILY,
+                color: COLORS.textSecondary,
+            }}
+            size="middle"
+            suffixIcon={<CalendarOutlined style={{ color: COLORS.textSecondary }} />}
+            // dropdownStyle={{
+            //     fontFamily: FONT_FAMILY,
+            //     borderRadius: '12px',
+            //     boxShadow: `0 8px 24px ${COLORS.shadowMedium}`,
+            //     backgroundColor: COLORS.surface,
+            //     padding: '8px',
+            //     border: `1px solid ${COLORS.borderLight}`,
+            // }}
+            tagRender={(props) => {
+                const { label, value, closable, onClose } = props;
+                if (value === 'all') {
                     return (
-                        <div
-                            key={email}
-                            onClick={() => handleFilterToggle(email)}
+                        <Tag
+                            color="blue"
+                            closable={closable}
+                            onClose={onClose}
                             style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: SPACING.xs,
-                                padding: `${SPACING.xs}px ${SPACING.sm}px`,
-                                background: isActive ? `${primaryColor}12` : COLORS.surfaceSecondary,
-                                border: `1px solid ${isActive ? primaryColor : COLORS.borderLight}`,
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s ease',
-                                opacity: isActive ? 1 : 0.7,
+                                margin: '2px',
+                                borderRadius: '4px',
+                                fontSize: '11px',
+                                fontWeight: 500,
                                 fontFamily: FONT_FAMILY,
+                                // color: COLORS.textSecondary,
                             }}
                         >
-                            <Avatar
-                                size={20}
-                                style={{
-                                    backgroundColor: primaryColor,
-                                    fontSize: '10px',
-                                    fontWeight: 600,
-                                }}
-                            >
-                                {providers[0].provider === 'google' ? <GoogleOutlined /> : 'D'}
-                            </Avatar>
-                            <Text style={{ fontSize: '12px', fontWeight: 500, fontFamily: FONT_FAMILY }}>
-                                {email.split('@')[0]}
-                            </Text>
-                        </div>
+                            All Accounts
+                        </Tag>
                     );
-                })}
+                }
 
-                {groupedAccounts.length > 3 && (
-                    <Button
-                        size="small"
-                        icon={<EyeOutlined />}
-                        onClick={() => setIsFilterModalVisible(true)}
+                const account = connectedAccounts.find(acc => createAccountIdentifier(acc) === value);
+                if (!account) return <span />;
+
+                return (
+                    <Tag
+                        // color={account.color}
+                        closable={closable}
+                        onClose={onClose}
                         style={{
-                            borderRadius: '6px',
+                            margin: '2px',
+                            borderRadius: '4px',
                             fontSize: '11px',
-                            height: '28px',
+                            fontWeight: 500,
                             fontFamily: FONT_FAMILY,
+                            background: `${account.color}15`,
+                            borderColor: account.color,
+                            color: account.color,
                         }}
                     >
-                        +{groupedAccounts.length - 3}
-                    </Button>
-                )}
-
-                <Button
-                    size="small"
-                    icon={<FilterOutlined />}
-                    onClick={() => setIsFilterModalVisible(true)}
-                    style={{
-                        borderRadius: '6px',
-                        fontSize: '11px',
-                        height: '28px',
-                        fontFamily: FONT_FAMILY,
-                    }}
-                >
-                    Filter
-                </Button>
-            </div>
-
-            <Modal
-                title="Account Filters"
-                open={isFilterModalVisible}
-                onCancel={() => setIsFilterModalVisible(false)}
-                footer={null}
-                width={450}
+                        <Avatar size={14} style={{ backgroundColor: account.color, marginRight: '4px' }}>
+                            {getProviderIcon(account.provider)}
+                        </Avatar>
+                        {account.email.split('@')[0]}
+                    </Tag>
+                );
+            }}
+        >
+            <Select.Option
+                key="all"
+                value="all"
+                style={{ fontFamily: FONT_FAMILY }}
             >
-                <div style={{ padding: '12px 0', fontFamily: FONT_FAMILY }}>
-                    <div style={{
-                        marginBottom: '12px',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                    }}>
-                        <Button size="small" onClick={handleSelectAll} style={{ fontFamily: FONT_FAMILY }}>
-                            Select All
-                        </Button>
-                        <Button size="small" onClick={handleDeselectAll} style={{ fontFamily: FONT_FAMILY }}>
-                            Deselect All
-                        </Button>
-                    </div>
-
-                    <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                        {groupedAccounts.map(({ email, providers }) => {
-                            const isActive = activeFilters.includes(email);
-                            const primaryColor = providers.find((p) => p.provider === 'dockly')
-                                ? PRIMARY_COLOR
-                                : providers.find((p) => p.provider === 'google')?.color || providers[0].color;
-
-                            return (
-                                <div
-                                    key={email}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        padding: '8px',
-                                        background: isActive ? `${primaryColor}10` : COLORS.surfaceSecondary,
-                                        borderRadius: '6px',
-                                        border: `1px solid ${isActive ? primaryColor : COLORS.borderLight}`,
-                                        fontFamily: FONT_FAMILY,
-                                    }}
-                                >
-                                    <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '8px',
-                                    }}>
-                                        <Avatar
-                                            size={28}
-                                            style={{ backgroundColor: primaryColor }}
-                                            icon={providers[0].provider === 'google' ? <GoogleOutlined /> : undefined}
-                                        >
-                                            {providers[0].provider === 'dockly' ? 'D' : email.charAt(0).toUpperCase()}
-                                        </Avatar>
-                                        <div>
-                                            <Text strong style={{ fontFamily: FONT_FAMILY, fontSize: '13px' }}>{email}</Text>
-                                            <br />
-                                            <Text type="secondary" style={{ fontSize: '11px', fontFamily: FONT_FAMILY }}>
-                                                {providers.map(p => p.provider.charAt(0).toUpperCase() + p.provider.slice(1)).join(', ')}
-                                            </Text>
-                                        </div>
-                                    </div>
-                                    <Switch
-                                        checked={isActive}
-                                        onChange={() => handleFilterToggle(email)}
-                                        style={{
-                                            backgroundColor: isActive ? primaryColor : undefined,
-                                        }}
-                                    />
-                                </div>
-                            );
-                        })}
-                    </Space>
+                <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.xs }}>
+                    <Avatar size={20} style={{ backgroundColor: COLORS.accent }}>
+                        <CalendarOutlined style={{ fontSize: '12px' }} />
+                    </Avatar>
+                    <Text style={{ fontSize: '13px', fontWeight: 500, fontFamily: FONT_FAMILY }}>
+                        All Accounts
+                    </Text>
                 </div>
-            </Modal>
-        </>
+            </Select.Option>
+            {connectedAccounts.map((account) => {
+                const accountId = createAccountIdentifier(account);
+                return (
+                    <Select.Option
+                        key={accountId}
+                        value={accountId}
+                        style={{ fontFamily: FONT_FAMILY, color: COLORS.textSecondary }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.xs }}>
+                            <Avatar size={20} style={{ backgroundColor: account.color }}>
+                                {getProviderIcon(account.provider)}
+                            </Avatar>
+                            <div>
+                                <Text style={{ fontSize: '13px', fontWeight: 500, fontFamily: FONT_FAMILY }}>
+                                    {account.email.split('@')[0]}
+                                </Text>
+                                <Text style={{ fontSize: '11px', color: COLORS.textSecondary, display: 'block', fontFamily: FONT_FAMILY }}>
+                                    {getProviderDisplayName(account.provider)}
+                                </Text>
+                            </div>
+                        </div>
+                    </Select.Option>
+                );
+            })}
+        </Select>
     );
 };
 
@@ -425,9 +499,90 @@ const ConnectAccountModal: React.FC<{
     );
 };
 
+// Advanced Feature: Habit Tracker Component
+const HabitTracker: React.FC<{
+    habits: HabitTracker[];
+    onToggleHabit: (habitId: string) => void;
+    // onAddHabit: () => void;
+}> = ({ habits, onToggleHabit }) => {
+    const todayHabits = habits.slice(0, 4); // Show top 4 habits
+
+    return (
+        <div style={{
+            background: COLORS.surface,
+            borderRadius: '12px',
+            // padding: SPACING.md,
+            // border: `1px solid ${COLORS.borderLight}`,
+            fontFamily: FONT_FAMILY,
+        }}>
+            <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                {todayHabits.map((habit) => (
+                    <div
+                        key={habit.id}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: SPACING.sm,
+                            background: COLORS.surfaceSecondary,
+                            borderRadius: '8px',
+                            border: `1px solid ${COLORS.borderLight}`,
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.sm }}>
+                            <div style={{
+                                fontSize: '16px',
+                                color: habit.color,
+                            }}>
+                                {habit.icon}
+                            </div>
+                            <div>
+                                <Text style={{ fontSize: '13px', fontWeight: 500, fontFamily: FONT_FAMILY }}>
+                                    {habit.name}
+                                </Text>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.xs }}>
+                                    <Text style={{ fontSize: '11px', color: COLORS.textSecondary, fontFamily: FONT_FAMILY }}>
+                                        {habit.current}/{habit.target}
+                                    </Text>
+                                    <div style={{
+                                        width: '40px',
+                                        height: '4px',
+                                        background: COLORS.borderLight,
+                                        borderRadius: '2px',
+                                        overflow: 'hidden',
+                                    }}>
+                                        <div style={{
+                                            width: `${Math.min((habit.current / habit.target) * 100, 100)}%`,
+                                            height: '100%',
+                                            background: habit.color,
+                                            transition: 'width 0.3s ease',
+                                        }} />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <Button
+                            type={habit.current >= habit.target ? "primary" : "default"}
+                            size="small"
+                            icon={<CheckCircleOutlined />}
+                            onClick={() => onToggleHabit(habit.id)}
+                            style={{
+                                borderRadius: '6px',
+                                backgroundColor: habit.current >= habit.target ? COLORS.success : undefined,
+                                borderColor: habit.current >= habit.target ? COLORS.success : undefined,
+                                fontFamily: FONT_FAMILY,
+                            }}
+                        />
+                    </div>
+                ))}
+            </Space>
+        </div>
+    );
+};
+// Enhanced PlannerTitle with new CalendarAccountFilter
 const PlannerTitle: React.FC<{
     connectedAccounts: ConnectedAccount[];
-    onFilterChange: (filteredAccounts: string[]) => void;
+    onFilterChange: (filteredAccountIds: string[]) => void;
     onConnectAccount: () => void;
 }> = ({ connectedAccounts, onFilterChange, onConnectAccount }) => {
     return (
@@ -480,11 +635,17 @@ const PlannerTitle: React.FC<{
                     </Text>
                 </div>
             </div>
-            <CalendarAccountFilter
-                connectedAccounts={connectedAccounts}
-                onFilterChange={onFilterChange}
-                onConnectAccount={onConnectAccount}
-            />
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: SPACING.md,
+            }}>
+                <CalendarAccountFilter
+                    connectedAccounts={connectedAccounts}
+                    onFilterChange={onFilterChange}
+                    onConnectAccount={onConnectAccount}
+                />
+            </div>
         </div>
     );
 };
@@ -597,7 +758,7 @@ const Planner = () => {
         }[]
     >([]);
     const [projects, setProjects] = useState<Project[]>([]);
-    // const [loading, setLoading] = useState(false);
+    const { loading, setLoading } = useGlobalLoading();
     const [backup, setBackup] = useState(null);
     const [isGoalModalVisible, setIsGoalModalVisible] = useState(false);
     const [isEventModalVisible, setIsEventModalVisible] = useState(false);
@@ -608,7 +769,7 @@ const Planner = () => {
     const [editingTodo, setEditingTodo] = useState<any>(null);
     const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
     const [connectedAccounts, setConnectedAccounts] = useState<ConnectedAccount[]>([]);
-    const [filteredAccountEmails, setFilteredAccountEmails] = useState<string[]>([]);
+    const [filteredAccountIds, setFilteredAccountIds] = useState<string[]>([]);
     const [personColors, setPersonColors] = useState<{ [person: string]: { color: string; email: string } }>({});
     const [currentDate, setCurrentDate] = useState(new Date());
     const [view, setView] = useState<"Day" | "Week" | "Month" | "Year">("Week");
@@ -622,7 +783,63 @@ const Planner = () => {
     const [editingNote, setEditingNote] = useState<{ id: string; title: string; description: string } | null>(null);
     const [isNoteModalVisible, setIsNoteModalVisible] = useState(false);
     const [noteForm] = Form.useForm();
-    const [expandedSection, setExpandedSection] = useState<"goals" | "todos" | null>("goals");
+    const [expandedSection, setExpandedSection] = useState<"habits" | "goals" | "todos" | null>("habits");
+
+    // {
+    //     if (!calendarEvents) {
+    //         return <DocklyLoader />
+    //     }
+    // }
+    // Advanced Features State
+    const [habits, setHabits] = useState<HabitTracker[]>([
+        {
+            id: '1',
+            name: 'Morning Exercise',
+            description: '30 minutes of workout',
+            frequency: 'daily',
+            target: 1,
+            current: 0,
+            streak: 5,
+            color: COLORS.success,
+            icon: '🏃',
+        },
+        {
+            id: '2',
+            name: 'Read Books',
+            description: '20 pages daily',
+            frequency: 'daily',
+            target: 20,
+            current: 15,
+            streak: 3,
+            color: COLORS.accent,
+            icon: '📚',
+        },
+        {
+            id: '3',
+            name: 'Meditation',
+            description: '10 minutes mindfulness',
+            frequency: 'daily',
+            target: 1,
+            current: 1,
+            streak: 7,
+            color: COLORS.habit,
+            icon: '🧘',
+        },
+        {
+            id: '4',
+            name: 'Water Intake',
+            description: '8 glasses of water',
+            frequency: 'daily',
+            target: 8,
+            current: 5,
+            streak: 2,
+            color: COLORS.time,
+            icon: '💧',
+        },
+    ]);
+
+    const [todayMood, setTodayMood] = useState<MoodEntry | undefined>(undefined);
+    const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(null);
 
     // Helper functions
     const getPriorityColor = (priority: string) => {
@@ -692,20 +909,38 @@ const Planner = () => {
     };
 
     const getFilteredCalendarEvents = () => {
-        if (filteredAccountEmails.length === 0) {
+        if (filteredAccountIds.length === 0) {
             return calendarEvents;
         }
-        return calendarEvents.filter(event =>
-            filteredAccountEmails.includes(event.source_email || '')
-        );
+
+        // Filter events based on active account IDs
+        return calendarEvents.filter(event => {
+            const eventAccountId = `${event.source_email}-${event.provider}`;
+            return filteredAccountIds.includes(eventAccountId);
+        });
     };
 
-    const handleAccountFilterChange = (filteredEmails: string[]) => {
-        setFilteredAccountEmails(filteredEmails);
-    };
+    // Use useCallback to prevent infinite loops
+    const handleAccountFilterChange = useCallback((filteredIds: string[]) => {
+        setFilteredAccountIds(filteredIds);
+    }, []);
 
     const handleConnectAccount = () => {
         window.location.href = `/add-googleCalendar?username=user&userId=123`;
+    };
+
+    const handleToggleHabit = (habitId: string) => {
+        setHabits(prev => prev.map(habit => {
+            if (habit.id === habitId) {
+                const newCurrent = Math.min(habit.current + 1, habit.target);
+                return {
+                    ...habit,
+                    current: newCurrent,
+                    lastCompleted: new Date().toISOString(),
+                };
+            }
+            return habit;
+        }));
     };
 
     // Statistics calculations
@@ -744,19 +979,19 @@ const Planner = () => {
     };
 
     const handleAddEvent = () => {
-        // setLoading(true);
+        setLoading(true);
         eventForm.validateFields().then(async (values) => {
             try {
                 values.date = values.date.format("YYYY-MM-DD");
                 values.time = values.time.format("h:mm A");
 
                 const response = await addEvents({ ...values });
-                const { message, status } = response.data;
+                const { message: msg, status } = response.data;
 
                 if (status) {
-                    showNotification("Success", message, "success");
+                    showNotification("Success", msg, "success");
                 } else {
-                    showNotification("Error", message, "error");
+                    showNotification("Error", msg, "error");
                 }
 
                 setIsEventModalVisible(false);
@@ -765,10 +1000,10 @@ const Planner = () => {
             } catch (err) {
                 showNotification("Error", "Something went wrong", "error");
             } finally {
-                // setLoading(false);
+                setLoading(false);
             }
         }).catch(() => {
-            // setLoading(false);
+            setLoading(false);
         });
     };
 
@@ -778,7 +1013,7 @@ const Planner = () => {
         due_date: string;
         visibility: 'public' | 'private';
     }) => {
-        // setLoading(true);
+        setLoading(true);
         try {
             await addProject({
                 ...project,
@@ -789,14 +1024,14 @@ const Planner = () => {
         } catch {
             // Handle error
         }
-        // setLoading(false);
+        setLoading(false);
     };
 
     const handleAddTask = async (projectId: string,
         taskData?: { title: string; due_date: string; assignee?: string }
     ) => {
         if (!taskData) return;
-        // setLoading(true);
+        setLoading(true);
         try {
             await addTask({
                 project_id: projectId,
@@ -810,11 +1045,11 @@ const Planner = () => {
         } catch {
             message.error('Failed to add task');
         }
-        // setLoading(false);
+        setLoading(false);
     };
 
     const handleToggleTask = async (projectId: string, taskId: number) => {
-        // setLoading(true);
+        setLoading(true);
         const project = projects.find((p) => p.project_id === projectId);
         const task = project?.tasks.find((t) => t.id === taskId);
         if (!task) return;
@@ -825,11 +1060,11 @@ const Planner = () => {
         } catch {
             message.error('Failed to toggle task');
         }
-        // setLoading(false);
+        setLoading(false);
     };
 
     const handleUpdateTask = (task: Task): void => {
-        // setLoading(true);
+        setLoading(true);
         updateTask({
             task_id: task.id,
             title: task.title,
@@ -844,11 +1079,11 @@ const Planner = () => {
             .catch(() => {
                 message.error('Failed to update task');
             });
-        // setLoading(false);
+        setLoading(false);
     };
 
-    const fetchProjects = async () => {
-        // setLoading(true);
+    const fetchProjects = useCallback(async () => {
+        setLoading(true);
         try {
             const projRes = await getProjects({ source: 'planner' });
             const rawProjects = projRes.data.payload.projects || [];
@@ -866,6 +1101,8 @@ const Planner = () => {
                         completed: task.completed,
                         due: task.completed ? 'Completed' : `Due ${dayjs(task.due_date).format('MMM D')}`,
                         dueDate: task.due_date ? String(task.due_date) : '',
+                        timeSpent: task.timeSpent || 0,
+                        estimatedTime: task.estimatedTime || 60,
                     }));
 
                     return {
@@ -880,6 +1117,8 @@ const Planner = () => {
                         tasks,
                         visibility: proj.meta?.visibility || 'public',
                         source: proj.source || '',
+                        timeSpent: tasks.reduce((acc: number, task: Task) => acc + (task.timeSpent || 0), 0),
+                        estimatedTime: tasks.reduce((acc: number, task: Task) => acc + (task.estimatedTime || 0), 0),
                     };
                 })
             );
@@ -888,8 +1127,8 @@ const Planner = () => {
         } catch (err) {
             // Handle error
         }
-        // setLoading(false);
-    };
+        setLoading(false);
+    }, [setLoading]);
 
     const getDueDateByView = (activeView: string, activeDate: Date) => {
         const formatted = (date: Date) => dayjs(date).format("YYYY-MM-DD");
@@ -928,7 +1167,7 @@ const Planner = () => {
     };
 
     const handleAddGoal = async () => {
-        // setLoading(true);
+        setLoading(true);
         goalForm.validateFields().then(async (values) => {
             try {
                 const formattedDate = dayjs(values.date).format("YYYY-MM-DD");
@@ -962,23 +1201,28 @@ const Planner = () => {
             } catch (error) {
                 showNotification("Error", "Something went wrong", "error");
             } finally {
-                // setLoading(false);
+                setLoading(false);
             }
         });
     };
 
-    // Single comprehensive fetch function
-    const fetchAllPlannerData = async (preserveView: boolean = false, preservedDate: Date | null = null) => {
-        // setLoading(true);
+    // Single comprehensive fetch function - FIXED with useCallback
+    const fetchAllPlannerData = useCallback(async (preserveView: boolean = false, preservedDate: Date | null = null) => {
+        setLoading(true);
         try {
             // Determine filter parameters
             const show_dockly = true; // Always show Dockly data
             const show_google = connectedAccounts.length > 0; // Show Google if accounts connected
 
+            // Convert account IDs back to emails for backend compatibility
+            const filtered_emails = filteredAccountIds.length > 0
+                ? filteredAccountIds.map(id => id.split('-')[0]) // Extract email from account ID
+                : undefined;
+
             const response = await getAllPlannerData({
                 show_dockly,
                 show_google,
-                filtered_emails: filteredAccountEmails.length > 0 ? filteredAccountEmails : undefined
+                filtered_emails
             });
 
             const payload = response.data.payload;
@@ -1013,7 +1257,11 @@ const Planner = () => {
 
             // Process connected accounts
             const connectedAccountsData = payload.connected_accounts || [];
-            setConnectedAccounts(connectedAccountsData);
+
+            // Only update if actually different to prevent infinite loops
+            if (JSON.stringify(connectedAccountsData) !== JSON.stringify(connectedAccounts)) {
+                setConnectedAccounts(connectedAccountsData);
+            }
 
             // Set up person colors
             const newPersonColors: { [key: string]: { color: string; email: string } } = {};
@@ -1035,9 +1283,10 @@ const Planner = () => {
             const rawNotes = payload.notes || [];
             setNotes(rawNotes);
 
-            // Update filtered account emails if needed
-            if (filteredAccountEmails.length === 0) {
-                setFilteredAccountEmails(connectedAccountsData.map((acc: any) => acc.email));
+            // Update filtered account IDs if needed (only if empty)
+            if (filteredAccountIds.length === 0 && connectedAccountsData.length > 0) {
+                const allAccountIds = connectedAccountsData.map((acc: any) => createAccountIdentifier(acc));
+                setFilteredAccountIds(allAccountIds);
             }
 
             // Show connect modal if no Google accounts connected
@@ -1053,12 +1302,12 @@ const Planner = () => {
             console.error("Error fetching planner data:", error);
             message.error("Failed to load planner data");
         } finally {
-            // setLoading(false);
+            setLoading(false);
         }
-    };
+    }, [setLoading, connectedAccounts, filteredAccountIds]);
 
     const handleAddTodo = () => {
-        // setLoading(true);
+        setLoading(true);
         todoForm.validateFields().then(async (values) => {
             try {
                 const formattedDate = dayjs(values.date).format("YYYY-MM-DD");
@@ -1096,7 +1345,7 @@ const Planner = () => {
             } catch (error) {
                 showNotification("Error", "Something went wrong", "error");
             } finally {
-                // setLoading(false);
+                setLoading(false);
             }
         });
     };
@@ -1157,30 +1406,20 @@ const Planner = () => {
         });
     };
 
-    const handleAddProject = async () => {
-        try {
-            const values = await projectForm.validateFields();
-
-            const newProject = {
-                title: values.title,
-                description: values.category,
-                due_date: values.dueDate.format("YYYY-MM-DD"),
-                visibility: values.visibility || 'private',
-            };
-
-            await handleAddProjects(newProject);
-
-            projectForm.resetFields();
-            setIsProjectModalVisible(false);
-        } catch (err) {
-            console.error('Validation failed:', err);
-        }
-    };
-
+    // Initialize data on mount
     useEffect(() => {
         fetchAllPlannerData();
         fetchProjects();
     }, []);
+
+    // Cleanup timer on unmount
+    useEffect(() => {
+        return () => {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+            }
+        };
+    }, [timerInterval]);
 
     const handleToggleTodo = async (id: string) => {
         const todo = todos.find((t) => t.id === id);
@@ -1288,6 +1527,10 @@ const Planner = () => {
                     onFilterChange={handleAccountFilterChange}
                     onConnectAccount={handleConnectAccount}
                 />
+
+                {/* Smart Suggestions Section */}
+
+
                 <Row gutter={[SPACING.lg, SPACING.lg]} style={{ marginBottom: SPACING.lg }}>
                     <Col span={6}>
                         <StatisticsCard
@@ -1386,6 +1629,7 @@ const Planner = () => {
                                     view={view}
                                 />
                             </div>
+
                             <div style={{
                                 background: COLORS.surface,
                                 borderRadius: '14px',
@@ -1397,12 +1641,98 @@ const Planner = () => {
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'space-between',
-                                    padding: SPACING.md,
+                                    padding: SPACING.lg,
                                     borderBottom: `1px solid ${COLORS.borderLight}`,
                                     cursor: 'pointer',
                                     background: COLORS.surfaceElevated,
                                 }} onClick={() =>
-                                    setExpandedSection(expandedSection === "goals" ? null : "goals")
+                                    expandedSection === "habits"
+                                        ? setExpandedSection(null)
+                                        : setExpandedSection("habits")
+                                }>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.md }}>
+                                        <div style={{
+                                            width: '32px',
+                                            height: '32px',
+                                            background: `linear-gradient(135deg, ${COLORS.habit}, ${COLORS.habit}dd)`,
+                                            borderRadius: '8px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            boxShadow: `0 2px 8px ${COLORS.habit}20`,
+                                            fontSize: '18px',
+                                        }}>
+                                            <FireOutlined style={{ color: 'white' }} />
+                                        </div>
+                                        <Text strong style={{ fontSize: '14px', color: COLORS.text, fontFamily: FONT_FAMILY }}>
+                                            {/* {getViewTitle("Habits")} */}
+                                            Daily Habits
+                                        </Text>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.xs }}>
+
+                                        <Button
+                                            type="primary"
+                                            size="small"
+                                            icon={<PlusOutlined />}
+                                            // onClick={(e) => {
+                                            //     e.stopPropagation();
+                                            //     setIsGoalModalVisible(true);
+                                            // }}
+                                            style={{
+                                                backgroundColor: COLORS.accent,
+                                                borderColor: COLORS.accent,
+                                                borderRadius: '6px',
+                                                width: '28px',
+                                                height: '28px',
+                                                padding: 0,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                            }}
+                                        />
+                                        <span style={{
+                                            fontSize: '12px',
+                                            color: COLORS.textSecondary,
+                                            transform: expandedSection === "habits" ? 'rotate(180deg)' : 'rotate(0deg)',
+                                            transition: 'transform 0.2s ease',
+                                        }}>
+                                            ▼
+                                        </span>
+                                    </div>
+                                </div>
+                                {expandedSection === "habits" && (
+                                    <div style={{
+                                        padding: SPACING.lg,
+                                        maxHeight: '320px',
+                                        overflowY: 'auto',
+                                        fontFamily: FONT_FAMILY,
+                                    }}>
+                                        <HabitTracker
+                                            habits={habits}
+                                            onToggleHabit={handleToggleHabit}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            <div style={{
+                                background: COLORS.surface,
+                                borderRadius: '14px',
+                                border: `1px solid ${COLORS.borderLight}`,
+                                boxShadow: `0 4px 16px ${COLORS.shadowLight}`,
+                                overflow: 'hidden',
+                            }}>
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: SPACING.lg,
+                                    borderBottom: `1px solid ${COLORS.borderLight}`,
+                                    cursor: 'pointer',
+                                    background: COLORS.surfaceElevated,
+                                }} onClick={() =>
+                                    expandedSection === "goals" ? setExpandedSection(null) : setExpandedSection("goals")
                                 }>
                                     <div style={{
                                         display: 'flex',
@@ -1468,8 +1798,8 @@ const Planner = () => {
                                 </div>
                                 {expandedSection === "goals" && (
                                     <div style={{
-                                        padding: SPACING.md,
-                                        maxHeight: '200px',
+                                        padding: SPACING.lg,
+                                        maxHeight: '300px',
                                         overflowY: 'auto',
                                         fontFamily: FONT_FAMILY,
                                     }}>
@@ -1481,7 +1811,7 @@ const Planner = () => {
                                                     style={{
                                                         display: "flex",
                                                         alignItems: "flex-start",
-                                                        padding: SPACING.sm,
+                                                        padding: SPACING.lg,
                                                         backgroundColor: COLORS.surfaceSecondary,
                                                         borderRadius: '8px',
                                                         border: goal?.id
@@ -1583,7 +1913,7 @@ const Planner = () => {
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'space-between',
-                                    padding: SPACING.md,
+                                    padding: SPACING.lg,
                                     borderBottom: `1px solid ${COLORS.borderLight}`,
                                     cursor: 'pointer',
                                     background: COLORS.surfaceElevated,
@@ -1671,8 +2001,8 @@ const Planner = () => {
                                 </div>
                                 {expandedSection === "todos" && (
                                     <div style={{
-                                        padding: SPACING.md,
-                                        maxHeight: '220px',
+                                        padding: SPACING.lg,
+                                        maxHeight: '300px',
                                         overflowY: 'auto',
                                         fontFamily: FONT_FAMILY,
                                     }}>
@@ -1684,13 +2014,13 @@ const Planner = () => {
                                                     style={{
                                                         display: "flex",
                                                         alignItems: "center",
-                                                        padding: SPACING.sm,
+                                                        padding: SPACING.lg,
                                                         backgroundColor: COLORS.surfaceSecondary,
                                                         borderRadius: '8px',
                                                         border: todo?.id
                                                             ? `1px solid ${getPriorityColor(todo.priority)}20`
                                                             : `2px dashed ${COLORS.borderMedium}`,
-                                                        marginBottom: SPACING.xs,
+                                                        marginBottom: SPACING.sm,
                                                         transition: 'all 0.2s ease',
                                                     }}
                                                 >
@@ -1800,8 +2130,6 @@ const Planner = () => {
                     </Col>
                     <Col span={7}>
                         <NotesLists currentHub="planner" />
-                        {/* <div style={{ marginLeft: '0px' }}>
-                        </div> */}
                     </Col>
                 </Row>
 

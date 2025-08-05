@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -14,6 +15,8 @@ import {
 import { useGlobalLoading } from "../../app/loadingContext";
 
 const { Text, Link } = Typography;
+const FONT_FAMILY =
+    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 
 interface Article {
     title: string;
@@ -115,10 +118,15 @@ const TopNews: React.FC = () => {
         if (saved) setModalCategory(saved);
     }, []);
 
+    const handleNewsClick = (newsLink: string) => {
+        window.open(newsLink, '_blank', 'noopener,noreferrer');
+    };
+
     return (
         <div
             className="widget-card"
             style={{
+                fontFamily: FONT_FAMILY,
                 backgroundColor: "white",
                 borderRadius: 16,
                 padding: 16,
@@ -141,7 +149,7 @@ const TopNews: React.FC = () => {
                 }}
             >
                 <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <div style={{ padding: 4, background: "#f1f5f9", borderRadius: 6 }}>
+                    <div style={{ padding: 0.5, background: "#f1f5f9", borderRadius: 6 }}>
                         <Newspaper size={14} color="#2e75d8ff" />
                     </div>
                     <h3
@@ -177,22 +185,32 @@ const TopNews: React.FC = () => {
                         style={{
                             background: "#f8fafc",
                             borderRadius: 10,
-                            padding: 10,
-                            marginBottom: 8,
-                            border: "1px solid #ef444430",
+                            padding: 8,
+                            marginBottom: 5,
+                            border: "1px solid #f20c0c30",
+                            height: 72.5, // Shorter initial height
+                            display: "flex",
+                            flexDirection: "column",
+                            justifyContent: "space-between",
                         }}
                     >
                         <p
                             style={{
-                                fontSize: 12.5,
+                                fontSize: 10,
                                 fontWeight: 600,
-                                color: "#1e293b",
-                                margin: "0 0 4px",
+                                color: "#010a18ff",
+                                margin: "0 0 2px",
+                                lineHeight: "1.6em",
+                                height: "3.2em", // 3 lines height fixed
+                                overflow: "hidden",
+                                display: "-webkit-box",
+                                WebkitLineClamp: 3,
+                                WebkitBoxOrient: "vertical",
                             }}
                         >
                             {articles[0].title}
                         </p>
-                        <div style={{ display: "flex", gap: 6, fontSize: 9, marginTop: 8 }}>
+                        <div style={{ display: "flex", gap: 4, fontSize: 9, marginTop: 1 }}>
                             <Button
                                 size="small"
                                 type="default"
@@ -200,8 +218,8 @@ const TopNews: React.FC = () => {
                                 target="_blank"
                                 icon={<ExternalLink size={10} />}
                                 style={{
-                                    fontSize: 9,
-                                    padding: "3px 6px",
+                                    fontSize: 8,
+                                    padding: "3px 3px",
                                     height: "auto",
                                     background: "#eff6ff",
                                     border: "none",
@@ -214,23 +232,10 @@ const TopNews: React.FC = () => {
                             >
                                 Read
                             </Button>
-                            <div
-                                onClick={toggleBookmark}
-                                style={{ cursor: "pointer", padding: 4 }}
-                            >
-                                {bookmarked ? (
-                                    <BookmarkCheck size={10} color="#facc15" />
-                                ) : (
-                                    <Bookmark size={10} color="#64748b" />
-                                )}
-                            </div>
-                            <Share
-                                size={10}
-                                color="#64748b"
-                                style={{ cursor: "pointer", padding: 4 }}
-                            />
+
                         </div>
                     </div>
+
                     {articles.slice(1).map((item, idx) => (
                         <div
                             key={idx}
@@ -249,10 +254,17 @@ const TopNews: React.FC = () => {
                                     fontWeight: 500,
                                     color: "#1e293b",
                                     margin: "0 0 2px",
+                                    lineHeight: "1.4em",
+                                    height: "2.8em", // 1.4em * 2 lines
+                                    overflow: "hidden",
+                                    display: "-webkit-box",
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: "vertical",
                                 }}
                             >
                                 {item.title}
                             </p>
+
                             <div style={{ fontSize: 8.5, color: "#64748b" }}>
                                 {new Date(item.pubDate).toLocaleTimeString()}
                             </div>
@@ -274,7 +286,6 @@ const TopNews: React.FC = () => {
                                         cursor: "pointer",
                                     }}
                                 >
-                                    View all news <span style={{ fontSize: 8 }}>→</span>
                                 </a>
                             )}
                         </div>
@@ -360,11 +371,17 @@ const TopNews: React.FC = () => {
                         {modalArticles.map((item, idx) => (
                             <div
                                 key={idx}
+                                onClick={() => handleNewsClick(item.link)}
                                 style={{
                                     marginBottom: 10,
                                     paddingLeft: 6,
                                     borderLeft: "3px solid #1890ff",
+                                    cursor: "pointer",
+                                    transition: "all 0.2s ease",
+                                    borderRadius: "0 4px 4px 0",
+                                    padding: "8px 6px",
                                 }}
+                                className="clickable-news-item"
                             >
                                 <Text strong style={{ fontSize: 13 }}>
                                     {item.title}
@@ -398,6 +415,12 @@ const TopNews: React.FC = () => {
         .widget-card:hover {
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
           transform: translateY(0);
+        }
+
+        .clickable-news-item:hover {
+          background-color: #f8fafc;
+          transform: translateX(2px);
+          border-left-color: #0050b3 !important;
         }
 
         @keyframes fadeInUp {

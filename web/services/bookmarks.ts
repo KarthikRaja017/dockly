@@ -30,3 +30,15 @@ export async function getStats(params: { source?: string } = {}) {
     params,
   });
 }
+
+export async function shareBookmarks(params: {
+  email: string;
+  bookmark: {
+    title: string;
+    url: string;
+    category: string;
+    created_at?: string;
+  };
+}) {
+  return api.post('/bookmarks/share/bookmarks', params);
+}

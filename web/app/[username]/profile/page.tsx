@@ -100,7 +100,7 @@ const ProfilePage: React.FC = () => {
 
 
   if (!personalValues) {
-    return <></>
+    return <DocklyLoader />
   }
 
   const headingColor = "#1E88E5";

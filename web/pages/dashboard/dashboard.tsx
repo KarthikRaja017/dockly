@@ -1,7 +1,6 @@
 
-
-"use client"
-import React, { useState, useEffect } from 'react';
+"use client";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Layout,
   Menu,
@@ -24,8 +23,13 @@ import {
   Tooltip,
   Dropdown,
   Calendar,
-  Statistic
-} from 'antd';
+  Statistic,
+  Modal,
+  Form,
+  Select,
+  DatePicker,
+  TimePicker,
+} from "antd";
 import {
   DashboardOutlined,
   CalendarOutlined,
@@ -65,30 +69,124 @@ import {
   LineChartOutlined,
   ReadOutlined,
   HistoryOutlined,
-  TabletOutlined
-} from '@ant-design/icons';
-import type { MenuProps } from 'antd';
-import WeatherWidget from './WeatherWidget';
-import MarketsWidget from './MarketsWidget';
-import TopNewsWidget from './TopNewsWidget';
+  TabletOutlined,
+  ClockCircleOutlined,
+  EnvironmentOutlined,
+  UserOutlined,
+} from "@ant-design/icons";
+import type { MenuProps } from "antd";
+import WeatherWidget from "./WeatherWidget";
+import MarketsWidget from "./MarketsWidget";
+import TopNewsWidget from "./TopNewsWidget";
+import { addBookmark } from "../../services/bookmarks";
+import { useRouter } from "next/navigation";
+import FolderConnectionModal from "../components/connect";
+import dayjs from "dayjs";
+import { addEvent } from "../../services/google";
+import { showNotification } from "../../utils/notification";
+import { useCurrentUser } from "../../app/userContext";
+import { useGlobalLoading } from "../../app/loadingContext";
+import { uploadDocklyRootFile } from '../../services/home';
 
+
+const { Option } = Select;
 const { Header, Sider, Content } = Layout;
 const { Title, Text, Paragraph } = Typography;
 const { Search } = Input;
 const { Dragger } = Upload;
+const { TextArea } = Input;
+
+const FONT_FAMILY =
+  '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+
+const SPACING = {
+  xs: 3,
+  sm: 6,
+  md: 12,
+  lg: 18,
+  xl: 24,
+  xxl: 36,
+};
+
+// Professional color palette (same as calendar)
+const COLORS = {
+  primary: "#1C1C1E",
+  secondary: "#48484A",
+  accent: "#1890FF",
+  success: "#52C41A",
+  warning: "#FAAD14",
+  error: "#FF4D4F",
+  background: "#FAFAFA",
+  surface: "#FFFFFF",
+  surfaceSecondary: "#F8F9FA",
+  border: "#E8E8E8",
+  borderLight: "#F0F0F0",
+  text: "#1C1C1E",
+  textSecondary: "#8C8C8C",
+  textTertiary: "#BFBFBF",
+  overlay: "rgba(0, 0, 0, 0.45)",
+  shadowLight: "rgba(0, 0, 0, 0.04)",
+  shadowMedium: "rgba(0, 0, 0, 0.08)",
+  shadowHeavy: "rgba(0, 0, 0, 0.12)",
+};
+
+// Default person colors (you might want to get this from props or context)
+const defaultPersonColors = {
+  John: { color: COLORS.accent, email: "john@example.com" },
+  Sarah: { color: COLORS.warning, email: "sarah@example.com" },
+  Emma: { color: COLORS.error, email: "emma@example.com" },
+  Liam: { color: COLORS.success, email: "liam@example.com" },
+  Family: { color: COLORS.secondary, email: "family@example.com" },
+};
+
+interface PersonData {
+  color: string;
+  email?: string;
+}
+
+interface PersonColors {
+  [key: string]: PersonData;
+}
+
+interface ConnectedAccount {
+  userName: string;
+  email: string;
+  displayName: string;
+  accountType: string;
+  provider: string;
+  color: string;
+}
 
 function App() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuVisible, setMobileMenuVisible] = useState(false);
-  const [selectedKeys, setSelectedKeys] = useState(['dashboard']);
+  const [selectedKeys, setSelectedKeys] = useState(["dashboard"]);
   const [completedTasks, setCompletedTasks] = useState<string[]>([]);
-  const [starredItems, setStarredItems] = useState<string[]>(['budget']);
+  const [starredItems, setStarredItems] = useState<string[]>(["budget"]);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [aiMessages, setAiMessages] = useState([
-    { type: 'ai', content: 'Hi! How can I help you today?' }
+    { type: "ai", content: "Hi! How can I help you today?" },
   ]);
-  const [aiInput, setAiInput] = useState('');
+  const [addModalVisible, setAddModalVisible] = useState(false);
+  const [form] = Form.useForm();
+  const [modalMode, setModalMode] = useState("create");
+  const [isFolderModalVisible, setIsFolderModalVisible] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+
+  // Event modal specific states
+  const [eventForm] = Form.useForm();
+  const [isAllDay, setIsAllDay] = useState(false);
+  const [personColors] = useState<PersonColors>(defaultPersonColors);
+  const [isDragActive, setIsDragActive] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [connectedAccounts] = useState<ConnectedAccount[]>([]); // You might want to get this from props or context
+
+  const router = useRouter();
+  const user = useCurrentUser();
+  const { loading, setLoading } = useGlobalLoading();
+
+  const [aiInput, setAiInput] = useState("");
 
   // Update time every minute
   useEffect(() => {
@@ -98,12 +196,95 @@ function App() {
     return () => clearInterval(timer);
   }, []);
 
+  // Helper functions for event modal
+  const getPersonNames = (): string[] => {
+    return Object.keys(personColors);
+  };
+
+  const getPersonData = (person: string): PersonData => {
+    return personColors[person] || { color: COLORS.accent, email: "" };
+  };
+
+  const getConnectedAccount = (userName: string): ConnectedAccount | null => {
+    return (
+      connectedAccounts.find((account) => account.userName === userName) || null
+    );
+  };
+
+  const handleEventSave = () => {
+    setLoading(true);
+
+    eventForm
+      .validateFields()
+      .then(async (values) => {
+        const {
+          title,
+          date,
+          startTime,
+          endTime,
+          startDate,
+          endDate,
+          person,
+          location,
+          description,
+          invitee,
+        } = values;
+
+        const payload = isAllDay
+          ? {
+            is_all_day: true,
+            title,
+            start_date: startDate.format("YYYY-MM-DD"),
+            end_date: endDate.format("YYYY-MM-DD"),
+            location,
+            description,
+            person,
+            invitee,
+          }
+          : {
+            is_all_day: false,
+            title,
+            date: date.format("YYYY-MM-DD"),
+            start_time: startTime.format("h:mm A"),
+            end_time: endTime.format("h:mm A"),
+            location,
+            description,
+            person,
+            invitee,
+          };
+
+        try {
+          const res = await addEvent(payload);
+          const { status, message: responseMessage } = res.data;
+
+          if (status === 1) {
+            showNotification("Success", responseMessage, "success");
+            // You might want to refresh events or call a callback here
+          } else {
+            showNotification("Error", responseMessage, "error");
+          }
+
+          setIsModalVisible(false);
+          eventForm.resetFields();
+          setIsAllDay(false);
+        } catch (err) {
+          console.error("Save error:", err);
+          showNotification("Error", "Something went wrong.", "error");
+        }
+
+        setLoading(false);
+      })
+      .catch(() => {
+        setLoading(false);
+      });
+  };
+
   // Mock data
   const mockData = {
     user: {
       name: "John Smith",
       email: "john.smith@example.com",
-      avatar: "JS"
+      avatar: "JS",
     },
     weather: {
       location: "Ashburn, VA",
@@ -111,130 +292,175 @@ function App() {
       condition: "Partly Cloudy",
       high: 78,
       low: 65,
-      rain: 20
+      rain: 20,
     },
     news: [
-      { title: "Fed Announces Rate Decision", time: "2 hours ago", important: true },
-      { title: "Tech Giants Report Earnings", time: "5 hours ago", important: false }
+      {
+        title: "Fed Announces Rate Decision",
+        time: "2 hours ago",
+        important: true,
+      },
+      {
+        title: "Tech Giants Report Earnings",
+        time: "5 hours ago",
+        important: false,
+      },
     ],
     markets: [
       { name: "S&P 500", value: "5,487.03", change: "+0.85%", positive: true },
       { name: "NASDAQ", value: "17,862.31", change: "+1.24%", positive: true },
-      { name: "DOW", value: "39,308.00", change: "-0.22%", positive: false }
+      { name: "DOW", value: "39,308.00", change: "-0.22%", positive: false },
     ],
     actions: [
-      { id: '1', text: 'Update weak passwords', detail: '3 accounts at risk', icon: <ExclamationCircleOutlined />, priority: 'high' },
-      { id: '2', text: 'Pay mortgage', detail: 'Due today - $1,450.00', icon: <DollarOutlined />, priority: 'high' },
-      { id: '3', text: 'Car insurance payment', detail: 'Due tomorrow - $132.50', icon: <CarOutlined />, priority: 'medium' },
-      { id: '4', text: 'Renew passport', detail: 'Expires in 45 days', icon: <IdcardOutlined />, priority: 'medium' },
-      { id: '5', text: 'Review budget', detail: 'Monthly savings goal reached', icon: <BankOutlined />, priority: 'low' },
-      { id: '6', text: 'Bundle subscriptions', detail: 'Save $5/month', icon: <BulbOutlined />, priority: 'low' },
-      { id: '7', text: 'Schedule checkup', detail: 'Annual physical due', icon: <MedicineBoxOutlined />, priority: 'medium' }
+      {
+        id: "1",
+        text: "Update weak passwords",
+        detail: "3 accounts at risk",
+        icon: <ExclamationCircleOutlined />,
+        priority: "high",
+      },
+      {
+        id: "2",
+        text: "Pay mortgage",
+        detail: "Due today - $1,450.00",
+        icon: <DollarOutlined />,
+        priority: "high",
+      },
+      {
+        id: "3",
+        text: "Car insurance payment",
+        detail: "Due tomorrow - $132.50",
+        icon: <CarOutlined />,
+        priority: "medium",
+      },
+      {
+        id: "4",
+        text: "Renew passport",
+        detail: "Expires in 45 days",
+        icon: <IdcardOutlined />,
+        priority: "medium",
+      },
+      {
+        id: "7",
+        text: "Schedule checkup",
+        detail: "Annual physical due",
+        icon: <MedicineBoxOutlined />,
+        priority: "medium",
+      },
     ],
     upcomingActivities: [
-      { title: 'Team Standup', time: 'Today 9:00 AM', color: '#3b82f6' },
-      { title: "Doctor's Appointment", time: 'Today 2:00 PM', color: '#10b981' },
-      { title: "Sarah's Birthday", time: 'Jun 23', color: '#8b5cf6' },
-      { title: 'Internet Bill Due', time: 'Jun 25 - $89.99', color: '#f59e0b' }
+      { title: "Team Standup", time: "Today 9:00 AM", color: "#3b82f6" },
+      { title: "Internet Bill Due", time: "Jun 25 - $89.99", color: "#f59e0b" },
     ],
     recentActivity: [
-      { id: '1', name: 'Tax Return 2024.pdf', time: '2 hours ago', type: 'pdf', starred: false },
-      { id: '2', name: 'Monthly Budget.xlsx', time: '5 hours ago', type: 'excel', starred: true },
-      { id: '3', name: 'Passport Scan.jpg', time: 'Yesterday', type: 'image', starred: false }
-    ]
+      {
+        id: "1",
+        name: "Tax Return 2024.pdf",
+        time: "2 hours ago",
+        type: "pdf",
+        starred: false,
+      },
+      {
+        id: "2",
+        name: "Monthly Budget.xlsx",
+        time: "5 hours ago",
+        type: "excel",
+        starred: true,
+      },
+    ],
   };
 
-  const menuItems: MenuProps['items'] = [
+  const menuItems: MenuProps["items"] = [
     {
-      key: 'command-center',
-      label: 'COMMAND CENTER',
-      type: 'group',
+      key: "command-center",
+      label: "COMMAND CENTER",
+      type: "group",
     },
     {
-      key: 'dashboard',
+      key: "dashboard",
       icon: <DashboardOutlined />,
-      label: 'Dashboard',
+      label: "Dashboard",
     },
     {
-      key: 'planner',
+      key: "planner",
       icon: <CalendarOutlined />,
-      label: 'Planner',
+      label: "Planner",
     },
     {
-      key: 'hubs',
-      label: 'HUBS',
-      type: 'group',
+      key: "hubs",
+      label: "HUBS",
+      type: "group",
     },
     {
-      key: 'family',
+      key: "family",
       icon: <TeamOutlined />,
-      label: 'Family',
+      label: "Family",
     },
     {
-      key: 'finance',
+      key: "finance",
       icon: <DollarOutlined />,
-      label: 'Finance',
+      label: "Finance",
     },
     {
-      key: 'home',
+      key: "home",
       icon: <HomeOutlined />,
-      label: 'Home',
+      label: "Home",
     },
     {
-      key: 'health',
+      key: "health",
       icon: <HeartOutlined />,
-      label: 'Health',
+      label: "Health",
     },
     {
-      key: 'utilities',
-      label: 'UTILITIES',
-      type: 'group',
+      key: "utilities",
+      label: "UTILITIES",
+      type: "group",
     },
     {
-      key: 'notes',
+      key: "notes",
       icon: <FileTextOutlined />,
-      label: 'Notes & Lists',
+      label: "Notes & Lists",
     },
     {
-      key: 'bookmarks',
+      key: "bookmarks",
       icon: <BookOutlined />,
-      label: 'Bookmarks',
+      label: "Bookmarks",
     },
     {
-      key: 'files',
+      key: "files",
       icon: <FolderOutlined />,
-      label: 'Files',
+      label: "Files",
     },
     {
-      key: 'vault',
+      key: "vault",
       icon: <LockOutlined />,
-      label: 'Vault',
+      label: "Vault",
     },
   ];
 
   const toggleTask = (taskId: string) => {
-    setCompletedTasks(prev =>
+    setCompletedTasks((prev) =>
       prev.includes(taskId)
-        ? prev.filter(id => id !== taskId)
+        ? prev.filter((id) => id !== taskId)
         : [...prev, taskId]
     );
     if (!completedTasks.includes(taskId)) {
-      message.success('Task completed!');
+      message.success("Task completed!");
     }
   };
 
   const toggleStar = (itemId: string) => {
-    setStarredItems(prev =>
+    setStarredItems((prev) =>
       prev.includes(itemId)
-        ? prev.filter(id => id !== itemId)
+        ? prev.filter((id) => id !== itemId)
         : [...prev, itemId]
     );
   };
 
   const toggleFilter = (filter: string) => {
-    setActiveFilters(prev =>
+    setActiveFilters((prev) =>
       prev.includes(filter)
-        ? prev.filter(f => f !== filter)
+        ? prev.filter((f) => f !== filter)
         : [...prev, filter]
     );
   };
@@ -244,95 +470,188 @@ function App() {
 
     const newMessages = [
       ...aiMessages,
-      { type: 'user', content: aiInput },
-      { type: 'ai', content: 'I can help you with that! Let me analyze your data...' }
+      { type: "user", content: aiInput },
+      {
+        type: "ai",
+        content: "I can help you with that! Let me analyze your data...",
+      },
     ];
     setAiMessages(newMessages);
-    setAiInput('');
+    setAiInput("");
   };
 
   const userMenuItems = [
-    { key: 'profile', label: 'Profile Settings' },
-    { key: 'preferences', label: 'Preferences' },
-    { key: 'logout', label: 'Sign Out' }
+    { key: "profile", label: "Profile Settings" },
+    { key: "preferences", label: "Preferences" },
+    { key: "logout", label: "Sign Out" },
   ];
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high': return '#ef4444';
-      case 'medium': return '#f59e0b';
-      case 'low': return '#10b981';
-      default: return '#6b7280';
+      case "high":
+        return "#ef4444";
+      case "medium":
+        return "#f59e0b";
+      case "low":
+        return "#10b981";
+      default:
+        return "#6b7280";
     }
   };
 
   const formatDate = (date: Date) => {
     const options: Intl.DateTimeFormatOptions = {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     };
-    return date.toLocaleDateString('en-US', options);
+    return date.toLocaleDateString("en-US", options);
   };
 
   const sidebarStyle: React.CSSProperties = {
-    background: '#ffffff',
-    borderRight: '1px solid #e5e7eb',
-    height: '100vh',
-    position: 'fixed',
+    background: "#ffffff",
+    borderRight: "1px solid #e5e7eb",
+    height: "100vh",
+    position: "fixed",
     left: 0,
     top: 0,
     zIndex: 1000,
-    transition: 'all 0.3s ease',
-    transform: mobileMenuVisible ? 'translateX(0)' : 'translateX(-100%)',
+    transition: "all 0.3s ease",
+    transform: mobileMenuVisible ? "translateX(0)" : "translateX(-100%)",
   };
 
   const contentStyle: React.CSSProperties = {
     marginLeft: collapsed ? 80 : 260,
-    transition: 'margin-left 0.3s ease',
-    minHeight: '100vh',
-    background: '#f5f5f7',
+    transition: "margin-left 0.3s ease",
+    minHeight: "100vh",
+    background: "#f9fafa",
   };
 
   const mobileOverlayStyle: React.CSSProperties = {
-    position: 'fixed',
+    position: "fixed",
     inset: 0,
-    background: 'rgba(0, 0, 0, 0.5)',
+    background: "rgba(0, 0, 0, 0.5)",
     zIndex: 999,
-    display: mobileMenuVisible ? 'block' : 'none',
+    display: mobileMenuVisible ? "block" : "none",
+  };
+  const handleClick = () => {
+    fileInputRef.current?.click();
   };
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const uploads = Array.from(files).map(async (file) => {
+        try {
+          const res = await uploadDocklyRootFile(file);
+          if (res.status === 1) {
+            message.success(`Uploaded: ${file.name}`);
+          } else {
+            message.error(res.message || `Failed to upload: ${file.name}`);
+          }
+        } catch (err) {
+          console.error("Upload error:", err);
+          message.error(`Error uploading: ${file.name}`);
+        }
+      });
+      await Promise.all(uploads);
+      e.target.value = ""; // reset input
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragActive(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragActive(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragActive(false);
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      const uploads = Array.from(files).map(async (file) => {
+        try {
+          const res = await uploadDocklyRootFile(file);
+          if (res.status === 1) {
+            message.success(`Uploaded: ${file.name}`);
+          } else {
+            message.error(res.message || `Failed to upload: ${file.name}`);
+          }
+        } catch (err) {
+          console.error("Upload error:", err);
+          message.error(`Error uploading: ${file.name}`);
+        }
+      });
+
+      await Promise.all(uploads);
+    }
+  };
   return (
-    <div style={{ minHeight: '100vh', background: '#f5f5f7', marginTop: 70 }}>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "#f9fafa",
+        marginTop: 50,
+        fontFamily: FONT_FAMILY,
+      }}
+    >
       {/* Mobile Overlay */}
-      <div style={mobileOverlayStyle} onClick={() => setMobileMenuVisible(false)} />
+      <div
+        style={mobileOverlayStyle}
+        onClick={() => setMobileMenuVisible(false)}
+      />
 
       {/* Main Content */}
-      <Layout style={{}}>
+      <Layout style={{ background: "#f9fafa" }}>
         {/* Content */}
-        <Content style={{ padding: '24px', overflow: 'auto' }}>
-          <div style={{ maxWidth: '1800px', margin: '0 50px' }}>
+        <Content style={{ padding: SPACING.lg, overflow: "auto" }}>
+          <div style={{ maxWidth: "1800px", margin: "0 50px" }}>
             {/* Welcome Section */}
-            <div style={{
-              marginBottom: '24px',
-              animation: 'fadeIn 0.6s ease-out'
-            }}>
-              <Title level={2} style={{ margin: 0, color: '#1f2937' }}>
-                Good morning, {mockData.user.name.split(' ')[0]}!
+            <div
+              style={{
+                marginBottom: SPACING.lg,
+                animation: "fadeIn 0.6s ease-out",
+              }}
+            >
+              <Title
+                level={2}
+                style={{
+                  margin: 0,
+                  color: "#1f2937",
+                  fontSize: "24px",
+                  fontFamily: FONT_FAMILY,
+                  fontWeight: 600,
+                }}
+              >
+                Good morning, {mockData.user.name.split(" ")[0]}!
               </Title>
-              <Text style={{ color: '#6b7280', fontSize: '16px' }}>
+              <Text
+                style={{
+                  color: "#6b7280",
+                  fontSize: "14px",
+                  fontFamily: FONT_FAMILY,
+                }}
+              >
                 {formatDate(currentTime)}
               </Text>
             </div>
 
-            {/* Top Widgets with Hover Effect - NO MARGIN BOTTOM INITIALLY */}
-            <div className="widgets-container" style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-              gap: '24px',
-              marginBottom: '10px', // Changed from '10px' to '0px'
-            }}>
+            {/* Top Widgets with Hover Effect */}
+            <div
+              className="widgets-container"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+                gap: SPACING.lg,
+                marginBottom: SPACING.sm,
+              }}
+            >
               <WeatherWidget />
               <TopNewsWidget />
               <MarketsWidget />
@@ -341,70 +660,145 @@ function App() {
             {/* Command Center */}
             <Card
               title={
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <DashboardOutlined style={{ color: '#3b82f6' }} />
-                  <span style={{ fontWeight: 500 }}>Command Center</span>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: SPACING.sm,
+                  }}
+                >
+                  <DashboardOutlined
+                    style={{ color: "#3b82f6", fontSize: "16px" }}
+                  />
+                  <span
+                    style={{
+                      fontWeight: 600,
+                      fontSize: "16px",
+                      fontFamily: FONT_FAMILY,
+                    }}
+                  >
+                    Command Center
+                  </span>
                 </div>
               }
-              style={{ borderRadius: '12px' }}
-              bodyStyle={{ padding: '24px' }}
+              style={{ borderRadius: "12px", marginTop: SPACING.lg }}
+              styles={{
+                body: {
+                  padding: SPACING.lg,
+                }
+              }}
             >
-              <Row gutter={[24, 24]}>
+              <Row gutter={[SPACING.lg, SPACING.lg]}>
                 {/* Left Column - Actions & Notifications */}
                 <Col xs={24} lg={8}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                    <Title level={5} style={{
-                      margin: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      color: '#4b5563',
-                      fontSize: '14px'
-                    }}>
-                      <TabletOutlined style={{ color: '#6b7280' }} />
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      marginBottom: SPACING.md,
+                    }}
+                  >
+                    <Title
+                      level={5}
+                      style={{
+                        margin: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: SPACING.sm,
+                        color: "#4b5563",
+                        fontSize: "13px",
+                        fontFamily: FONT_FAMILY,
+                        fontWeight: 600,
+                      }}
+                    >
+                      <TabletOutlined
+                        style={{ color: "#6b7280", fontSize: "14px" }}
+                      />
                       Actions & Notifications
                     </Title>
-                    <Badge count={mockData.actions.filter(a => !completedTasks.includes(a.id)).length} size="small" />
+                    <Badge
+                      count={
+                        mockData.actions.filter(
+                          (a) => !completedTasks.includes(a.id)
+                        ).length
+                      }
+                      size="small"
+                    />
                   </div>
-                  <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
+                  <div style={{ maxHeight: "500px", overflowY: "auto" }}>
                     <List
                       dataSource={mockData.actions}
                       renderItem={(item) => (
-                        <List.Item style={{
-                          padding: '8px',
-                          border: 'none',
-                          borderRadius: '8px',
-                          marginBottom: '4px',
-                          transition: 'background 0.2s ease',
-                          cursor: 'pointer'
-                        }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        <List.Item
+                          style={{
+                            padding: SPACING.sm,
+                            border: "none",
+                            borderRadius: "8px",
+                            marginBottom: SPACING.xs,
+                            transition: "background 0.2s ease",
+                            cursor: "pointer",
+                          }}
+                          onMouseEnter={(e) =>
+                            (e.currentTarget.style.background = "#f9fafb")
+                          }
+                          onMouseLeave={(e) =>
+                            (e.currentTarget.style.background = "transparent")
+                          }
                         >
                           <Checkbox
                             checked={completedTasks.includes(item.id)}
                             onChange={() => toggleTask(item.id)}
-                            style={{ marginRight: '12px' }}
+                            style={{ marginRight: SPACING.sm }}
                           />
-                          <div style={{ flex: 1, display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                            <div style={{ color: getPriorityColor(item.priority), marginTop: '2px' }}>
+                          <div
+                            style={{
+                              flex: 1,
+                              display: "flex",
+                              alignItems: "flex-start",
+                              gap: SPACING.sm,
+                            }}
+                          >
+                            <div
+                              style={{
+                                color: getPriorityColor(item.priority),
+                                marginTop: "2px",
+                                fontSize: "12px",
+                              }}
+                            >
                               {item.icon}
                             </div>
                             <div style={{ flex: 1 }}>
                               <Text
                                 style={{
-                                  fontSize: '14px',
+                                  fontSize: "13px",
                                   fontWeight: 500,
-                                  color: '#1f2937',
-                                  textDecoration: completedTasks.includes(item.id) ? 'line-through' : 'none',
-                                  opacity: completedTasks.includes(item.id) ? 0.6 : 1,
-                                  transition: 'all 0.3s ease'
+                                  color: "#1f2937",
+                                  textDecoration: completedTasks.includes(
+                                    item.id
+                                  )
+                                    ? "line-through"
+                                    : "none",
+                                  opacity: completedTasks.includes(item.id)
+                                    ? 0.6
+                                    : 1,
+                                  transition: "all 0.3s ease",
+                                  fontFamily: FONT_FAMILY,
                                 }}
                               >
                                 {item.text}
                               </Text>
                               <br />
-                              <Text style={{ fontSize: '12px', color: item.priority === 'high' ? '#f59e0b' : '#6b7280' }}>
+                              <Text
+                                style={{
+                                  fontSize: "11px",
+                                  color:
+                                    item.priority === "high"
+                                      ? "#f59e0b"
+                                      : "#6b7280",
+                                  fontFamily: FONT_FAMILY,
+                                }}
+                              >
                                 {item.detail}
                               </Text>
                             </div>
@@ -418,51 +812,100 @@ function App() {
                 {/* Middle Column - Upcoming Activities & Recent Activity */}
                 <Col xs={24} lg={8}>
                   {/* Upcoming Activities */}
-                  <div style={{ marginBottom: '32px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                      <Title level={5} style={{
-                        margin: 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        color: '#4b5563',
-                        fontSize: '14px'
-                      }}>
-                        <CalendarOutlined style={{ color: '#6b7280' }} />
+                  <div style={{ marginBottom: SPACING.xl }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        marginBottom: SPACING.md,
+                      }}
+                    >
+                      <Title
+                        level={5}
+                        style={{
+                          margin: 0,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: SPACING.sm,
+                          color: "#4b5563",
+                          fontSize: "13px",
+                          fontFamily: FONT_FAMILY,
+                          fontWeight: 600,
+                        }}
+                      >
+                        <CalendarOutlined
+                          style={{ color: "#6b7280", fontSize: "14px" }}
+                        />
                         Upcoming Activities
                       </Title>
-                      <Button type="link" size="small" style={{ padding: 0, fontSize: '12px' }}>
+                      <Button
+                        type="link"
+                        size="small"
+                        style={{
+                          padding: 0,
+                          fontSize: "11px",
+                          fontFamily: FONT_FAMILY,
+                        }}
+                      >
                         View All →
                       </Button>
                     </div>
-                    <div style={{ maxHeight: '280px', overflowY: 'auto' }}>
+                    <div style={{ maxHeight: "220px", overflowY: "auto" }}>
                       <List
                         dataSource={mockData.upcomingActivities}
                         renderItem={(item) => (
-                          <List.Item style={{
-                            padding: '8px',
-                            border: 'none',
-                            borderRadius: '8px',
-                            marginBottom: '4px',
-                            transition: 'background 0.2s ease',
-                            cursor: 'pointer'
-                          }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
-                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                          <List.Item
+                            style={{
+                              padding: SPACING.sm,
+                              border: "none",
+                              borderRadius: "8px",
+                              marginBottom: SPACING.xs,
+                              transition: "background 0.2s ease",
+                              cursor: "pointer",
+                            }}
+                            onMouseEnter={(e) =>
+                              (e.currentTarget.style.background = "#f9fafb")
+                            }
+                            onMouseLeave={(e) =>
+                              (e.currentTarget.style.background = "transparent")
+                            }
                           >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%' }}>
-                              <div style={{
-                                width: '4px',
-                                height: '32px',
-                                background: item.color,
-                                borderRadius: '2px'
-                              }} />
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: SPACING.sm,
+                                width: "100%",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: "3px",
+                                  height: "24px",
+                                  background: item.color,
+                                  borderRadius: "2px",
+                                }}
+                              />
                               <div style={{ flex: 1 }}>
-                                <Text style={{ fontSize: '14px', fontWeight: 500, color: '#1f2937' }}>
+                                <Text
+                                  style={{
+                                    fontSize: "13px",
+                                    fontWeight: 500,
+                                    color: "#1f2937",
+                                    fontFamily: FONT_FAMILY,
+                                  }}
+                                >
                                   {item.title}
                                 </Text>
                                 <br />
-                                <Text style={{ fontSize: '12px', color: '#6b7280' }}>
+                                <Text
+                                  style={{
+                                    fontSize: "11px",
+                                    color: "#6b7280",
+                                    fontFamily: FONT_FAMILY,
+                                  }}
+                                >
                                   {item.time}
                                 </Text>
                               </div>
@@ -475,70 +918,137 @@ function App() {
 
                   {/* Recent Activity */}
                   <div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                      <Title level={5} style={{
-                        margin: 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        color: '#4b5563',
-                        fontSize: '14px'
-                      }}>
-                        <HistoryOutlined style={{ color: '#6b7280' }} />
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        marginBottom: SPACING.md,
+                      }}
+                    >
+                      <Title
+                        level={5}
+                        style={{
+                          margin: 0,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: SPACING.sm,
+                          color: "#4b5563",
+                          fontSize: "13px",
+                          fontFamily: FONT_FAMILY,
+                          fontWeight: 600,
+                        }}
+                      >
+                        <HistoryOutlined
+                          style={{ color: "#6b7280", fontSize: "14px" }}
+                        />
                         Recent Activity
                       </Title>
-                      <Button type="link" size="small" style={{ padding: 0, fontSize: '12px' }}>
+                      <Button
+                        type="link"
+                        size="small"
+                        style={{
+                          padding: 0,
+                          fontSize: "11px",
+                          fontFamily: FONT_FAMILY,
+                        }}
+                      >
                         See All →
                       </Button>
                     </div>
-                    <div style={{ maxHeight: '192px', overflowY: 'auto' }}>
+                    <div style={{ maxHeight: "150px", overflowY: "auto" }}>
                       <List
                         dataSource={mockData.recentActivity}
                         renderItem={(item) => (
-                          <List.Item style={{
-                            padding: '8px',
-                            border: 'none',
-                            borderRadius: '8px',
-                            marginBottom: '4px',
-                            transition: 'background 0.2s ease',
-                            cursor: 'pointer'
-                          }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
-                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                          <List.Item
+                            style={{
+                              padding: SPACING.sm,
+                              border: "none",
+                              borderRadius: "8px",
+                              marginBottom: SPACING.xs,
+                              transition: "background 0.2s ease",
+                              cursor: "pointer",
+                            }}
+                            onMouseEnter={(e) =>
+                              (e.currentTarget.style.background = "#f9fafb")
+                            }
+                            onMouseLeave={(e) =>
+                              (e.currentTarget.style.background = "transparent")
+                            }
                           >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
-                              <div style={{
-                                width: '32px',
-                                height: '32px',
-                                background: item.type === 'pdf' ? '#dbeafe' : item.type === 'excel' ? '#dcfce7' : '#e0e7ff',
-                                borderRadius: '8px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                              }}>
-                                <FileOutlined style={{
-                                  color: item.type === 'pdf' ? '#3b82f6' : item.type === 'excel' ? '#10b981' : '#8b5cf6',
-                                  fontSize: '12px'
-                                }} />
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: SPACING.sm,
+                                width: "100%",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: "24px",
+                                  height: "24px",
+                                  background:
+                                    item.type === "pdf"
+                                      ? "#dbeafe"
+                                      : item.type === "excel"
+                                        ? "#dcfce7"
+                                        : "#e0e7ff",
+                                  borderRadius: "6px",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                }}
+                              >
+                                <FileOutlined
+                                  style={{
+                                    color:
+                                      item.type === "pdf"
+                                        ? "#3b82f6"
+                                        : item.type === "excel"
+                                          ? "#10b981"
+                                          : "#8b5cf6",
+                                    fontSize: "11px",
+                                  }}
+                                />
                               </div>
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                <Text style={{ fontSize: '12px', fontWeight: 500, color: '#1f2937' }}>
+                                <Text
+                                  style={{
+                                    fontSize: "12px",
+                                    fontWeight: 500,
+                                    color: "#1f2937",
+                                    fontFamily: FONT_FAMILY,
+                                  }}
+                                >
                                   {item.name}
                                 </Text>
                                 <br />
-                                <Text style={{ fontSize: '11px', color: '#6b7280' }}>
+                                <Text
+                                  style={{
+                                    fontSize: "10px",
+                                    color: "#6b7280",
+                                    fontFamily: FONT_FAMILY,
+                                  }}
+                                >
                                   {item.time}
                                 </Text>
                               </div>
                               <Button
                                 type="text"
                                 size="small"
-                                icon={starredItems.includes(item.id) ? <StarFilled style={{ color: '#f59e0b' }} /> : <StarOutlined />}
+                                icon={
+                                  starredItems.includes(item.id) ? (
+                                    <StarFilled style={{ color: "#f59e0b" }} />
+                                  ) : (
+                                    <StarOutlined />
+                                  )
+                                }
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   toggleStar(item.id);
                                 }}
-                                style={{ padding: '4px' }}
+                                style={{ padding: "2px" }}
                               />
                             </div>
                           </List.Item>
@@ -550,166 +1060,131 @@ function App() {
 
                 {/* Right Column - Search, AI Assistant, Quick Actions */}
                 <Col xs={24} lg={8}>
-                  <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                  <Space
+                    direction="vertical"
+                    size="middle"
+                    style={{ width: "100%" }}
+                  >
                     {/* Quick Search */}
                     <div>
-                      <Title level={5} style={{
-                        margin: '0 0 8px 0',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        color: '#4b5563',
-                        fontSize: '14px'
-                      }}>
-                        <SearchOutlined style={{ color: '#6b7280' }} />
-                        Quick Search
+                      <Title
+                        level={5}
+                        style={{
+                          margin: `0 0 ${SPACING.sm}px 0`,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: SPACING.sm,
+                          color: "#4b5563",
+                          fontSize: "13px",
+                          fontFamily: FONT_FAMILY,
+                          fontWeight: 600,
+                        }}
+                      >
+                        <SearchOutlined
+                          style={{ color: "#6b7280", fontSize: "14px" }}
+                        />
+                        Search
                       </Title>
                       <Search
                         placeholder="Search accounts, documents, notes..."
-                        style={{ marginBottom: '8px' }}
+                        style={{ marginBottom: SPACING.sm }}
                         size="middle"
                       />
                       <Space wrap>
-                        {['Docs', 'Accounts', 'Notes'].map(filter => (
+                        {["Docs", "Accounts", "Notes"].map((filter) => (
                           <Tag
                             key={filter}
-                            color={activeFilters.includes(filter) ? 'blue' : 'default'}
+                            color={
+                              activeFilters.includes(filter)
+                                ? "blue"
+                                : "default"
+                            }
                             style={{
-                              cursor: 'pointer',
-                              fontSize: '11px',
-                              padding: '2px 8px',
-                              borderRadius: '12px'
+                              cursor: "pointer",
+                              fontSize: "10px",
+                              padding: "1px 6px",
+                              borderRadius: "10px",
+                              fontFamily: FONT_FAMILY,
                             }}
                             onClick={() => toggleFilter(filter)}
                           >
-                            <FileOutlined style={{ marginRight: '4px' }} />
+                            <FileOutlined
+                              style={{ marginRight: "3px", fontSize: "10px" }}
+                            />
                             {filter}
                           </Tag>
                         ))}
                       </Space>
                     </div>
 
-                    {/* AI Assistant */}
-                    <div>
-                      <Title level={5} style={{
-                        margin: '0 0 8px 0',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        color: '#4b5563',
-                        fontSize: '14px'
-                      }}>
-                        <RobotOutlined style={{ color: '#6b7280' }} />
-                        AI Assistant
-                      </Title>
-                      <div style={{
-                        background: '#f9fafb',
-                        borderRadius: '8px',
-                        padding: '12px'
-                      }}>
-                        <div style={{
-                          background: 'white',
-                          padding: '8px',
-                          borderRadius: '8px',
-                          marginBottom: '8px',
-                          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                        }}>
-                          <Text style={{ fontSize: '12px', color: '#4b5563' }}>
-                            {aiMessages[aiMessages.length - 1]?.content}
-                          </Text>
-                        </div>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          <Input
-                            size="small"
-                            placeholder="Ask: What bills are due? Show spending..."
-                            value={aiInput}
-                            onChange={(e) => setAiInput(e.target.value)}
-                            onPressEnter={sendAiMessage}
-                            style={{ fontSize: '12px', padding: '4px 8px', flex: 1 }}
-                            suffix={
-                              <Button
-                                type="primary"
-                                size="small"
-                                icon={<CheckOutlined />}
-                                onClick={sendAiMessage}
-                              />
-                            }
-                          />
-
-                        </div>
-                      </div>
-                    </div>
-
                     {/* Quick Actions */}
                     <div>
-                      <Title level={5} style={{
-                        margin: '0 0 12px 0',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        color: '#4b5563',
-                        fontSize: '14px'
-                      }}>
-                        <ThunderboltOutlined style={{ color: '#6b7280' }} />
+                      <Title
+                        level={5}
+                        style={{
+                          margin: `0 0 ${SPACING.sm}px 0`,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: SPACING.sm,
+                          color: "#4b5563",
+                          fontSize: "13px",
+                          fontFamily: FONT_FAMILY,
+                          fontWeight: 600,
+                        }}
+                      >
+                        <ThunderboltOutlined
+                          style={{ color: "#6b7280", fontSize: "14px" }}
+                        />
                         Quick Actions
                       </Title>
-                      <Row gutter={[8, 8]} style={{ marginBottom: '12px' }}>
+                      <Row
+                        gutter={[SPACING.sm, SPACING.sm]}
+                        style={{ marginBottom: SPACING.sm }}
+                      >
                         <Col span={12}>
                           <Button
+                            onClick={() => setIsModalVisible(true)}
                             style={{
-                              width: '100%',
-                              height: '44px', // Increased height
-                              background: '#eff6ff',
-                              color: '#2563eb',
-                              border: '1px solid #bfdbfe',
-                              fontSize: '14px',
+                              width: "100%",
+                              height: "32px",
+                              background: "#eff6ff",
+                              color: "#39b5bcff",
+                              border: "1px solid #a3f8f8ff",
+                              fontSize: "12px",
                               fontWeight: 500,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '10px'
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: SPACING.sm,
+                              fontFamily: FONT_FAMILY,
                             }}
-                            icon={<CalendarOutlined />}
+                            icon={
+                              <CalendarOutlined style={{ fontSize: "12px" }} />
+                            }
                           >
                             Add Event
                           </Button>
                         </Col>
+
                         <Col span={12}>
                           <Button
                             style={{
-                              width: '100%',
-                              height: '44px',
-                              background: '#f0fdf4',
-                              color: '#16a34a',
-                              border: '1px solid #bbf7d0',
-                              fontSize: '14px',
+                              width: "100%",
+                              height: "32px",
+                              background: "#fffbeb",
+                              color: "#ca8a04",
+                              border: "1px solid #fde68a",
+                              fontSize: "12px",
                               fontWeight: 500,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '10px'
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: SPACING.sm,
+                              fontFamily: FONT_FAMILY,
                             }}
-                            icon={<PlusOutlined />}
-                          >
-                            Add Task
-                          </Button>
-                        </Col>
-                        <Col span={12}>
-                          <Button
-                            style={{
-                              width: '100%',
-                              height: '44px',
-                              background: '#fffbeb',
-                              color: '#ca8a04',
-                              border: '1px solid #fde68a',
-                              fontSize: '14px',
-                              fontWeight: 500,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '10px'
-                            }}
-                            icon={<FileTextOutlined />}
+                            icon={
+                              <FileTextOutlined style={{ fontSize: "12px" }} />
+                            }
                           >
                             Add Note
                           </Button>
@@ -717,88 +1192,118 @@ function App() {
                         <Col span={12}>
                           <Button
                             style={{
-                              width: '100%',
-                              height: '44px',
-                              background: '#faf5ff',
-                              color: '#9333ea',
-                              border: '1px solid #d8b4fe',
-                              fontSize: '14px',
+                              width: "100%",
+                              height: "32px",
+                              background: "#faf5ff",
+                              color: "#9333ea",
+                              border: "1px solid #d8b4fe",
+                              fontSize: "12px",
                               fontWeight: 500,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '10px'
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: 8,
+                              fontFamily: FONT_FAMILY,
                             }}
-                            icon={<StarOutlined />}
+                            icon={<BookOutlined style={{ fontSize: "12px" }} />}
+                            onClick={() => {
+                              setModalMode("create");
+                              setAddModalVisible(true);
+                            }}
                           >
                             Bookmark
                           </Button>
                         </Col>
                         <Col span={12}>
                           <Button
+                            onClick={() => setIsFolderModalVisible(true)}
                             style={{
-                              width: '100%',
-                              height: '44px',
-                              background: '#fef2f2',
-                              color: '#dc2626',
-                              border: '1px solid #fecaca',
-                              fontSize: '14px',
+                              width: "100%",
+                              height: "32px",
+                              background: "#fef2f2",
+                              color: "#dc2626",
+                              border: "1px solid #fecaca",
+                              fontSize: "12px",
                               fontWeight: 500,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '10px'
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: SPACING.sm,
+                              fontFamily: FONT_FAMILY,
                             }}
-                            icon={<UserAddOutlined />}
+                            icon={
+                              <UserAddOutlined style={{ fontSize: "12px" }} />
+                            }
                           >
                             Account
-                          </Button>
-                        </Col>
-                        <Col span={12}>
-                          <Button
-                            style={{
-                              width: '100%',
-                              height: '44px',
-                              background: '#f0f9ff',
-                              color: '#0369a1',
-                              border: '1px solid #bae6fd',
-                              fontSize: '14px',
-                              fontWeight: 500,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '10px'
-                            }}
-                            icon={<FolderAddOutlined />}
-                          >
-                            Create Hub
                           </Button>
                         </Col>
                       </Row>
 
                       {/* Drag & Drop Area */}
-                      <Dragger
-                        multiple
-                        showUploadList={false}
-                        customRequest={({ onSuccess }) => {
-                          setTimeout(() => {
-                            if (onSuccess) onSuccess("ok");
-                            message.success('Files uploaded successfully!');
-                          }, 1000);
-                        }}
+                      <div
+                        onClick={handleClick}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
                         style={{
-                          border: '2px dashed #d1d5db',
-                          borderRadius: '8px',
-                          background: 'transparent',
-                          padding: '12px',
-                          textAlign: 'center'
+                          border: `2px dashed ${isDragActive ? "#3b82f6" : "#d1d5db"
+                            }`,
+                          borderRadius: "16px",
+                          padding: "24px",
+                          textAlign: "center",
+                          backgroundColor: isDragActive ? "#eff6ff" : "#f9fafb",
+                          cursor: "pointer",
+                          transition: "all 0.3s ease",
+                          opacity: 0,
+                          animation: "fadeInUp 0.4s ease-out 1s forwards",
                         }}
                       >
-                        <CloudUploadOutlined style={{ fontSize: '20px', color: '#9ca3af', marginBottom: '4px' }} />
-                        <Text style={{ fontSize: '12px', color: '#6b7280', fontWeight: 500, display: 'block' }}>
-                          Drag & Drop Files
-                        </Text>
-                      </Dragger>
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            gap: "8px",
+                          }}
+                        >
+                          <Upload
+                            // size={28}
+                            style={{
+                              color: isDragActive ? "#3b82f6" : "#9ca3af",
+                              transition: "color 0.3s ease",
+                            }}
+                          />
+                          <div>
+                            <p
+                              style={{
+                                fontSize: "14px",
+                                fontWeight: "500",
+                                color: isDragActive ? "#3b82f6" : "#6b7280",
+                                margin: "0 0 4px 0",
+                              }}
+                            >
+                              Drag & Drop Files
+                            </p>
+                            <p
+                              style={{
+                                fontSize: "12px",
+                                color: "#9ca3af",
+                                margin: 0,
+                              }}
+                            >
+                              or click to browse
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <input
+                        type="file"
+                        multiple
+                        ref={fileInputRef}
+                        onChange={handleFileSelect}
+                        style={{ display: "none" }}
+                      />
                     </div>
                   </Space>
                 </Col>
@@ -808,8 +1313,343 @@ function App() {
         </Content>
       </Layout>
 
+      {/* Bookmark Modal */}
+      <Modal
+        title={
+          <span style={{ fontFamily: "inherit" }}>
+            {modalMode === "create" ? "Add New Bookmark" : "Edit Bookmark"}
+          </span>
+        }
+        open={addModalVisible}
+        onCancel={() => setAddModalVisible(false)}
+        footer={null}
+        style={{ top: 20 }}
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={async (values) => {
+            try {
+              const payload = {
+                ...values,
+                tags: values.tags?.split(",").map((tag: string) => tag.trim()),
+                favicon: "",
+                is_favorite: false,
+                editing: false,
+              };
+              await addBookmark(payload);
+              message.success("Bookmark added successfully");
+              setAddModalVisible(false);
+              form.resetFields();
+              router.push("/bookmarks");
+            } catch (err) {
+              console.error(err);
+              message.error("Failed to add bookmark");
+            }
+          }}
+        >
+          <Form.Item
+            name="title"
+            label="Title"
+            rules={[{ required: true, message: "Enter title" }]}
+          >
+            <Input placeholder="Enter title" />
+          </Form.Item>
+          <Form.Item
+            name="url"
+            label="URL"
+            rules={[
+              { required: true, message: "Enter URL" },
+              {
+                validator: (_, value) => {
+                  if (!value) return Promise.reject(new Error("Enter URL"));
+                  const urlPattern = /^https?:\/\/([\w-]+\.)+[\w-]{2,}(\/.*)?$/;
+                  return urlPattern.test(value)
+                    ? Promise.resolve()
+                    : Promise.reject();
+                },
+              },
+            ]}
+          >
+            <Input
+              placeholder=" example.com"
+              onBlur={(e) => {
+                let value = e.target.value.trim();
+                if (value && !/^https?:\/\//i.test(value)) {
+                  form.setFieldsValue({
+                    url: `https://${value}`,
+                  });
+                }
+              }}
+            />
+          </Form.Item>
+
+          <Form.Item name="description" label="Description">
+            <Input.TextArea rows={3} placeholder="Brief description" />
+          </Form.Item>
+          <Form.Item
+            name="category"
+            label="Resource Type"
+            rules={[{ required: true, message: "Select category" }]}
+          >
+            <Select placeholder="Select type">
+              <Option value="Tech">Tech</Option>
+              <Option value="Design">Design</Option>
+              <Option value="News">News</Option>
+              <Option value="Social">Social</Option>
+              <Option value="Tools">Tools</Option>
+              <Option value="Education">Education</Option>
+              <Option value="Entertainment">Entertainment</Option>
+              <Option value="Others">Others</Option>
+            </Select>
+          </Form.Item>
+          <Form.Item name="tags" label="Labels">
+            <Input placeholder="e.g., react, frontend, tutorial" />
+          </Form.Item>
+          <Form.Item style={{ textAlign: "right" }}>
+            <Space>
+              <Button type="primary" htmlType="submit">
+                Add Bookmark
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Event Modal */}
+      <Modal
+        title={
+          <Space style={{ fontFamily: FONT_FAMILY }}>
+            <PlusOutlined />
+            Create New Event
+          </Space>
+        }
+        open={isModalVisible}
+        onOk={handleEventSave}
+        onCancel={() => {
+          setIsModalVisible(false);
+          eventForm.resetFields();
+          setIsAllDay(false);
+        }}
+        okText="Create Event"
+        width={520}
+        okButtonProps={{
+          style: {
+            backgroundColor: COLORS.accent,
+            borderColor: COLORS.accent,
+            fontFamily: FONT_FAMILY,
+          },
+        }}
+        style={{ fontFamily: FONT_FAMILY }}
+      >
+        <Form
+          form={eventForm}
+          layout="vertical"
+          style={{ marginTop: 12, fontFamily: FONT_FAMILY }}
+          initialValues={{
+            person: getPersonNames()[0] || "Family",
+          }}
+        >
+          <Form.Item
+            name="title"
+            label="Event Title"
+            rules={[{ required: true, message: "Please enter event title" }]}
+          >
+            <Input
+              placeholder="Add a descriptive title"
+              style={{ fontFamily: FONT_FAMILY }}
+            />
+          </Form.Item>
+
+          {isAllDay ? (
+            <Row gutter={12}>
+              <Col span={12}>
+                <Form.Item
+                  name="startDate"
+                  label="Start Date"
+                  rules={[
+                    { required: true, message: "Please select start date" },
+                  ]}
+                >
+                  <DatePicker
+                    style={{ width: "100%", fontFamily: FONT_FAMILY }}
+                    disabledDate={(current) =>
+                      current && current < dayjs().startOf("day")
+                    }
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="endDate"
+                  label="End Date"
+                  rules={[
+                    { required: true, message: "Please select end date" },
+                  ]}
+                >
+                  <DatePicker
+                    style={{ width: "100%", fontFamily: FONT_FAMILY }}
+                    disabledDate={(current) =>
+                      current && current < dayjs().startOf("day")
+                    }
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+          ) : (
+            <Row gutter={8}>
+              <Col span={8}>
+                <Form.Item
+                  name="date"
+                  label="Date"
+                  rules={[{ required: true, message: "Please select date" }]}
+                >
+                  <DatePicker
+                    style={{ width: "100%", fontFamily: FONT_FAMILY }}
+                    disabledDate={(current) =>
+                      current && current < dayjs().startOf("day")
+                    }
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={8}>
+                <Form.Item
+                  name="startTime"
+                  label={
+                    <Space>
+                      <ClockCircleOutlined />
+                      Start Time
+                    </Space>
+                  }
+                  rules={[
+                    { required: true, message: "Please select start time" },
+                  ]}
+                >
+                  <TimePicker
+                    style={{ width: "100%", fontFamily: FONT_FAMILY }}
+                    format="hh:mm A"
+                    use12Hours
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={8}>
+                <Form.Item
+                  name="endTime"
+                  label={
+                    <Space>
+                      <ClockCircleOutlined />
+                      End Time
+                    </Space>
+                  }
+                  rules={[
+                    { required: true, message: "Please select end time" },
+                  ]}
+                >
+                  <TimePicker
+                    style={{ width: "100%", fontFamily: FONT_FAMILY }}
+                    format="hh:mm A"
+                    use12Hours
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+          )}
+
+          <Form.Item>
+            <Checkbox
+              checked={isAllDay}
+              onChange={(e) => setIsAllDay(e.target.checked)}
+              style={{ fontFamily: FONT_FAMILY }}
+            >
+              All day
+            </Checkbox>
+          </Form.Item>
+
+          <Row gutter={12}>
+            <Col span={12}>
+              <Form.Item
+                name="person"
+                label="Assigned to"
+                rules={[{ required: true, message: "Please select person" }]}
+              >
+                <Select
+                  placeholder="Select person"
+                  style={{ fontFamily: FONT_FAMILY }}
+                >
+                  {Object.keys(personColors).map((userName) => {
+                    const account =
+                      getConnectedAccount(userName) ||
+                      connectedAccounts.find(
+                        (acc) => acc.email === getPersonData(userName).email
+                      );
+                    return (
+                      <Option key={userName} value={userName}>
+                        <Space>
+                          <Avatar
+                            size="small"
+                            style={{
+                              backgroundColor: getPersonData(userName).color,
+                            }}
+                          >
+                            {(account?.displayName || userName)
+                              .charAt(0)
+                              .toUpperCase()}
+                          </Avatar>
+                          {account?.displayName || userName}
+                        </Space>
+                      </Option>
+                    );
+                  })}
+                </Select>
+              </Form.Item>
+            </Col>
+
+            <Col span={12}>
+              <Form.Item name="invitee" label="Invite">
+                <Input
+                  placeholder="Add email"
+                  style={{ fontFamily: FONT_FAMILY }}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item
+            name="location"
+            label={
+              <Space>
+                <EnvironmentOutlined />
+                Location
+              </Space>
+            }
+          >
+            <Input
+              placeholder="Add location or meeting link"
+              style={{ fontFamily: FONT_FAMILY }}
+            />
+          </Form.Item>
+
+          <Form.Item name="description" label="Description">
+            <TextArea
+              rows={3}
+              placeholder="Add notes, agenda, or additional details"
+              style={{ fontFamily: FONT_FAMILY }}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <FolderConnectionModal
+        isModalVisible={isFolderModalVisible}
+        setIsModalVisible={setIsFolderModalVisible}
+      />
+
       {/* Custom Animations and Hover Effects */}
       <style>{`
+        * {
+          font-family: ${FONT_FAMILY};
+        }
+        
         @keyframes fadeIn {
           from { 
             opacity: 0; 
@@ -838,7 +1678,7 @@ function App() {
         }
         
         .widgets-container .widget-card {
-          height: 160px; /* Shorter initial height */
+          height: 123px; /* Shorter initial height */
           transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
           transform-origin: center;
           overflow: hidden;
@@ -846,13 +1686,13 @@ function App() {
         
         /* When hovering over the widgets container, all widgets grow and container gets margin */
         .widgets-container:hover {
-          margin-bottom: 24px; /* Creates space between widgets and command center */
+          margin-bottom: 10px; /* Creates space between widgets and command center */
         }
         
         .widgets-container:hover .widget-card {
-          height: 280px; /* Taller height on hover */
-          transform: translateY(-8px) scale(1.02);
-          box-shadow: 0 20px 40px rgba(0,0,0,0.12), 0 8px 16px rgba(0,0,0,0.08);
+          height: 278px; /* Taller height on hover */
+          transform: translateY(-6px) scale(1.01);
+          box-shadow: 0 16px 32px rgba(14, 13, 13, 0.1), 0 6px 12px rgba(0,0,0,0.06);
         }
         
         .ant-card {
@@ -888,29 +1728,29 @@ function App() {
           }
           
           .widgets-container .widget-card {
-            height: 140px; /* Shorter for mobile */
+            height: 120px; /* Shorter for mobile */
           }
           
           .widgets-container:hover .widget-card {
-            height: 240px; /* Taller on hover for mobile */
+            height: 200px; /* Taller on hover for mobile */
           }
         }
         
         /* Custom scrollbar */
         ::-webkit-scrollbar {
-          width: 6px;
-          height: 6px;
+          width: 4px;
+          height: 4px;
         }
         
         ::-webkit-scrollbar-track {
           background: #f1f1f1;
-          border-radius: 3px;
+          border-radius: 2px;
         }
         
         ::-webkit-scrollbar-thumb {
           background: #c1c1c1;
-          border-radius: 3px;
-        }
+          border-radius: 2px;
+        } 
         
         ::-webkit-scrollbar-thumb:hover {
           background: #a8a8a8;
@@ -921,5 +1761,4 @@ function App() {
 }
 
 export default App;
-
 

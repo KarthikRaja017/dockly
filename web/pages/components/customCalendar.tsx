@@ -1,16 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { ArrowRight, ChevronLeft, ChevronRight, Plus, MapPin, Clock, User, Calendar as CalendarIcon, Edit, X } from "lucide-react";
-import { Avatar, Button, Card, Checkbox, Col, DatePicker, Divider, Form, Input, Modal, Popover, Row, Select, Space, Spin, Tag, TimePicker, Typography } from "antd";
+import { ArrowRight, ChevronLeft, ChevronRight, Plus, MapPin, Clock, User, Calendar as CalendarIcon, Edit, X, Eye, Mail, ChevronUp, ChevronDown } from "lucide-react";
+import { Avatar, Button, Card, Checkbox, Col, DatePicker, Divider, Form, Input, Modal, Popover, Row, Select, Space, Spin, Tag, TimePicker, Typography, Tooltip } from "antd";
 import { ClockCircleOutlined, EnvironmentOutlined, LinkOutlined, MailOutlined, PlusOutlined, EditOutlined, UserOutlined, CalendarOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import SmartInputBox from "./smartInput";
-import { addEvents } from "../../services/planner";
-import { showNotification } from "../../utils/notification";
-import DocklyLoader from "../../utils/docklyLoader";
-import { addEvent } from "../../services/google";
-import { PRIMARY_COLOR } from "../../app/comman";
-import { useCurrentUser } from "../../app/userContext";
-import { useGlobalLoading } from "../../app/loadingContext";
 
 // Professional color palette
 const COLORS = {
@@ -134,7 +127,7 @@ interface CalendarProps {
     backup?: any;
 }
 
-// Default sample data
+// Enhanced sample data with more realistic accounts
 export const sampleCalendarData: CalendarData = {
     events: [
         {
@@ -143,10 +136,12 @@ export const sampleCalendarData: CalendarData = {
             startTime: '10:00 AM',
             endTime: '11:30 AM',
             date: '2025-01-08',
-            person: 'Family',
-            color: COLORS.success,
+            person: 'john.doe',
+            color: '#1890FF',
             description: 'Weekly family brunch at the local cafe',
-            location: 'Sunny Side Cafe'
+            location: 'Sunny Side Cafe',
+            source_email: 'john.doe@gmail.com',
+            provider: 'google'
         },
         {
             id: '2',
@@ -154,23 +149,118 @@ export const sampleCalendarData: CalendarData = {
             startTime: '2:00 PM',
             endTime: '4:00 PM',
             date: '2025-01-08',
-            person: 'Emma',
-            color: COLORS.error,
+            person: 'emma.smith',
+            color: '#FF4D4F',
             description: 'Regular soccer practice session',
-            location: 'Central Park Sports Field'
+            location: 'Central Park Sports Field',
+            source_email: 'emma.smith@gmail.com',
+            provider: 'google'
+        },
+        {
+            id: '3',
+            title: 'Team Meeting',
+            startTime: '12:00 AM',
+            endTime: '11:59 PM',
+            date: '2025-01-08',
+            person: 'sarah.wilson',
+            color: '#52C41A',
+            description: 'All day team building event',
+            location: 'Office',
+            source_email: 'sarah.wilson@company.com',
+            provider: 'dockly',
+            is_all_day: true,
+            start_date: '2025-01-08',
+            end_date: '2025-01-08'
+        },
+        {
+            id: '4',
+            title: 'Conference Day 1',
+            startTime: '12:00 AM',
+            endTime: '11:59 PM',
+            date: '2025-01-08',
+            person: 'mike.johnson',
+            color: '#FAAD14',
+            description: 'Tech conference first day',
+            location: 'Convention Center',
+            source_email: 'mike.johnson@gmail.com',
+            provider: 'google',
+            is_all_day: true,
+            start_date: '2025-01-08',
+            end_date: '2025-01-08'
+        },
+        {
+            id: '5',
+            title: 'Project Deadline',
+            startTime: '12:00 AM',
+            endTime: '11:59 PM',
+            date: '2025-01-08',
+            person: 'lisa.brown',
+            color: '#722ED1',
+            description: 'Final project submission',
+            location: 'Remote',
+            source_email: 'lisa.brown@company.com',
+            provider: 'dockly',
+            is_all_day: true,
+            start_date: '2025-01-08',
+            end_date: '2025-01-08'
         },
     ],
     meals: [],
 };
 
-// Default person colors
+// Enhanced default person colors with sample data
 const defaultPersonColors: PersonColors = {
-    John: { color: COLORS.accent, email: "john@example.com" },
-    Sarah: { color: COLORS.warning, email: "sarah@example.com" },
-    Emma: { color: COLORS.error, email: "emma@example.com" },
-    Liam: { color: COLORS.success, email: "liam@example.com" },
-    Family: { color: COLORS.secondary, email: "family@example.com" },
+    'john.doe': { color: '#1890FF', email: "john.doe@gmail.com" },
+    'sarah.wilson': { color: '#52C41A', email: "sarah.wilson@company.com" },
+    'emma.smith': { color: '#FF4D4F', email: "emma.smith@gmail.com" },
+    'mike.johnson': { color: '#FAAD14', email: "mike.johnson@gmail.com" },
+    'lisa.brown': { color: '#722ED1', email: "lisa.brown@company.com" },
+    'Family': { color: COLORS.secondary, email: "family@example.com" },
 };
+
+// Sample connected accounts data
+const sampleConnectedAccounts: ConnectedAccount[] = [
+    {
+        userName: 'john.doe',
+        email: 'john.doe@gmail.com',
+        displayName: 'John Doe',
+        accountType: 'personal',
+        provider: 'google',
+        color: '#1890FF'
+    },
+    {
+        userName: 'sarah.wilson',
+        email: 'sarah.wilson@company.com',
+        displayName: 'Sarah Wilson',
+        accountType: 'work',
+        provider: 'dockly',
+        color: '#52C41A'
+    },
+    {
+        userName: 'emma.smith',
+        email: 'emma.smith@gmail.com',
+        displayName: 'Emma Smith',
+        accountType: 'personal',
+        provider: 'google',
+        color: '#FF4D4F'
+    },
+    {
+        userName: 'mike.johnson',
+        email: 'mike.johnson@gmail.com',
+        displayName: 'Mike Johnson',
+        accountType: 'personal',
+        provider: 'google',
+        color: '#FAAD14'
+    },
+    {
+        userName: 'lisa.brown',
+        email: 'lisa.brown@company.com',
+        displayName: 'Lisa Brown',
+        accountType: 'work',
+        provider: 'dockly',
+        color: '#722ED1'
+    }
+];
 
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -178,7 +268,7 @@ const { TextArea } = Input;
 const CustomCalendar: React.FC<CalendarProps> = ({
     data,
     personColors = defaultPersonColors,
-    connectedAccounts = [],
+    connectedAccounts = sampleConnectedAccounts,
     source,
     allowMentions,
     enabledHashmentions,
@@ -199,13 +289,17 @@ const CustomCalendar: React.FC<CalendarProps> = ({
     const [hoveredEvent, setHoveredEvent] = useState<string | null>(null);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [isPreviewVisible, setIsPreviewVisible] = useState(false);
+    const [isAllDayModalVisible, setIsAllDayModalVisible] = useState(false);
     const [editingEvent, setEditingEvent] = useState<Event | null>(null);
     const [previewingEvent, setPreviewingEvent] = useState<any | null>(null);
     const [allEvents, setAllEvents] = useState<Event[] | null>(null);
     const [form] = Form.useForm();
-    const { loading, setLoading } = useGlobalLoading();
     const [isAllDay, setIsAllDay] = useState(false);
-    const user = useCurrentUser();
+    const [loading, setLoading] = useState(false);
+    const [scrollTop, setScrollTop] = useState(0);
+    const [scrollDirection, setScrollDirection] = useState<'up' | 'down' | null>(null);
+    const [isScrolling, setIsScrolling] = useState(false);
+    const [scrollIndicatorVisible, setScrollIndicatorVisible] = useState(false);
 
     useEffect(() => {
         if (data?.events) {
@@ -215,11 +309,11 @@ const CustomCalendar: React.FC<CalendarProps> = ({
         }
     }, [data?.events]);
 
-    if (allEvents === null || allEvents.length === 0) {
-        setLoading(true);
-    } else {
-        setLoading(false);
-    }
+    // if (allEvents === null || allEvents.length === 0) {
+    //     setLoading(true);
+    // } else {
+    //     setLoading(false);
+    // }
 
     const getPersonData = (person: string): PersonData => {
         return personColors[person] || { color: COLORS.accent, email: "" };
@@ -497,15 +591,8 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                 }
 
                 try {
-                    const res = await addEvent(payload);
-                    const { status, message } = res.data;
-
-                    if (status === 1) {
-                        showNotification("Success", message, "success");
-                        if (fetchEvents) fetchEvents();
-                    } else {
-                        showNotification("Error", message, "error");
-                    }
+                    // Simulate API call
+                    console.log("Saving event:", payload);
 
                     setIsModalVisible(false);
                     form.resetFields();
@@ -513,7 +600,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     setEditingEvent(null);
                 } catch (err) {
                     console.error("Save error:", err);
-                    showNotification("Error", "Something went wrong.", "error");
                 }
 
                 setLoading(false);
@@ -538,7 +624,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
         const eventTime24 = convertTo24Hour(eventStartTime);
 
         if (isPastDate(eventDate) || isPastTime(eventDate, eventTime24)) {
-            showNotification("Info", "You cannot edit past events.", "info");
+            console.log("You cannot edit past events.");
             return;
         }
 
@@ -582,6 +668,404 @@ const CustomCalendar: React.FC<CalendarProps> = ({
         if (period === 'AM' && hours === 12) totalHours = 0;
 
         return totalHours * 60 + (minutes || 0);
+    };
+
+    const getProviderIcon = (provider: string) => {
+        switch (provider?.toLowerCase()) {
+            case 'google':
+                return 'G';
+            case 'dockly':
+                return 'D';
+            case 'outlook':
+                return 'O';
+            case 'apple':
+                return 'A';
+            default:
+                return provider?.charAt(0).toUpperCase() || 'U';
+        }
+    };
+
+    const getProviderColor = (provider: string) => {
+        switch (provider?.toLowerCase()) {
+            case 'google':
+                return '#4285F4';
+            case 'dockly':
+                return '#1890FF';
+            case 'outlook':
+                return '#0078D4';
+            case 'apple':
+                return '#000000';
+            default:
+                return COLORS.textSecondary;
+        }
+    };
+
+    // Enhanced Scroll Handler with advanced features
+    const handleScroll = (e: React.UIEvent<HTMLDivElement>, containerId: string) => {
+        const target = e.currentTarget;
+        const newScrollTop = target.scrollTop;
+        const scrollHeight = target.scrollHeight;
+        const clientHeight = target.clientHeight;
+
+        // Determine scroll direction
+        const direction = newScrollTop > scrollTop ? 'down' : 'up';
+        setScrollDirection(direction);
+        setScrollTop(newScrollTop);
+
+        // Show scroll indicator temporarily
+        setScrollIndicatorVisible(true);
+        setIsScrolling(true);
+
+        // Hide indicator after scroll stops
+        setTimeout(() => {
+            setIsScrolling(false);
+            setScrollIndicatorVisible(false);
+        }, 1500);
+
+        // Add smooth scroll momentum effect
+        target.style.scrollBehavior = 'smooth';
+    };
+
+    // Enhanced Scroll Indicator Component
+    const ScrollIndicator = ({
+        show,
+        direction,
+        hasMore = true,
+        position = 'right'
+    }: {
+        show: boolean;
+        direction: 'up' | 'down' | null;
+        hasMore?: boolean;
+        position?: 'left' | 'right';
+    }) => {
+        if (!show || !hasMore) return null;
+
+        return (
+            <div
+                style={{
+                    position: 'absolute',
+                    [position]: '8px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: `linear-gradient(135deg, ${COLORS.accent}95, ${COLORS.accent}85)`,
+                    color: 'white',
+                    padding: '6px 8px',
+                    borderRadius: '20px',
+                    fontSize: '10px',
+                    fontWeight: '600',
+                    zIndex: 10,
+                    backdropFilter: 'blur(8px)',
+                    border: `1px solid ${COLORS.accent}50`,
+                    boxShadow: `0 4px 12px ${COLORS.accent}25`,
+                    animation: 'pulse 2s infinite, fadeInRight 0.3s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    pointerEvents: 'none'
+                }}
+            >
+                {direction === 'down' ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
+                {direction === 'down' ? 'More below' : 'More above'}
+            </div>
+        );
+    };
+
+    // Enhanced Account Legend Component
+    const AccountLegend = () => {
+        return (
+            <div
+                style={{
+                    fontFamily: FONT_FAMILY,
+                    background: `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`,
+                    borderRadius: "12px",
+                    padding: "16px",
+                    border: `1px solid ${COLORS.borderLight}`,
+                    boxShadow: `0 2px 8px ${COLORS.shadowLight}`,
+                    marginTop: "12px",
+                    // animation: "slideInUp 0.4s ease"
+                }}
+            >
+                <div
+                    style={{
+                        fontSize: "14px",
+                        fontWeight: "700",
+                        color: COLORS.text,
+                        marginBottom: "12px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px"
+                    }}
+                >
+                    <User size={16} />
+                    Connected Accounts
+                </div>
+
+                <div
+                    style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: "8px",
+                        alignItems: "center"
+                    }}
+                >
+                    {connectedAccounts.map((account, index) => (
+                        <Tooltip
+                            key={`${account.email}-${account.provider}-${account.accountType}-${index}`}
+                            title={
+                                <div style={{ fontFamily: FONT_FAMILY }}>
+                                    <div style={{ fontWeight: "600", marginBottom: "2px" }}>
+                                        {account.displayName}
+                                    </div>
+                                    <div style={{ fontSize: "12px", opacity: 0.9 }}>
+                                        {account.email}
+                                    </div>
+                                    <div style={{ fontSize: "11px", opacity: 0.8, marginTop: "2px" }}>
+                                        {account.provider.toUpperCase()} • {account.accountType}
+                                    </div>
+                                </div>
+                            }
+                            placement="top"
+                        >
+                            <div
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "8px",
+                                    padding: "6px 10px",
+                                    background: `linear-gradient(135deg, ${account.color}12, ${account.color}06)`,
+                                    borderRadius: "20px",
+                                    border: `1px solid ${account.color}25`,
+                                    cursor: "pointer",
+                                    transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                                    animation: `slideInLeft 0.3s ease ${index * 0.05}s both`,
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = "translateY(-1px) scale(1.02)";
+                                    e.currentTarget.style.boxShadow = `0 4px 12px ${account.color}20`;
+                                    e.currentTarget.style.background = `linear-gradient(135deg, ${account.color}20, ${account.color}10)`;
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = "translateY(0) scale(1)";
+                                    e.currentTarget.style.boxShadow = "none";
+                                    e.currentTarget.style.background = `linear-gradient(135deg, ${account.color}12, ${account.color}06)`;
+                                }}
+                            >
+                                {/* Color Dot */}
+                                <div
+                                    style={{
+                                        width: "10px",
+                                        height: "10px",
+                                        backgroundColor: account.color,
+                                        borderRadius: "50%",
+                                        boxShadow: `0 0 0 2px ${account.color}25`,
+                                        animation: "pulse 2s infinite"
+                                    }}
+                                />
+
+                                {/* Account Name */}
+                                <span
+                                    style={{
+                                        fontSize: "12px",
+                                        fontWeight: "600",
+                                        color: COLORS.text,
+                                        maxWidth: "120px",
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        whiteSpace: "nowrap"
+                                    }}
+                                >
+                                    {account.displayName}
+                                </span>
+
+                                {/* Provider Avatar */}
+                                <div
+                                    style={{
+                                        width: "20px",
+                                        height: "20px",
+                                        borderRadius: "50%",
+                                        background: `linear-gradient(135deg, ${getProviderColor(account.provider)}, ${getProviderColor(account.provider)}dd)`,
+                                        color: "white",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        fontSize: "10px",
+                                        fontWeight: "700",
+                                        boxShadow: `0 1px 3px ${getProviderColor(account.provider)}25`,
+                                        border: "1px solid rgba(255,255,255,0.2)"
+                                    }}
+                                >
+                                    {getProviderIcon(account.provider)}
+                                </div>
+                            </div>
+                        </Tooltip>
+                    ))}
+
+                    {/* Add Account Button */}
+                    <div
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            padding: "6px 10px",
+                            background: `linear-gradient(135deg, ${COLORS.borderLight}, ${COLORS.surfaceSecondary})`,
+                            borderRadius: "20px",
+                            border: `1px dashed ${COLORS.border}`,
+                            cursor: "pointer",
+                            transition: "all 0.2s ease",
+                            opacity: 0.7
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.opacity = "1";
+                            e.currentTarget.style.transform = "translateY(-1px)";
+                            e.currentTarget.style.background = `linear-gradient(135deg, ${COLORS.accent}12, ${COLORS.accent}06)`;
+                            e.currentTarget.style.borderColor = COLORS.accent;
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.opacity = "0.7";
+                            e.currentTarget.style.transform = "translateY(0)";
+                            e.currentTarget.style.background = `linear-gradient(135deg, ${COLORS.borderLight}, ${COLORS.surfaceSecondary})`;
+                            e.currentTarget.style.borderColor = COLORS.border;
+                        }}
+                    >
+                        <Plus size={12} />
+                        <span
+                            style={{
+                                fontSize: "12px",
+                                fontWeight: "600",
+                                color: COLORS.textSecondary
+                            }}
+                        >
+                            Add Account
+                        </span>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // All Day Events Modal
+    const AllDayEventsModal = ({ events }: { events: Event[] }) => {
+        return (
+            <Modal
+                title={
+                    <div style={{
+                        fontFamily: FONT_FAMILY,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px"
+                    }}>
+                        <CalendarIcon size={18} />
+                        All Day Events
+                        <span style={{
+                            fontSize: "12px",
+                            fontWeight: "500",
+                            color: COLORS.textSecondary,
+                            marginLeft: "4px"
+                        }}>
+                            ({events.length} events)
+                        </span>
+                    </div>
+                }
+                open={isAllDayModalVisible}
+                onCancel={() => setIsAllDayModalVisible(false)}
+                footer={null}
+                width={480}
+                style={{ fontFamily: FONT_FAMILY }}
+            >
+                <div style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "8px",
+                    maxHeight: "400px",
+                    overflowY: "auto",
+                    paddingRight: "4px"
+                }}>
+                    {events.map((event, index) => {
+                        const account = connectedAccounts.find(acc => acc.email === event.source_email);
+
+                        return (
+                            <div
+                                key={event.id}
+                                onClick={() => handleEventClick(event)}
+                                style={{
+                                    padding: "12px",
+                                    background: `linear-gradient(135deg, ${event.color}12, ${event.color}06)`,
+                                    border: `1px solid ${event.color}25`,
+                                    borderRadius: "8px",
+                                    cursor: "pointer",
+                                    transition: "all 0.2s ease",
+                                    animation: `slideInUp 0.3s ease ${index * 0.05}s both`
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = "translateY(-1px)";
+                                    e.currentTarget.style.boxShadow = `0 4px 12px ${event.color}20`;
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = "translateY(0)";
+                                    e.currentTarget.style.boxShadow = "none";
+                                }}
+                            >
+                                <div style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    alignItems: "flex-start",
+                                    marginBottom: "6px"
+                                }}>
+                                    <div style={{
+                                        fontWeight: "600",
+                                        color: COLORS.text,
+                                        fontSize: "14px",
+                                        flex: 1
+                                    }}>
+                                        {event.title}
+                                    </div>
+                                    <div
+                                        style={{
+                                            width: "20px",
+                                            height: "20px",
+                                            borderRadius: "50%",
+                                            background: `linear-gradient(135deg, ${getProviderColor(event.provider || 'google')}, ${getProviderColor(event.provider || 'google')}dd)`,
+                                            color: "white",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            fontSize: "10px",
+                                            fontWeight: "700",
+                                            marginLeft: "8px"
+                                        }}
+                                    >
+                                        {getProviderIcon(event.provider || 'google')}
+                                    </div>
+                                </div>
+
+                                <div style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "8px",
+                                    fontSize: "12px",
+                                    color: COLORS.textSecondary
+                                }}>
+                                    <div style={{
+                                        width: "8px",
+                                        height: "8px",
+                                        backgroundColor: event.color,
+                                        borderRadius: "50%"
+                                    }} />
+                                    <span>{account?.displayName || event.person}</span>
+                                    {event.location && (
+                                        <>
+                                            <span>•</span>
+                                            <MapPin size={10} />
+                                            <span>{event.location}</span>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </Modal>
+        );
     };
 
     const EventCard = ({
@@ -927,7 +1411,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
                 }}
             >
-                {/* Week Header */}
+                {/* Week Header - Fixed height, not scrollable */}
                 <div
                     style={{
                         display: "grid",
@@ -938,6 +1422,8 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                         top: 0,
                         zIndex: 10,
                         backdropFilter: "blur(8px)",
+                        height: "80px",
+                        flexShrink: 0
                     }}
                 >
                     <div style={{ padding: "8px 6px" }}></div>
@@ -1023,21 +1509,26 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     })}
                 </div>
 
-                {/* All Day Events Row */}
+                {/* Enhanced All Day Events Row - Fixed height, not scrollable */}
                 <div
                     style={{
                         display: "grid",
                         gridTemplateColumns: "60px repeat(7, 1fr)",
                         backgroundColor: COLORS.surface,
                         borderBottom: `1px solid ${COLORS.borderLight}`,
-                        padding: "3px 0",
+                        padding: "8px 0",
+                        height: "60px",
+                        flexShrink: 0
                     }}
                 >
                     <div style={{
                         fontSize: "10px",
                         fontWeight: 600,
                         textAlign: "center",
-                        color: COLORS.textSecondary
+                        color: COLORS.textSecondary,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center"
                     }}>
                         All Day
                     </div>
@@ -1049,203 +1540,292 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             return start <= day && end >= day;
                         });
 
+                        const visibleEvents = eventsForDay.slice(0, 2);
+                        const hiddenEventsCount = eventsForDay.length - 2;
+
                         return (
-                            <div key={index} style={{ position: "relative", padding: "1px 2px", height: "24px" }}>
-                                {eventsForDay.map((event, i) => (
+                            <div key={index} style={{
+                                position: "relative",
+                                padding: "4px 6px",
+                                minHeight: "39px",
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: "2px"
+                            }}>
+                                {visibleEvents.map((event, i) => (
                                     <div
                                         key={`${event.id}-${i}`}
                                         onClick={() => handleEventClick(event)}
                                         style={{
-                                            position: "absolute",
-                                            left: 0,
-                                            right: 0,
-                                            top: `${i * 14}px`,
                                             backgroundColor: event.color,
                                             color: "#fff",
                                             fontSize: "9px",
-                                            padding: "1px 4px",
+                                            padding: "7px 10px",
                                             borderRadius: "4px",
                                             fontWeight: 600,
                                             whiteSpace: "nowrap",
                                             overflow: "hidden",
                                             textOverflow: "ellipsis",
                                             cursor: "pointer",
-                                            zIndex: 5
+                                            transition: "all 0.2s ease",
+                                            boxShadow: `0 1px 3px ${event.color}25`,
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "4px"
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.transform = "scale(1.02)";
+                                            e.currentTarget.style.boxShadow = `0 2px 6px ${event.color}40`;
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.transform = "scale(1)";
+                                            e.currentTarget.style.boxShadow = `0 1px 3px ${event.color}25`;
                                         }}
                                     >
-                                        {event.title}
+                                        <div
+                                            style={{
+                                                width: "15px",
+                                                height: "15px",
+                                                borderRadius: "50%",
+                                                background: `linear-gradient(135deg, ${getProviderColor(event.provider || 'google')}, ${getProviderColor(event.provider || 'google')}dd)`,
+                                                color: "white",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                fontSize: "7px",
+                                                fontWeight: "700",
+                                                flexShrink: 0
+                                            }}
+                                        >
+                                            {getProviderIcon(event.provider || 'google')}
+                                        </div>
+                                        <span>{event.title}</span>
                                     </div>
                                 ))}
+
+                                {hiddenEventsCount > 0 && (
+                                    <div
+                                        onClick={() => setIsAllDayModalVisible(true)}
+                                        style={{
+                                            backgroundColor: COLORS.textSecondary,
+                                            color: "#fff",
+                                            fontSize: "8px",
+                                            padding: "2px 6px",
+                                            borderRadius: "4px",
+                                            fontWeight: 600,
+                                            cursor: "pointer",
+                                            textAlign: "center",
+                                            transition: "all 0.2s ease",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            gap: "2px"
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.backgroundColor = COLORS.accent;
+                                            e.currentTarget.style.transform = "scale(1.05)";
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.backgroundColor = COLORS.textSecondary;
+                                            e.currentTarget.style.transform = "scale(1)";
+                                        }}
+                                    >
+                                        <Eye size={8} />
+                                        +{hiddenEventsCount} more
+                                    </div>
+                                )}
                             </div>
                         );
                     })}
                 </div>
 
-                {/* Time Grid */}
+                {/* Time Grid - Scrollable content area with static height */}
                 <div
                     style={{
                         flex: 1,
-                        overflowY: "auto",
-                        scrollbarWidth: "thin",
-                        scrollbarColor: `${COLORS.border} transparent`,
+                        height: "calc(100% - 130px)",
+                        position: "relative",
+                        overflow: "hidden"
                     }}
                 >
                     <div
+                        onScroll={(e) => handleScroll(e, 'week-scroll')}
                         style={{
-                            display: "grid",
-                            gridTemplateColumns: "60px repeat(7, 1fr)",
-                            minHeight: `${24 * 50}px`,
+                            height: "100%",
+                            overflowY: "auto",
+                            scrollbarWidth: "thin",
+                            scrollbarColor: `${COLORS.border} transparent`,
+                            scrollBehavior: "smooth"
                         }}
                     >
-                        {/* Time Labels */}
-                        <div style={{
-                            borderRight: `1px solid ${COLORS.borderLight}`,
-                            background: `linear-gradient(135deg, ${COLORS.surfaceSecondary}, ${COLORS.borderLight})`
-                        }}>
-                            {hours.map((hour) => (
-                                <div
-                                    key={hour}
-                                    style={{
-                                        height: "50px",
-                                        display: "flex",
-                                        alignItems: "flex-start",
-                                        justifyContent: "flex-end",
-                                        paddingRight: "6px",
-                                        paddingTop: "3px",
-                                        fontSize: "9px",
-                                        color: COLORS.textSecondary,
-                                        borderBottom: `1px solid ${COLORS.borderLight}`,
-                                        fontWeight: "500"
-                                    }}
-                                >
-                                    {hour === 0 ? '' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`}
-                                </div>
-                            ))}
+                        <div
+                            style={{
+                                display: "grid",
+                                gridTemplateColumns: "60px repeat(7, 1fr)",
+                                minHeight: `${24 * 50}px`,
+                            }}
+                        >
+                            {/* Time Labels */}
+                            <div style={{
+                                borderRight: `1px solid ${COLORS.borderLight}`,
+                                background: `linear-gradient(135deg, ${COLORS.surfaceSecondary}, ${COLORS.borderLight})`,
+                                position: "sticky",
+                                left: 0,
+                                zIndex: 5
+                            }}>
+                                {hours.map((hour) => (
+                                    <div
+                                        key={hour}
+                                        style={{
+                                            height: "50px",
+                                            display: "flex",
+                                            alignItems: "flex-start",
+                                            justifyContent: "flex-end",
+                                            paddingRight: "6px",
+                                            paddingTop: "3px",
+                                            fontSize: "9px",
+                                            color: COLORS.textSecondary,
+                                            borderBottom: `1px solid ${COLORS.borderLight}`,
+                                            fontWeight: "500"
+                                        }}
+                                    >
+                                        {hour === 0 ? '' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`}
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Day Columns */}
+                            {weekDays.map((day, dayIndex) => {
+                                const dayEvents = getEventsForDate(day).filter(e => !e.is_all_day);
+                                const isToday = day.toDateString() === new Date().toDateString();
+                                const isPast = isPastDate(formatDateString(day));
+                                return (
+                                    <div
+                                        key={dayIndex}
+                                        style={{
+                                            borderLeft: dayIndex > 0 ? `1px solid ${COLORS.borderLight}` : "none",
+                                            position: "relative",
+                                            background: isToday ? `linear-gradient(180deg, ${COLORS.accent}04, transparent)` : "transparent",
+                                            opacity: isPast ? 0.5 : 1
+                                        }}
+                                    >
+                                        {hours.map((hour) => {
+                                            const timeStr = `${hour.toString().padStart(2, '0')}:00`;
+                                            const isPastSlot = isPast || isPastTime(formatDateString(day), timeStr);
+
+                                            return (
+                                                <div
+                                                    key={hour}
+                                                    onClick={() => {
+                                                        if (!isPastSlot) {
+                                                            handleTimeSlotClick(
+                                                                formatDateString(day),
+                                                                timeStr
+                                                            );
+                                                        }
+                                                    }}
+                                                    style={{
+                                                        height: "50px",
+                                                        borderBottom: `1px solid ${COLORS.borderLight}`,
+                                                        cursor: isPastSlot ? "not-allowed" : "pointer",
+                                                        position: "relative",
+                                                        transition: "background-color 0.2s ease",
+                                                        backgroundColor: hour >= 9 && hour <= 17 ? COLORS.surface : COLORS.surfaceSecondary,
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        if (!isPastSlot) {
+                                                            e.currentTarget.style.backgroundColor = `${COLORS.accent}08`;
+                                                        }
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.backgroundColor = hour >= 9 && hour <= 17 ? COLORS.surface : COLORS.surfaceSecondary;
+                                                    }}
+                                                />
+                                            );
+                                        })}
+
+                                        {/* Events */}
+                                        {dayEvents.map((event, eventIndex) => {
+                                            const startMinutes = parseTimeToMinutes(event.startTime);
+                                            const endMinutes = event.endTime ? parseTimeToMinutes(event.endTime) : startMinutes + 60;
+                                            const duration = endMinutes - startMinutes;
+
+                                            const topPosition = (startMinutes / 60) * 50;
+                                            const eventHeight = Math.max((duration / 60) * 50 - 2, 20);
+
+                                            return (
+                                                <div
+                                                    key={event.id}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleEventClick(event);
+                                                    }}
+                                                    style={{
+                                                        position: "absolute",
+                                                        top: `${topPosition}px`,
+                                                        left: `${eventIndex * 2 + 2}px`,
+                                                        right: "2px",
+                                                        height: `${eventHeight}px`,
+                                                        background: `linear-gradient(135deg, ${event.color}, ${event.color}dd)`,
+                                                        color: "white",
+                                                        padding: "3px 6px",
+                                                        borderRadius: "5px",
+                                                        cursor: "pointer",
+                                                        fontSize: "10px",
+                                                        fontWeight: "600",
+                                                        overflow: "hidden",
+                                                        boxShadow: `0 2px 6px ${event.color}30, 0 1px 2px ${event.color}15`,
+                                                        transition: "all 0.2s ease",
+                                                        zIndex: 5,
+                                                        animation: `slideInUp 0.3s ease ${eventIndex * 0.05}s both`,
+                                                        border: `1px solid ${event.color}`,
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.transform = "scale(1.02) translateY(-1px)";
+                                                        e.currentTarget.style.boxShadow = `0 4px 12px ${event.color}40, 0 2px 6px ${event.color}25`;
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.transform = "scale(1) translateY(0)";
+                                                        e.currentTarget.style.boxShadow = `0 2px 6px ${event.color}30, 0 1px 2px ${event.color}15`;
+                                                    }}
+                                                >
+                                                    <div style={{
+                                                        fontSize: "8px",
+                                                        fontWeight: "500",
+                                                        marginBottom: "1px",
+                                                        opacity: 0.9,
+                                                        display: "flex",
+                                                        alignItems: "center",
+                                                        gap: "2px"
+                                                    }}>
+                                                        <Clock size={6} />
+                                                        {event.startTime}
+                                                    </div>
+                                                    <div style={{
+                                                        fontWeight: "600",
+                                                        lineHeight: "1.2",
+                                                        overflow: "hidden",
+                                                        textOverflow: "ellipsis",
+                                                        whiteSpace: "nowrap"
+                                                    }}>
+                                                        {event.title}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                );
+                            })}
                         </div>
-
-                        {/* Day Columns */}
-                        {weekDays.map((day, dayIndex) => {
-                            const dayEvents = getEventsForDate(day).filter(e => !e.is_all_day);
-                            const isToday = day.toDateString() === new Date().toDateString();
-                            const isPast = isPastDate(formatDateString(day));
-                            return (
-                                <div
-                                    key={dayIndex}
-                                    style={{
-                                        borderLeft: dayIndex > 0 ? `1px solid ${COLORS.borderLight}` : "none",
-                                        position: "relative",
-                                        background: isToday ? `linear-gradient(180deg, ${COLORS.accent}04, transparent)` : "transparent",
-                                        opacity: isPast ? 0.5 : 1
-                                    }}
-                                >
-                                    {hours.map((hour) => {
-                                        const timeStr = `${hour.toString().padStart(2, '0')}:00`;
-                                        const isPastSlot = isPast || isPastTime(formatDateString(day), timeStr);
-
-                                        return (
-                                            <div
-                                                key={hour}
-                                                onClick={() => {
-                                                    if (!isPastSlot) {
-                                                        handleTimeSlotClick(
-                                                            formatDateString(day),
-                                                            timeStr
-                                                        );
-                                                    }
-                                                }}
-                                                style={{
-                                                    height: "50px",
-                                                    borderBottom: `1px solid ${COLORS.borderLight}`,
-                                                    cursor: isPastSlot ? "not-allowed" : "pointer",
-                                                    position: "relative",
-                                                    transition: "background-color 0.2s ease",
-                                                    backgroundColor: hour >= 9 && hour <= 17 ? COLORS.surface : COLORS.surfaceSecondary,
-                                                }}
-                                                onMouseEnter={(e) => {
-                                                    if (!isPastSlot) {
-                                                        e.currentTarget.style.backgroundColor = `${COLORS.accent}08`;
-                                                    }
-                                                }}
-                                                onMouseLeave={(e) => {
-                                                    e.currentTarget.style.backgroundColor = hour >= 9 && hour <= 17 ? COLORS.surface : COLORS.surfaceSecondary;
-                                                }}
-                                            />
-                                        );
-                                    })}
-
-                                    {/* Events */}
-                                    {dayEvents.map((event, eventIndex) => {
-                                        const startMinutes = parseTimeToMinutes(event.startTime);
-                                        const endMinutes = event.endTime ? parseTimeToMinutes(event.endTime) : startMinutes + 60;
-                                        const duration = endMinutes - startMinutes;
-
-                                        const topPosition = (startMinutes / 60) * 50;
-                                        const eventHeight = Math.max((duration / 60) * 50 - 2, 20);
-
-                                        return (
-                                            <div
-                                                key={event.id}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleEventClick(event);
-                                                }}
-                                                style={{
-                                                    position: "absolute",
-                                                    top: `${topPosition}px`,
-                                                    left: `${eventIndex * 2 + 2}px`,
-                                                    right: "2px",
-                                                    height: `${eventHeight}px`,
-                                                    background: `linear-gradient(135deg, ${event.color}, ${event.color}dd)`,
-                                                    color: "white",
-                                                    padding: "3px 6px",
-                                                    borderRadius: "5px",
-                                                    cursor: "pointer",
-                                                    fontSize: "10px",
-                                                    fontWeight: "600",
-                                                    overflow: "hidden",
-                                                    boxShadow: `0 2px 6px ${event.color}30, 0 1px 2px ${event.color}15`,
-                                                    transition: "all 0.2s ease",
-                                                    zIndex: 5,
-                                                    animation: `slideInUp 0.3s ease ${eventIndex * 0.05}s both`,
-                                                    border: `1px solid ${event.color}`,
-                                                }}
-                                                onMouseEnter={(e) => {
-                                                    e.currentTarget.style.transform = "scale(1.02) translateY(-1px)";
-                                                    e.currentTarget.style.boxShadow = `0 4px 12px ${event.color}40, 0 2px 6px ${event.color}25`;
-                                                }}
-                                                onMouseLeave={(e) => {
-                                                    e.currentTarget.style.transform = "scale(1) translateY(0)";
-                                                    e.currentTarget.style.boxShadow = `0 2px 6px ${event.color}30, 0 1px 2px ${event.color}15`;
-                                                }}
-                                            >
-                                                <div style={{
-                                                    fontSize: "8px",
-                                                    fontWeight: "500",
-                                                    marginBottom: "1px",
-                                                    opacity: 0.9,
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    gap: "2px"
-                                                }}>
-                                                    <Clock size={6} />
-                                                    {event.startTime}
-                                                </div>
-                                                <div style={{
-                                                    fontWeight: "600",
-                                                    lineHeight: "1.2",
-                                                    overflow: "hidden",
-                                                    textOverflow: "ellipsis",
-                                                    whiteSpace: "nowrap"
-                                                }}>
-                                                    {event.title}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            );
-                        })}
                     </div>
+
+                    {/* Enhanced Scroll Indicator */}
+                    <ScrollIndicator
+                        show={scrollIndicatorVisible && isScrolling}
+                        direction={scrollDirection}
+                        hasMore={true}
+                        position="right"
+                    />
                 </div>
             </div>
         );
@@ -1268,6 +1848,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     padding: COMPACT_SPACING.md,
                 }}
             >
+                {/* Month Header - Fixed height, not scrollable */}
                 <div
                     style={{
                         display: "grid",
@@ -1278,6 +1859,8 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                         overflow: "hidden",
                         marginBottom: "8px",
                         boxShadow: `0 2px 6px ${COLORS.shadowLight}`,
+                        height: "40px",
+                        flexShrink: 0
                     }}
                 >
                     {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day) => (
@@ -1291,6 +1874,9 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                 color: COLORS.text,
                                 fontSize: "11px",
                                 letterSpacing: "0.3px",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center"
                             }}
                         >
                             {day.slice(0, 3)}
@@ -1298,49 +1884,70 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     ))}
                 </div>
 
+                {/* Month Grid - Scrollable content area with static height */}
                 <div
                     style={{
                         flex: 1,
-                        overflowY: "auto",
-                        scrollbarWidth: "thin",
-                        scrollbarColor: `${COLORS.border} transparent`,
-                        paddingRight: "2px",
+                        height: "calc(100% - 56px)",
+                        position: "relative",
+                        overflow: "hidden"
                     }}
                 >
                     <div
+                        onScroll={(e) => handleScroll(e, 'month-scroll')}
                         style={{
-                            display: "grid",
-                            gridTemplateColumns: "repeat(7, 1fr)",
-                            gap: "3px",
-                            minHeight: "fit-content",
+                            height: "100%",
+                            overflowY: "auto",
+                            scrollbarWidth: "thin",
+                            scrollbarColor: `${COLORS.border} transparent`,
+                            paddingRight: "2px",
+                            scrollBehavior: "smooth"
                         }}
                     >
-                        {monthDays.map((day, index) => {
-                            const dayEvents = getEventsForDate(day);
-                            const dayMeals = getMealsForDate(day);
-                            const isCurrentMonth = day.getMonth() === currentMonth;
+                        <div
+                            style={{
+                                display: "grid",
+                                gridTemplateColumns: "repeat(7, 1fr)",
+                                gap: "3px",
+                                minHeight: "fit-content",
+                                paddingBottom: "16px"
+                            }}
+                        >
+                            {monthDays.map((day, index) => {
+                                const dayEvents = getEventsForDate(day);
+                                const dayMeals = getMealsForDate(day);
+                                const isCurrentMonth = day.getMonth() === currentMonth;
 
-                            return (
-                                <DayCard
-                                    key={index}
-                                    date={day}
-                                    events={dayEvents}
-                                    meals={dayMeals}
-                                    isCurrentMonth={isCurrentMonth}
-                                    showMeals={false}
-                                    compactMode={true}
-                                    onClick={() => {
-                                        if (isCurrentMonth && !isPastDate(formatDateString(day))) {
-                                            handleTimeSlotClick(
-                                                formatDateString(day),
-                                                '12:00'
-                                            );
-                                        }
-                                    }}
-                                />
-                            );
-                        })}
+                                return (
+                                    <DayCard
+                                        key={index}
+                                        date={day}
+                                        events={dayEvents}
+                                        meals={dayMeals}
+                                        isCurrentMonth={isCurrentMonth}
+                                        showMeals={false}
+                                        compactMode={true}
+                                        onClick={() => {
+                                            if (isCurrentMonth && !isPastDate(formatDateString(day))) {
+                                                handleTimeSlotClick(
+                                                    formatDateString(day),
+                                                    '12:00'
+                                                );
+                                            }
+                                        }}
+                                    />
+                                );
+                            })}
+                        </div>
                     </div>
+
+                    {/* Enhanced Scroll Indicator */}
+                    <ScrollIndicator
+                        show={scrollIndicatorVisible && isScrolling}
+                        direction={scrollDirection}
+                        hasMore={true}
+                        position="right"
+                    />
                 </div>
             </div>
         );
@@ -1362,6 +1969,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     padding: COMPACT_SPACING.md,
                 }}
             >
+                {/* Day Header - Fixed height, not scrollable */}
                 <div
                     style={{
                         textAlign: "center",
@@ -1371,6 +1979,11 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                         borderRadius: "12px",
                         marginBottom: "12px",
                         boxShadow: `0 4px 15px ${COLORS.accent}25`,
+                        height: "80px",
+                        flexShrink: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center"
                     }}
                 >
                     <div
@@ -1394,8 +2007,15 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     </div>
                 </div>
 
-                <div style={{ display: "flex", gap: "12px", flex: 1, overflow: "hidden" }}>
-                    <div style={{ flex: 1 }}>
+                {/* Day Content - Scrollable area with static height */}
+                <div style={{
+                    display: "flex",
+                    gap: "12px",
+                    flex: 1,
+                    height: "calc(100% - 104px)",
+                    overflow: "hidden"
+                }}>
+                    <div style={{ flex: 1, position: "relative" }}>
                         <div
                             style={{
                                 background: `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`,
@@ -1406,6 +2026,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                 boxShadow: `0 4px 15px ${COLORS.shadowLight}`,
                                 display: "flex",
                                 flexDirection: "column",
+                                overflow: "hidden"
                             }}
                         >
                             <h3
@@ -1418,17 +2039,21 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                     display: "flex",
                                     alignItems: "center",
                                     gap: "6px",
+                                    height: "24px",
+                                    flexShrink: 0
                                 }}
                             >
                                 📅 Events
                             </h3>
                             <div
+                                onScroll={(e) => handleScroll(e, 'day-scroll')}
                                 style={{
                                     flex: 1,
                                     overflowY: "auto",
                                     scrollbarWidth: "thin",
                                     scrollbarColor: `${COLORS.border} transparent`,
                                     paddingRight: "4px",
+                                    scrollBehavior: "smooth"
                                 }}
                             >
                                 {dayEvents.length === 0 ? (
@@ -1456,6 +2081,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                             display: "flex",
                                             flexDirection: "column",
                                             gap: "8px",
+                                            paddingBottom: "16px"
                                         }}
                                     >
                                         {dayEvents.map((event, index) => (
@@ -1476,6 +2102,14 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                 )}
                             </div>
                         </div>
+
+                        {/* Enhanced Scroll Indicator */}
+                        <ScrollIndicator
+                            show={scrollIndicatorVisible && isScrolling}
+                            direction={scrollDirection}
+                            hasMore={dayEvents.length > 3}
+                            position="right"
+                        />
                     </div>
                 </div>
             </div>
@@ -1498,270 +2132,292 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     opacity: isNavigating ? 0.7 : 1,
                     transform: isNavigating ? "scale(0.98)" : "scale(1)",
                     transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-                    overflowY: "auto",
-                    scrollbarWidth: "thin",
-                    scrollbarColor: `${COLORS.border} transparent`,
-                    paddingRight: "4px",
                     padding: COMPACT_SPACING.md,
+                    position: "relative",
+                    overflow: "hidden"
                 }}
             >
+                {/* Year Content - Scrollable area with static height */}
                 <div
+                    onScroll={(e) => handleScroll(e, 'year-scroll')}
                     style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-                        gap: "12px",
-                        padding: "6px",
+                        height: "100%",
+                        overflowY: "auto",
+                        scrollbarWidth: "thin",
+                        scrollbarColor: `${COLORS.border} transparent`,
+                        paddingRight: "4px",
+                        scrollBehavior: "smooth"
                     }}
                 >
-                    {months.map((month, index) => {
-                        const monthDays = getMonthDays(month);
-                        const monthEvents = finalData.events.filter((event) => {
-                            const eventDate = new Date(event.date);
-                            return (
-                                eventDate.getFullYear() === currentYear &&
-                                eventDate.getMonth() === index
-                            );
-                        });
+                    <div
+                        style={{
+                            display: "grid",
+                            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+                            gap: "16px",
+                            padding: "6px",
+                            paddingBottom: "24px"
+                        }}
+                    >
+                        {months.map((month, index) => {
+                            const monthDays = getMonthDays(month);
+                            const monthEvents = finalData.events.filter((event) => {
+                                const eventDate = new Date(event.date);
+                                return (
+                                    eventDate.getFullYear() === currentYear &&
+                                    eventDate.getMonth() === index
+                                );
+                            });
 
-                        const monthGoals = goals.filter((goal) => {
-                            const goalDate = new Date(goal.date);
-                            return (
-                                goalDate.getFullYear() === currentYear &&
-                                goalDate.getMonth() === index
-                            );
-                        });
+                            const monthGoals = goals.filter((goal) => {
+                                const goalDate = new Date(goal.date);
+                                return (
+                                    goalDate.getFullYear() === currentYear &&
+                                    goalDate.getMonth() === index
+                                );
+                            });
 
-                        const monthTodos = todos.filter((todo) => {
-                            const todoDate = new Date(todo.date);
-                            return (
-                                todoDate.getFullYear() === currentYear &&
-                                todoDate.getMonth() === index
-                            );
-                        });
+                            const monthTodos = todos.filter((todo) => {
+                                const todoDate = new Date(todo.date);
+                                return (
+                                    todoDate.getFullYear() === currentYear &&
+                                    todoDate.getMonth() === index
+                                );
+                            });
 
-                        return (
-                            <div
-                                key={index}
-                                style={{
-                                    background: `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`,
-                                    borderRadius: "12px",
-                                    padding: "12px",
-                                    border: `1px solid ${COLORS.borderLight}`,
-                                    boxShadow: `0 4px 15px ${COLORS.shadowLight}`,
-                                    transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-                                    animation: `fadeInUp 0.4s ease ${index * 0.03}s both`,
-                                    cursor: "pointer",
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.transform = "translateY(-3px) scale(1.01)";
-                                    e.currentTarget.style.boxShadow = `0 8px 20px ${COLORS.shadowMedium}`;
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.transform = "translateY(0) scale(1)";
-                                    e.currentTarget.style.boxShadow = `0 4px 15px ${COLORS.shadowLight}`;
-                                }}
-                            >
+                            return (
                                 <div
+                                    key={index}
                                     style={{
-                                        textAlign: "center",
-                                        fontWeight: "700",
-                                        marginBottom: "8px",
-                                        color: COLORS.text,
-                                        fontSize: "14px",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        gap: "4px",
+                                        background: `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`,
+                                        borderRadius: "16px",
+                                        padding: "16px",
+                                        border: `1px solid ${COLORS.borderLight}`,
+                                        boxShadow: `0 6px 20px ${COLORS.shadowLight}`,
+                                        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                                        animation: `fadeInUp 0.4s ease ${index * 0.03}s both`,
+                                        cursor: "pointer",
+                                        backdropFilter: "blur(8px)"
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.transform = "translateY(-4px) scale(1.01)";
+                                        e.currentTarget.style.boxShadow = `0 12px 30px ${COLORS.shadowMedium}`;
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = "translateY(0) scale(1)";
+                                        e.currentTarget.style.boxShadow = `0 6px 20px ${COLORS.shadowLight}`;
                                     }}
                                 >
-                                    <CalendarIcon size={16} />
-                                    {month.toLocaleDateString("en-US", { month: "long" })}
-                                </div>
+                                    <div
+                                        style={{
+                                            textAlign: "center",
+                                            fontWeight: "700",
+                                            marginBottom: "12px",
+                                            color: COLORS.text,
+                                            fontSize: "16px",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            gap: "6px",
+                                        }}
+                                    >
+                                        <CalendarIcon size={18} />
+                                        {month.toLocaleDateString("en-US", { month: "long" })}
+                                    </div>
 
-                                <div
-                                    style={{
-                                        display: "grid",
-                                        gridTemplateColumns: "repeat(7, 1fr)",
-                                        gap: "2px",
-                                        fontSize: "10px",
-                                        marginBottom: "8px",
-                                    }}
-                                >
-                                    {["S", "M", "T", "W", "T", "F", "S"].map((day) => (
-                                        <div
-                                            key={day}
-                                            style={{
-                                                textAlign: "center",
-                                                fontWeight: "600",
-                                                color: COLORS.textSecondary,
-                                                padding: "3px",
-                                            }}
-                                        >
-                                            {day}
-                                        </div>
-                                    ))}
-
-                                    {monthDays.slice(0, 35).map((day, dayIndex) => {
-                                        const dayEvents = getEventsForDate(day);
-                                        const dayGoals = getGoalsForDate(day);
-                                        const dayTodos = getTodosForDate(day);
-                                        const isCurrentMonth = day.getMonth() === index;
-                                        const isToday = day.toDateString() === new Date().toDateString();
-                                        const isPast = isPastDate(formatDateString(day));
-
-                                        const hasContent = dayEvents.length > 0 || dayGoals.length > 0 || dayTodos.length > 0;
-
-                                        return (
+                                    <div
+                                        style={{
+                                            display: "grid",
+                                            gridTemplateColumns: "repeat(7, 1fr)",
+                                            gap: "3px",
+                                            fontSize: "11px",
+                                            marginBottom: "12px",
+                                        }}
+                                    >
+                                        {["S", "M", "T", "W", "T", "F", "S"].map((day) => (
                                             <div
-                                                key={dayIndex}
-                                                onClick={() => {
-                                                    if (isCurrentMonth && !isPast) {
-                                                        handleTimeSlotClick(
-                                                            formatDateString(day),
-                                                            '12:00'
-                                                        );
-                                                    }
-                                                }}
+                                                key={day}
                                                 style={{
                                                     textAlign: "center",
-                                                    padding: "3px",
-                                                    background: hasContent
-                                                        ? `linear-gradient(135deg, ${COLORS.accent}12, ${COLORS.accent}06)`
-                                                        : "transparent",
-                                                    borderRadius: "4px",
-                                                    opacity: isCurrentMonth ? (isPast ? 0.3 : 1) : 0.4,
-                                                    fontWeight: isToday ? "700" : "500",
-                                                    color: isToday ? COLORS.accent : isPast ? COLORS.textTertiary : COLORS.text,
-                                                    cursor: (isCurrentMonth && !isPast) ? "pointer" : "not-allowed",
-                                                    transition: "all 0.2s ease",
-                                                    position: "relative",
-                                                    border: isToday ? `1px solid ${COLORS.accent}` : "1px solid transparent",
-                                                }}
-                                                onMouseEnter={(e) => {
-                                                    if (isCurrentMonth && !isPast) {
-                                                        e.currentTarget.style.background = `linear-gradient(135deg, ${COLORS.accent}20, ${COLORS.accent}12)`;
-                                                        e.currentTarget.style.transform = "scale(1.1)";
-                                                    }
-                                                }}
-                                                onMouseLeave={(e) => {
-                                                    if (isCurrentMonth && !isPast) {
-                                                        e.currentTarget.style.background = hasContent
-                                                            ? `linear-gradient(135deg, ${COLORS.accent}12, ${COLORS.accent}06)`
-                                                            : "transparent";
-                                                        e.currentTarget.style.transform = "scale(1)";
-                                                    }
+                                                    fontWeight: "600",
+                                                    color: COLORS.textSecondary,
+                                                    padding: "4px",
                                                 }}
                                             >
-                                                {day.getDate()}
-                                                <div style={{
-                                                    position: "absolute",
-                                                    top: "1px",
-                                                    right: "1px",
-                                                    display: "flex",
-                                                    gap: "1px"
-                                                }}>
-                                                    {dayEvents.length > 0 && (
-                                                        <div
-                                                            style={{
-                                                                width: "3px",
-                                                                height: "3px",
-                                                                backgroundColor: COLORS.accent,
-                                                                borderRadius: "50%",
-                                                                animation: "pulse 2s infinite",
-                                                            }}
-                                                        />
-                                                    )}
-                                                    {dayGoals.length > 0 && (
-                                                        <div
-                                                            style={{
-                                                                width: "3px",
-                                                                height: "3px",
-                                                                backgroundColor: COLORS.success,
-                                                                borderRadius: "50%",
-                                                                animation: "pulse 2s infinite",
-                                                            }}
-                                                        />
-                                                    )}
-                                                    {dayTodos.length > 0 && (
-                                                        <div
-                                                            style={{
-                                                                width: "3px",
-                                                                height: "3px",
-                                                                backgroundColor: COLORS.warning,
-                                                                borderRadius: "50%",
-                                                                animation: "pulse 2s infinite",
-                                                            }}
-                                                        />
-                                                    )}
-                                                </div>
+                                                {day}
                                             </div>
-                                        );
-                                    })}
-                                </div>
+                                        ))}
 
-                                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                                    {monthEvents.length > 0 && (
-                                        <div
-                                            style={{
-                                                fontSize: "10px",
-                                                color: COLORS.textSecondary,
-                                                textAlign: "center",
-                                                fontWeight: "600",
-                                                padding: "3px 6px",
-                                                background: `linear-gradient(135deg, ${COLORS.accent}12, ${COLORS.accent}06)`,
-                                                borderRadius: "4px",
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "center",
-                                                gap: "3px",
-                                            }}
-                                        >
-                                            📅 {monthEvents.length} event{monthEvents.length > 1 ? "s" : ""}
-                                        </div>
-                                    )}
-                                    {monthGoals.length > 0 && (
-                                        <div
-                                            style={{
-                                                fontSize: "10px",
-                                                color: COLORS.textSecondary,
-                                                textAlign: "center",
-                                                fontWeight: "600",
-                                                padding: "3px 6px",
-                                                background: `linear-gradient(135deg, ${COLORS.success}12, ${COLORS.success}06)`,
-                                                borderRadius: "4px",
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "center",
-                                                gap: "3px",
-                                            }}
-                                        >
-                                            🎯 {monthGoals.length} goal{monthGoals.length > 1 ? "s" : ""}
-                                        </div>
-                                    )}
-                                    {monthTodos.length > 0 && (
-                                        <div
-                                            style={{
-                                                fontSize: "10px",
-                                                color: COLORS.textSecondary,
-                                                textAlign: "center",
-                                                fontWeight: "600",
-                                                padding: "3px 6px",
-                                                background: `linear-gradient(135deg, ${COLORS.warning}12, ${COLORS.warning}06)`,
-                                                borderRadius: "4px",
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "center",
-                                                gap: "3px",
-                                            }}
-                                        >
-                                            ✅ {monthTodos.length} todo{monthTodos.length > 1 ? "s" : ""}
-                                        </div>
-                                    )}
+                                        {monthDays.slice(0, 35).map((day, dayIndex) => {
+                                            const dayEvents = getEventsForDate(day);
+                                            const dayGoals = getGoalsForDate(day);
+                                            const dayTodos = getTodosForDate(day);
+                                            const isCurrentMonth = day.getMonth() === index;
+                                            const isToday = day.toDateString() === new Date().toDateString();
+                                            const isPast = isPastDate(formatDateString(day));
+
+                                            const hasContent = dayEvents.length > 0 || dayGoals.length > 0 || dayTodos.length > 0;
+
+                                            return (
+                                                <div
+                                                    key={dayIndex}
+                                                    onClick={() => {
+                                                        if (isCurrentMonth && !isPast) {
+                                                            handleTimeSlotClick(
+                                                                formatDateString(day),
+                                                                '12:00'
+                                                            );
+                                                        }
+                                                    }}
+                                                    style={{
+                                                        textAlign: "center",
+                                                        padding: "4px",
+                                                        background: hasContent
+                                                            ? `linear-gradient(135deg, ${COLORS.accent}15, ${COLORS.accent}08)`
+                                                            : "transparent",
+                                                        borderRadius: "6px",
+                                                        opacity: isCurrentMonth ? (isPast ? 0.3 : 1) : 0.4,
+                                                        fontWeight: isToday ? "700" : "500",
+                                                        color: isToday ? COLORS.accent : isPast ? COLORS.textTertiary : COLORS.text,
+                                                        cursor: (isCurrentMonth && !isPast) ? "pointer" : "not-allowed",
+                                                        transition: "all 0.2s ease",
+                                                        position: "relative",
+                                                        border: isToday ? `2px solid ${COLORS.accent}` : "2px solid transparent",
+                                                        fontSize: "10px"
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        if (isCurrentMonth && !isPast) {
+                                                            e.currentTarget.style.background = `linear-gradient(135deg, ${COLORS.accent}25, ${COLORS.accent}15)`;
+                                                            e.currentTarget.style.transform = "scale(1.15)";
+                                                        }
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        if (isCurrentMonth && !isPast) {
+                                                            e.currentTarget.style.background = hasContent
+                                                                ? `linear-gradient(135deg, ${COLORS.accent}15, ${COLORS.accent}08)`
+                                                                : "transparent";
+                                                            e.currentTarget.style.transform = "scale(1)";
+                                                        }
+                                                    }}
+                                                >
+                                                    {day.getDate()}
+                                                    <div style={{
+                                                        position: "absolute",
+                                                        top: "2px",
+                                                        right: "2px",
+                                                        display: "flex",
+                                                        gap: "1px"
+                                                    }}>
+                                                        {dayEvents.length > 0 && (
+                                                            <div
+                                                                style={{
+                                                                    width: "4px",
+                                                                    height: "4px",
+                                                                    backgroundColor: COLORS.accent,
+                                                                    borderRadius: "50%",
+                                                                    animation: "pulse 2s infinite",
+                                                                }}
+                                                            />
+                                                        )}
+                                                        {dayGoals.length > 0 && (
+                                                            <div
+                                                                style={{
+                                                                    width: "4px",
+                                                                    height: "4px",
+                                                                    backgroundColor: COLORS.success,
+                                                                    borderRadius: "50%",
+                                                                    animation: "pulse 2s infinite",
+                                                                }}
+                                                            />
+                                                        )}
+                                                        {dayTodos.length > 0 && (
+                                                            <div
+                                                                style={{
+                                                                    width: "4px",
+                                                                    height: "4px",
+                                                                    backgroundColor: COLORS.warning,
+                                                                    borderRadius: "50%",
+                                                                    animation: "pulse 2s infinite",
+                                                                }}
+                                                            />
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                                        {monthEvents.length > 0 && (
+                                            <div
+                                                style={{
+                                                    fontSize: "11px",
+                                                    color: COLORS.textSecondary,
+                                                    textAlign: "center",
+                                                    fontWeight: "600",
+                                                    padding: "4px 8px",
+                                                    background: `linear-gradient(135deg, ${COLORS.accent}15, ${COLORS.accent}08)`,
+                                                    borderRadius: "6px",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                    gap: "4px",
+                                                }}
+                                            >
+                                                📅 {monthEvents.length} event{monthEvents.length > 1 ? "s" : ""}
+                                            </div>
+                                        )}
+                                        {monthGoals.length > 0 && (
+                                            <div
+                                                style={{
+                                                    fontSize: "11px",
+                                                    color: COLORS.textSecondary,
+                                                    textAlign: "center",
+                                                    fontWeight: "600",
+                                                    padding: "4px 8px",
+                                                    background: `linear-gradient(135deg, ${COLORS.success}15, ${COLORS.success}08)`,
+                                                    borderRadius: "6px",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                    gap: "4px",
+                                                }}
+                                            >
+                                                🎯 {monthGoals.length} goal{monthGoals.length > 1 ? "s" : ""}
+                                            </div>
+                                        )}
+                                        {monthTodos.length > 0 && (
+                                            <div
+                                                style={{
+                                                    fontSize: "11px",
+                                                    color: COLORS.textSecondary,
+                                                    textAlign: "center",
+                                                    fontWeight: "600",
+                                                    padding: "4px 8px",
+                                                    background: `linear-gradient(135deg, ${COLORS.warning}15, ${COLORS.warning}08)`,
+                                                    borderRadius: "6px",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                    gap: "4px",
+                                                }}
+                                            >
+                                                ✅ {monthTodos.length} todo{monthTodos.length > 1 ? "s" : ""}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        );
-                    })}
+                            );
+                        })}
+                    </div>
                 </div>
+
+                {/* Enhanced Scroll Indicator */}
+                <ScrollIndicator
+                    show={scrollIndicatorVisible && isScrolling}
+                    direction={scrollDirection}
+                    hasMore={true}
+                    position="right"
+                />
             </div>
         );
     };
@@ -2090,21 +2746,18 @@ const CustomCalendar: React.FC<CalendarProps> = ({
         return `${hours}:${minutes}`;
     };
 
-    // if (loading) {
-    //     return <DocklyLoader />
-    // }
-
     return (
         <div style={{
             fontFamily: FONT_FAMILY,
             background: COLORS.surface,
-            // minHeight: "100vh",
             height: '100%',
             borderRadius: 8,
             boxShadow: `0 1px 2px ${COLORS.shadowLight}`,
             backgroundColor: COLORS.surface,
             border: `1px solid ${COLORS.borderLight}`,
             overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
         }}>
             <style>
                 {`
@@ -2183,6 +2836,17 @@ const CustomCalendar: React.FC<CalendarProps> = ({
             }
           }
           
+          @keyframes fadeInRight {
+            from {
+              opacity: 0;
+              transform: translateX(15px);
+            }
+            to {
+              opacity: 1;
+              transform: translateX(0);
+            }
+          }
+          
           @keyframes pulse {
             0%, 100% {
               opacity: 1;
@@ -2195,27 +2859,15 @@ const CustomCalendar: React.FC<CalendarProps> = ({
           }
 
           ::-webkit-scrollbar {
-            width: 6px;
+            width: 2px;
           }
           
-          ::-webkit-scrollbar-track {
-            background: transparent;
-          }
           
-          ::-webkit-scrollbar-thumb {
-            background: linear-gradient(135deg, ${COLORS.border}, ${COLORS.textTertiary});
-            border-radius: 3px;
-            transition: background 0.2s ease;
-          }
-          
-          ::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(135deg, ${COLORS.textTertiary}, ${COLORS.textSecondary});
-          }
         `}
             </style>
 
-            <div style={{ padding: COMPACT_SPACING.lg }}>
-                {/* Enhanced Header */}
+            <div style={{ padding: COMPACT_SPACING.lg, flex: 1, display: 'flex', flexDirection: 'column' }}>
+                {/* Enhanced Header - Fixed height, not scrollable */}
                 <div
                     style={{
                         display: "flex",
@@ -2224,6 +2876,8 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                         marginBottom: "16px",
                         flexWrap: "wrap",
                         gap: "12px",
+                        height: "48px",
+                        flexShrink: 0
                     }}
                 >
                     <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -2326,7 +2980,6 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                         <Select
                             value={view}
                             onChange={(value) => {
-
                                 if (onViewChange) {
                                     onViewChange(value);
                                 }
@@ -2376,8 +3029,12 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     </div>
                 </div>
 
-                {/* Enhanced Quick Add Event */}
-                <div style={{ marginTop: '16px' }}>
+                {/* Enhanced Quick Add Event - Fixed height, not scrollable */}
+                <div style={{
+                    marginBottom: '16px',
+                    height: "auto",
+                    flexShrink: 0
+                }}>
                     <SmartInputBox
                         source={source}
                         allowMentions={allowMentions}
@@ -2389,18 +3046,20 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     />
                 </div>
 
-                {/* Enhanced Calendar Views */}
+                {/* Enhanced Calendar Views - Static height container with scrollable content */}
                 <div
                     style={{
                         background: `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`,
                         borderRadius: "12px",
                         border: `1px solid ${COLORS.borderLight}`,
-                        height: "550px",
+                        height: "500px",
                         display: "flex",
                         flexDirection: "column",
                         animation: "fadeInUp 0.4s ease",
                         boxShadow: `0 4px 15px ${COLORS.shadowLight}`,
                         overflow: "hidden",
+                        // flex: 1,
+                        // position: "relative"
                     }}
                 >
                     {view === "Week" && renderWeekView()}
@@ -2408,7 +3067,18 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     {view === "Day" && renderDayView()}
                     {view === "Year" && renderYearView()}
                 </div>
+
+                {/* Enhanced Account Legend - Fixed height, not scrollable */}
+                <div style={{
+                    height: "auto",
+                    flexShrink: 0
+                }}>
+                    <AccountLegend />
+                </div>
             </div>
+
+            {/* All Day Events Modal */}
+            <AllDayEventsModal events={finalData.events.filter(e => e.is_all_day)} />
 
             {/* Event Preview Modal */}
             <EventPreviewModal />

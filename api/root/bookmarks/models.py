@@ -1,9 +1,12 @@
+from email.message import EmailMessage
+import smtplib
 import uuid
 from flask import request
 from flask_restful import Resource
 import time
 
 from root.db.dbHelper import DBHelper
+from root.config import EMAIL_PASSWORD, EMAIL_SENDER, SMTP_PORT, SMTP_SERVER, WEB_URL
 
 
 class SaveBookmarks(Resource):
@@ -267,11 +270,32 @@ class GetBookmarkStats(Resource):
                 "is_active": Status.ACTIVE.value,
             },
         )
+
+        # Fix: Use alias for the count column to ensure consistent naming
         rows = DBHelper.raw_sql(
-            "SELECT COUNT(DISTINCT category) FROM bookmarks WHERE user_id = %s AND is_active = 1",
+            "SELECT COUNT(DISTINCT category) as category_count FROM bookmarks WHERE user_id = %s AND is_active = 1",
             (uid,),
         )
-        categories = rows[0]["count"] if rows else 0
+
+        # Alternative approach: Get the first value regardless of column name
+        categories = 0
+        if rows and len(rows) > 0:
+            # Get the first value from the first row (regardless of column name)
+            first_row = rows[0]
+            if isinstance(first_row, dict):
+                # Try different possible column names
+                categories = (
+                    first_row.get("category_count")
+                    or first_row.get("count")
+                    or first_row.get("COUNT(DISTINCT category)")
+                    or list(first_row.values())[0]
+                    if first_row.values()
+                    else 0
+                )
+            else:
+                # If it's a tuple/list, get the first element
+                categories = first_row[0] if first_row else 0
+
         return {
             "status": 1,
             "message": "Stats fetched",
@@ -281,3 +305,71 @@ class GetBookmarkStats(Resource):
                 "categories_count": categories,
             },
         }
+
+
+class EmailSender:
+    def __init__(self):
+        self.smtp_server = SMTP_SERVER
+        self.smtp_port = SMTP_PORT
+        self.smtp_user = EMAIL_SENDER
+        self.smtp_password = EMAIL_PASSWORD
+
+    def send_bookmark_email(self, recipient_email, bookmark):
+        msg = EmailMessage()
+        msg["Subject"] = f"Shared Bookmark: {bookmark['title']}"
+        msg["From"] = self.smtp_user
+        msg["To"] = recipient_email
+
+        created = bookmark.get("created_at") or ""
+        if created:
+            created = created.split("T")[0]
+
+        msg.set_content(
+            f"""
+Hi there!
+
+I wanted to share this Bookmark with you:
+
+Title: {bookmark['title']}
+Url: {bookmark['url']}
+ResourceType: {bookmark['category']}
+
+
+Best regards!
+""".strip()
+        )
+
+        try:
+            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
+                server.starttls()
+                server.login(self.smtp_user, self.smtp_password)
+                server.send_message(msg)
+            return True, "Email sent successfully"
+        except Exception as e:
+            return False, str(e)
+
+
+class ShareBookmark(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        try:
+            data = request.get_json(force=True)
+        except Exception as e:
+            return {"status": 0, "message": f"Invalid JSON: {str(e)}"}, 400
+
+        email = data.get("email")
+        bookmark = data.get("bookmark")
+
+        if not email or not bookmark:
+            return {
+                "status": 0,
+                "message": "Both 'email' and 'bookmark' are required.",
+            }, 422
+
+        email_sender = EmailSender()
+        success, message = email_sender.send_bookmark_email(email, bookmark)
+
+        if success:
+            return {"status": 1, "message": "Bookmark shared via email."}
+        else:
+            return ({"status": 0, "message": f"Failed to send email: {message}"},)

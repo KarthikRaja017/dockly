@@ -4,6 +4,8 @@ import { Card, Space, Typography, Button, Avatar } from 'antd';
 import { CalendarOutlined } from '@ant-design/icons';
 const { Text } = Typography;
 
+const FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+
 const WeekHighlights: React.FC = () => {
     const [activeFilter, setActiveFilter] = useState('All');
 
@@ -78,16 +80,31 @@ const WeekHighlights: React.FC = () => {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                     <Space>
                         <span style={{ fontSize: '16px' }}>⭐</span>
-                        <span style={{ fontSize: '14px', fontWeight: 600, color: '#1f2937' }}>Week Highlights</span>
+                        <span style={{
+                            fontSize: '14px',
+                            fontWeight: 600,
+                            color: '#1f2937',
+                            fontFamily: FONT_FAMILY
+                        }}>
+                            Week Highlights
+                        </span>
                     </Space>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <span style={{ fontSize: '12px' }}>📅</span>
-                        <Text style={{ fontSize: '11px', color: '#6b7280' }}>June 9-15, 2025</Text>
+                        <Text style={{
+                            fontSize: '11px',
+                            color: '#6b7280',
+                            fontFamily: FONT_FAMILY
+                        }}>
+                            June 9-15, 2025
+                        </Text>
                     </div>
                 </div>
             }
-            bodyStyle={{ padding: '12px' }}
-            headStyle={{ padding: '12px', borderBottom: '1px solid #f3f4f6' }}
+            // bodyStyle={{ padding: '12px' }}
+            // headStyle={{ padding: '12px', borderBottom: '1px solid #f3f4f6' }}
+            bodyStyle={{ padding: '18px' }}
+            headStyle={{ padding: '16px', borderBottom: '1px solid #f3f4f6' }}
             style={{ borderRadius: '12px', border: '1px solid #e5e7eb' }}
         >
             {/* Filter Buttons */}
@@ -105,12 +122,13 @@ const WeekHighlights: React.FC = () => {
                                 height: '24px',
                                 padding: '0 10px',
                                 fontWeight: 500,
-                                fontSize: '11px'
+                                fontSize: '11px',
+                                fontFamily: FONT_FAMILY
                             }}
                             onClick={() => setActiveFilter(filter.key)}
                         >
                             {filter.key === 'All' && '👥 '}
-                            {filter.key === 'Family' && '❤️ '}
+                            {filter.key === 'Family' && '❤ '}
                             {filter.label}
                         </Button>
                     ))}
@@ -120,7 +138,7 @@ const WeekHighlights: React.FC = () => {
             {/* Highlights Items */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {highlights.map((item, index) => (
-                    <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                    <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '15px' }}>
                         {/* Date */}
                         <div style={{
                             display: 'flex',
@@ -128,7 +146,7 @@ const WeekHighlights: React.FC = () => {
                             alignItems: 'center',
                             backgroundColor: '#f8fafc',
                             borderRadius: '5px',
-                            padding: '4px 6px',
+                            padding: '6px 6px',
                             minWidth: '40px',
                             border: '1px solid #e2e8f0'
                         }}>
@@ -143,10 +161,16 @@ const WeekHighlights: React.FC = () => {
                         {/* Content */}
                         <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ marginBottom: '4px' }}>
-                                <Text strong style={{ fontSize: '12px', color: '#111827', display: 'block', lineHeight: 1.3 }}>
+                                <Text strong style={{
+                                    fontSize: '13px',
+                                    color: '#111827',
+                                    display: 'block',
+                                    lineHeight: 1.3,
+                                    fontFamily: FONT_FAMILY
+                                }}>
                                     {item.title}
                                 </Text>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px' }}>
                                     <Avatar
                                         size={16}
                                         style={{
@@ -157,14 +181,22 @@ const WeekHighlights: React.FC = () => {
                                     >
                                         {item.avatar}
                                     </Avatar>
-                                    <Text style={{ fontSize: '10px', color: '#6b7280' }}>
+                                    <Text style={{
+                                        fontSize: '11px',
+                                        color: '#6b7280',
+                                        fontFamily: FONT_FAMILY
+                                    }}>
                                         {item.person}
                                     </Text>
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                 <span style={{ color: '#ef4444', fontSize: '10px' }}>⏰</span>
-                                <Text style={{ fontSize: '10px', color: '#6b7280' }}>
+                                <Text style={{
+                                    fontSize: '11px',
+                                    color: '#6b7280',
+                                    fontFamily: FONT_FAMILY
+                                }}>
                                     {item.time} • {item.location}
                                 </Text>
                             </div>
@@ -172,8 +204,8 @@ const WeekHighlights: React.FC = () => {
 
                         {/* Icon */}
                         <div style={{
-                            width: '28px',
-                            height: '28px',
+                            width: '30px',
+                            height: '30px',
                             backgroundColor: '#f8fafc',
                             borderRadius: '14px',
                             display: 'flex',

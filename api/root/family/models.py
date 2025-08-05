@@ -2399,7 +2399,19 @@ class GetFamilyMemberUserId(Resource):
         if not member:
             return {"status": 0, "message": "Family member not found"}, 404
 
-        return {"status": 1, "payload": {"userId": member["fm_user_id"]}}
+        user = DBHelper.find_one(
+            table_name="users",
+            filters={"uid": member["fm_user_id"]},
+            select_fields=["user_name"],
+        )
+
+        return {
+            "status": 1,
+            "payload": {
+                "userId": member["fm_user_id"],
+                "userName": user["user_name"] if user else None,
+            },
+        }
 
 
 class AddAccountPassword(Resource):

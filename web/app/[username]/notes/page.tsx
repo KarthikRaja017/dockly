@@ -46,6 +46,7 @@ import {
     deleteNote,
     shareNote,
 } from "../../../services/family";
+import DocklyLoader from "../../../utils/docklyLoader";
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -824,12 +825,7 @@ const IntegratedNotes = () => {
 
                 {/* Loading State */}
                 {loading && (
-                    <div style={{ textAlign: "center", padding: 48 }}>
-                        <Spin size="large" />
-                        <div style={{ fontSize: 16, color: "#666", marginTop: 16 }}>
-                            Loading notes from all hubs...
-                        </div>
-                    </div>
+                    <DocklyLoader />
                 )}
 
                 {/* Categories Grid */}

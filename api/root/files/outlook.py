@@ -5,396 +5,278 @@ import requests
 from datetime import datetime, timedelta
 from flask import Request, request, jsonify, send_file
 from flask_restful import Resource
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
 import io
-import zipfile
+import time
 
-from root.db.dbHelper import DBHelper
+from root.microsoft.models import refresh_microsoft_token
 from root.auth.auth import auth_required
 from root.common import Status
-from root.microsoft.models import MS_CLIENT_ID, MS_CLIENT_SECRET
+from root.db.dbHelper import DBHelper
 
-# from root.db.dbHelper import DBHelper
+# Microsoft Graph API endpoints
+GRAPH_API_BASE = "https://graph.microsoft.com/v1.0"
 
 
 class OutlookBaseResource(Resource):
-    """Base class for Outlook/OneDrive operations"""
-
-    def validate_access_token(self, access_token):
-        """Validate that the access token has proper JWT format"""
-        if not access_token:
-            return False
-
-        # JWT tokens should have 3 parts separated by dots
-        parts = access_token.split(".")
-        if len(parts) != 3:
-            print(f"Invalid token format - expected 3 parts, got {len(parts)}")
-            return False
-
-        # Check that none of the parts are empty
-        if not all(part.strip() for part in parts):
-            print("Invalid token format - empty parts found")
-            return False
-
-        return True
+    """Base class for Microsoft Outlook/OneDrive operations with improved error handling"""
 
     def get_user_credentials(self, user_id):
-        """Get user's Outlook credentials from database with proper error handling"""
+        """Get user's Microsoft credentials with comprehensive error handling and token refresh"""
         try:
             account = DBHelper.find_one(
                 "connected_accounts",
                 filters={
                     "user_id": user_id,
-                    # "provider": "outlook",
-                    # "is_active": Status.ACTIVE.value,
+                    "provider": "outlook",
+                    "is_active": Status.ACTIVE.value,
                 },
             )
 
             if not account:
-                print(f"No active Outlook account found for user {user_id}")
+                print(f"❌ No active Outlook account found for user {user_id}")
                 return None
 
             access_token = account.get("access_token")
             refresh_token = account.get("refresh_token")
             expires_at = account.get("expires_at")
+            account_id = account.get("id")
+            email = account.get("email")
 
-            # Validate access token format first
-            if not self.validate_access_token(access_token):
-                print(
-                    f"Invalid access token format for user {user_id}, attempting refresh"
-                )
-                if refresh_token:
-                    new_token = self.refresh_access_token(refresh_token)
-                    if new_token and new_token.get("access_token"):
-                        # Update DB with new token
-                        new_access_token = new_token["access_token"]
-                        if self.validate_access_token(new_access_token):
-                            DBHelper.update_one(
-                                "connected_accounts",
-                                filters={"id": account["id"]},
-                                updates={
-                                    "access_token": new_access_token,
-                                    "expires_at": (
-                                        datetime.utcnow()
-                                        + timedelta(
-                                            seconds=new_token.get("expires_in", 3600)
-                                        )
-                                    ).isoformat(),
-                                },
-                            )
-                            print(f"Token refreshed and validated for user {user_id}")
-                            return new_access_token
-                        else:
-                            print(f"Refreshed token is also invalid for user {user_id}")
-                    else:
-                        print(f"Token refresh failed for user {user_id}")
-
-                # Mark account as inactive if token issues persist
-                DBHelper.update_one(
-                    "connected_accounts",
-                    filters={"id": account["id"]},
-                    updates={"is_active": Status.REMOVED.value},
-                )
+            if not access_token or not refresh_token:
+                print(f"❌ Missing tokens for user {user_id}")
                 return None
 
-            # Parse expires_at
+            # Parse expiration time
             if isinstance(expires_at, str):
                 try:
-                    expires_at = datetime.fromisoformat(expires_at)
-                except ValueError:
-                    expires_at = None
+                    expires_at = datetime.fromisoformat(
+                        expires_at.replace("Z", "+00:00")
+                    )
+                except ValueError as e:
+                    print(f"⚠️  Invalid expires_at format: {expires_at}")
+                    expires_at = datetime.utcnow() - timedelta(hours=1)  # Force refresh
 
-            # Check if token needs refresh
-            if expires_at and expires_at <= datetime.utcnow():
-                print(f"Token expired for user {user_id}, refreshing...")
+            # Check if token needs refresh (with 5-minute buffer)
+            current_time = datetime.utcnow()
+            if expires_at and expires_at <= (current_time + timedelta(minutes=5)):
+                print(f"🔄 Token expired/expiring for {email}, refreshing...")
+
                 try:
-                    new_token = self.refresh_access_token(refresh_token)
-                    if new_token and new_token.get("access_token"):
-                        new_access_token = new_token["access_token"]
-                        if self.validate_access_token(new_access_token):
-                            # Update DB with new token
-                            DBHelper.update_one(
-                                "connected_accounts",
-                                filters={"id": account["id"]},
-                                updates={
-                                    "access_token": new_access_token,
-                                    "expires_at": (
-                                        datetime.utcnow()
-                                        + timedelta(
-                                            seconds=new_token.get("expires_in", 3600)
-                                        )
-                                    ).isoformat(),
-                                },
-                            )
-                            access_token = new_access_token
-                            print(f"Token refreshed successfully for user {user_id}")
-                        else:
-                            print(f"Refreshed token is invalid for user {user_id}")
-                            DBHelper.update_one(
-                                "connected_accounts",
-                                filters={"id": account["id"]},
-                                updates={"is_active": Status.REMOVED.value},
-                            )
-                            return None
-                    else:
-                        print(
-                            f"Token refresh returned invalid response for user {user_id}"
+                    new_tokens = refresh_microsoft_token(refresh_token)
+                    if new_tokens and new_tokens.get("access_token"):
+                        # Calculate new expiration with buffer
+                        expires_in = new_tokens.get("expires_in", 3600)
+                        new_expires_at = current_time + timedelta(
+                            seconds=expires_in - 300
                         )
-                        # Mark the account inactive
+
+                        # Update database with new tokens
+                        update_data = {
+                            "access_token": new_tokens["access_token"],
+                            "expires_at": new_expires_at.isoformat(),
+                            "updated_at": current_time.isoformat(),
+                        }
+
+                        # Update refresh token if provided
+                        if new_tokens.get("refresh_token"):
+                            update_data["refresh_token"] = new_tokens["refresh_token"]
+
                         DBHelper.update_one(
                             "connected_accounts",
-                            filters={"id": account["id"]},
-                            updates={"is_active": Status.REMOVED.value},
+                            filters={"id": account_id},
+                            updates=update_data,
+                        )
+
+                        access_token = new_tokens["access_token"]
+                        print(f"✅ Token refreshed successfully for {email}")
+                    else:
+                        print(f"❌ Token refresh failed for {email}")
+                        # Mark account as inactive
+                        DBHelper.update_one(
+                            "connected_accounts",
+                            filters={"id": account_id},
+                            updates={
+                                "is_active": Status.REMOVED.value,
+                                "updated_at": current_time.isoformat(),
+                            },
                         )
                         return None
+
                 except Exception as e:
-                    print(f"Token refresh failed for user {user_id}: {e}")
+                    print(f"❌ Token refresh error for {email}: {str(e)}")
+                    # Mark account as inactive on refresh failure
                     DBHelper.update_one(
                         "connected_accounts",
-                        filters={"id": account["id"]},
-                        updates={"is_active": Status.REMOVED.value},
+                        filters={"id": account_id},
+                        updates={
+                            "is_active": Status.REMOVED.value,
+                            "updated_at": current_time.isoformat(),
+                        },
                     )
                     return None
 
-            # Final validation before returning
-            if self.validate_access_token(access_token):
-                return access_token
-            else:
-                print(f"Final token validation failed for user {user_id}")
-                return None
+            return access_token
 
         except Exception as e:
-            print(f"Error getting Outlook credentials for user {user_id}: {str(e)}")
+            print(f"❌ Error getting credentials for user {user_id}: {str(e)}")
+            traceback.print_exc()
             return None
 
-    def get_user_credentials_for_account(self, user_id, email):
-        """Get credentials for a specific account"""
-        try:
-            account = DBHelper.find_one(
-                "connected_accounts",
-                filters={
-                    "user_id": user_id,
-                    "email": email,
-                    # "provider": "outlook",
-                    # "is_active": Status.ACTIVE.value,
-                },
-            )
-
-            if not account:
-                print(f"No active Outlook account found for {email}")
-                return None
-
-            access_token = account.get("access_token")
-            refresh_token = account.get("refresh_token")
-            expires_at = account.get("expires_at")
-
-            # Validate access token format first
-            if not self.validate_access_token(access_token):
-                print(f"Invalid access token format for {email}, attempting refresh")
-                if refresh_token:
-                    new_token = self.refresh_access_token(refresh_token)
-                    if new_token and new_token.get("access_token"):
-                        new_access_token = new_token["access_token"]
-                        if self.validate_access_token(new_access_token):
-                            # Update DB with new token
-                            DBHelper.update_one(
-                                "connected_accounts",
-                                filters={"id": account["id"]},
-                                updates={
-                                    "access_token": new_access_token,
-                                    "expires_at": (
-                                        datetime.utcnow()
-                                        + timedelta(
-                                            seconds=new_token.get("expires_in", 3600)
-                                        )
-                                    ).isoformat(),
-                                },
-                            )
-                            print(f"Token refreshed and validated for {email}")
-                            return new_access_token
-                        else:
-                            print(f"Refreshed token is also invalid for {email}")
-
-                # Mark account as inactive if token issues persist
-                DBHelper.update_one(
-                    "connected_accounts",
-                    filters={"id": account["id"]},
-                    updates={"is_active": Status.REMOVED.value},
-                )
-                return None
-
-            # Parse expires_at
-            if isinstance(expires_at, str):
-                try:
-                    expires_at = datetime.fromisoformat(expires_at)
-                except ValueError:
-                    expires_at = None
-
-            # Check if token needs refresh
-            if expires_at and expires_at <= datetime.utcnow():
-                print(f"Token expired for {email}, refreshing...")
-                try:
-                    new_token = self.refresh_access_token(refresh_token)
-                    if new_token and new_token.get("access_token"):
-                        new_access_token = new_token["access_token"]
-                        if self.validate_access_token(new_access_token):
-                            # Update DB with new token
-                            DBHelper.update_one(
-                                "connected_accounts",
-                                filters={"id": account["id"]},
-                                updates={
-                                    "access_token": new_access_token,
-                                    "expires_at": (
-                                        datetime.utcnow()
-                                        + timedelta(
-                                            seconds=new_token.get("expires_in", 3600)
-                                        )
-                                    ).isoformat(),
-                                },
-                            )
-                            access_token = new_access_token
-                            print(f"Token refreshed successfully for {email}")
-                        else:
-                            print(f"Refreshed token is invalid for {email}")
-                            DBHelper.update_one(
-                                "connected_accounts",
-                                filters={"id": account["id"]},
-                                updates={"is_active": Status.REMOVED.value},
-                            )
-                            return None
-                    else:
-                        print(f"Token refresh returned invalid response for {email}")
-                        # Mark the account inactive
-                        DBHelper.update_one(
-                            "connected_accounts",
-                            filters={"id": account["id"]},
-                            updates={"is_active": Status.REMOVED.value},
-                        )
-                        return None
-                except Exception as e:
-                    print(f"Token refresh failed for {email}: {e}")
-                    DBHelper.update_one(
-                        "connected_accounts",
-                        filters={"id": account["id"]},
-                        updates={"is_active": Status.REMOVED.value},
-                    )
-                    return None
-
-            # Final validation before returning
-            if self.validate_access_token(access_token):
-                return access_token
-            else:
-                print(f"Final token validation failed for {email}")
-                return None
-
-        except Exception as e:
-            print(f"Error getting Outlook credentials for {email}: {str(e)}")
+    def get_graph_headers(self, user_id):
+        """Get Microsoft Graph API headers with valid token"""
+        access_token = self.get_user_credentials(user_id)
+        if not access_token:
+            print(f"❌ No valid access token for user {user_id}")
             return None
 
-    def refresh_access_token(self, refresh_token):
-        """Refresh Outlook access token"""
-        try:
-            if not refresh_token:
-                print("No refresh token provided")
-                return None
-
-            token_url = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
-
-            data = {
-                "client_id": MS_CLIENT_ID,
-                "client_secret": MS_CLIENT_SECRET,
-                "refresh_token": refresh_token,
-                "grant_type": "refresh_token",
-                "scope": "https://graph.microsoft.com/Files.ReadWrite https://graph.microsoft.com/User.Read offline_access",
-            }
-
-            print("Attempting to refresh token...")
-            response = requests.post(token_url, data=data)
-
-            if response.status_code == 200:
-                token_data = response.json()
-                if token_data.get("access_token"):
-                    print("Token refresh successful")
-                    return token_data
-                else:
-                    print("Token refresh response missing access_token")
-                    return None
-            else:
-                print(
-                    f"Token refresh failed with status {response.status_code}: {response.text}"
-                )
-                return None
-
-        except Exception as e:
-            print(f"Error refreshing token: {str(e)}")
-            return None
+        return {
+            "Authorization": f"Bearer {access_token}",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        }
 
     def make_graph_request(
-        self, access_token, endpoint, method="GET", data=None, files=None, stream=False
+        self, user_id, method, endpoint, data=None, files=None, max_retries=3
     ):
-        """Make authenticated request to Microsoft Graph API"""
-        try:
-            # Validate token before making request
-            if not self.validate_access_token(access_token):
-                print(f"Invalid access token format, cannot make request to {endpoint}")
-                return None
+        """Make a request to Microsoft Graph API with retry logic and better error handling"""
 
-            headers = {
-                "Authorization": f"Bearer {access_token}",
-                "Content-Type": "application/json" if not files else None,
-            }
+        for attempt in range(max_retries):
+            try:
+                headers = self.get_graph_headers(user_id)
+                if not headers:
+                    print(f"❌ Cannot get headers for user {user_id}")
+                    return None
 
-            if files:
-                del headers["Content-Type"]
+                url = f"{GRAPH_API_BASE}{endpoint}"
 
-            url = f"https://graph.microsoft.com/v1.0{endpoint}"
-
-            print(f"Making {method} request to: {url}")
-
-            if method == "GET":
-                response = requests.get(url, headers=headers, stream=stream)
-            elif method == "POST":
+                # Remove Content-Type for file uploads
                 if files:
-                    response = requests.post(url, headers=headers, files=files)
+                    headers.pop("Content-Type", None)
+
+                print(
+                    f"🌐 Making {method} request to: {endpoint} (attempt {attempt + 1})"
+                )
+
+                # Make the request based on method
+                if method.upper() == "GET":
+                    response = requests.get(url, headers=headers, timeout=45)
+                elif method.upper() == "POST":
+                    if files:
+                        response = requests.post(
+                            url, headers=headers, files=files, timeout=90
+                        )
+                    else:
+                        response = requests.post(
+                            url, headers=headers, json=data, timeout=45
+                        )
+                elif method.upper() == "PUT":
+                    if files:
+                        response = requests.put(
+                            url, headers=headers, data=data, timeout=90
+                        )
+                    else:
+                        response = requests.put(
+                            url, headers=headers, json=data, timeout=45
+                        )
+                elif method.upper() == "DELETE":
+                    response = requests.delete(url, headers=headers, timeout=45)
+                elif method.upper() == "PATCH":
+                    response = requests.patch(
+                        url, headers=headers, json=data, timeout=45
+                    )
                 else:
-                    response = requests.post(url, headers=headers, json=data)
-            elif method == "PUT":
-                if data and isinstance(data, bytes):
-                    headers["Content-Type"] = "application/octet-stream"
-                    response = requests.put(url, headers=headers, data=data)
+                    print(f"❌ Unsupported HTTP method: {method}")
+                    return None
+
+                print(f"📊 Response status: {response.status_code}")
+
+                # Log response content for debugging 400 errors
+                if response.status_code == 400:
+                    try:
+                        error_content = response.json()
+                        print(
+                            f"🔍 400 Error details: {json.dumps(error_content, indent=2)}"
+                        )
+                    except:
+                        print(f"🔍 400 Error text: {response.text[:500]}")
+
+                # Handle successful responses
+                if response.status_code in [200, 201, 202, 204]:
+                    return response
+
+                # Handle authentication errors
+                elif response.status_code == 401:
+                    print(f"⚠️  Authentication error (401) - attempt {attempt + 1}")
+                    if attempt < max_retries - 1:
+                        # Try to refresh token and retry
+                        print("🔄 Attempting to refresh token...")
+                        self.get_user_credentials(
+                            user_id
+                        )  # This will refresh if needed
+                        time.sleep(1)
+                        continue
+                    else:
+                        print("❌ Authentication failed after retries")
+                        return response
+
+                # Handle rate limiting
+                elif response.status_code == 429:
+                    retry_after = int(response.headers.get("Retry-After", 5))
+                    print(f"⚠️  Rate limited. Waiting {retry_after} seconds...")
+                    if attempt < max_retries - 1:
+                        time.sleep(retry_after)
+                        continue
+                    else:
+                        return response
+
+                # Handle server errors with retry
+                elif response.status_code >= 500:
+                    print(
+                        f"⚠️  Server error ({response.status_code}) - attempt {attempt + 1}"
+                    )
+                    if attempt < max_retries - 1:
+                        time.sleep(2**attempt)  # Exponential backoff
+                        continue
+                    else:
+                        return response
+
+                # Handle other client errors (don't retry)
                 else:
-                    response = requests.put(url, headers=headers, json=data)
-            elif method == "DELETE":
-                response = requests.delete(url, headers=headers)
-            elif method == "PATCH":
-                response = requests.patch(url, headers=headers, json=data)
-            else:
-                print(f"Unsupported HTTP method: {method}")
-                return None
+                    print(f"❌ Client error: {response.status_code}")
+                    print(f"❌ Response: {response.text}")
+                    return response
 
-            if response.status_code in [200, 201, 204]:
-                print(f"Request successful: {response.status_code}")
-                return response.json() if response.content and not stream else response
-            else:
-                print(f"Graph API error: {response.status_code} - {response.text}")
-                return None
+            except requests.exceptions.Timeout:
+                print(f"⚠️  Request timeout - attempt {attempt + 1}")
+                if attempt < max_retries - 1:
+                    time.sleep(2)
+                    continue
+                else:
+                    print("❌ Request timed out after all retries")
+                    return None
 
-        except Exception as e:
-            print(f"Error making Graph request to {endpoint}: {str(e)}")
-            return None
+            except requests.exceptions.ConnectionError:
+                print(f"⚠️  Connection error - attempt {attempt + 1}")
+                if attempt < max_retries - 1:
+                    time.sleep(2)
+                    continue
+                else:
+                    print("❌ Connection failed after all retries")
+                    return None
 
-    def format_bytes(self, bytes_value):
-        """Format bytes to human readable format"""
-        if bytes_value == 0:
-            return "0 B"
+            except Exception as e:
+                print(f"❌ Unexpected error in Graph API request: {str(e)}")
+                if attempt < max_retries - 1:
+                    time.sleep(1)
+                    continue
+                else:
+                    traceback.print_exc()
+                    return None
 
-        sizes = ["B", "KB", "MB", "GB", "TB"]
-        i = 0
-        while bytes_value >= 1024 and i < len(sizes) - 1:
-            bytes_value /= 1024
-            i += 1
-
-        return f"{bytes_value:.1f} {sizes[i]}"
+        print("❌ All retry attempts exhausted")
+        return None
 
 
 class ListOutlookFiles(OutlookBaseResource):
@@ -405,31 +287,33 @@ class ListOutlookFiles(OutlookBaseResource):
             folder_id = data.get("folderId", "root")
             sort_by = data.get("sortBy", "lastModifiedDateTime")
             sort_order = data.get("sortOrder", "desc")
-            page_size = data.get("pageSize", 100)
+            page_size = min(data.get("pageSize", 100), 200)  # Limit page size
 
-            print(f"Listing Outlook files for user {uid}, folder: {folder_id}")
+            print(f"📂 Listing files for user {uid}, folder: {folder_id}")
 
-            # Get all Outlook accounts for the user
+            # Get all active Outlook accounts for the user
             all_accounts = DBHelper.find(
                 "connected_accounts",
                 filters={
                     "user_id": uid,
-                    # "provider": "outlook",
-                    # "is_active": Status.ACTIVE.value,
+                    "provider": "outlook",
+                    "is_active": Status.ACTIVE.value,
                 },
                 select_fields=[
+                    "id",
                     "access_token",
                     "refresh_token",
                     "email",
                     "provider",
                     "user_object",
+                    "expires_at",
                 ],
             )
 
             if not all_accounts:
                 return {
                     "status": 0,
-                    "message": "No Outlook accounts connected.",
+                    "message": "No active Outlook accounts connected.",
                     "payload": {
                         "files": [],
                         "folders": [],
@@ -438,21 +322,19 @@ class ListOutlookFiles(OutlookBaseResource):
                     },
                 }
 
-            print(f"Found {len(all_accounts)} Outlook accounts")
-
             merged_files = []
             merged_folders = []
             connected_accounts = []
             errors = []
 
+            # Track processed files to avoid duplicates
             processed_file_ids = set()
             processed_folder_ids = set()
 
             for account in all_accounts:
+                account_id = account.get("id")
                 email = account.get("email")
                 user_object = account.get("user_object")
-
-                print(f"Processing account: {email}")
 
                 try:
                     user_object_data = json.loads(user_object) if user_object else {}
@@ -460,36 +342,130 @@ class ListOutlookFiles(OutlookBaseResource):
                     user_object_data = {}
 
                 try:
-                    access_token = self.get_user_credentials_for_account(uid, email)
-                    if not access_token:
-                        error_msg = "Failed to get valid access token - may be expired or malformed"
-                        print(f"[{email}] {error_msg}")
+                    print(f"📁 Fetching files for account: {email}")
+
+                    # Build endpoint with proper parameters - handle personal vs business accounts
+                    try:
+                        # First try to get drive info to determine account type
+                        drive_response = self.make_graph_request(
+                            uid, "GET", "/me/drive"
+                        )
+                        if not drive_response or drive_response.status_code != 200:
+                            # Try alternative endpoint for personal accounts
+                            if folder_id == "root":
+                                endpoint = "/me/drive/root/children"
+                            else:
+                                endpoint = f"/me/drive/items/{folder_id}/children"
+                        else:
+                            drive_info = drive_response.json()
+                            drive_type = drive_info.get("driveType", "personal")
+
+                            if drive_type == "personal":
+                                # For personal OneDrive accounts
+                                if folder_id == "root":
+                                    endpoint = "/me/drive/root/children"
+                                else:
+                                    endpoint = f"/me/drive/items/{folder_id}/children"
+                            else:
+                                # For business OneDrive accounts
+                                if folder_id == "root":
+                                    endpoint = "/me/drive/root/children"
+                                else:
+                                    endpoint = f"/me/drive/items/{folder_id}/children"
+                    except Exception as drive_error:
+                        print(f"⚠️  Drive detection failed: {str(drive_error)}")
+                        # Fallback to standard endpoint
+                        if folder_id == "root":
+                            endpoint = "/me/drive/root/children"
+                        else:
+                            endpoint = f"/me/drive/items/{folder_id}/children"
+
+                    # Build query parameters
+                    params = {
+                        "$top": str(page_size),
+                        "$orderby": f"{sort_by} {'desc' if sort_order == 'desc' else 'asc'}",
+                        "$select": "id,name,size,lastModifiedDateTime,createdDateTime,webUrl,folder,file,shared,createdBy,lastModifiedBy,parentReference",
+                    }
+
+                    query_string = "&".join([f"{k}={v}" for k, v in params.items()])
+                    endpoint_with_params = f"{endpoint}?{query_string}"
+
+                    # Make request to Graph API with retry for different endpoints
+                    response = None
+                    endpoints_to_try = [
+                        endpoint_with_params,
+                        (
+                            f"/me/drive/root/children?{query_string}"
+                            if folder_id == "root"
+                            else f"/me/drive/items/{folder_id}/children?{query_string}"
+                        ),
+                    ]
+
+                    for attempt_endpoint in endpoints_to_try:
+                        print(f"🔄 Trying endpoint: {attempt_endpoint}")
+                        response = self.make_graph_request(uid, "GET", attempt_endpoint)
+
+                        if response and response.status_code == 200:
+                            print(f"✅ Success with endpoint: {attempt_endpoint}")
+                            break
+                        elif response and response.status_code == 400:
+                            error_data = {}
+                            try:
+                                error_data = response.json()
+                            except:
+                                pass
+
+                            error_code = error_data.get("error", {}).get("code", "")
+                            if error_code == "notSupported":
+                                print(
+                                    f"⚠️  Endpoint not supported, trying next: {attempt_endpoint}"
+                                )
+                                continue
+                            else:
+                                print(f"❌ Different error: {error_code}")
+                                break
+                        else:
+                            print(
+                                f"⚠️  Failed with status {response.status_code if response else 'No response'}"
+                            )
+                            continue
+
+                    if not response:
+                        error_msg = "No response from Microsoft Graph API"
+                        print(f"❌ {error_msg} for {email}")
                         errors.append({"email": email, "error": error_msg})
                         continue
 
-                    # Build endpoint for folder contents
-                    if folder_id == "root":
-                        endpoint = "/me/drive/root/children"
-                    else:
-                        endpoint = f"/me/drive/items/{folder_id}/children"
+                    if response.status_code != 200:
+                        error_msg = f"API error: {response.status_code}"
+                        if response.content:
+                            try:
+                                error_data = response.json()
+                                error_msg += f" - {error_data.get('error', {}).get('message', response.text)}"
+                            except:
+                                error_msg += f" - {response.text[:200]}"
 
-                    # Add query parameters
-                    endpoint += f"?$top={page_size}&$orderby={sort_by} {sort_order}"
-
-                    print(f"[{email}] Making request to: {endpoint}")
-
-                    # Get files from OneDrive
-                    result = self.make_graph_request(access_token, endpoint)
-
-                    if not result:
-                        error_msg = "Failed to access OneDrive - API request failed"
-                        print(f"[{email}] {error_msg}")
+                        print(f"❌ {error_msg} for {email}")
                         errors.append({"email": email, "error": error_msg})
+
+                        # Mark account as inactive if it's an auth error
+                        if response.status_code == 401:
+                            DBHelper.update_one(
+                                "connected_accounts",
+                                filters={"id": account_id},
+                                updates={
+                                    "is_active": Status.REMOVED.value,
+                                    "updated_at": datetime.utcnow().isoformat(),
+                                },
+                            )
                         continue
 
+                    result = response.json()
                     items = result.get("value", [])
-                    print(f"[{email}] Retrieved {len(items)} items")
 
+                    print(f"✅ Retrieved {len(items)} items for {email}")
+
+                    # Process files and folders
                     account_files = []
                     account_folders = []
 
@@ -515,7 +491,7 @@ class ListOutlookFiles(OutlookBaseResource):
                             "parents": [folder_id] if folder_id != "root" else [],
                             "source_email": email,
                             "account_name": user_object_data.get(
-                                "displayName", email.split("@")[0]
+                                "name", email.split("@")[0]
                             ),
                         }
 
@@ -525,13 +501,10 @@ class ListOutlookFiles(OutlookBaseResource):
                                     **base_info,
                                     "owners": [
                                         {
-                                            "displayName": user_object_data.get(
-                                                "displayName", email.split("@")[0]
-                                            ),
+                                            "displayName": item.get("createdBy", {})
+                                            .get("user", {})
+                                            .get("displayName", "Unknown"),
                                             "emailAddress": email,
-                                            "photoLink": user_object_data.get(
-                                                "picture", ""
-                                            ),
                                         }
                                     ],
                                 }
@@ -545,29 +518,21 @@ class ListOutlookFiles(OutlookBaseResource):
                                     ),
                                     "size": item.get("size", 0),
                                     "createdTime": item.get("createdDateTime"),
-                                    "thumbnailLink": (
-                                        item.get("thumbnails", [{}])[0]
-                                        .get("medium", {})
-                                        .get("url")
-                                        if item.get("thumbnails")
-                                        else None
-                                    ),
+                                    "thumbnailLink": None,
                                     "webViewLink": item.get("webUrl"),
                                     "webContentLink": item.get(
                                         "@microsoft.graph.downloadUrl"
-                                    ),
+                                    )
+                                    or item.get("@content.downloadUrl"),
                                     "owners": [
                                         {
-                                            "displayName": user_object_data.get(
-                                                "displayName", email.split("@")[0]
-                                            ),
+                                            "displayName": item.get("createdBy", {})
+                                            .get("user", {})
+                                            .get("displayName", "Unknown"),
                                             "emailAddress": email,
-                                            "photoLink": user_object_data.get(
-                                                "picture", ""
-                                            ),
                                         }
                                     ],
-                                    "starred": False,  # OneDrive doesn't have starring
+                                    "starred": False,
                                     "trashed": False,
                                 }
                             )
@@ -575,15 +540,16 @@ class ListOutlookFiles(OutlookBaseResource):
                     merged_files.extend(account_files)
                     merged_folders.extend(account_folders)
 
+                    # Add to connected accounts
                     connected_accounts.append(
                         {
                             "email": email,
                             "provider": "outlook",
                             "userName": user_object_data.get(
-                                "displayName", email.split("@")[0]
+                                "name", email.split("@")[0]
                             ),
                             "displayName": user_object_data.get(
-                                "displayName", email.split("@")[0]
+                                "name", email.split("@")[0]
                             ),
                             "picture": user_object_data.get("picture", ""),
                             "files_count": len(account_files),
@@ -592,54 +558,39 @@ class ListOutlookFiles(OutlookBaseResource):
                     )
 
                     print(
-                        f"[OUTLOOK] {email}: {len(account_files)} files, {len(account_folders)} folders fetched successfully"
+                        f"✅ {email}: {len(account_files)} files, {len(account_folders)} folders processed"
                     )
 
                 except Exception as e:
                     error_msg = str(e)
-                    print(f"Error fetching Outlook files for {email}: {error_msg}")
+                    print(f"❌ Error processing account {email}: {error_msg}")
+                    traceback.print_exc()
                     errors.append({"email": email, "error": error_msg})
 
-                    # Mark token as inactive if it's an auth error
-                    if any(
-                        keyword in error_msg.lower()
-                        for keyword in [
-                            "invalid_grant",
-                            "401",
-                            "invalid_token",
-                            "expired",
-                            "invalidauthenticationtoken",
-                        ]
-                    ):
-                        print(f"Marking account {email} as inactive due to auth error")
-                        DBHelper.update_one(
-                            table_name="connected_accounts",
-                            filters={
-                                "user_id": uid,
-                                "email": email,
-                                "provider": "outlook",
-                            },
-                            updates={"is_active": Status.REMOVED.value},
-                        )
-
             # Sort merged results
-            merged_files.sort(
-                key=lambda f: f.get("modifiedTime", ""), reverse=(sort_order == "desc")
-            )
-            merged_folders.sort(
-                key=lambda f: f.get("modifiedTime", ""), reverse=(sort_order == "desc")
-            )
+            try:
+                merged_files.sort(
+                    key=lambda f: f.get("modifiedTime", "1900-01-01T00:00:00Z"),
+                    reverse=(sort_order == "desc"),
+                )
+                merged_folders.sort(
+                    key=lambda f: f.get("modifiedTime", "1900-01-01T00:00:00Z"),
+                    reverse=(sort_order == "desc"),
+                )
+            except Exception as e:
+                print(f"⚠️  Error sorting results: {str(e)}")
 
+            total_items = len(merged_files) + len(merged_folders)
             print(
-                f"Final results: {len(merged_files)} files, {len(merged_folders)} folders, {len(errors)} errors"
+                f"✅ Final result: {len(merged_files)} files, {len(merged_folders)} folders from {len(connected_accounts)} accounts"
             )
 
             return {
                 "status": 1,
                 "message": (
-                    f"Retrieved {len(merged_files)} files and {len(merged_folders)} folders from OneDrive."
-                    if (merged_files or merged_folders)
-                    else "No files found."
+                    f"Retrieved {total_items} items from {len(connected_accounts)} Outlook accounts."
+                    if total_items > 0
+                    else "No files found in connected Outlook accounts."
                 ),
                 "payload": {
                     "files": merged_files,
@@ -651,6 +602,7 @@ class ListOutlookFiles(OutlookBaseResource):
             }
 
         except Exception as e:
+            print(f"❌ Failed to fetch Outlook files: {str(e)}")
             traceback.print_exc()
             return {
                 "status": 0,
@@ -664,7 +616,7 @@ class ListOutlookFiles(OutlookBaseResource):
             }
 
 
-# Keep all other classes the same, just inherit from the fixed OutlookBaseResource
+# Continue with other classes following the same improved pattern...
 class UploadOutlookFile(OutlookBaseResource):
     @auth_required(isOptional=True)
     def post(self, uid, user):
@@ -678,42 +630,84 @@ class UploadOutlookFile(OutlookBaseResource):
             if file.filename == "":
                 return {"status": 0, "message": "No file selected", "payload": {}}
 
-            # Build upload endpoint
+            # Secure filename
             filename = secure_filename(file.filename)
+            if not filename:
+                filename = "uploaded_file"
+
+            print(f"📤 Uploading file: {filename} to folder: {parent_id}")
+
+            # Build upload endpoint - try multiple approaches
+            endpoints_to_try = []
+
             if parent_id == "root":
-                endpoint = f"/me/drive/root:/{filename}:/content"
+                endpoints_to_try = [
+                    f"/me/drive/root:/{filename}:/content",
+                    f"/me/drive/root/children/{filename}/content",
+                ]
             else:
-                endpoint = f"/me/drive/items/{parent_id}:/{filename}:/content"
+                endpoints_to_try = [
+                    f"/me/drive/items/{parent_id}:/{filename}:/content",
+                    f"/me/drive/items/{parent_id}/children/{filename}/content",
+                ]
 
-            # Upload file
-            access_token = self.get_user_credentials(uid)
-            if not access_token:
-                return {
-                    "status": 0,
-                    "message": "Outlook not connected or token expired",
-                    "payload": {},
-                }
+            # Read file data
+            file_data = file.read()
+            if not file_data:
+                return {"status": 0, "message": "File is empty", "payload": {}}
 
-            file_content = file.read()
-            response = self.make_graph_request(
-                access_token, endpoint, method="PUT", data=file_content
-            )
+            # Try uploading with different endpoints
+            response = None
+            for endpoint in endpoints_to_try:
+                print(f"🔄 Trying upload endpoint: {endpoint}")
+                response = self.make_graph_request(uid, "PUT", endpoint, data=file_data)
 
-            if response and hasattr(response, "json"):
-                uploaded_file = response.json()
-                return {
-                    "status": 1,
-                    "message": f"File '{file.filename}' uploaded successfully",
-                    "payload": {"file": uploaded_file},
-                }
-            else:
-                return {
-                    "status": 0,
-                    "message": f"Failed to upload file",
-                    "payload": {},
-                }
+                if response and response.status_code in [200, 201]:
+                    print(f"✅ Upload successful with endpoint: {endpoint}")
+                    break
+                elif response and response.status_code == 400:
+                    try:
+                        error_data = response.json()
+                        error_code = error_data.get("error", {}).get("code", "")
+                        if error_code == "notSupported":
+                            print(
+                                f"⚠️  Upload endpoint not supported, trying next: {endpoint}"
+                            )
+                            continue
+                    except:
+                        pass
+                    break
+                else:
+                    print(
+                        f"⚠️  Upload failed with status {response.status_code if response else 'No response'}"
+                    )
+                    continue
+
+            if not response or response.status_code not in [200, 201]:
+                error_msg = "Upload failed"
+                if response:
+                    error_msg += f" - Status: {response.status_code}"
+                    if response.content:
+                        try:
+                            error_data = response.json()
+                            error_msg += f" - {error_data.get('error', {}).get('message', response.text[:200])}"
+                        except:
+                            error_msg += f" - {response.text[:200]}"
+
+                print(f"❌ {error_msg}")
+                return {"status": 0, "message": error_msg, "payload": {}}
+
+            uploaded_file = response.json()
+            print(f"✅ File uploaded successfully: {filename}")
+
+            return {
+                "status": 1,
+                "message": f"File '{filename}' uploaded successfully",
+                "payload": {"file": uploaded_file},
+            }
 
         except Exception as e:
+            print(f"❌ Upload error: {str(e)}")
             traceback.print_exc()
             return {
                 "status": 0,
@@ -732,50 +726,39 @@ class DownloadOutlookFile(OutlookBaseResource):
             if not file_id:
                 return {"status": 0, "message": "File ID required", "payload": {}}
 
-            access_token = self.get_user_credentials(uid)
-            if not access_token:
-                return {
-                    "status": 0,
-                    "message": "Outlook not connected or token expired",
-                    "payload": {},
-                }
-
             # Get file metadata first
-            file_info = self.make_graph_request(
-                access_token, f"/me/drive/items/{file_id}"
+            metadata_response = self.make_graph_request(
+                uid, "GET", f"/me/drive/items/{file_id}"
             )
-            if not file_info:
+            if not metadata_response or metadata_response.status_code != 200:
                 return {
                     "status": 0,
-                    "message": "File not found",
+                    "message": "Failed to get file metadata",
                     "payload": {},
                 }
 
-            # Get download URL
-            download_url = file_info.get("@microsoft.graph.downloadUrl")
-            if not download_url:
-                return {
-                    "status": 0,
-                    "message": "File cannot be downloaded",
-                    "payload": {},
-                }
+            file_metadata = metadata_response.json()
 
             # Download file content
-            response = requests.get(download_url)
-            if response.status_code == 200:
-                file_buffer = io.BytesIO(response.content)
-                return send_file(
-                    file_buffer,
-                    as_attachment=True,
-                    download_name=file_info["name"],
-                    mimetype="application/octet-stream",
-                )
-            else:
+            download_response = self.make_graph_request(
+                uid, "GET", f"/me/drive/items/{file_id}/content"
+            )
+            if not download_response or download_response.status_code != 200:
                 return {
                     "status": 0,
-                    "message": "Failed to download file content",
+                    "message": "Failed to download file",
                     "payload": {},
                 }
+
+            file_buffer = io.BytesIO(download_response.content)
+            file_buffer.seek(0)
+
+            return send_file(
+                file_buffer,
+                as_attachment=True,
+                download_name=file_metadata["name"],
+                mimetype="application/octet-stream",
+            )
 
         except Exception as e:
             traceback.print_exc()
@@ -796,39 +779,33 @@ class DeleteOutlookFile(OutlookBaseResource):
             if not file_id:
                 return {"status": 0, "message": "File ID required", "payload": {}}
 
-            access_token = self.get_user_credentials(uid)
-            if not access_token:
-                return {
-                    "status": 0,
-                    "message": "Outlook not connected or token expired",
-                    "payload": {},
-                }
-
             # Get file name before deletion
-            file_info = self.make_graph_request(
-                access_token, f"/me/drive/items/{file_id}"
+            metadata_response = self.make_graph_request(
+                uid, "GET", f"/me/drive/items/{file_id}"
             )
-            file_name = (
-                file_info.get("name", "Unknown file") if file_info else "Unknown file"
-            )
+            if metadata_response and metadata_response.status_code == 200:
+                file_metadata = metadata_response.json()
+                file_name = file_metadata.get("name", "Unknown file")
+            else:
+                file_name = "Unknown file"
 
             # Delete file
-            result = self.make_graph_request(
-                access_token, f"/me/drive/items/{file_id}", method="DELETE"
+            response = self.make_graph_request(
+                uid, "DELETE", f"/me/drive/items/{file_id}"
             )
 
-            if result is not None:  # DELETE returns empty response on success
-                return {
-                    "status": 1,
-                    "message": f"File '{file_name}' deleted successfully",
-                    "payload": {},
-                }
-            else:
+            if not response or response.status_code not in [200, 204]:
                 return {
                     "status": 0,
-                    "message": f"Failed to delete file '{file_name}'",
+                    "message": f"Failed to delete file: {response.text if response else 'No response'}",
                     "payload": {},
                 }
+
+            return {
+                "status": 1,
+                "message": f"File '{file_name}' deleted successfully",
+                "payload": {},
+            }
 
         except Exception as e:
             traceback.print_exc()
@@ -850,43 +827,35 @@ class CreateOutlookFolder(OutlookBaseResource):
             if not folder_name:
                 return {"status": 0, "message": "Folder name required", "payload": {}}
 
-            access_token = self.get_user_credentials(uid)
-            if not access_token:
-                return {
-                    "status": 0,
-                    "message": "Outlook not connected or token expired",
-                    "payload": {},
-                }
-
             # Build endpoint
             if parent_id == "root":
                 endpoint = "/me/drive/root/children"
             else:
                 endpoint = f"/me/drive/items/{parent_id}/children"
 
-            # Create folder
             folder_data = {
                 "name": folder_name,
                 "folder": {},
                 "@microsoft.graph.conflictBehavior": "rename",
             }
 
-            result = self.make_graph_request(
-                access_token, endpoint, method="POST", data=folder_data
-            )
+            # Create folder
+            response = self.make_graph_request(uid, "POST", endpoint, data=folder_data)
 
-            if result:
-                return {
-                    "status": 1,
-                    "message": f"Folder '{folder_name}' created successfully",
-                    "payload": {"folder": result},
-                }
-            else:
+            if not response or response.status_code not in [200, 201]:
                 return {
                     "status": 0,
-                    "message": f"Failed to create folder '{folder_name}'",
+                    "message": f"Failed to create folder: {response.text if response else 'No response'}",
                     "payload": {},
                 }
+
+            folder = response.json()
+
+            return {
+                "status": 1,
+                "message": f"Folder '{folder_name}' created successfully",
+                "payload": {"folder": folder},
+            }
 
         except Exception as e:
             traceback.print_exc()
@@ -913,54 +882,41 @@ class ShareOutlookFile(OutlookBaseResource):
                     "payload": {},
                 }
 
-            access_token = self.get_user_credentials(uid)
-            if not access_token:
-                return {
-                    "status": 0,
-                    "message": "Outlook not connected or token expired",
-                    "payload": {},
-                }
-
-            # Get file name for response
-            file_info = self.make_graph_request(
-                access_token, f"/me/drive/items/{file_id}"
+            # Get file name
+            metadata_response = self.make_graph_request(
+                uid, "GET", f"/me/drive/items/{file_id}"
             )
-            file_name = (
-                file_info.get("name", "Unknown file") if file_info else "Unknown file"
-            )
+            if metadata_response and metadata_response.status_code == 200:
+                file_metadata = metadata_response.json()
+                file_name = file_metadata.get("name", "Unknown file")
+            else:
+                file_name = "Unknown file"
 
             # Create sharing invitation
             share_data = {
                 "recipients": [{"email": email}],
-                "message": f"I've shared '{file_name}' with you.",
+                "message": f"File '{file_name}' has been shared with you.",
                 "requireSignIn": True,
                 "sendInvitation": True,
                 "roles": [role],
             }
 
-            result = self.make_graph_request(
-                access_token,
-                f"/me/drive/items/{file_id}/invite",
-                method="POST",
-                data=share_data,
+            response = self.make_graph_request(
+                uid, "POST", f"/me/drive/items/{file_id}/invite", data=share_data
             )
 
-            if result:
-                return {
-                    "status": 1,
-                    "message": f"File '{file_name}' shared successfully with {email}",
-                    "payload": {
-                        "shared_with": email,
-                        "role": role,
-                        "file_name": file_name,
-                    },
-                }
-            else:
+            if not response or response.status_code not in [200, 201]:
                 return {
                     "status": 0,
-                    "message": f"Failed to share file '{file_name}'",
+                    "message": f"Failed to share file: {response.text if response else 'No response'}",
                     "payload": {},
                 }
+
+            return {
+                "status": 1,
+                "message": f"File '{file_name}' shared successfully with {email}",
+                "payload": {"shared_with": email, "role": role, "file_name": file_name},
+            }
 
         except Exception as e:
             traceback.print_exc()
@@ -971,569 +927,32 @@ class ShareOutlookFile(OutlookBaseResource):
             }
 
 
-class BulkDownloadOutlookFiles(OutlookBaseResource):
+class GetOutlookFileInfo(OutlookBaseResource):
     @auth_required(isOptional=True)
-    def post(self, uid, user):
+    def get(self, uid, user, file_id):
         try:
-            data = request.get_json() or {}
-            file_ids = data.get("fileIds", [])
+            response = self.make_graph_request(uid, "GET", f"/me/drive/items/{file_id}")
 
-            if not file_ids:
-                return {"status": 0, "message": "File IDs required", "payload": {}}
-
-            access_token = self.get_user_credentials(uid)
-            if not access_token:
+            if not response or response.status_code != 200:
                 return {
                     "status": 0,
-                    "message": "Outlook not connected or token expired",
+                    "message": f"Failed to get file info: {response.text if response else 'No response'}",
                     "payload": {},
                 }
 
-            # Create a zip file in memory
-            zip_buffer = io.BytesIO()
-
-            with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-                for file_id in file_ids:
-                    try:
-                        # Get file metadata
-                        file_info = self.make_graph_request(
-                            access_token, f"/me/drive/items/{file_id}"
-                        )
-                        if not file_info:
-                            continue
-
-                        file_name = file_info["name"]
-                        download_url = file_info.get("@microsoft.graph.downloadUrl")
-
-                        if not download_url:
-                            continue
-
-                        # Download file content
-                        response = requests.get(download_url)
-                        if response.status_code == 200:
-                            zip_file.writestr(file_name, response.content)
-
-                    except Exception as e:
-                        print(f"Error downloading file {file_id}: {str(e)}")
-                        continue
-
-            zip_buffer.seek(0)
-
-            return send_file(
-                zip_buffer,
-                as_attachment=True,
-                download_name="bulk_download.zip",
-                mimetype="application/zip",
-            )
-
-        except Exception as e:
-            traceback.print_exc()
-            return {
-                "status": 0,
-                "message": f"Failed to bulk download files: {str(e)}",
-                "payload": {},
-            }
-
-
-class BulkDeleteOutlookFiles(OutlookBaseResource):
-    @auth_required(isOptional=True)
-    def post(self, uid, user):
-        try:
-            data = request.get_json() or {}
-            file_ids = data.get("fileIds", [])
-
-            if not file_ids:
-                return {"status": 0, "message": "File IDs required", "payload": {}}
-
-            access_token = self.get_user_credentials(uid)
-            if not access_token:
-                return {
-                    "status": 0,
-                    "message": "Outlook not connected or token expired",
-                    "payload": {},
-                }
-
-            deleted_files = []
-            errors = []
-
-            for file_id in file_ids:
-                try:
-                    # Get file name before deletion
-                    file_info = self.make_graph_request(
-                        access_token, f"/me/drive/items/{file_id}"
-                    )
-                    file_name = (
-                        file_info.get("name", "Unknown file")
-                        if file_info
-                        else "Unknown file"
-                    )
-
-                    # Delete file
-                    result = self.make_graph_request(
-                        access_token, f"/me/drive/items/{file_id}", method="DELETE"
-                    )
-
-                    if result is not None:
-                        deleted_files.append({"id": file_id, "name": file_name})
-                    else:
-                        errors.append({"id": file_id, "error": "Failed to delete"})
-
-                except Exception as e:
-                    errors.append({"id": file_id, "error": str(e)})
+            file_info = response.json()
 
             return {
                 "status": 1,
-                "message": f"Bulk delete completed. {len(deleted_files)} files deleted, {len(errors)} errors",
-                "payload": {
-                    "deleted_files": deleted_files,
-                    "errors": errors,
-                    "success_count": len(deleted_files),
-                    "error_count": len(errors),
-                },
+                "message": "File information retrieved successfully",
+                "payload": {"file": file_info},
             }
 
         except Exception as e:
             traceback.print_exc()
             return {
                 "status": 0,
-                "message": f"Failed to bulk delete files: {str(e)}",
-                "payload": {},
-            }
-
-
-class BulkMoveOutlookFiles(OutlookBaseResource):
-    @auth_required(isOptional=True)
-    def post(self, uid, user):
-        try:
-            data = request.get_json() or {}
-            file_ids = data.get("fileIds", [])
-            target_folder_id = data.get("targetFolderId")
-
-            if not file_ids or not target_folder_id:
-                return {
-                    "status": 0,
-                    "message": "File IDs and target folder ID required",
-                    "payload": {},
-                }
-
-            access_token = self.get_user_credentials(uid)
-            if not access_token:
-                return {
-                    "status": 0,
-                    "message": "Outlook not connected or token expired",
-                    "payload": {},
-                }
-
-            moved_files = []
-            errors = []
-
-            for file_id in file_ids:
-                try:
-                    # Get file name for response
-                    file_info = self.make_graph_request(
-                        access_token, f"/me/drive/items/{file_id}"
-                    )
-                    file_name = (
-                        file_info.get("name", "Unknown file")
-                        if file_info
-                        else "Unknown file"
-                    )
-
-                    # Move file
-                    if target_folder_id == "root":
-                        move_data = {"parentReference": {"path": "/drive/root"}}
-                    else:
-                        move_data = {"parentReference": {"id": target_folder_id}}
-
-                    result = self.make_graph_request(
-                        access_token,
-                        f"/me/drive/items/{file_id}",
-                        method="PATCH",
-                        data=move_data,
-                    )
-
-                    if result:
-                        moved_files.append({"id": file_id, "name": file_name})
-                    else:
-                        errors.append({"id": file_id, "error": "Failed to move"})
-
-                except Exception as e:
-                    errors.append({"id": file_id, "error": str(e)})
-
-            return {
-                "status": 1,
-                "message": f"Bulk move completed. {len(moved_files)} files moved, {len(errors)} errors",
-                "payload": {
-                    "moved_files": moved_files,
-                    "errors": errors,
-                    "success_count": len(moved_files),
-                    "error_count": len(errors),
-                },
-            }
-
-        except Exception as e:
-            traceback.print_exc()
-            return {
-                "status": 0,
-                "message": f"Failed to bulk move files: {str(e)}",
-                "payload": {},
-            }
-
-
-class BulkCopyOutlookFiles(OutlookBaseResource):
-    @auth_required(isOptional=True)
-    def post(self, uid, user):
-        try:
-            data = request.get_json() or {}
-            file_ids = data.get("fileIds", [])
-            target_folder_id = data.get("targetFolderId")
-
-            if not file_ids or not target_folder_id:
-                return {
-                    "status": 0,
-                    "message": "File IDs and target folder ID required",
-                    "payload": {},
-                }
-
-            access_token = self.get_user_credentials(uid)
-            if not access_token:
-                return {
-                    "status": 0,
-                    "message": "Outlook not connected or token expired",
-                    "payload": {},
-                }
-
-            copied_files = []
-            errors = []
-
-            for file_id in file_ids:
-                try:
-                    # Get original file metadata
-                    original_file = self.make_graph_request(
-                        access_token, f"/me/drive/items/{file_id}"
-                    )
-                    if not original_file:
-                        errors.append({"id": file_id, "error": "File not found"})
-                        continue
-
-                    original_name = original_file["name"]
-
-                    # Prepare copy data
-                    copy_data = {"name": f"Copy of {original_name}"}
-                    if target_folder_id != "root":
-                        copy_data["parentReference"] = {"id": target_folder_id}
-                    else:
-                        copy_data["parentReference"] = {"path": "/drive/root"}
-
-                    result = self.make_graph_request(
-                        access_token,
-                        f"/me/drive/items/{file_id}/copy",
-                        method="POST",
-                        data=copy_data,
-                    )
-
-                    if result:
-                        copied_files.append(
-                            {
-                                "original_id": file_id,
-                                "name": f"Copy of {original_name}",
-                            }
-                        )
-                    else:
-                        errors.append({"id": file_id, "error": "Failed to copy"})
-
-                except Exception as e:
-                    errors.append({"id": file_id, "error": str(e)})
-
-            return {
-                "status": 1,
-                "message": f"Bulk copy completed. {len(copied_files)} files copied, {len(errors)} errors",
-                "payload": {
-                    "copied_files": copied_files,
-                    "errors": errors,
-                    "success_count": len(copied_files),
-                    "error_count": len(errors),
-                },
-            }
-
-        except Exception as e:
-            traceback.print_exc()
-            return {
-                "status": 0,
-                "message": f"Failed to bulk copy files: {str(e)}",
-                "payload": {},
-            }
-
-
-class BulkShareOutlookFiles(OutlookBaseResource):
-    @auth_required(isOptional=True)
-    def post(self, uid, user):
-        try:
-            data = request.get_json() or {}
-            file_ids = data.get("fileIds", [])
-            email = data.get("email")
-            role = data.get("role", "read")
-
-            if not file_ids or not email:
-                return {
-                    "status": 0,
-                    "message": "File IDs and email required",
-                    "payload": {},
-                }
-
-            access_token = self.get_user_credentials(uid)
-            if not access_token:
-                return {
-                    "status": 0,
-                    "message": "Outlook not connected or token expired",
-                    "payload": {},
-                }
-
-            shared_files = []
-            errors = []
-
-            for file_id in file_ids:
-                try:
-                    # Get file name
-                    file_info = self.make_graph_request(
-                        access_token, f"/me/drive/items/{file_id}"
-                    )
-                    file_name = (
-                        file_info.get("name", "Unknown file")
-                        if file_info
-                        else "Unknown file"
-                    )
-
-                    # Create sharing invitation
-                    share_data = {
-                        "recipients": [{"email": email}],
-                        "message": f"I've shared '{file_name}' with you.",
-                        "requireSignIn": True,
-                        "sendInvitation": True,
-                        "roles": [role],
-                    }
-
-                    result = self.make_graph_request(
-                        access_token,
-                        f"/me/drive/items/{file_id}/invite",
-                        method="POST",
-                        data=share_data,
-                    )
-
-                    if result:
-                        shared_files.append({"id": file_id, "name": file_name})
-                    else:
-                        errors.append({"id": file_id, "error": "Failed to share"})
-
-                except Exception as e:
-                    errors.append({"id": file_id, "error": str(e)})
-
-            return {
-                "status": 1,
-                "message": f"Bulk share completed. {len(shared_files)} files shared, {len(errors)} errors",
-                "payload": {
-                    "shared_files": shared_files,
-                    "errors": errors,
-                    "success_count": len(shared_files),
-                    "error_count": len(errors),
-                    "shared_with": email,
-                    "role": role,
-                },
-            }
-
-        except Exception as e:
-            traceback.print_exc()
-            return {
-                "status": 0,
-                "message": f"Failed to bulk share files: {str(e)}",
-                "payload": {},
-            }
-
-
-class RenameOutlookFile(OutlookBaseResource):
-    @auth_required(isOptional=True)
-    def post(self, uid, user):
-        try:
-            data = request.get_json() or {}
-            file_id = data.get("fileId")
-            new_name = data.get("newName")
-
-            if not file_id or not new_name:
-                return {
-                    "status": 0,
-                    "message": "File ID and new name required",
-                    "payload": {},
-                }
-
-            access_token = self.get_user_credentials(uid)
-            if not access_token:
-                return {
-                    "status": 0,
-                    "message": "Outlook not connected or token expired",
-                    "payload": {},
-                }
-
-            # Rename file
-            rename_data = {"name": new_name}
-            result = self.make_graph_request(
-                access_token,
-                f"/me/drive/items/{file_id}",
-                method="PATCH",
-                data=rename_data,
-            )
-
-            if result:
-                return {
-                    "status": 1,
-                    "message": f"File renamed to '{new_name}' successfully",
-                    "payload": {"file": result},
-                }
-            else:
-                return {
-                    "status": 0,
-                    "message": f"Failed to rename file to '{new_name}'",
-                    "payload": {},
-                }
-
-        except Exception as e:
-            traceback.print_exc()
-            return {
-                "status": 0,
-                "message": f"Failed to rename file: {str(e)}",
-                "payload": {},
-            }
-
-
-class MoveOutlookFile(OutlookBaseResource):
-    @auth_required(isOptional=True)
-    def post(self, uid, user):
-        try:
-            data = request.get_json() or {}
-            file_id = data.get("fileId")
-            target_folder_id = data.get("targetFolderId")
-
-            if not file_id or not target_folder_id:
-                return {
-                    "status": 0,
-                    "message": "File ID and target folder ID required",
-                    "payload": {},
-                }
-
-            access_token = self.get_user_credentials(uid)
-            if not access_token:
-                return {
-                    "status": 0,
-                    "message": "Outlook not connected or token expired",
-                    "payload": {},
-                }
-
-            # Get file name for response
-            file_info = self.make_graph_request(
-                access_token, f"/me/drive/items/{file_id}"
-            )
-            file_name = (
-                file_info.get("name", "Unknown file") if file_info else "Unknown file"
-            )
-
-            # Move file
-            if target_folder_id == "root":
-                move_data = {"parentReference": {"path": "/drive/root"}}
-            else:
-                move_data = {"parentReference": {"id": target_folder_id}}
-
-            result = self.make_graph_request(
-                access_token,
-                f"/me/drive/items/{file_id}",
-                method="PATCH",
-                data=move_data,
-            )
-
-            if result:
-                return {
-                    "status": 1,
-                    "message": f"File '{file_name}' moved successfully",
-                    "payload": {"file": result},
-                }
-            else:
-                return {
-                    "status": 0,
-                    "message": f"Failed to move file '{file_name}'",
-                    "payload": {},
-                }
-
-        except Exception as e:
-            traceback.print_exc()
-            return {
-                "status": 0,
-                "message": f"Failed to move file: {str(e)}",
-                "payload": {},
-            }
-
-
-class CopyOutlookFile(OutlookBaseResource):
-    @auth_required(isOptional=True)
-    def post(self, uid, user):
-        try:
-            data = request.get_json() or {}
-            file_id = data.get("fileId")
-            parent_id = data.get("parentId")
-            name = data.get("name")
-
-            if not file_id:
-                return {"status": 0, "message": "File ID required", "payload": {}}
-
-            access_token = self.get_user_credentials(uid)
-            if not access_token:
-                return {
-                    "status": 0,
-                    "message": "Outlook not connected or token expired",
-                    "payload": {},
-                }
-
-            # Get original file name if no name provided
-            if not name:
-                file_info = self.make_graph_request(
-                    access_token, f"/me/drive/items/{file_id}"
-                )
-                original_name = (
-                    file_info.get("name", "Unknown file")
-                    if file_info
-                    else "Unknown file"
-                )
-                name = f"Copy of {original_name}"
-
-            # Prepare copy data
-            copy_data = {"name": name}
-            if parent_id and parent_id != "root":
-                copy_data["parentReference"] = {"id": parent_id}
-            else:
-                copy_data["parentReference"] = {"path": "/drive/root"}
-
-            result = self.make_graph_request(
-                access_token,
-                f"/me/drive/items/{file_id}/copy",
-                method="POST",
-                data=copy_data,
-            )
-
-            if result:
-                return {
-                    "status": 1,
-                    "message": f"File copied successfully as '{name}'",
-                    "payload": {"file": result},
-                }
-            else:
-                return {
-                    "status": 0,
-                    "message": f"Failed to copy file as '{name}'",
-                    "payload": {},
-                }
-
-        except Exception as e:
-            traceback.print_exc()
-            return {
-                "status": 0,
-                "message": f"Failed to copy file: {str(e)}",
+                "message": f"Failed to get file info: {str(e)}",
                 "payload": {},
             }
 
@@ -1541,15 +960,14 @@ class CopyOutlookFile(OutlookBaseResource):
 class GetOutlookStorage(OutlookBaseResource):
     @auth_required(isOptional=True)
     def get(self, uid, user):
-        """Get storage information for all connected Outlook accounts"""
         try:
             # Get all Outlook accounts for the user
             all_accounts = DBHelper.find(
                 "connected_accounts",
                 filters={
                     "user_id": uid,
-                    # "provider": "outlook",
-                    # "is_active": Status.ACTIVE.value,
+                    "provider": "outlook",
+                    "is_active": Status.ACTIVE.value,
                 },
                 select_fields=["email", "user_object"],
             )
@@ -1572,42 +990,41 @@ class GetOutlookStorage(OutlookBaseResource):
                 email = account.get("email")
 
                 try:
-                    access_token = self.get_user_credentials_for_account(uid, email)
-                    if not access_token:
+                    # Get storage info from OneDrive
+                    response = self.make_graph_request(uid, "GET", "/me/drive")
+                    if not response or response.status_code != 200:
                         continue
 
-                    # Get storage info
-                    drive_info = self.make_graph_request(access_token, "/me/drive")
-                    user_info = self.make_graph_request(access_token, "/me")
-
-                    if not drive_info or not user_info:
-                        continue
-
+                    drive_info = response.json()
                     quota = drive_info.get("quota", {})
+
                     used = quota.get("used", 0)
-                    total = quota.get("total", 0)
+                    limit = quota.get("total", 0)
+
+                    try:
+                        user_object_data = json.loads(account.get("user_object", "{}"))
+                    except json.JSONDecodeError:
+                        user_object_data = {}
 
                     storage_info.append(
                         {
                             "email": email,
-                            "displayName": user_info.get(
-                                "displayName", email.split("@")[0]
+                            "displayName": user_object_data.get(
+                                "name", email.split("@")[0]
                             ),
-                            "photoLink": user_info.get("photo", {}).get(
-                                "@odata.mediaReadUrl", ""
-                            ),
+                            "photoLink": user_object_data.get("picture", ""),
                             "used": used,
-                            "limit": total,
+                            "limit": limit,
                             "usage_percentage": (
-                                round((used / total * 100), 2) if total > 0 else 0
+                                round((used / limit * 100), 2) if limit > 0 else 0
                             ),
                             "used_formatted": self.format_bytes(used),
-                            "limit_formatted": self.format_bytes(total),
+                            "limit_formatted": self.format_bytes(limit),
                         }
                     )
 
                     total_used += used
-                    total_limit += total
+                    total_limit += limit
 
                 except Exception as e:
                     print(f"Error getting storage info for {email}: {str(e)}")
@@ -1641,4 +1058,176 @@ class GetOutlookStorage(OutlookBaseResource):
                     "storage_info": [],
                     "total_storage": {"used": 0, "limit": 0},
                 },
+            }
+
+    def format_bytes(self, bytes_value):
+        """Format bytes to human readable format"""
+        if bytes_value == 0:
+            return "0 B"
+
+        sizes = ["B", "KB", "MB", "GB", "TB"]
+        i = 0
+        while bytes_value >= 1024 and i < len(sizes) - 1:
+            bytes_value /= 1024
+            i += 1
+
+        return f"{bytes_value:.1f} {sizes[i]}"
+
+
+# Additional Outlook operations (rename, copy, move)
+class RenameOutlookFile(OutlookBaseResource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        try:
+            data = request.get_json() or {}
+            file_id = data.get("fileId")
+            new_name = data.get("newName")
+
+            if not file_id or not new_name:
+                return {
+                    "status": 0,
+                    "message": "File ID and new name required",
+                    "payload": {},
+                }
+
+            rename_data = {"name": new_name}
+            response = self.make_graph_request(
+                uid, "PATCH", f"/me/drive/items/{file_id}", data=rename_data
+            )
+
+            if not response or response.status_code != 200:
+                return {
+                    "status": 0,
+                    "message": f"Failed to rename file: {response.text if response else 'No response'}",
+                    "payload": {},
+                }
+
+            updated_file = response.json()
+
+            return {
+                "status": 1,
+                "message": f"File renamed to '{new_name}' successfully",
+                "payload": {"file": updated_file},
+            }
+
+        except Exception as e:
+            traceback.print_exc()
+            return {
+                "status": 0,
+                "message": f"Failed to rename file: {str(e)}",
+                "payload": {},
+            }
+
+
+class CopyOutlookFile(OutlookBaseResource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        try:
+            data = request.get_json() or {}
+            file_id = data.get("fileId")
+            parent_id = data.get("parentId")
+            name = data.get("name")
+
+            if not file_id:
+                return {"status": 0, "message": "File ID required", "payload": {}}
+
+            # Get original file name if no name provided
+            if not name:
+                metadata_response = self.make_graph_request(
+                    uid, "GET", f"/me/drive/items/{file_id}"
+                )
+                if metadata_response and metadata_response.status_code == 200:
+                    original_file = metadata_response.json()
+                    name = f"Copy of {original_file['name']}"
+                else:
+                    name = "Copy of file"
+
+            # Prepare copy data
+            copy_data = {"name": name}
+            if parent_id and parent_id != "root":
+                copy_data["parentReference"] = {"id": parent_id}
+
+            response = self.make_graph_request(
+                uid, "POST", f"/me/drive/items/{file_id}/copy", data=copy_data
+            )
+
+            if not response or response.status_code not in [200, 202]:
+                return {
+                    "status": 0,
+                    "message": f"Failed to copy file: {response.text if response else 'No response'}",
+                    "payload": {},
+                }
+
+            return {
+                "status": 1,
+                "message": f"File copied successfully as '{name}'",
+                "payload": {"message": "Copy operation initiated"},
+            }
+
+        except Exception as e:
+            traceback.print_exc()
+            return {
+                "status": 0,
+                "message": f"Failed to copy file: {str(e)}",
+                "payload": {},
+            }
+
+
+class MoveOutlookFile(OutlookBaseResource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        try:
+            data = request.get_json() or {}
+            file_id = data.get("fileId")
+            target_folder_id = data.get("targetFolderId")
+
+            if not file_id or not target_folder_id:
+                return {
+                    "status": 0,
+                    "message": "File ID and target folder ID required",
+                    "payload": {},
+                }
+
+            # Get file name
+            metadata_response = self.make_graph_request(
+                uid, "GET", f"/me/drive/items/{file_id}"
+            )
+            if metadata_response and metadata_response.status_code == 200:
+                file_metadata = metadata_response.json()
+                file_name = file_metadata.get("name", "Unknown file")
+            else:
+                file_name = "Unknown file"
+
+            # Move file
+            move_data = {
+                "parentReference": {
+                    "id": target_folder_id if target_folder_id != "root" else "root"
+                }
+            }
+
+            response = self.make_graph_request(
+                uid, "PATCH", f"/me/drive/items/{file_id}", data=move_data
+            )
+
+            if not response or response.status_code != 200:
+                return {
+                    "status": 0,
+                    "message": f"Failed to move file: {response.text if response else 'No response'}",
+                    "payload": {},
+                }
+
+            updated_file = response.json()
+
+            return {
+                "status": 1,
+                "message": f"File '{file_name}' moved successfully",
+                "payload": {"file": updated_file},
+            }
+
+        except Exception as e:
+            traceback.print_exc()
+            return {
+                "status": 0,
+                "message": f"Failed to move file: {str(e)}",
+                "payload": {},
             }

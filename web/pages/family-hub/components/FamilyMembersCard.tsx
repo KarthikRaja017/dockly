@@ -6,6 +6,8 @@ import ProfileClient from '../../../app/[username]/family-hub/profile/[id]/profi
 
 const { Text } = Typography;
 
+const FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+
 interface FamilyMember {
     id: number;
     name: string;
@@ -77,7 +79,9 @@ const FamilyMembersCard: React.FC<FamilyMembersCardProps> = ({
             <Card
                 title={
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span>Family Members ({filteredMembers.length})</span>
+                        <span style={{ fontFamily: FONT_FAMILY, fontSize: '14px', fontWeight: 600 }}>
+                            Family Members ({filteredMembers.filter(m => m.status !== 'pending').length})
+                        </span>
                     </div>
                 }
                 extra={
@@ -90,13 +94,14 @@ const FamilyMembersCard: React.FC<FamilyMembersCardProps> = ({
                                 borderRadius: "12px",
                                 background: "#1890ff",
                                 borderColor: "#1890ff",
+                                fontFamily: FONT_FAMILY,
                             }}
                         >
 
                         </Button>
                     </Dropdown>
                 }
-                style={{ marginBottom: '24px', borderRadius: '12px' }}
+                style={{ marginBottom: '12px', borderRadius: '12px' }}
                 bodyStyle={{ padding: '16px' }}
             >
                 <Row gutter={[20, 20]} style={{ marginBottom: 0 }}>
@@ -140,7 +145,8 @@ const FamilyMembersCard: React.FC<FamilyMembersCardProps> = ({
                                         padding: '1px 4px',
                                         borderRadius: '12px',
                                         fontWeight: 500,
-                                        textTransform: 'uppercase'
+                                        textTransform: 'uppercase',
+                                        fontFamily: FONT_FAMILY,
                                     }}>
                                         Waiting
                                     </span>
@@ -171,7 +177,8 @@ const FamilyMembersCard: React.FC<FamilyMembersCardProps> = ({
                                             marginBottom: 2,
                                             overflow: 'hidden',
                                             textOverflow: 'ellipsis',
-                                            whiteSpace: 'nowrap'
+                                            whiteSpace: 'nowrap',
+                                            fontFamily: FONT_FAMILY,
                                         }}>
                                             {member.name}
                                         </div>
@@ -188,17 +195,19 @@ const FamilyMembersCard: React.FC<FamilyMembersCardProps> = ({
                 <Card
                     title={
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span>Profile Details</span>
+                            <span style={{ fontFamily: FONT_FAMILY, fontSize: '14px', fontWeight: 600 }}>
+                                Profile Details
+                            </span>
                             <Button
                                 type="text"
                                 icon={<CloseOutlined />}
                                 onClick={handleCloseProfile}
                                 size="small"
-                                style={{ color: '#666' }}
+                                style={{ color: '#666', fontFamily: FONT_FAMILY }}
                             />
                         </div>
                     }
-                    style={{ marginBottom: '24px', borderRadius: '12px' }}
+                    style={{ marginBottom: '12px', borderRadius: '12px' }}
                     bodyStyle={{ padding: 0, margin: 0 }}
                 >
                     <ProfileClient

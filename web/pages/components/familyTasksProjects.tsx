@@ -280,7 +280,7 @@ const FamilyTasksComponent: React.FC<Props> = ({
                         <Title level={3} style={{
                             margin: 0,
                             color: COLORS.text,
-                            fontSize: '14px',
+                            fontSize: '16px',
                             fontWeight: 600,
                         }}>
                             {title}
@@ -735,10 +735,10 @@ const FamilyTasksComponent: React.FC<Props> = ({
                                     style={{ display: 'flex', gap: SPACING.md }}
                                 >
                                     <Radio.Button value="private" style={{ borderRadius: '8px' }}>
-                                        Private
+                                        Only Me
                                     </Radio.Button>
                                     <Radio.Button value="public" style={{ borderRadius: '8px' }}>
-                                        Public
+                                        Family
                                     </Radio.Button>
                                 </Radio.Group>
                             </div>

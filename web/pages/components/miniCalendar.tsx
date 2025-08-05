@@ -113,7 +113,7 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
                 padding: SPACING.lg,
                 border: `1px solid ${COLORS.borderLight}`,
                 boxShadow: `0 1px 4px ${COLORS.shadowLight}`,
-                maxWidth: 390,
+                maxWidth: 420,
                 fontFamily:
                     '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
                 fontSize: 12,

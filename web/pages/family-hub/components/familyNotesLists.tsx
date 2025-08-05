@@ -508,7 +508,7 @@ const NotesLists: React.FC<NotesListsProps> = ({
                 style={{
                     padding: 16,
                     backgroundColor: "#ffffff",
-                    width: 380,
+                    maxWidth: 420,
                     borderRadius: 12,
                     position: "relative",
                     maxHeight: "70vh",

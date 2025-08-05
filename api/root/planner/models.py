@@ -7,6 +7,11 @@ from flask import request
 from flask_restful import Resource
 
 # from root.google.models import SCOPE
+from .outlook import (
+    create_outlook_calendar_event,
+    fetch_outlook_calendar_events,
+    transform_outlook_event,
+)
 from root.db.dbHelper import DBHelper
 from root.common import GoalStatus, Priority, Status
 from root.utilis import uniqueId
@@ -44,12 +49,342 @@ light_colors = [
 
 
 # New comprehensive endpoint for all planner data
+# class GetPlannerDataComprehensive(Resource):
+#     @auth_required(isOptional=True)
+#     def get(self, uid, user):
+#         # Get filter parameters
+#         show_dockly = request.args.get("show_dockly", "true").lower() == "true"
+#         filtered_emails = request.args.getlist("filtered_emails[]")
+
+#         # Initialize response data
+#         response_data = {
+#             "goals": [],
+#             "todos": [],
+#             "events": [],
+#             "notes": [],
+#             "connected_accounts": [],
+#             "person_colors": {},
+#             "filters": {
+#                 "show_dockly": show_dockly,
+#                 "filtered_emails": filtered_emails,
+#             },
+#         }
+
+#         try:
+#             # Fetch all data in parallel queries for better performance
+#             query_results = DBHelper.find_multi(
+#                 {
+#                     "weekly_goals": {
+#                         "filters": {"user_id": uid, "status": Status.ACTIVE.value},
+#                         "select_fields": [
+#                             "id",
+#                             "goal",
+#                             "date",
+#                             "time",
+#                             "priority",
+#                             "goal_status",
+#                             "status",
+#                             "google_calendar_id",
+#                             "outlook_calendar_id",
+#                             "synced_to_google",
+#                             "synced_to_outlook",
+#                         ],
+#                     },
+#                     "weekly_todos": {
+#                         "filters": {"user_id": uid},
+#                         "select_fields": [
+#                             "id",
+#                             "text",
+#                             "date",
+#                             "time",
+#                             "completed",
+#                             "priority",
+#                             "goal_id",
+#                             "google_calendar_id",
+#                             "outlook_calendar_id",
+#                             "synced_to_google",
+#                             "synced_to_outlook",
+#                         ],
+#                     },
+#                     "events": {
+#                         "filters": {"user_id": uid, "is_active": 1},
+#                         "select_fields": [
+#                             "id",
+#                             "title",
+#                             "date",
+#                             "google_calendar_id",
+#                             "outlook_calendar_id",
+#                             "synced_to_google",
+#                             "synced_to_outlook",
+#                         ],
+#                     },
+#                     "connected_accounts": {
+#                         "filters": {"user_id": uid, "is_active": Status.ACTIVE.value},
+#                         "select_fields": [
+#                             "access_token",
+#                             "refresh_token",
+#                             "email",
+#                             "provider",
+#                             "user_object",
+#                         ],
+#                     },
+#                 }
+#             )
+
+#             # Process goals
+#             if show_dockly:
+#                 response_data["goals"] = query_results.get("weekly_goals", [])
+
+#             # Process todos
+#             if show_dockly:
+#                 response_data["todos"] = query_results.get("weekly_todos", [])
+
+#             # Process connected accounts and events
+#             connected_accounts_data = query_results.get("connected_accounts", [])
+
+#             # Add Dockly as virtual account if enabled
+#             if show_dockly:
+#                 dockly_account = {
+#                     "provider": "dockly",
+#                     "email": user.get("email", "dockly@user.com"),
+#                     "color": "#0033FF",
+#                     "userName": user.get("user_name", "Dockly User"),
+#                     "displayName": user.get("user_name", "Dockly User"),
+#                 }
+#                 response_data["connected_accounts"].append(dockly_account)
+
+#             # Process Google and Outlook accounts
+#             all_events = []
+#             if connected_accounts_data:
+#                 for i, cred_data in enumerate(connected_accounts_data):
+#                     provider = cred_data.get("provider", "google").lower()
+#                     email = cred_data.get("email")
+#                     color = light_colors[i % len(light_colors)]
+
+#                     try:
+#                         user_object_data = json.loads(
+#                             cred_data.get("user_object", "{}")
+#                         )
+#                     except:
+#                         user_object_data = {}
+
+#                     # Add to connected accounts
+#                     account_info = {
+#                         "provider": provider,
+#                         "email": email,
+#                         "color": color,
+#                         "userName": user_object_data.get("name", email.split("@")[0]),
+#                         "displayName": user_object_data.get(
+#                             "name", email.split("@")[0]
+#                         ),
+#                     }
+#                     response_data["connected_accounts"].append(account_info)
+
+#                     # Set up person colors
+#                     response_data["person_colors"][account_info["userName"]] = {
+#                         "color": color,
+#                         "email": email,
+#                     }
+
+#                     # Fetch calendar events based on provider
+#                     try:
+#                         if provider == "google":
+#                             google_events = (
+#                                 self._fetch_google_calendar_events_for_account(
+#                                     cred_data
+#                                 )
+#                             )
+#                             for event in google_events:
+#                                 event["source_email"] = email
+#                                 event["account_color"] = color
+#                                 event["provider"] = provider
+#                             all_events.extend(google_events)
+
+#                         elif provider == "outlook":
+#                             outlook_events = (
+#                                 self._fetch_outlook_calendar_events_for_account(
+#                                     cred_data, color, email
+#                                 )
+#                             )
+#                             all_events.extend(outlook_events)
+
+#                     except Exception as e:
+#                         print(f"Error fetching {provider} events for {email}: {e}")
+
+#             # Process Dockly events if enabled
+#             if show_dockly:
+#                 dockly_events = []
+
+#                 # Add goals as events
+#                 for goal in response_data["goals"]:
+#                     dockly_events.append(
+#                         {
+#                             "id": f"goal_{goal.get('id')}",
+#                             "summary": goal.get("goal"),
+#                             "date": self._format_date(goal.get("date")),
+#                             "time": goal.get("time"),
+#                             "type": "goal",
+#                             "source": "dockly",
+#                             "source_email": user.get("email", "dockly@user.com"),
+#                             "provider": "dockly",
+#                             "account_color": "#0033FF",
+#                             "priority": self._get_priority_text(goal.get("priority")),
+#                             "status": self._get_goal_status_text(
+#                                 goal.get("goal_status")
+#                             ),
+#                             "synced_to_google": goal.get("synced_to_google", False),
+#                             "synced_to_outlook": goal.get("synced_to_outlook", False),
+#                         }
+#                     )
+
+#                 # Add todos as events
+#                 for todo in response_data["todos"]:
+#                     dockly_events.append(
+#                         {
+#                             "id": f"todo_{todo.get('id')}",
+#                             "summary": todo.get("text"),
+#                             "date": self._format_date(todo.get("date")),
+#                             "time": todo.get("time"),
+#                             "type": "todo",
+#                             "source": "dockly",
+#                             "source_email": user.get("email", "dockly@user.com"),
+#                             "provider": "dockly",
+#                             "account_color": "#0033FF",
+#                             "priority": todo.get("priority", "medium"),
+#                             "completed": todo.get("completed", False),
+#                             "synced_to_google": todo.get("synced_to_google", False),
+#                             "synced_to_outlook": todo.get("synced_to_outlook", False),
+#                         }
+#                     )
+
+#                 # Add manual events
+#                 for event in query_results.get("events", []):
+#                     dockly_events.append(
+#                         {
+#                             "id": f"event_{event.get('id')}",
+#                             "summary": event.get("title"),
+#                             "date": self._format_date(event.get("date")),
+#                             "time": event.get("time") or "12:00 PM",
+#                             "type": "event",
+#                             "source": "dockly",
+#                             "source_email": user.get("email", "dockly@user.com"),
+#                             "provider": "dockly",
+#                             "account_color": "#0033FF",
+#                             "synced_to_google": event.get("synced_to_google", False),
+#                             "synced_to_outlook": event.get("synced_to_outlook", False),
+#                         }
+#                     )
+
+#                 all_events.extend(dockly_events)
+
+#             # Filter events by email if specified
+#             if filtered_emails:
+#                 all_events = [
+#                     e for e in all_events if e.get("source_email") in filtered_emails
+#                 ]
+
+#             response_data["events"] = all_events
+
+#             return {
+#                 "status": 1,
+#                 "message": "Planner data fetched successfully",
+#                 "payload": response_data,
+#             }
+
+#         except Exception as e:
+#             print(f"Error in GetPlannerDataComprehensive: {e}")
+#             return {
+#                 "status": 0,
+#                 "message": "Failed to fetch planner data",
+#                 "payload": response_data,
+#                 "error": str(e),
+#             }
+
+#     def _fetch_outlook_calendar_events_for_account(self, cred_data, color, email):
+#         """Fetch Outlook Calendar events for a specific account"""
+#         try:
+#             access_token = cred_data.get("access_token")
+
+#             # Fetch raw Outlook events
+#             raw_events = fetch_outlook_calendar_events(access_token)
+
+#             # Transform to unified format
+#             transformed_events = []
+#             for event in raw_events:
+#                 transformed = transform_outlook_event(event, color, email)
+#                 if transformed:
+#                     transformed_events.append(transformed)
+
+#             return transformed_events
+
+#         except Exception as e:
+#             print(f"Error fetching Outlook Calendar events: {e}")
+#             return []
+
+#     def _fetch_google_calendar_events_for_account(self, cred_data):
+#         """Fetch Google Calendar events for a specific account"""
+#         try:
+#             creds = Credentials(
+#                 token=cred_data["access_token"],
+#                 refresh_token=cred_data["refresh_token"],
+#                 token_uri=uri,
+#                 client_id=CLIENT_ID,
+#                 client_secret=CLIENT_SECRET,
+#                 scopes=SCOPE.split(),
+#             )
+
+#             service = build("calendar", "v3", credentials=creds)
+
+#             # Get events from the past week to future
+#             time_min = (datetime.utcnow() - timedelta(days=7)).isoformat() + "Z"
+
+#             events_result = (
+#                 service.events()
+#                 .list(
+#                     calendarId="primary",
+#                     timeMin=time_min,
+#                     maxResults=100,
+#                     singleEvents=True,
+#                     orderBy="startTime",
+#                 )
+#                 .execute()
+#             )
+
+#             return events_result.get("items", [])
+
+#         except Exception as e:
+#             print(f"Error fetching Google Calendar events: {e}")
+#             return []
+
+#     # Keep all other helper methods unchanged
+#     def _format_date(self, date_obj):
+#         """Helper method to format date objects"""
+#         if isinstance(date_obj, (datetime, date)):
+#             return date_obj.strftime("%Y-%m-%d")
+#         elif isinstance(date_obj, str):
+#             try:
+#                 parsed_date = datetime.strptime(date_obj, "%Y-%m-%d")
+#                 return parsed_date.strftime("%Y-%m-%d")
+#             except:
+#                 return date_obj
+#         return str(date_obj) if date_obj else ""
+
+#     def _get_goal_status_text(self, status_value):
+#         """Convert goal status enum to text"""
+#         status_map = {0: "Yet to Start", 1: "In Progress", 2: "Completed"}
+#         return status_map.get(status_value, "Yet to Start")
+
+#     def _get_priority_text(self, priority_value):
+#         """Convert priority enum to text"""
+#         priority_map = {0: "low", 1: "medium", 2: "high"}
+#         return priority_map.get(priority_value, "low")
+
+
 class GetPlannerDataComprehensive(Resource):
     @auth_required(isOptional=True)
     def get(self, uid, user):
         # Get filter parameters
         show_dockly = request.args.get("show_dockly", "true").lower() == "true"
-        # show_google = request.args.get("show_google", "true").lower() == "true"
         filtered_emails = request.args.getlist("filtered_emails[]")
 
         # Initialize response data
@@ -60,21 +395,38 @@ class GetPlannerDataComprehensive(Resource):
             "notes": [],
             "connected_accounts": [],
             "person_colors": {},
+            "family_members": [],
             "filters": {
                 "show_dockly": show_dockly,
-                # "show_google": show_google,
                 "filtered_emails": filtered_emails,
             },
         }
 
         try:
-            # Fetch all data in parallel queries for better performance
-            query_results = DBHelper.find_multi(
+            # Get family members first
+            family_members = self._get_family_members(uid)
+            all_user_ids = [uid]  # Start with current user
+
+            # Add family member user IDs
+            for member in family_members:
+                if member.get("user_id") and member["user_id"] != uid:
+                    all_user_ids.append(member["user_id"])
+                if member.get("fm_user_id") and member["fm_user_id"] != uid:
+                    all_user_ids.append(member["fm_user_id"])
+
+            # Remove duplicates
+            all_user_ids = list(set(all_user_ids))
+
+            response_data["family_members"] = family_members
+
+            # Fetch all data for all users in one go
+            query_results = DBHelper.find_multi_users(
                 {
                     "weekly_goals": {
-                        "filters": {"user_id": uid, "status": Status.ACTIVE.value},
+                        "filters": {"status": Status.ACTIVE.value},
                         "select_fields": [
                             "id",
+                            "user_id",
                             "goal",
                             "date",
                             "time",
@@ -82,13 +434,16 @@ class GetPlannerDataComprehensive(Resource):
                             "goal_status",
                             "status",
                             "google_calendar_id",
+                            "outlook_calendar_id",
                             "synced_to_google",
+                            "synced_to_outlook",
                         ],
                     },
                     "weekly_todos": {
-                        "filters": {"user_id": uid},
+                        "filters": {},
                         "select_fields": [
                             "id",
+                            "user_id",
                             "text",
                             "date",
                             "time",
@@ -96,35 +451,28 @@ class GetPlannerDataComprehensive(Resource):
                             "priority",
                             "goal_id",
                             "google_calendar_id",
+                            "outlook_calendar_id",
                             "synced_to_google",
+                            "synced_to_outlook",
                         ],
                     },
                     "events": {
-                        "filters": {"user_id": uid, "is_active": 1},
+                        "filters": {"is_active": 1},
                         "select_fields": [
                             "id",
+                            "user_id",
                             "title",
                             "date",
-                            # "time",
                             "google_calendar_id",
+                            "outlook_calendar_id",
                             "synced_to_google",
+                            "synced_to_outlook",
                         ],
                     },
-                    # "notes": {
-                    #     "filters": {"user_id": uid},
-                    #     "select_fields": [
-                    #         "id",
-                    #         "title",
-                    #         "description",
-                    #         "date",
-                    #         "status",
-                    #         "created_at",
-                    #         "updated_at",
-                    #     ],
-                    # },
                     "connected_accounts": {
-                        "filters": {"user_id": uid, "is_active": Status.ACTIVE.value},
+                        "filters": {"is_active": Status.ACTIVE.value},
                         "select_fields": [
+                            "user_id",
                             "access_token",
                             "refresh_token",
                             "email",
@@ -132,8 +480,12 @@ class GetPlannerDataComprehensive(Resource):
                             "user_object",
                         ],
                     },
-                }
+                },
+                all_user_ids,
             )
+
+            # Get user details for all family members
+            user_details = self._get_users_details(all_user_ids)
 
             # Process goals
             if show_dockly:
@@ -143,41 +495,34 @@ class GetPlannerDataComprehensive(Resource):
             if show_dockly:
                 response_data["todos"] = query_results.get("weekly_todos", [])
 
-            # Process notes
-            # if show_dockly:
-            #     raw_notes = query_results.get("notes", [])
-            #     formatted_notes = []
-            #     for note in raw_notes:
-            #         formatted_note = dict(note)
-            #         # Convert date objects to strings
-            #         for field in ["date", "created_at", "updated_at"]:
-            #             if formatted_note.get(field) and hasattr(
-            #                 formatted_note[field], "isoformat"
-            #             ):
-            #                 formatted_note[field] = formatted_note[field].isoformat()
-            #         formatted_notes.append(formatted_note)
-            #     response_data["notes"] = formatted_notes
-
-            # Process connected accounts and events
+            # Process connected accounts and events for all users
             connected_accounts_data = query_results.get("connected_accounts", [])
-
-            # Add Dockly as virtual account if enabled
-            if show_dockly:
-                dockly_account = {
-                    "provider": "dockly",
-                    "email": user.get("email", "dockly@user.com"),
-                    "color": "#10B981",
-                    "userName": user.get("user_name", "Dockly User"),
-                    "displayName": user.get("user_name", "Dockly User"),
-                }
-                response_data["connected_accounts"].append(dockly_account)
-
-            # Process Google accounts
             all_events = []
+
+            # Add Dockly accounts for all users if enabled
+            if show_dockly:
+                for user_id in all_user_ids:
+                    user_info = user_details.get(user_id, {})
+                    dockly_account = {
+                        "user_id": user_id,
+                        "provider": "dockly",
+                        "email": user_info.get("email", f"dockly@user{user_id}.com"),
+                        "color": "#0033FF",
+                        "userName": user_info.get(
+                            "user_name", f"Dockly User {user_id}"
+                        ),
+                        "displayName": user_info.get(
+                            "user_name", f"Dockly User {user_id}"
+                        ),
+                    }
+                    response_data["connected_accounts"].append(dockly_account)
+
+            # Process Google and Outlook accounts for all users
             if connected_accounts_data:
                 for i, cred_data in enumerate(connected_accounts_data):
                     provider = cred_data.get("provider", "google").lower()
                     email = cred_data.get("email")
+                    user_id = cred_data.get("user_id")
                     color = light_colors[i % len(light_colors)]
 
                     try:
@@ -187,8 +532,9 @@ class GetPlannerDataComprehensive(Resource):
                     except:
                         user_object_data = {}
 
-                    # Add to connected accounts
+                    # Add to connected accounts with user_id
                     account_info = {
+                        "user_id": user_id,
                         "provider": provider,
                         "email": email,
                         "color": color,
@@ -199,15 +545,17 @@ class GetPlannerDataComprehensive(Resource):
                     }
                     response_data["connected_accounts"].append(account_info)
 
-                    # Set up person colors
-                    response_data["person_colors"][account_info["userName"]] = {
+                    # Set up person colors with user_id context
+                    color_key = f"{account_info['userName']}_{user_id}"
+                    response_data["person_colors"][color_key] = {
                         "color": color,
                         "email": email,
+                        "user_id": user_id,
                     }
 
-                    # Fetch Google Calendar events
-                    if provider == "google":
-                        try:
+                    # Fetch calendar events based on provider
+                    try:
+                        if provider == "google":
                             google_events = (
                                 self._fetch_google_calendar_events_for_account(
                                     cred_data
@@ -217,17 +565,30 @@ class GetPlannerDataComprehensive(Resource):
                                 event["source_email"] = email
                                 event["account_color"] = color
                                 event["provider"] = provider
+                                event["user_id"] = user_id
                             all_events.extend(google_events)
-                        except Exception as e:
-                            print(f"Error fetching Google events for {email}: {e}")
 
-            # Process Dockly events if enabled
+                        elif provider == "outlook":
+                            outlook_events = (
+                                self._fetch_outlook_calendar_events_for_account(
+                                    cred_data, color, email
+                                )
+                            )
+                            for event in outlook_events:
+                                event["user_id"] = user_id
+                            all_events.extend(outlook_events)
+
+                    except Exception as e:
+                        print(f"Error fetching {provider} events for {email}: {e}")
+
+            # Process Dockly events for all users if enabled
             if show_dockly:
-                dockly_events = []
-
                 # Add goals as events
                 for goal in response_data["goals"]:
-                    dockly_events.append(
+                    goal_user_id = goal.get("user_id")
+                    user_info = user_details.get(goal_user_id, {})
+
+                    all_events.append(
                         {
                             "id": f"goal_{goal.get('id')}",
                             "summary": goal.get("goal"),
@@ -235,20 +596,27 @@ class GetPlannerDataComprehensive(Resource):
                             "time": goal.get("time"),
                             "type": "goal",
                             "source": "dockly",
-                            "source_email": user.get("email", "dockly@user.com"),
+                            "source_email": user_info.get(
+                                "email", f"dockly@user{goal_user_id}.com"
+                            ),
                             "provider": "dockly",
-                            "account_color": "#10B981",
+                            "account_color": "#0033FF",
                             "priority": self._get_priority_text(goal.get("priority")),
                             "status": self._get_goal_status_text(
                                 goal.get("goal_status")
                             ),
                             "synced_to_google": goal.get("synced_to_google", False),
+                            "synced_to_outlook": goal.get("synced_to_outlook", False),
+                            "user_id": goal_user_id,
                         }
                     )
 
                 # Add todos as events
                 for todo in response_data["todos"]:
-                    dockly_events.append(
+                    todo_user_id = todo.get("user_id")
+                    user_info = user_details.get(todo_user_id, {})
+
+                    all_events.append(
                         {
                             "id": f"todo_{todo.get('id')}",
                             "summary": todo.get("text"),
@@ -256,18 +624,25 @@ class GetPlannerDataComprehensive(Resource):
                             "time": todo.get("time"),
                             "type": "todo",
                             "source": "dockly",
-                            "source_email": user.get("email", "dockly@user.com"),
+                            "source_email": user_info.get(
+                                "email", f"dockly@user{todo_user_id}.com"
+                            ),
                             "provider": "dockly",
-                            "account_color": "#10B981",
+                            "account_color": "#0033FF",
                             "priority": todo.get("priority", "medium"),
                             "completed": todo.get("completed", False),
                             "synced_to_google": todo.get("synced_to_google", False),
+                            "synced_to_outlook": todo.get("synced_to_outlook", False),
+                            "user_id": todo_user_id,
                         }
                     )
 
                 # Add manual events
                 for event in query_results.get("events", []):
-                    dockly_events.append(
+                    event_user_id = event.get("user_id")
+                    user_info = user_details.get(event_user_id, {})
+
+                    all_events.append(
                         {
                             "id": f"event_{event.get('id')}",
                             "summary": event.get("title"),
@@ -275,14 +650,16 @@ class GetPlannerDataComprehensive(Resource):
                             "time": event.get("time") or "12:00 PM",
                             "type": "event",
                             "source": "dockly",
-                            "source_email": user.get("email", "dockly@user.com"),
+                            "source_email": user_info.get(
+                                "email", f"dockly@user{event_user_id}.com"
+                            ),
                             "provider": "dockly",
-                            "account_color": "#10B981",
+                            "account_color": "#0033FF",
                             "synced_to_google": event.get("synced_to_google", False),
+                            "synced_to_outlook": event.get("synced_to_outlook", False),
+                            "user_id": event_user_id,
                         }
                     )
-
-                all_events.extend(dockly_events)
 
             # Filter events by email if specified
             if filtered_emails:
@@ -307,6 +684,74 @@ class GetPlannerDataComprehensive(Resource):
                 "error": str(e),
             }
 
+    def _get_family_members(self, user_id):
+        """Get all family members for a user"""
+        try:
+            # Get user's family group ID
+            family_member = DBHelper.find_one(
+                "family_members",
+                filters={"user_id": user_id, "fm_user_id": user_id},
+                select_fields=["family_group_id"],
+            )
+
+            if not family_member:
+                return []
+
+            family_group_id = family_member["family_group_id"]
+
+            # Get all family members
+            members = DBHelper.find_all(
+                "family_members",
+                filters={"family_group_id": family_group_id},
+                select_fields=[
+                    "user_id",
+                    "fm_user_id",
+                    "relationship",
+                    "email",
+                    "created_at",
+                ],
+            )
+
+            return members
+        except Exception as e:
+            print(f"Error fetching family members: {e}")
+            return []
+
+    def _get_users_details(self, user_ids):
+        """Get user details for multiple users"""
+        try:
+            if not user_ids:
+                return {}
+
+            users = DBHelper.find_in(
+                "users",
+                select_fields=["uid", "email", "user_name"],
+                field="uid",
+                values=user_ids,
+            )
+
+            return {user["uid"]: user for user in users}
+        except Exception as e:
+            print(f"Error fetching user details: {e}")
+            return {}
+
+    def _fetch_outlook_calendar_events_for_account(self, cred_data, color, email):
+        """Fetch Outlook Calendar events for a specific account"""
+        try:
+            access_token = cred_data.get("access_token")
+            raw_events = fetch_outlook_calendar_events(access_token)
+
+            transformed_events = []
+            for event in raw_events:
+                transformed = transform_outlook_event(event, color, email)
+                if transformed:
+                    transformed_events.append(transformed)
+
+            return transformed_events
+        except Exception as e:
+            print(f"Error fetching Outlook Calendar events: {e}")
+            return []
+
     def _fetch_google_calendar_events_for_account(self, cred_data):
         """Fetch Google Calendar events for a specific account"""
         try:
@@ -320,8 +765,6 @@ class GetPlannerDataComprehensive(Resource):
             )
 
             service = build("calendar", "v3", credentials=creds)
-
-            # Get events from the past week to future
             time_min = (datetime.utcnow() - timedelta(days=7)).isoformat() + "Z"
 
             events_result = (
@@ -337,7 +780,6 @@ class GetPlannerDataComprehensive(Resource):
             )
 
             return events_result.get("items", [])
-
         except Exception as e:
             print(f"Error fetching Google Calendar events: {e}")
             return []
@@ -373,6 +815,7 @@ class AddWeeklyGoals(Resource):
         id = uniqueId(digit=15, isNum=True)
         backup = data.get("backup", [])
         sync_to_google = data.get("sync_to_google", True)
+        sync_to_outlook = data.get("sync_to_outlook", True)
 
         # Use provided date or compute current week's Saturday
         goal_date = data.get("date")
@@ -395,16 +838,18 @@ class AddWeeklyGoals(Resource):
             "goal_status": GoalStatus.YET_TO_START.value,
             "status": Status.ACTIVE.value,
             "google_calendar_id": None,
-            "synced_to_google": sync_to_google,
+            "outlook_calendar_id": None,
+            "synced_to_google": False,
+            "synced_to_outlook": False,
         }
 
-        # Sync to Google Calendar if enabled
+        # Sync to calendars if enabled
+        start_dt = datetime.strptime(goal_date, "%Y-%m-%d")
+        end_dt = start_dt + timedelta(days=1)
+
+        # Sync to Google Calendar
         if sync_to_google:
             try:
-                # Create all-day event
-                start_dt = datetime.strptime(goal_date, "%Y-%m-%d")
-                end_dt = start_dt + timedelta(days=1)
-
                 google_event_id = create_calendar_event(
                     uid, data.get("goal", ""), start_dt, end_dt
                 )
@@ -412,7 +857,28 @@ class AddWeeklyGoals(Resource):
                 goal["synced_to_google"] = True
             except Exception as e:
                 print(f"Failed to sync goal to Google Calendar: {e}")
-                goal["synced_to_google"] = False
+
+        # Sync to Outlook Calendar
+        if sync_to_outlook:
+            try:
+                # Get Outlook account
+                outlook_account = DBHelper.find_one(
+                    "connected_accounts",
+                    filters={"user_id": uid, "provider": "outlook", "is_active": 1},
+                    select_fields=["access_token"],
+                )
+
+                if outlook_account:
+                    outlook_event_id = create_outlook_calendar_event(
+                        outlook_account["access_token"],
+                        data.get("goal", ""),
+                        start_dt,
+                        end_dt,
+                    )
+                    goal["outlook_calendar_id"] = outlook_event_id
+                    goal["synced_to_outlook"] = True
+            except Exception as e:
+                print(f"Failed to sync goal to Outlook Calendar: {e}")
 
         # Always store in database
         DBHelper.insert("weekly_goals", return_column="id", **goal)
@@ -499,6 +965,7 @@ class AddEvents(Resource):
         unid = uniqueId(digit=15, isNum=True)
         backup = inputData.get("backup", [])
         sync_to_google = inputData.get("sync_to_google", True)
+        sync_to_outlook = inputData.get("sync_to_outlook", True)
 
         title = inputData.get("title", "")
         date = inputData.get("date", "")
@@ -508,8 +975,10 @@ class AddEvents(Resource):
             "title": title,
             "time": time,
             "date": date,
-            "synced_to_google": sync_to_google,
             "google_calendar_id": None,
+            "outlook_calendar_id": None,
+            "synced_to_google": False,
+            "synced_to_outlook": False,
         }
 
         try:
@@ -517,16 +986,33 @@ class AddEvents(Resource):
         except ValueError:
             return {"status": 0, "message": "Invalid date/time format", "payload": {}}
 
-        # Handle Google Calendar sync
+        # Sync to Google Calendar
         if sync_to_google:
-            print(f"sync_to_google: {sync_to_google}")
             try:
                 google_event_id = create_calendar_event(uid, title, start_dt)
                 event_data["google_calendar_id"] = google_event_id
                 event_data["synced_to_google"] = True
             except Exception as e:
                 print(f"Failed to sync event to Google Calendar: {e}")
-                event_data["synced_to_google"] = False
+
+        # Sync to Outlook Calendar
+        if sync_to_outlook:
+            try:
+                # Get Outlook account
+                outlook_account = DBHelper.find_one(
+                    "connected_accounts",
+                    filters={"user_id": uid, "provider": "outlook", "is_active": 1},
+                    select_fields=["access_token"],
+                )
+
+                if outlook_account:
+                    outlook_event_id = create_outlook_calendar_event(
+                        outlook_account["access_token"], title, start_dt
+                    )
+                    event_data["outlook_calendar_id"] = outlook_event_id
+                    event_data["synced_to_outlook"] = True
+            except Exception as e:
+                print(f"Failed to sync event to Outlook Calendar: {e}")
 
         if id:
             DBHelper.update_one(
@@ -552,6 +1038,7 @@ class AddWeeklyTodos(Resource):
         id = uniqueId(digit=15, isNum=True)
         backup = data.get("backup", [])
         sync_to_google = data.get("sync_to_google", True)
+        sync_to_outlook = data.get("sync_to_outlook", True)
 
         # Use provided date or compute current week's Saturday
         todo_date = data.get("date")
@@ -574,28 +1061,47 @@ class AddWeeklyTodos(Resource):
             "completed": False,
             "goal_id": data.get("goal_id", None),
             "google_calendar_id": None,
-            "synced_to_google": sync_to_google,
+            "outlook_calendar_id": None,
+            "synced_to_google": False,
+            "synced_to_outlook": False,
         }
 
-        # Sync to Google Calendar if enabled
+        # Sync to calendars if enabled
+        start_dt = datetime.strptime(todo_date, "%Y-%m-%d")
+        end_dt = start_dt + timedelta(days=1)
+
+        # Sync to Google Calendar
         if sync_to_google:
             try:
-                # Convert selected date into datetime at midnight
-                start_dt = datetime.strptime(todo_date, "%Y-%m-%d")
-                end_dt = start_dt + timedelta(days=1)  # For all-day event
-
-                # Create all-day event by sending date range only
                 google_event_id = create_calendar_event(
-                    uid,
-                    data.get("text", ""),
-                    start_dt,
-                    end_dt,  # Sending end date = next day
+                    uid, data.get("text", ""), start_dt, end_dt
                 )
                 todo["google_calendar_id"] = google_event_id
                 todo["synced_to_google"] = True
             except Exception as e:
                 print(f"Failed to sync todo to Google Calendar: {e}")
-                todo["synced_to_google"] = False
+
+        # Sync to Outlook Calendar
+        if sync_to_outlook:
+            try:
+                # Get Outlook account
+                outlook_account = DBHelper.find_one(
+                    "connected_accounts",
+                    filters={"user_id": uid, "provider": "outlook", "is_active": 1},
+                    select_fields=["access_token"],
+                )
+
+                if outlook_account:
+                    outlook_event_id = create_outlook_calendar_event(
+                        outlook_account["access_token"],
+                        data.get("text", ""),
+                        start_dt,
+                        end_dt,
+                    )
+                    todo["outlook_calendar_id"] = outlook_event_id
+                    todo["synced_to_outlook"] = True
+            except Exception as e:
+                print(f"Failed to sync todo to Outlook Calendar: {e}")
 
         # Always store in database
         DBHelper.insert("weekly_todos", return_column="id", **todo)
@@ -883,7 +1389,7 @@ class GetPlanner(Resource):
                         "endTime": self._add_hour_to_time(todo.get("time")),
                         "description": f"Todo - Priority: {todo.get('priority', 'medium')}",
                         "person": "Dockly",
-                        "color": "#10B981",
+                        "color": "#0033FF",
                         "source": "dockly",
                         "type": "todo",
                         "priority": todo.get("priority", "medium"),
@@ -1120,12 +1626,12 @@ class GetCalendarEvents(Resource):
                 {
                     "provider": "dockly",
                     "email": user.get("email", "dockly@user.com"),
-                    "color": "#10B981",
+                    "color": "#0033FF",
                     "userName": user.get("user_name", "Dockly User"),
                     "displayName": user.get("user_name", "Dockly User"),
                 }
             )
-            account_colors["dockly:dockly@user.com"] = "#10B981"
+            account_colors["dockly:dockly@user.com"] = "#0033FF"
 
         # Process Google Calendar accounts only if show_google is True
         if show_google and allCreds:
