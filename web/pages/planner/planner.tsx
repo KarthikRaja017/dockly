@@ -67,6 +67,7 @@ import {
     MehOutlined,
     FrownOutlined,
     SoundOutlined,
+    WindowsOutlined,
 } from "@ant-design/icons";
 import { Calendar } from "lucide-react";
 import dayjs from "dayjs";
@@ -79,6 +80,7 @@ import CustomCalendar from "../components/customCalendar";
 import FamilyTasksComponent from "../components/familyTasksProjects";
 import NotesLists from "../family-hub/components/familyNotesLists";
 import DocklyLoader from "../../utils/docklyLoader";
+import { API_URL } from "../../services/apiConfig";
 
 const { Title, Text } = Typography;
 
@@ -255,55 +257,57 @@ const getProviderDisplayName = (provider: string): string => {
 const CalendarAccountFilter: React.FC<{
     connectedAccounts: ConnectedAccount[];
     onFilterChange: (filteredAccountIds: string[]) => void;
-    onConnectAccount: () => void;
-}> = ({ connectedAccounts, onFilterChange, onConnectAccount }) => {
-    const [selectedAccounts, setSelectedAccounts] = useState<string[]>(['all']);
+    // onConnectAccount: () => void;
+}> = ({ connectedAccounts, onFilterChange,
+    // onConnectAccount
+}) => {
+        const [selectedAccounts, setSelectedAccounts] = useState<string[]>(['all']);
 
-    // Memoize account IDs to prevent infinite loops
-    const allAccountIds = useMemo(() =>
-        connectedAccounts.map((acc) => createAccountIdentifier(acc)),
-        [connectedAccounts]
-    );
+        // Memoize account IDs to prevent infinite loops
+        const allAccountIds = useMemo(() =>
+            connectedAccounts.map((acc) => createAccountIdentifier(acc)),
+            [connectedAccounts]
+        );
 
-    // Use callback to prevent infinite re-renders
-    const handleFilterUpdate = useCallback(() => {
-        if (connectedAccounts.length > 0 && selectedAccounts.includes('all')) {
-            onFilterChange(allAccountIds);
-        } else if (!selectedAccounts.includes('all')) {
-            onFilterChange(selectedAccounts);
-        }
-    }, [selectedAccounts, connectedAccounts.length, allAccountIds, onFilterChange]);
+        // Use callback to prevent infinite re-renders
+        const handleFilterUpdate = useCallback(() => {
+            if (connectedAccounts.length > 0 && selectedAccounts.includes('all')) {
+                onFilterChange(allAccountIds);
+            } else if (!selectedAccounts.includes('all')) {
+                onFilterChange(selectedAccounts);
+            }
+        }, [selectedAccounts, connectedAccounts.length, allAccountIds, onFilterChange]);
 
-    // Fixed useEffect with proper dependencies
-    useEffect(() => {
-        handleFilterUpdate();
-    }, [handleFilterUpdate]);
+        // Fixed useEffect with proper dependencies
+        useEffect(() => {
+            handleFilterUpdate();
+        }, [handleFilterUpdate]);
 
-    const handleSelectChange = useCallback((values: string[]) => {
-        if (values.includes('all')) {
-            setSelectedAccounts(['all']);
-        } else {
-            setSelectedAccounts(values);
-        }
-    }, []);
+        const handleSelectChange = useCallback((values: string[]) => {
+            if (values.includes('all')) {
+                setSelectedAccounts(['all']);
+            } else {
+                setSelectedAccounts(values);
+            }
+        }, []);
 
-    if (connectedAccounts.length === 0) {
-        return (
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: SPACING.xs,
-                padding: `${SPACING.sm}px ${SPACING.md}px`,
-                background: COLORS.surfaceSecondary,
-                borderRadius: '8px',
-                border: `1px solid ${COLORS.borderLight}`,
-                fontFamily: FONT_FAMILY,
-            }}>
-                <GoogleOutlined style={{ color: COLORS.textSecondary, fontSize: '14px' }} />
-                <Text style={{ color: COLORS.textSecondary, fontSize: '13px', fontWeight: 500, fontFamily: FONT_FAMILY }}>
-                    No accounts connected
-                </Text>
-                <Button
+        if (connectedAccounts.length === 0) {
+            return (
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: SPACING.xs,
+                    padding: `${SPACING.sm}px ${SPACING.md}px`,
+                    background: COLORS.surfaceSecondary,
+                    borderRadius: '8px',
+                    border: `1px solid ${COLORS.borderLight}`,
+                    fontFamily: FONT_FAMILY,
+                }}>
+                    <GoogleOutlined style={{ color: COLORS.textSecondary, fontSize: '14px' }} />
+                    <Text style={{ color: COLORS.textSecondary, fontSize: '13px', fontWeight: 500, fontFamily: FONT_FAMILY }}>
+                        No accounts connected
+                    </Text>
+                    {/* <Button
                     type="primary"
                     size="small"
                     icon={<PlusOutlined />}
@@ -319,39 +323,61 @@ const CalendarAccountFilter: React.FC<{
                     }}
                 >
                     Connect
-                </Button>
-            </div>
-        );
-    }
+                </Button> */}
+                </div>
+            );
+        }
 
-    return (
-        <Select
-            mode="multiple"
-            value={selectedAccounts}
-            onChange={handleSelectChange}
-            placeholder="Select accounts"
-            style={{
-                minWidth: '200px',
-                maxWidth: '350px',
-                fontFamily: FONT_FAMILY,
-                color: COLORS.textSecondary,
-            }}
-            size="middle"
-            suffixIcon={<CalendarOutlined style={{ color: COLORS.textSecondary }} />}
-            // dropdownStyle={{
-            //     fontFamily: FONT_FAMILY,
-            //     borderRadius: '12px',
-            //     boxShadow: `0 8px 24px ${COLORS.shadowMedium}`,
-            //     backgroundColor: COLORS.surface,
-            //     padding: '8px',
-            //     border: `1px solid ${COLORS.borderLight}`,
-            // }}
-            tagRender={(props) => {
-                const { label, value, closable, onClose } = props;
-                if (value === 'all') {
+        return (
+            <Select
+                mode="multiple"
+                value={selectedAccounts}
+                onChange={handleSelectChange}
+                placeholder="Select accounts"
+                style={{
+                    minWidth: '200px',
+                    maxWidth: '350px',
+                    fontFamily: FONT_FAMILY,
+                    color: COLORS.textSecondary,
+                }}
+                size="middle"
+                suffixIcon={<CalendarOutlined style={{ color: COLORS.textSecondary }} />}
+                // dropdownStyle={{
+                //     fontFamily: FONT_FAMILY,
+                //     borderRadius: '12px',
+                //     boxShadow: `0 8px 24px ${COLORS.shadowMedium}`,
+                //     backgroundColor: COLORS.surface,
+                //     padding: '8px',
+                //     border: `1px solid ${COLORS.borderLight}`,
+                // }}
+                tagRender={(props) => {
+                    const { label, value, closable, onClose } = props;
+                    if (value === 'all') {
+                        return (
+                            <Tag
+                                color="blue"
+                                closable={closable}
+                                onClose={onClose}
+                                style={{
+                                    margin: '2px',
+                                    borderRadius: '4px',
+                                    fontSize: '11px',
+                                    fontWeight: 500,
+                                    fontFamily: FONT_FAMILY,
+                                    // color: COLORS.textSecondary,
+                                }}
+                            >
+                                All Accounts
+                            </Tag>
+                        );
+                    }
+
+                    const account = connectedAccounts.find(acc => createAccountIdentifier(acc) === value);
+                    if (!account) return <span />;
+
                     return (
                         <Tag
-                            color="blue"
+                            // color={account.color}
                             closable={closable}
                             onClose={onClose}
                             style={{
@@ -360,87 +386,65 @@ const CalendarAccountFilter: React.FC<{
                                 fontSize: '11px',
                                 fontWeight: 500,
                                 fontFamily: FONT_FAMILY,
-                                // color: COLORS.textSecondary,
+                                background: `${account.color}15`,
+                                borderColor: account.color,
+                                color: account.color,
                             }}
                         >
-                            All Accounts
-                        </Tag>
-                    );
-                }
-
-                const account = connectedAccounts.find(acc => createAccountIdentifier(acc) === value);
-                if (!account) return <span />;
-
-                return (
-                    <Tag
-                        // color={account.color}
-                        closable={closable}
-                        onClose={onClose}
-                        style={{
-                            margin: '2px',
-                            borderRadius: '4px',
-                            fontSize: '11px',
-                            fontWeight: 500,
-                            fontFamily: FONT_FAMILY,
-                            background: `${account.color}15`,
-                            borderColor: account.color,
-                            color: account.color,
-                        }}
-                    >
-                        <Avatar size={14} style={{ backgroundColor: account.color, marginRight: '4px' }}>
-                            {getProviderIcon(account.provider)}
-                        </Avatar>
-                        {account.email.split('@')[0]}
-                    </Tag>
-                );
-            }}
-        >
-            <Select.Option
-                key="all"
-                value="all"
-                style={{ fontFamily: FONT_FAMILY }}
-            >
-                <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.xs }}>
-                    <Avatar size={20} style={{ backgroundColor: COLORS.accent }}>
-                        <CalendarOutlined style={{ fontSize: '12px' }} />
-                    </Avatar>
-                    <Text style={{ fontSize: '13px', fontWeight: 500, fontFamily: FONT_FAMILY }}>
-                        All Accounts
-                    </Text>
-                </div>
-            </Select.Option>
-            {connectedAccounts.map((account) => {
-                const accountId = createAccountIdentifier(account);
-                return (
-                    <Select.Option
-                        key={accountId}
-                        value={accountId}
-                        style={{ fontFamily: FONT_FAMILY, color: COLORS.textSecondary }}
-                    >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.xs }}>
-                            <Avatar size={20} style={{ backgroundColor: account.color }}>
+                            <Avatar size={14} style={{ backgroundColor: account.color, marginRight: '4px' }}>
                                 {getProviderIcon(account.provider)}
                             </Avatar>
-                            <div>
-                                <Text style={{ fontSize: '13px', fontWeight: 500, fontFamily: FONT_FAMILY }}>
-                                    {account.email.split('@')[0]}
-                                </Text>
-                                <Text style={{ fontSize: '11px', color: COLORS.textSecondary, display: 'block', fontFamily: FONT_FAMILY }}>
-                                    {getProviderDisplayName(account.provider)}
-                                </Text>
+                            {account.email.split('@')[0]}
+                        </Tag>
+                    );
+                }}
+            >
+                <Select.Option
+                    key="all"
+                    value="all"
+                    style={{ fontFamily: FONT_FAMILY }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.xs }}>
+                        <Avatar size={20} style={{ backgroundColor: COLORS.accent }}>
+                            <CalendarOutlined style={{ fontSize: '12px' }} />
+                        </Avatar>
+                        <Text style={{ fontSize: '13px', fontWeight: 500, fontFamily: FONT_FAMILY }}>
+                            All Accounts
+                        </Text>
+                    </div>
+                </Select.Option>
+                {connectedAccounts.map((account) => {
+                    const accountId = createAccountIdentifier(account);
+                    return (
+                        <Select.Option
+                            key={accountId}
+                            value={accountId}
+                            style={{ fontFamily: FONT_FAMILY, color: COLORS.textSecondary }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.xs }}>
+                                <Avatar size={20} style={{ backgroundColor: account.color }}>
+                                    {getProviderIcon(account.provider)}
+                                </Avatar>
+                                <div>
+                                    <Text style={{ fontSize: '13px', fontWeight: 500, fontFamily: FONT_FAMILY }}>
+                                        {account.email.split('@')[0]}
+                                    </Text>
+                                    <Text style={{ fontSize: '11px', color: COLORS.textSecondary, display: 'block', fontFamily: FONT_FAMILY }}>
+                                        {getProviderDisplayName(account.provider)}
+                                    </Text>
+                                </div>
                             </div>
-                        </div>
-                    </Select.Option>
-                );
-            })}
-        </Select>
-    );
-};
+                        </Select.Option>
+                    );
+                })}
+            </Select>
+        );
+    };
 
 const ConnectAccountModal: React.FC<{
     isVisible: boolean;
     onClose: () => void;
-    onConnect: () => void;
+    onConnect: (service: 'google' | 'outlook') => void;
 }> = ({ isVisible, onClose, onConnect }) => {
     return (
         <Modal
@@ -453,10 +457,16 @@ const ConnectAccountModal: React.FC<{
             <div style={{ textAlign: 'center', padding: '18px', fontFamily: FONT_FAMILY }}>
                 <CalendarOutlined style={{ fontSize: '48px', color: COLORS.accent, marginBottom: '18px' }} />
                 <Title level={4} style={{ marginBottom: '12px', color: COLORS.text, fontFamily: FONT_FAMILY }}>
-                    Connect Your Google Calendar
+                    Connect Your Calendar Account
                 </Title>
-                <Text style={{ display: 'block', marginBottom: '18px', color: COLORS.textSecondary, fontFamily: FONT_FAMILY, fontSize: '14px' }}>
-                    To view and manage your calendar events, please connect your Google account.
+                <Text style={{
+                    display: 'block',
+                    marginBottom: '18px',
+                    color: COLORS.textSecondary,
+                    fontFamily: FONT_FAMILY,
+                    fontSize: '14px'
+                }}>
+                    To view and manage your calendar events, please connect your Google or Microsoft Outlook account.
                     You can connect multiple accounts to see all your events in one place.
                 </Text>
                 <div style={{
@@ -474,18 +484,36 @@ const ConnectAccountModal: React.FC<{
                         type="primary"
                         size="large"
                         icon={<GoogleOutlined />}
-                        onClick={onConnect}
+                        onClick={() => onConnect('google')}
                         style={{
                             width: '100%',
                             height: '42px',
-                            backgroundColor: COLORS.accent,
-                            borderColor: COLORS.accent,
+                            backgroundColor: '#4285F4', // Google Blue
+                            borderColor: '#4285F4',
                             borderRadius: '6px',
                             fontFamily: FONT_FAMILY,
                         }}
                     >
                         Connect Google Account
                     </Button>
+
+                    <Button
+                        type="primary"
+                        size="large"
+                        icon={<WindowsOutlined />}
+                        onClick={() => onConnect('outlook')}
+                        style={{
+                            width: '100%',
+                            height: '42px',
+                            backgroundColor: '#0078D4', // Microsoft Blue
+                            borderColor: '#0078D4',
+                            borderRadius: '6px',
+                            fontFamily: FONT_FAMILY,
+                        }}
+                    >
+                        Connect Outlook Account
+                    </Button>
+
                     <Button
                         type="text"
                         onClick={onClose}
@@ -498,7 +526,6 @@ const ConnectAccountModal: React.FC<{
         </Modal>
     );
 };
-
 // Advanced Feature: Habit Tracker Component
 const HabitTracker: React.FC<{
     habits: HabitTracker[];
@@ -583,7 +610,7 @@ const HabitTracker: React.FC<{
 const PlannerTitle: React.FC<{
     connectedAccounts: ConnectedAccount[];
     onFilterChange: (filteredAccountIds: string[]) => void;
-    onConnectAccount: () => void;
+    onConnectAccount: (service: string) => void;
 }> = ({ connectedAccounts, onFilterChange, onConnectAccount }) => {
     return (
         <div style={{
@@ -643,7 +670,7 @@ const PlannerTitle: React.FC<{
                 <CalendarAccountFilter
                     connectedAccounts={connectedAccounts}
                     onFilterChange={onFilterChange}
-                    onConnectAccount={onConnectAccount}
+                // onConnectAccount={onConnectAccount}
                 />
             </div>
         </div>
@@ -764,7 +791,7 @@ const Planner = () => {
     const [isEventModalVisible, setIsEventModalVisible] = useState(false);
     const [isTodoModalVisible, setIsTodoModalVisible] = useState(false);
     const [isProjectModalVisible, setIsProjectModalVisible] = useState(false);
-    const [isConnectAccountModalVisible, setIsConnectAccountModalVisible] = useState(false);
+    const [isConnectAccountModalVisible, setIsConnectAccountModalVisible] = useState(true);
     const [editingGoal, setEditingGoal] = useState<any>(null);
     const [editingTodo, setEditingTodo] = useState<any>(null);
     const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
@@ -784,6 +811,7 @@ const Planner = () => {
     const [isNoteModalVisible, setIsNoteModalVisible] = useState(false);
     const [noteForm] = Form.useForm();
     const [expandedSection, setExpandedSection] = useState<"habits" | "goals" | "todos" | null>("habits");
+    const username = useCurrentUser()?.user_name;
 
     // {
     //     if (!calendarEvents) {
@@ -925,8 +953,12 @@ const Planner = () => {
         setFilteredAccountIds(filteredIds);
     }, []);
 
-    const handleConnectAccount = () => {
-        window.location.href = `/add-googleCalendar?username=user&userId=123`;
+    const handleConnectAccount = (service: string) => {
+        if (service === 'google') {
+            window.location.href = `${API_URL}/add-googleCalendar?username=${username}&userId=${userId}`;
+        } else if (service === "outlook") {
+            window.location.href = `${API_URL}/add-microsoftAccount?username=${username}&userId=${userId}`;
+        }
     };
 
     const handleToggleHabit = (habitId: string) => {

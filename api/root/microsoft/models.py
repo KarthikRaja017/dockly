@@ -1,6 +1,6 @@
 """
-Microsoft OAuth Integration - Fixed Version
-Addresses authorization code expiration and API response issues
+Microsoft OAuth Integration - Complete Backend Implementation
+Handles OAuth flow, token management, and file operations
 """
 
 from datetime import datetime, timedelta
@@ -22,7 +22,8 @@ MS_CLIENT_SECRET = os.getenv("MICROSOFT_CLIENT_SECRET", "")
 MS_TENANT_ID = os.getenv("MICROSOFT_TENANT_ID", "common")
 
 MS_AUTHORITY = f"https://login.microsoftonline.com/{MS_TENANT_ID}"
-MS_REDIRECT_URI = f"{API_URL}/microsoft/auth/callback"
+MS_REDIRECT_URI = f"{API_URL}/auth/callback"
+print(f"MS_REDIRECT_URI: {MS_REDIRECT_URI}")
 MS_SCOPES = [
     "openid",
     "profile",
@@ -34,10 +35,13 @@ MS_SCOPES = [
     "https://graph.microsoft.com/Sites.ReadWrite.All",
 ]
 
+# Reduced timeout for OAuth sessions (authorization codes typically expire in 5-10 minutes)
+OAUTH_SESSION_TIMEOUT = 300  # 5 minutes instead of 10
+
 
 class AddMicrosoftAccount(Resource):
     def get(self):
-        """Initiate Microsoft OAuth flow with better error handling"""
+        """Initiate Microsoft OAuth flow"""
         try:
             # Get and validate parameters
             uid = request.args.get("userId")
@@ -63,38 +67,43 @@ class AddMicrosoftAccount(Resource):
                     "payload": {},
                 }, 500
 
-            # Store in session for callback with timestamp
+            # Clear any existing session data to prevent conflicts
+            session.pop("username", None)
+            session.pop("uid", None)
+            session.pop("oauth_start_time", None)
+
+            # Store in session for callback
             session["username"] = username
             session["uid"] = uid
             session["oauth_start_time"] = time.time()
 
-            # Create state parameter with proper encoding
+            # Create state parameter with timestamp for validation
             state_data = {
                 "uid": uid,
                 "username": username,
                 "timestamp": datetime.utcnow().isoformat(),
-                "nonce": str(int(time.time() * 1000)),  # Add nonce for security
+                "nonce": str(int(time.time() * 1000)),
             }
             state = quote(json.dumps(state_data))
 
-            # Build authorization URL with proper encoding
+            # Build authorization URL with additional parameters to ensure fresh auth
             params = {
                 "client_id": MS_CLIENT_ID,
                 "response_type": "code",
                 "redirect_uri": MS_REDIRECT_URI,
                 "scope": " ".join(MS_SCOPES),
                 "state": state,
-                "prompt": "select_account",
+                "prompt": "select_account",  # Force account selection
                 "response_mode": "query",
-                "access_type": "offline",  # Ensure refresh token
+                "access_type": "offline",
+                "approval_prompt": "force",  # Force consent screen
             }
 
-            # Use urllib.parse for proper encoding
             auth_url = f"{MS_AUTHORITY}/oauth2/v2.0/authorize"
             param_string = urllib.parse.urlencode(params)
             auth_uri = f"{auth_url}?{param_string}"
 
-            print(f"✅ Initiating OAuth flow for user {uid}")
+            print(f"✅ Initiating OAuth flow for user {uid} at {datetime.utcnow()}")
             return redirect(auth_uri)
 
         except Exception as e:
@@ -108,7 +117,10 @@ class AddMicrosoftAccount(Resource):
 
 class MicrosoftCallback(Resource):
     def get(self):
-        """Handle Microsoft OAuth callback with improved error handling"""
+        """Handle Microsoft OAuth callback"""
+        callback_start_time = datetime.utcnow()
+        print(f"📞 Callback received at {callback_start_time}")
+
         try:
             # Check for OAuth errors first
             error = request.args.get("error")
@@ -117,23 +129,47 @@ class MicrosoftCallback(Resource):
                     "error_description", "Unknown error"
                 )
                 print(f"❌ OAuth error: {error} - {error_description}")
+
+                # Handle specific error types
+                if error == "access_denied":
+                    return redirect(
+                        f"{WEB_URL}/auth/error?error=user_cancelled&description=User cancelled the authorization"
+                    )
+                else:
+                    return redirect(
+                        f"{WEB_URL}/auth/error?error={error}&description={urllib.parse.quote(error_description)}"
+                    )
+
+            # Check session timeout with reduced window
+            oauth_start_time = session.get("oauth_start_time")
+            if not oauth_start_time:
+                print("❌ No OAuth session found")
                 return redirect(
-                    f"{WEB_URL}/auth/error?error={error}&description={urllib.parse.quote(error_description)}"
+                    f"{WEB_URL}/auth/error?error=no_session&description=OAuth session not found. Please try again."
                 )
 
-            # Check session timeout (OAuth should complete within 10 minutes)
-            oauth_start_time = session.get("oauth_start_time")
-            if (
-                oauth_start_time and (time.time() - oauth_start_time) > 600
-            ):  # 10 minutes
-                print("❌ OAuth session timeout")
-                return redirect(f"{WEB_URL}/auth/error?error=session_timeout")
+            session_duration = time.time() - oauth_start_time
+            if session_duration > OAUTH_SESSION_TIMEOUT:
+                print(
+                    f"❌ OAuth session timeout: {session_duration}s > {OAUTH_SESSION_TIMEOUT}s"
+                )
+                # Clear expired session
+                session.pop("username", None)
+                session.pop("uid", None)
+                session.pop("oauth_start_time", None)
+                return redirect(
+                    f"{WEB_URL}/auth/error?error=session_timeout&description=OAuth session expired. Please try again."
+                )
+
+            print(f"✅ Session valid, duration: {session_duration:.2f}s")
 
             # Validate state parameter
             state = request.args.get("state")
             if not state:
                 print("❌ Missing state parameter")
-                return redirect(f"{WEB_URL}/auth/error?error=missing_state")
+                return redirect(
+                    f"{WEB_URL}/auth/error?error=missing_state&description=Security validation failed"
+                )
 
             # Decode and validate state
             try:
@@ -151,47 +187,48 @@ class MicrosoftCallback(Resource):
 
             except (json.JSONDecodeError, ValueError) as e:
                 print(f"❌ Invalid state parameter: {str(e)}")
-                return redirect(f"{WEB_URL}/auth/error?error=invalid_state")
+                return redirect(
+                    f"{WEB_URL}/auth/error?error=invalid_state&description=Security validation failed"
+                )
 
             # Get authorization code
             code = request.args.get("code")
             if not code:
                 print("❌ Missing authorization code")
-                return redirect(f"{WEB_URL}/auth/error?error=no_code")
+                return redirect(
+                    f"{WEB_URL}/auth/error?error=no_code&description=Authorization code not received"
+                )
 
             print(f"✅ Received auth code for user {uid}, exchanging for tokens...")
+            code_received_time = datetime.utcnow()
+            print(
+                f"🕐 Time from callback start to code processing: {(code_received_time - callback_start_time).total_seconds():.2f}s"
+            )
 
-            # Exchange code for tokens with retry logic
-            tokens = None
-            max_retries = 3
-            for attempt in range(max_retries):
-                tokens = self._exchange_code_for_tokens(code)
-                if tokens:
-                    break
-                if attempt < max_retries - 1:
-                    print(
-                        f"⚠️  Token exchange attempt {attempt + 1} failed, retrying..."
-                    )
-                    time.sleep(1)  # Short delay before retry
-
+            # Exchange code for tokens with immediate processing
+            tokens = self._exchange_code_for_tokens(code)
             if not tokens:
-                print("❌ All token exchange attempts failed")
-                return redirect(f"{WEB_URL}/auth/error?error=token_exchange_failed")
+                print("❌ Token exchange failed")
+                # Clear session on failed exchange
+                session.pop("username", None)
+                session.pop("uid", None)
+                session.pop("oauth_start_time", None)
+                return redirect(
+                    f"{WEB_URL}/auth/error?error=token_exchange_failed&description=Failed to exchange authorization code for tokens. The code may have expired. Please try again."
+                )
 
-            print("✅ Token exchange successful")
+            token_exchange_time = datetime.utcnow()
+            print(
+                f"✅ Token exchange successful in {(token_exchange_time - code_received_time).total_seconds():.2f}s"
+            )
 
-            # Get user information with retry
-            user_info = None
-            for attempt in range(3):
-                user_info = self._get_user_info(tokens["access_token"])
-                if user_info:
-                    break
-                if attempt < 2:
-                    time.sleep(1)
-
+            # Get user information
+            user_info = self._get_user_info(tokens["access_token"])
             if not user_info:
                 print("❌ Failed to get user info")
-                return redirect(f"{WEB_URL}/auth/error?error=user_info_failed")
+                return redirect(
+                    f"{WEB_URL}/auth/error?error=user_info_failed&description=Failed to retrieve user information"
+                )
 
             # Get user photo (optional, don't fail if this doesn't work)
             picture_url = None
@@ -200,7 +237,7 @@ class MicrosoftCallback(Resource):
             except Exception as e:
                 print(f"⚠️  Failed to get user photo: {str(e)}")
 
-            # Calculate token expiration with buffer
+            # Calculate token expiration
             expires_in = tokens.get("expires_in", 3600)
             expires_at = datetime.utcnow() + timedelta(
                 seconds=expires_in - 300
@@ -219,7 +256,7 @@ class MicrosoftCallback(Resource):
                 "provider": "outlook",
             }
 
-            # Save or update account in database
+            # Save account to database
             success = self._save_account(
                 uid=uid,
                 email=email,
@@ -230,7 +267,9 @@ class MicrosoftCallback(Resource):
 
             if not success:
                 print("❌ Failed to save account to database")
-                return redirect(f"{WEB_URL}/auth/error?error=database_error")
+                return redirect(
+                    f"{WEB_URL}/auth/error?error=database_error&description=Failed to save account information"
+                )
 
             # Clear session data
             session.pop("username", None)
@@ -248,7 +287,11 @@ class MicrosoftCallback(Resource):
                 },
             )
 
-            print(f"✅ OAuth flow completed successfully for {email}")
+            completion_time = datetime.utcnow()
+            total_duration = (completion_time - callback_start_time).total_seconds()
+            print(
+                f"✅ OAuth flow completed successfully for {email} in {total_duration:.2f}s"
+            )
             return redirect(f"{WEB_URL}/{username}/oauth/callback?token={jwt_token}")
 
         except Exception as e:
@@ -256,10 +299,20 @@ class MicrosoftCallback(Resource):
             import traceback
 
             traceback.print_exc()
-            return redirect(f"{WEB_URL}/auth/error?error=callback_exception")
+
+            # Clear session on any error
+            session.pop("username", None)
+            session.pop("uid", None)
+            session.pop("oauth_start_time", None)
+
+            return redirect(
+                f"{WEB_URL}/auth/error?error=callback_exception&description=An unexpected error occurred during authentication"
+            )
 
     def _exchange_code_for_tokens(self, code):
-        """Exchange authorization code for access/refresh tokens with improved handling"""
+        """Exchange authorization code for access/refresh tokens with improved error handling"""
+        exchange_start = datetime.utcnow()
+
         try:
             token_url = f"{MS_AUTHORITY}/oauth2/v2.0/token"
             token_data = {
@@ -274,33 +327,65 @@ class MicrosoftCallback(Resource):
             headers = {
                 "Content-Type": "application/x-www-form-urlencoded",
                 "Accept": "application/json",
+                "User-Agent": "Microsoft-OAuth-Integration/1.0",
             }
 
-            print(f"🔄 Exchanging code for tokens...")
+            print(f"🔄 Exchanging code for tokens at {exchange_start}...")
+
+            # Make request with shorter timeout to fail fast
             response = requests.post(
-                token_url, data=token_data, headers=headers, timeout=30
+                token_url,
+                data=token_data,
+                headers=headers,
+                timeout=15,  # Reduced from 30 to 15 seconds
             )
 
-            print(f"📊 Token exchange response: {response.status_code}")
+            exchange_end = datetime.utcnow()
+            exchange_duration = (exchange_end - exchange_start).total_seconds()
+
+            print(
+                f"📊 Token exchange response: {response.status_code} (took {exchange_duration:.2f}s)"
+            )
 
             if response.status_code == 200:
-                return response.json()
+                token_response = response.json()
+                print(
+                    f"✅ Received tokens: access_token length={len(token_response.get('access_token', ''))}, has_refresh_token={bool(token_response.get('refresh_token'))}"
+                )
+                return token_response
             else:
-                error_data = response.json() if response.content else {}
+                try:
+                    error_data = response.json()
+                except:
+                    error_data = {
+                        "error": "unknown",
+                        "error_description": response.text,
+                    }
+
                 error_code = error_data.get("error", "unknown")
-                error_desc = error_data.get("error_description", response.text)
+                error_desc = error_data.get(
+                    "error_description", "No description available"
+                )
 
                 print(f"❌ Token exchange failed: {response.status_code}")
                 print(f"❌ Error: {error_code} - {error_desc}")
 
                 # Handle specific error cases
-                if error_code == "invalid_grant" and "expired" in error_desc.lower():
-                    print(
-                        "❌ Authorization code expired - user needs to re-authenticate"
-                    )
+                if error_code == "invalid_grant":
+                    if "expired" in error_desc.lower() or "AADSTS70000" in error_desc:
+                        print(
+                            "🔄 Authorization code has expired - this is common if there was a delay in processing"
+                        )
+                    elif "AADSTS70008" in error_desc:
+                        print("🔄 Authorization code has already been used")
+                    else:
+                        print(f"🔄 Invalid grant error: {error_desc}")
 
                 return None
 
+        except requests.Timeout as e:
+            print(f"❌ Token exchange request timed out after 15s: {str(e)}")
+            return None
         except requests.RequestException as e:
             print(f"❌ Token exchange request failed: {str(e)}")
             return None
@@ -309,20 +394,26 @@ class MicrosoftCallback(Resource):
             return None
 
     def _get_user_info(self, access_token):
-        """Get user information from Microsoft Graph with better error handling"""
+        """Get user information from Microsoft Graph"""
         try:
             headers = {
                 "Authorization": f"Bearer {access_token}",
                 "Accept": "application/json",
                 "Content-Type": "application/json",
+                "User-Agent": "Microsoft-OAuth-Integration/1.0",
             }
 
+            print("🔄 Fetching user info from Microsoft Graph...")
             response = requests.get(
-                "https://graph.microsoft.com/v1.0/me", headers=headers, timeout=30
+                "https://graph.microsoft.com/v1.0/me", headers=headers, timeout=15
             )
 
             if response.status_code == 200:
-                return response.json()
+                user_info = response.json()
+                print(
+                    f"✅ Retrieved user info for: {user_info.get('displayName', 'Unknown')} ({user_info.get('mail', user_info.get('userPrincipalName', 'No email'))})"
+                )
+                return user_info
             else:
                 print(f"❌ User info request failed: {response.status_code}")
                 print(f"❌ Response: {response.text}")
@@ -337,20 +428,23 @@ class MicrosoftCallback(Resource):
         try:
             headers = {
                 "Authorization": f"Bearer {access_token}",
+                "User-Agent": "Microsoft-OAuth-Integration/1.0",
             }
 
             response = requests.get(
                 "https://graph.microsoft.com/v1.0/me/photo/$value",
                 headers=headers,
-                timeout=15,  # Shorter timeout for optional feature
+                timeout=10,  # Short timeout for optional feature
             )
 
             if response.status_code == 200 and response.content:
                 import base64
 
                 picture_data = base64.b64encode(response.content).decode("utf-8")
+                print("✅ Retrieved user profile photo")
                 return f"data:image/jpeg;base64,{picture_data}"
 
+            print(f"⚠️  No profile photo available (status: {response.status_code})")
             return None
 
         except Exception as e:
@@ -358,9 +452,8 @@ class MicrosoftCallback(Resource):
             return None
 
     def _save_account(self, uid, email, tokens, expires_at, user_object):
-        """Save or update connected account in database with better error handling"""
+        """Save or update connected account in database"""
         try:
-            # Ensure all parameters are properly formatted
             uid = str(uid)
             email = str(email)
             access_token = str(tokens.get("access_token", ""))
@@ -372,6 +465,8 @@ class MicrosoftCallback(Resource):
             if not access_token:
                 print("❌ No access token to save")
                 return False
+
+            print(f"💾 Saving account for {email} (user_id: {uid})")
 
             # Check if account already exists
             existing_account = DBHelper.find_one(
@@ -428,9 +523,8 @@ class MicrosoftCallback(Resource):
             return False
 
 
-# Improved token refresh utility function
 def refresh_microsoft_token(refresh_token):
-    """Refresh Microsoft access token using refresh token with better error handling"""
+    """Refresh Microsoft access token using refresh token"""
     try:
         if not refresh_token:
             print("❌ No refresh token provided")
@@ -448,30 +542,28 @@ def refresh_microsoft_token(refresh_token):
         headers = {
             "Content-Type": "application/x-www-form-urlencoded",
             "Accept": "application/json",
+            "User-Agent": "Microsoft-OAuth-Integration/1.0",
         }
 
         print("🔄 Refreshing Microsoft token...")
         response = requests.post(
-            token_url, data=token_data, headers=headers, timeout=30
+            token_url, data=token_data, headers=headers, timeout=15
         )
 
         if response.status_code == 200:
             print("✅ Token refreshed successfully")
             return response.json()
         else:
-            error_data = response.json() if response.content else {}
+            try:
+                error_data = response.json()
+            except:
+                error_data = {"error": "unknown", "error_description": response.text}
+
             error_code = error_data.get("error", "unknown")
             error_desc = error_data.get("error_description", response.text)
 
             print(f"❌ Token refresh failed: {response.status_code}")
             print(f"❌ Error: {error_code} - {error_desc}")
-
-            # Handle specific refresh token errors
-            if error_code in ["invalid_grant", "invalid_client"]:
-                print(
-                    "❌ Refresh token is invalid or expired - requires re-authentication"
-                )
-
             return None
 
     except requests.RequestException as e:

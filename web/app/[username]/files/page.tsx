@@ -120,11 +120,10 @@ import {
     type DuplicateFile
 } from '../../../services/files';
 import DocklyLoader from '../../../utils/docklyLoader';
+import { trimGooglePhotoUrl } from '../../../pages/components/header';
 
 const PRIMARY_COLOR = '#1890ff';
-
-// Add this function to simulate trimGooglePhotoUrl since it's imported but not defined
-const trimGooglePhotoUrl = (url: string) => url;
+const FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 
 interface UploadProgress {
     [fileName: string]: {
@@ -164,33 +163,35 @@ const UploadArea: React.FC<{
     };
 
     return (
-        <div style={{ marginBottom: '0px' }}>
+        <div style={{ marginBottom: '0px', fontFamily: FONT_FAMILY }}>
             <Dragger
                 {...uploadProps}
                 style={{
                     backgroundColor: '#f8f9fa',
                     border: '2px dashed #dadce0',
                     borderRadius: '8px',
-                    padding: '16px 4px',
-                    transition: 'all 0.3s ease'
+                    padding: '12px 4px',
+                    transition: 'all 0.3s ease',
+                    fontFamily: FONT_FAMILY
                 }}
             >
-                <div style={{ textAlign: 'center' }}>
+                <div style={{ textAlign: 'center', fontFamily: FONT_FAMILY }}>
                     <CloudUploadOutlined style={{
-                        fontSize: '38px',
+                        fontSize: '32px',
                         color: '#5f6368',
-                        marginBottom: '16px',
+                        marginBottom: '12px',
                         display: 'block'
                     }} />
                     <div style={{
-                        fontSize: '16px',
+                        fontSize: '14px',
                         color: '#202124',
-                        marginBottom: '8px',
-                        fontWeight: 500
+                        marginBottom: '6px',
+                        fontWeight: 500,
+                        fontFamily: FONT_FAMILY
                     }}>
                         Drag files here or click to upload
                     </div>
-                    <div style={{ fontSize: '14px', color: '#5f6368' }}>
+                    <div style={{ fontSize: '12px', color: '#5f6368', fontFamily: FONT_FAMILY }}>
                         Support for single or bulk upload
                     </div>
                 </div>
@@ -200,26 +201,27 @@ const UploadArea: React.FC<{
                 <Card
                     size="small"
                     style={{
-                        marginTop: '16px',
+                        marginTop: '12px',
                         borderRadius: '8px',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                        fontFamily: FONT_FAMILY
                     }}
                     title={
                         <Space>
                             <CloudUploadOutlined style={{ color: PRIMARY_COLOR }} />
-                            <span style={{ fontSize: '14px', fontWeight: 500 }}>Upload Progress</span>
+                            <span style={{ fontSize: '13px', fontWeight: 500, fontFamily: FONT_FAMILY }}>Upload Progress</span>
                         </Space>
                     }
                 >
                     {Object.entries(uploadProgress).map(([filename, progress]) => (
-                        <div key={filename} style={{ marginBottom: '12px' }}>
+                        <div key={filename} style={{ marginBottom: '8px', fontFamily: FONT_FAMILY }}>
                             <div style={{
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center',
-                                marginBottom: '6px'
+                                marginBottom: '4px'
                             }}>
-                                <Text style={{ fontSize: '13px', fontWeight: 500 }}>{filename}</Text>
+                                <Text style={{ fontSize: '12px', fontWeight: 500, fontFamily: FONT_FAMILY }}>{filename}</Text>
                                 <Space size="small">
                                     {progress.status === 'completed' && (
                                         <Badge status="success" />
@@ -227,7 +229,7 @@ const UploadArea: React.FC<{
                                     {progress.status === 'error' && (
                                         <Badge status="error" />
                                     )}
-                                    <Text style={{ fontSize: '12px', color: '#5f6368' }}>
+                                    <Text style={{ fontSize: '11px', color: '#5f6368', fontFamily: FONT_FAMILY }}>
                                         {progress.progress}%
                                     </Text>
                                 </Space>
@@ -270,20 +272,21 @@ const BulkActionsToolbar: React.FC<{
         return (
             <div style={{
                 position: 'fixed',
-                bottom: '24px',
+                bottom: '20px',
                 left: '50%',
                 transform: 'translateX(-50%)',
                 backgroundColor: '#fff',
-                padding: '12px 24px',
-                borderRadius: '28px',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                padding: '8px 16px',
+                borderRadius: '24px',
+                boxShadow: '0 6px 20px rgba(0,0,0,0.15)',
                 border: '1px solid #e8eaed',
                 zIndex: 1000,
                 display: 'flex',
                 alignItems: 'center',
-                gap: '12px'
+                gap: '8px',
+                fontFamily: FONT_FAMILY
             }}>
-                <Text style={{ fontSize: '14px', fontWeight: 500 }}>
+                <Text style={{ fontSize: '12px', fontWeight: 500, fontFamily: FONT_FAMILY }}>
                     {selectedItems.length} selected
                 </Text>
                 <Divider type="vertical" />
@@ -399,89 +402,90 @@ const HeaderBar: React.FC<{
             if (provider === 'google') {
                 return (
                     <div style={{
-                        width: '16px',
-                        height: '16px',
+                        width: '14px',
+                        height: '14px',
                         borderRadius: '3px',
                         backgroundColor: color,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center'
                     }}>
-                        <span style={{ color: 'white', fontSize: '8px', fontWeight: 'bold' }}>G</span>
+                        <span style={{ color: 'white', fontSize: '7px', fontWeight: 'bold', fontFamily: FONT_FAMILY }}>G</span>
                     </div>
                 );
             } else if (provider === 'outlook') {
                 return (
                     <div style={{
-                        width: '16px',
-                        height: '16px',
+                        width: '14px',
+                        height: '14px',
                         borderRadius: '3px',
                         backgroundColor: color,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center'
                     }}>
-                        <span style={{ color: 'white', fontSize: '8px', fontWeight: 'bold' }}>O</span>
+                        <span style={{ color: 'white', fontSize: '7px', fontWeight: 'bold', fontFamily: FONT_FAMILY }}>O</span>
                     </div>
                 );
             }
-            return <UserOutlined style={{ fontSize: '12px' }} />;
+            return <UserOutlined style={{ fontSize: '10px' }} />;
         };
 
         const accountFilterOptions = [
             {
                 value: null,
                 label: (
-                    <div style={{ display: 'flex', alignItems: 'center', padding: '4px 0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', padding: '2px 0', fontFamily: FONT_FAMILY }}>
                         <div style={{
-                            width: '24px',
-                            height: '24px',
+                            width: '20px',
+                            height: '20px',
                             borderRadius: '50%',
                             backgroundColor: '#e8f0fe',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            marginRight: '8px'
+                            marginRight: '6px'
                         }}>
-                            <UserOutlined style={{ color: PRIMARY_COLOR, fontSize: '12px' }} />
+                            <UserOutlined style={{ color: PRIMARY_COLOR, fontSize: '10px' }} />
                         </div>
-                        <span style={{ fontSize: '13px', color: '#202124', fontWeight: 500 }}>All Accounts</span>
+                        <span style={{ fontSize: '12px', color: '#202124', fontWeight: 500, fontFamily: FONT_FAMILY }}>All Accounts</span>
                     </div>
                 )
             },
             ...availableAccounts.map((account, index) => ({
                 value: account.email,
                 label: (
-                    <div style={{ display: 'flex', alignItems: 'center', padding: '4px 0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', padding: '2px 0', fontFamily: FONT_FAMILY }}>
                         {account.photoLink ? (
                             <Avatar
-                                size={24}
+                                size={20}
                                 src={account.photoLink}
                                 style={{
-                                    marginRight: '8px',
+                                    marginRight: '6px',
                                     border: `2px solid ${getAccountColor(account.provider, index)}`
                                 }}
                             />
                         ) : (
                             <Avatar
-                                size={24}
+                                size={20}
                                 style={{
-                                    marginRight: '8px',
+                                    marginRight: '6px',
                                     backgroundColor: getAccountColor(account.provider, index),
-                                    fontSize: '12px'
+                                    fontSize: '10px',
+                                    fontFamily: FONT_FAMILY
                                 }}
                             >
                                 {(account.displayName || account.email)[0].toUpperCase()}
                             </Avatar>
                         )}
                         <div style={{ flex: 1 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <span style={{ fontSize: '13px', color: '#202124', fontWeight: 500 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <span style={{ fontSize: '12px', color: '#202124', fontWeight: 500, fontFamily: FONT_FAMILY }}>
                                     {account.displayName || 'Unknown'}
                                 </span>
                                 {getProviderIcon(account.provider, index)}
                             </div>
-                            <div style={{ fontSize: '11px', color: '#5f6368' }}>
+                            <div style={{ fontSize: '10px', color: '#5f6368', fontFamily: FONT_FAMILY }}>
                                 {account.email}
                             </div>
                         </div>
@@ -507,7 +511,8 @@ const HeaderBar: React.FC<{
                             height: 'auto',
                             color: index === breadcrumbs.length - 1 ? PRIMARY_COLOR : '#5f6368',
                             fontWeight: index === breadcrumbs.length - 1 ? 500 : 400,
-                            fontSize: '14px',
+                            fontSize: '13px',
+                            fontFamily: FONT_FAMILY
                         }}
                     >
                         {crumb.name}
@@ -518,21 +523,22 @@ const HeaderBar: React.FC<{
         ];
 
         return (
-            <div>
+            <div style={{ fontFamily: FONT_FAMILY }}>
                 <div
                     style={{
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        padding: '12px 24px',
+                        padding: '10px 20px',
                         backgroundColor: '#f9fafa',
                         flexWrap: 'wrap',
-                        gap: '16px'
+                        gap: '12px',
+                        fontFamily: FONT_FAMILY
                     }}
                 >
                     {/* Breadcrumbs and Selection on Left */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <Checkbox
                                 checked={isAllSelected}
                                 onChange={onToggleSelectAll}
@@ -550,12 +556,12 @@ const HeaderBar: React.FC<{
                     </div>
 
                     {/* Search + Filters on Right */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         {/* Search Section */}
                         {!showSearch ? (
                             <Button
                                 icon={<SearchOutlined />}
-                                size="middle"
+                                size="small"
                                 style={{
                                     borderColor: '#dadce0',
                                     color: '#5f6368',
@@ -564,24 +570,25 @@ const HeaderBar: React.FC<{
                                 onClick={() => setShowSearch(true)}
                             />
                         ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <Search
                                     placeholder="Search in Drive"
                                     value={searchQuery}
                                     onChange={(e) => onSearchChange(e.target.value)}
                                     style={{
-                                        width: '250px',
+                                        width: '280px',
                                         transition: 'all 0.3s ease',
-                                        borderRadius: '20px',
+                                        borderRadius: '16px',
+                                        fontFamily: FONT_FAMILY
                                     }}
-                                    size="middle"
+                                    size="small"
                                     allowClear
                                     autoFocus
                                 />
                                 <Button
                                     icon={<CloseOutlined />}
                                     onClick={() => setShowSearch(false)}
-                                    size="middle"
+                                    size="small"
                                     style={{
                                         borderColor: '#dadce0',
                                         color: '#5f6368',
@@ -600,23 +607,24 @@ const HeaderBar: React.FC<{
                                     onChange={onAccountChange}
                                     style={{
                                         minWidth: 200,
-                                        borderRadius: '8px'
+                                        borderRadius: '6px',
+                                        fontFamily: FONT_FAMILY
                                     }}
-                                    size="middle"
+                                    size="small"
                                     placeholder="All Accounts"
                                     optionLabelProp="label"
-                                    dropdownStyle={{
-                                        borderRadius: '12px',
-                                        boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                                        border: '1px solid #e8eaed',
-                                        padding: '4px 0'
-                                    }}
+                                    // dropdownStyle={{
+                                    //     borderRadius: '8px',
+                                    //     boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
+                                    //     border: '1px solid #e8eaed',
+                                    //     padding: '2px 0'
+                                    // }}
                                     suffixIcon={
                                         selectedAccount && selectedAccountData ? (
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                                                 {selectedAccountData.photoLink ? (
                                                     <Avatar
-                                                        size={18}
+                                                        size={16}
                                                         src={selectedAccountData.photoLink}
                                                         style={{
                                                             border: `2px solid ${getAccountColor(selectedAccountData.provider, selectedAccountIndex)}`
@@ -624,10 +632,11 @@ const HeaderBar: React.FC<{
                                                     />
                                                 ) : (
                                                     <Avatar
-                                                        size={18}
+                                                        size={16}
                                                         style={{
                                                             backgroundColor: getAccountColor(selectedAccountData.provider, selectedAccountIndex),
-                                                            fontSize: '10px'
+                                                            fontSize: '9px',
+                                                            fontFamily: FONT_FAMILY
                                                         }}
                                                     >
                                                         {(selectedAccountData.displayName || selectedAccountData.email || 'U')[0].toUpperCase()}
@@ -637,15 +646,15 @@ const HeaderBar: React.FC<{
                                             </div>
                                         ) : (
                                             <div style={{
-                                                width: '18px',
-                                                height: '18px',
+                                                width: '16px',
+                                                height: '16px',
                                                 borderRadius: '50%',
                                                 backgroundColor: '#e8f0fe',
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center'
                                             }}>
-                                                <UserOutlined style={{ color: PRIMARY_COLOR, fontSize: '10px' }} />
+                                                <UserOutlined style={{ color: PRIMARY_COLOR, fontSize: '9px' }} />
                                             </div>
                                         )
                                     }
@@ -661,8 +670,8 @@ const HeaderBar: React.FC<{
                             <Select
                                 value={sortBy}
                                 onChange={onSortByChange}
-                                style={{ width: 120 }}
-                                size="middle"
+                                style={{ width: 100, fontFamily: FONT_FAMILY }}
+                                size="small"
                             >
                                 <Select.Option value="modifiedTime">Modified</Select.Option>
                                 <Select.Option value="name">Name</Select.Option>
@@ -677,11 +686,11 @@ const HeaderBar: React.FC<{
                                             : <SortDescendingOutlined />
                                     }
                                     onClick={onSortOrderChange}
-                                    size="middle"
+                                    size="small"
                                     style={{
                                         borderColor: '#dadce0',
                                         color: '#5f6368',
-                                        borderRadius: '6px',
+                                        borderRadius: '4px',
                                     }}
                                 />
                             </Tooltip>
@@ -694,11 +703,11 @@ const HeaderBar: React.FC<{
                                             : <AppstoreOutlined />
                                     }
                                     onClick={onViewModeChange}
-                                    size="middle"
+                                    size="small"
                                     style={{
                                         borderColor: '#dadce0',
                                         color: '#5f6368',
-                                        borderRadius: '6px',
+                                        borderRadius: '4px',
                                     }}
                                 />
                             </Tooltip>
@@ -708,11 +717,11 @@ const HeaderBar: React.FC<{
                                     icon={<ReloadOutlined spin={loading} />}
                                     onClick={onRefresh}
                                     disabled={loading}
-                                    size="middle"
+                                    size="small"
                                     style={{
                                         borderColor: '#dadce0',
                                         color: '#5f6368',
-                                        borderRadius: '6px',
+                                        borderRadius: '4px',
                                     }}
                                 />
                             </Tooltip>
@@ -780,7 +789,7 @@ const FoldersSection: React.FC<{
                     okType="danger"
                     onConfirm={() => onFileAction('delete', folder)}
                 >
-                    <span style={{ color: 'red' }}>Delete</span>
+                    <span style={{ color: 'red', fontFamily: FONT_FAMILY }}>Delete</span>
                 </Popconfirm>
             ),
             icon: <DeleteOutlined />,
@@ -811,16 +820,16 @@ const FoldersSection: React.FC<{
     if (folders.length === 0) return null;
 
     return (
-        <div style={{ padding: '24px' }}>
+        <div style={{ padding: '16px', fontFamily: FONT_FAMILY }}>
             <div style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                marginBottom: '16px'
+                marginBottom: '12px'
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <FolderOutlined style={{ color: PRIMARY_COLOR, fontSize: '16px' }} />
-                    <Text style={{ fontSize: '16px', fontWeight: 500, color: '#202124' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <FolderOutlined style={{ color: PRIMARY_COLOR, fontSize: '14px' }} />
+                    <Text style={{ fontSize: '14px', fontWeight: 500, color: '#202124', fontFamily: FONT_FAMILY }}>
                         Folders
                     </Text>
                     <Badge
@@ -836,8 +845,9 @@ const FoldersSection: React.FC<{
                         onClick={() => setShowAll(!showAll)}
                         style={{
                             color: PRIMARY_COLOR,
-                            fontSize: '13px',
-                            height: '28px'
+                            fontSize: '12px',
+                            height: '24px',
+                            fontFamily: FONT_FAMILY
                         }}
                     >
                         {showAll ? 'Show less' : `Show all (${folders.length})`}
@@ -846,25 +856,26 @@ const FoldersSection: React.FC<{
             </div>
 
             {viewMode === 'grid' ? (
-                <Row gutter={[12, 12]}>
+                <Row gutter={[8, 8]}>
                     {displayFolders.map((folder) => {
                         const accentColor = getFolderAccentColor(folder);
                         return (
                             <Col xs={12} sm={8} md={6} lg={4} xl={3} key={folder.id}>
                                 <div
                                     style={{
-                                        padding: '12px',
-                                        borderRadius: '8px',
+                                        padding: '8px',
+                                        borderRadius: '6px',
                                         cursor: 'pointer',
                                         transition: 'all 0.2s ease',
                                         backgroundColor: '#fff',
                                         border: `1px solid ${accentColor}20`,
-                                        position: 'relative'
+                                        position: 'relative',
+                                        fontFamily: FONT_FAMILY
                                     }}
                                     onMouseEnter={(e) => {
                                         e.currentTarget.style.backgroundColor = '#f8f9fa';
                                         e.currentTarget.style.borderColor = accentColor + '40';
-                                        e.currentTarget.style.boxShadow = `0 2px 8px ${accentColor}20`;
+                                        e.currentTarget.style.boxShadow = `0 2px 6px ${accentColor}20`;
                                     }}
                                     onMouseLeave={(e) => {
                                         e.currentTarget.style.backgroundColor = '#fff';
@@ -872,31 +883,32 @@ const FoldersSection: React.FC<{
                                         e.currentTarget.style.boxShadow = 'none';
                                     }}
                                 >
-                                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '6px' }}>
                                         <Checkbox
                                             checked={selectedItems.includes(folder.id)}
                                             onChange={(e) => onItemSelect(folder.id, e.target.checked)}
                                             onClick={(e) => e.stopPropagation()}
-                                            style={{ marginRight: '8px' }}
+                                            style={{ marginRight: '6px' }}
                                         />
                                         <FolderOutlined
                                             style={{
-                                                fontSize: '20px',
+                                                fontSize: '18px',
                                                 color: accentColor,
-                                                marginRight: '8px'
+                                                marginRight: '6px'
                                             }}
                                             onClick={() => onFolderClick(folder.id, folder.name)}
                                         />
                                         <Text
                                             style={{
-                                                fontSize: '14px',
+                                                fontSize: '12px',
                                                 color: '#202124',
                                                 flex: 1,
                                                 overflow: 'hidden',
                                                 textOverflow: 'ellipsis',
                                                 whiteSpace: 'nowrap',
                                                 fontWeight: 500,
-                                                cursor: 'pointer'
+                                                cursor: 'pointer',
+                                                fontFamily: FONT_FAMILY
                                             }}
                                             onClick={() => onFolderClick(folder.id, folder.name)}
                                         >
@@ -913,33 +925,34 @@ const FoldersSection: React.FC<{
                                                 style={{
                                                     color: accentColor,
                                                     position: 'absolute',
-                                                    top: '8px',
-                                                    right: '8px'
+                                                    top: '6px',
+                                                    right: '6px'
                                                 }}
                                                 onClick={(e) => e.stopPropagation()}
                                             />
                                         </Dropdown>
                                     </div>
-                                    <Text style={{ fontSize: '12px', color: '#5f6368' }}>
+                                    <Text style={{ fontSize: '10px', color: '#5f6368', fontFamily: FONT_FAMILY }}>
                                         Modified {formatDate(folder.modifiedTime)}
                                     </Text>
                                     {folder.shared && (
-                                        <div style={{ marginTop: '4px' }}>
-                                            <Tag color="blue" style={{ fontSize: '8px' }}>
+                                        <div style={{ marginTop: '3px' }}>
+                                            <Tag color="blue" style={{ fontSize: '8px', fontFamily: FONT_FAMILY }}>
                                                 <TeamOutlined style={{ marginRight: '2px' }} />
                                                 Shared
                                             </Tag>
                                         </div>
                                     )}
                                     {folder.source_email && (
-                                        <div style={{ marginTop: '4px' }}>
+                                        <div style={{ marginTop: '3px' }}>
                                             <Tag
                                                 color={getFileSource(folder) === 'google' ? 'green' : 'blue'}
                                                 style={{
                                                     fontSize: '8px',
                                                     backgroundColor: accentColor + '15',
                                                     borderColor: accentColor + '40',
-                                                    color: accentColor
+                                                    color: accentColor,
+                                                    fontFamily: FONT_FAMILY
                                                 }}
                                             >
                                                 {getFileSource(folder) === 'google' ? 'Google' : 'Outlook'}
@@ -961,13 +974,13 @@ const FoldersSection: React.FC<{
                                 style={{
                                     display: 'flex',
                                     alignItems: 'center',
-                                    padding: '12px 16px',
-                                    borderRadius: '8px',
+                                    padding: '8px 12px',
+                                    borderRadius: '6px',
                                     cursor: 'pointer',
                                     transition: 'all 0.2s ease',
-                                    marginBottom: '6px',
+                                    marginBottom: '4px',
                                     borderLeft: `3px solid ${accentColor}`,
-                                    // borderBottom: `0.5px solid ${accentColor}`
+                                    fontFamily: FONT_FAMILY
                                 }}
                                 onMouseEnter={(e) => {
                                     e.currentTarget.style.backgroundColor = accentColor + '10';
@@ -979,30 +992,30 @@ const FoldersSection: React.FC<{
                                 <Checkbox
                                     checked={selectedItems.includes(folder.id)}
                                     onChange={(e) => onItemSelect(folder.id, e.target.checked)}
-                                    style={{ marginRight: '12px' }}
+                                    style={{ marginRight: '8px' }}
                                     onClick={(e) => e.stopPropagation()}
                                 />
                                 <FolderOutlined
                                     style={{
-                                        fontSize: '18px',
+                                        fontSize: '16px',
                                         color: accentColor,
-                                        marginRight: '16px'
+                                        marginRight: '12px'
                                     }}
                                     onClick={() => onFolderClick(folder.id, folder.name)}
                                 />
                                 <div
-                                    style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}
+                                    style={{ flex: 1, minWidth: 0, cursor: 'pointer', fontFamily: FONT_FAMILY }}
                                     onClick={() => onFolderClick(folder.id, folder.name)}
                                 >
-                                    <Text style={{ fontSize: '14px', color: '#202124', fontWeight: 500 }}>
+                                    <Text style={{ fontSize: '13px', color: '#202124', fontWeight: 500, fontFamily: FONT_FAMILY }}>
                                         {folder.name}
                                     </Text>
-                                    <div style={{ marginTop: '2px' }}>
-                                        <Text style={{ fontSize: '12px', color: '#5f6368' }}>
+                                    <div style={{ marginTop: '1px' }}>
+                                        <Text style={{ fontSize: '11px', color: '#5f6368', fontFamily: FONT_FAMILY }}>
                                             Modified {formatDate(folder.modifiedTime)}
                                         </Text>
                                         {folder.shared && (
-                                            <Tag color="blue" style={{ marginLeft: '8px', fontSize: '11px' }}>
+                                            <Tag color="blue" style={{ marginLeft: '6px', fontSize: '10px', fontFamily: FONT_FAMILY }}>
                                                 <TeamOutlined style={{ marginRight: '2px' }} />
                                                 Shared
                                             </Tag>
@@ -1010,11 +1023,12 @@ const FoldersSection: React.FC<{
                                         {folder.source_email && (
                                             <Tag
                                                 style={{
-                                                    marginLeft: '8px',
-                                                    fontSize: '11px',
+                                                    marginLeft: '6px',
+                                                    fontSize: '10px',
                                                     backgroundColor: accentColor + '15',
                                                     borderColor: accentColor + '40',
-                                                    color: accentColor
+                                                    color: accentColor,
+                                                    fontFamily: FONT_FAMILY
                                                 }}
                                             >
                                                 {getFileSource(folder) === 'google' ? 'Google' : 'Outlook'}
@@ -1167,7 +1181,7 @@ const FilesSection: React.FC<{
                     okType="danger"
                     onConfirm={() => onFileAction('delete', file)}
                 >
-                    <span style={{ color: 'red' }}>Delete</span>
+                    <span style={{ color: 'red', fontFamily: FONT_FAMILY }}>Delete</span>
                 </Popconfirm>
             ),
             icon: <DeleteOutlined style={{ color: 'red' }} />,
@@ -1182,7 +1196,7 @@ const FilesSection: React.FC<{
             {
                 title: '',
                 key: 'select',
-                width: 50,
+                width: 40,
                 render: (_: any, record: DriveFile) => (
                     <Checkbox
                         checked={selectedItems.includes(record.id)}
@@ -1199,30 +1213,30 @@ const FilesSection: React.FC<{
                     const accentColor = getFileAccentColor(record);
                     return (
                         <div
-                            style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+                            style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontFamily: FONT_FAMILY }}
                             onClick={() => onFileAction('view', record)}
                         >
                             <div
                                 style={{
-                                    marginRight: '12px',
+                                    marginRight: '8px',
                                     color: getFileIconColor(record.mimeType),
-                                    fontSize: '16px',
+                                    fontSize: '14px',
                                 }}
                             >
                                 {getFileIcon(record.mimeType)}
                             </div>
                             <div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <Text style={{ fontSize: '14px', color: '#202124', fontWeight: 500 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <Text style={{ fontSize: '12px', color: '#202124', fontWeight: 500, fontFamily: FONT_FAMILY }}>
                                         {text}
                                     </Text>
                                     {record.starred && (
-                                        <StarFilled style={{ color: '#fbbc04', fontSize: '12px' }} />
+                                        <StarFilled style={{ color: '#fbbc04', fontSize: '10px' }} />
                                     )}
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '1px' }}>
                                     {record.shared && (
-                                        <Tag color="blue" style={{ fontSize: '11px' }}>
+                                        <Tag color="blue" style={{ fontSize: '9px', fontFamily: FONT_FAMILY }}>
                                             <TeamOutlined style={{ marginRight: '2px' }} />
                                             Shared
                                         </Tag>
@@ -1230,10 +1244,11 @@ const FilesSection: React.FC<{
                                     {record.source_email && (
                                         <Tag
                                             style={{
-                                                fontSize: '11px',
+                                                fontSize: '9px',
                                                 backgroundColor: accentColor + '15',
                                                 borderColor: accentColor + '40',
-                                                color: accentColor
+                                                color: accentColor,
+                                                fontFamily: FONT_FAMILY
                                             }}
                                         >
                                             {getFileSource(record) === 'google' ? 'Google' : 'Outlook'}
@@ -1249,17 +1264,17 @@ const FilesSection: React.FC<{
                 title: 'Owner',
                 dataIndex: 'owners',
                 key: 'owners',
-                width: 180,
+                width: 140,
                 render: (owners: DriveFile['owners']) => (
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', fontFamily: FONT_FAMILY }}>
                         {owners[0]?.photoLink ? (
-                            <Avatar size="small" src={owners[0].photoLink} style={{ marginRight: '8px' }} />
+                            <Avatar size="small" src={owners[0].photoLink} style={{ marginRight: '6px' }} />
                         ) : (
-                            <Avatar size="small" style={{ marginRight: '8px', backgroundColor: PRIMARY_COLOR }}>
+                            <Avatar size="small" style={{ marginRight: '6px', backgroundColor: PRIMARY_COLOR, fontFamily: FONT_FAMILY }}>
                                 {(owners[0]?.displayName || 'U')[0]}
                             </Avatar>
                         )}
-                        <Text style={{ fontSize: '13px', color: '#5f6368' }}>
+                        <Text style={{ fontSize: '11px', color: '#5f6368', fontFamily: FONT_FAMILY }}>
                             {owners[0]?.displayName || 'Unknown'}
                         </Text>
                     </div>
@@ -1269,24 +1284,24 @@ const FilesSection: React.FC<{
                 title: 'Last modified',
                 dataIndex: 'modifiedTime',
                 key: 'modifiedTime',
-                width: 150,
+                width: 120,
                 render: (text: string) => (
-                    <Text style={{ fontSize: '13px', color: '#5f6368' }}>{formatDate(text)}</Text>
+                    <Text style={{ fontSize: '11px', color: '#5f6368', fontFamily: FONT_FAMILY }}>{formatDate(text)}</Text>
                 ),
             },
             {
                 title: 'File size',
                 dataIndex: 'size',
                 key: 'size',
-                width: 100,
+                width: 80,
                 render: (size?: number) => (
-                    <Text style={{ fontSize: '13px', color: '#5f6368' }}>{formatFileSize(size)}</Text>
+                    <Text style={{ fontSize: '11px', color: '#5f6368', fontFamily: FONT_FAMILY }}>{formatFileSize(size)}</Text>
                 ),
             },
             {
                 title: '',
                 key: 'actions',
-                width: 60,
+                width: 50,
                 render: (_: any, record: DriveFile) => (
                     <Dropdown menu={{ items: getMenuItems(record) }} trigger={['click']}>
                         <Button type="text" icon={<MoreOutlined />} style={{ color: '#5f6368' }} />
@@ -1296,10 +1311,10 @@ const FilesSection: React.FC<{
         ];
 
         return (
-            <div style={{ padding: '0 24px 24px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                    <FileTextOutlined style={{ color: PRIMARY_COLOR, fontSize: '16px' }} />
-                    <Text style={{ fontSize: '16px', fontWeight: 500, color: '#202124' }}>Files</Text>
+            <div style={{ padding: '0 16px 16px', fontFamily: FONT_FAMILY }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
+                    <FileTextOutlined style={{ color: PRIMARY_COLOR, fontSize: '14px' }} />
+                    <Text style={{ fontSize: '14px', fontWeight: 500, color: '#202124', fontFamily: FONT_FAMILY }}>Files</Text>
                     <Badge count={files.length} style={{ backgroundColor: '#e8f0fe', color: PRIMARY_COLOR }} />
                 </div>
                 <Table
@@ -1310,8 +1325,9 @@ const FilesSection: React.FC<{
                     size="small"
                     style={{
                         backgroundColor: '#fff',
-                        borderRadius: '8px',
+                        borderRadius: '6px',
                         overflow: 'hidden',
+                        fontFamily: FONT_FAMILY
                     }}
                     className="custom-table"
                 />
@@ -1319,10 +1335,10 @@ const FilesSection: React.FC<{
                     <div
                         style={{
                             textAlign: 'center',
-                            marginTop: '24px',
-                            padding: '16px',
+                            marginTop: '16px',
+                            padding: '12px',
                             backgroundColor: '#f8f9fa',
-                            borderRadius: '8px',
+                            borderRadius: '6px',
                         }}
                     >
                         <Pagination
@@ -1333,7 +1349,7 @@ const FilesSection: React.FC<{
                             showSizeChanger
                             showQuickJumper
                             showTotal={(total, range) => `${range[0]}-${range[1]} of ${total} files`}
-                            style={{ fontSize: '14px' }}
+                            style={{ fontSize: '12px', fontFamily: FONT_FAMILY }}
                         />
                     </div>
                 )}
@@ -1343,13 +1359,13 @@ const FilesSection: React.FC<{
 
     // ------------------ GRID VIEW -------------------
     return (
-        <div style={{ padding: '24px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                <FileTextOutlined style={{ color: PRIMARY_COLOR, fontSize: '16px' }} />
-                <Text style={{ fontSize: '16px', fontWeight: 500, color: '#202124' }}>Files</Text>
+        <div style={{ padding: '16px', fontFamily: FONT_FAMILY }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
+                <FileTextOutlined style={{ color: PRIMARY_COLOR, fontSize: '14px' }} />
+                <Text style={{ fontSize: '14px', fontWeight: 500, color: '#202124', fontFamily: FONT_FAMILY }}>Files</Text>
                 <Badge count={files.length} style={{ backgroundColor: '#e8f0fe', color: PRIMARY_COLOR }} />
             </div>
-            <Row gutter={[12, 12]}>
+            <Row gutter={[8, 8]}>
                 {displayFiles.map((file) => {
                     const accentColor = getFileAccentColor(file);
                     return (
@@ -1357,17 +1373,18 @@ const FilesSection: React.FC<{
                             <div
                                 style={{
                                     padding: '0',
-                                    borderRadius: '8px',
+                                    borderRadius: '6px',
                                     cursor: 'pointer',
                                     transition: 'all 0.2s ease',
                                     backgroundColor: '#fff',
                                     border: `1px solid ${accentColor}20`,
                                     overflow: 'hidden',
                                     position: 'relative',
+                                    fontFamily: FONT_FAMILY
                                 }}
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.boxShadow = `0 4px 12px ${accentColor}25`;
-                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                    e.currentTarget.style.boxShadow = `0 3px 10px ${accentColor}25`;
+                                    e.currentTarget.style.transform = 'translateY(-1px)';
                                     e.currentTarget.style.borderColor = accentColor + '40';
                                 }}
                                 onMouseLeave={(e) => {
@@ -1378,7 +1395,7 @@ const FilesSection: React.FC<{
                             >
                                 <div
                                     style={{
-                                        height: '120px',
+                                        height: '100px',
                                         backgroundColor: '#f8f9fa',
                                         display: 'flex',
                                         alignItems: 'center',
@@ -1391,31 +1408,30 @@ const FilesSection: React.FC<{
                                         position: 'relative',
                                         borderBottom: `2px solid ${accentColor}15`
                                     }}
-                                // onClick={() => onFileAction('view', file)}
                                 >
                                     <Checkbox
                                         checked={selectedItems.includes(file.id)}
                                         onChange={(e) => onItemSelect(file.id, e.target.checked)}
                                         style={{
                                             position: 'absolute',
-                                            top: '8px',
-                                            left: '8px',
+                                            top: '6px',
+                                            left: '6px',
                                             backgroundColor: 'rgba(255,255,255,0.9)',
-                                            borderRadius: '4px',
-                                            padding: '2px'
+                                            borderRadius: '3px',
+                                            padding: '1px'
                                         }}
                                         onClick={(e) => e.stopPropagation()}
                                     />
                                     {!file.thumbnailLink && (
-                                        <div style={{ fontSize: '32px', color: getFileIconColor(file.mimeType) }}>
+                                        <div style={{ fontSize: '28px', color: getFileIconColor(file.mimeType) }}>
                                             {getFileIcon(file.mimeType)}
                                         </div>
                                     )}
                                     <div
                                         style={{
                                             position: 'absolute',
-                                            top: '8px',
-                                            right: '8px',
+                                            top: '6px',
+                                            right: '6px',
                                         }}
                                     >
                                         <Dropdown menu={{ items: getMenuItems(file) }} trigger={['click']}>
@@ -1433,63 +1449,66 @@ const FilesSection: React.FC<{
                                         </Dropdown>
                                     </div>
                                 </div>
-                                <div style={{ padding: '12px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
+                                <div style={{ padding: '8px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginBottom: '3px' }}>
                                         <Text
                                             style={{
-                                                fontSize: '14px',
+                                                fontSize: '12px',
                                                 color: '#202124',
                                                 overflow: 'hidden',
                                                 textOverflow: 'ellipsis',
                                                 whiteSpace: 'nowrap',
                                                 fontWeight: 500,
-                                                flex: 1
+                                                flex: 1,
+                                                fontFamily: FONT_FAMILY
                                             }}
                                             onClick={() => onFileAction('view', file)}
                                         >
                                             {file.name}
                                         </Text>
                                         {file.starred && (
-                                            <StarFilled style={{ color: '#fbbc04', fontSize: '12px' }} />
+                                            <StarFilled style={{ color: '#fbbc04', fontSize: '10px' }} />
                                         )}
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '3px' }}>
                                         {file.owners[0]?.photoLink ? (
-                                            <Avatar size={16} src={file.owners[0].photoLink} style={{ marginRight: '6px' }} />
+                                            <Avatar size={14} src={file.owners[0].photoLink} style={{ marginRight: '4px' }} />
                                         ) : (
                                             <Avatar
-                                                size={16}
+                                                size={14}
                                                 style={{
-                                                    marginRight: '6px',
+                                                    marginRight: '4px',
                                                     backgroundColor: accentColor,
-                                                    fontSize: '10px',
+                                                    fontSize: '8px',
+                                                    fontFamily: FONT_FAMILY
                                                 }}
                                             >
                                                 {(file.owners[0]?.displayName || 'U')[0]}
                                             </Avatar>
                                         )}
-                                        <Text style={{ fontSize: '12px', color: '#5f6368' }}>
+                                        <Text style={{ fontSize: '10px', color: '#5f6368', fontFamily: FONT_FAMILY }}>
                                             {formatDate(file.modifiedTime)}
                                         </Text>
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <Text style={{ fontSize: '12px', color: '#5f6368' }}>
+                                        <Text style={{ fontSize: '10px', color: '#5f6368', fontFamily: FONT_FAMILY }}>
                                             {formatFileSize(file.size)}
                                         </Text>
-                                        <Space size={4}>
+                                        <Space size={3}>
                                             {file.shared && (
                                                 <Tooltip title="Shared">
-                                                    <TeamOutlined style={{ color: accentColor, fontSize: '12px' }} />
+                                                    <TeamOutlined style={{ color: accentColor, fontSize: '10px' }} />
                                                 </Tooltip>
                                             )}
                                             {file.source_email && (
                                                 <Tag
                                                     style={{
-                                                        fontSize: '8px',
+                                                        fontSize: '7px',
                                                         margin: 0,
                                                         backgroundColor: accentColor + '15',
                                                         borderColor: accentColor + '40',
-                                                        color: accentColor
+                                                        color: accentColor,
+                                                        fontFamily: FONT_FAMILY
                                                     }}
                                                 >
                                                     {getFileSource(file) === 'google' ? 'G' : 'O'}
@@ -1507,10 +1526,10 @@ const FilesSection: React.FC<{
                 <div
                     style={{
                         textAlign: 'center',
-                        marginTop: '24px',
-                        padding: '16px',
+                        marginTop: '16px',
+                        padding: '12px',
                         backgroundColor: '#f8f9fa',
-                        borderRadius: '8px',
+                        borderRadius: '6px',
                     }}
                 >
                     <Pagination
@@ -1521,7 +1540,7 @@ const FilesSection: React.FC<{
                         showSizeChanger
                         showQuickJumper
                         showTotal={(total, range) => `${range[0]}-${range[1]} of ${total} files`}
-                        style={{ fontSize: '14px' }}
+                        style={{ fontSize: '12px', fontFamily: FONT_FAMILY }}
                     />
                 </div>
             )}
@@ -2171,34 +2190,35 @@ const GoogleDriveManager: React.FC = () => {
     const handleToggleUploads = () => setShowUploadArea(prev => !prev);
 
     return (
-        <Layout style={{ minHeight: '100vh', backgroundColor: '#f9fafa', marginTop: 70, marginLeft: 60 }}>
-            <Content style={{ backgroundColor: '#f9fafa' }}>
+        <Layout style={{ minHeight: '100vh', backgroundColor: '#f9fafa', marginTop: 50, marginLeft: 60, fontFamily: FONT_FAMILY }}>
+            <Content style={{ backgroundColor: '#f9fafa', fontFamily: FONT_FAMILY }}>
                 {/* Header */}
                 <div style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '16px 24px',
+                    padding: '12px 16px',
                     borderBottom: `1px solid ${PRIMARY_COLOR}`,
                     backgroundColor: '#f9fafa',
+                    fontFamily: FONT_FAMILY
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center' }}>
                         <div style={{
-                            width: '40px',
-                            height: '40px',
+                            width: '36px',
+                            height: '36px',
                             backgroundColor: '#e8f0fe',
-                            borderRadius: '8px',
+                            borderRadius: '6px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            marginRight: '12px'
+                            marginRight: '10px'
                         }}>
                             <CloudUploadOutlined style={{
-                                fontSize: '20px',
+                                fontSize: '18px',
                                 color: PRIMARY_COLOR
                             }} />
                         </div>
-                        <Title level={4} style={{ margin: 0, color: '#202124', fontSize: '22px' }}>
+                        <Title level={4} style={{ margin: 0, color: '#202124', fontSize: '20px', fontFamily: FONT_FAMILY }}>
                             Files
                         </Title>
                     </div>
@@ -2209,7 +2229,7 @@ const GoogleDriveManager: React.FC = () => {
                     >
                         <Tooltip title="Quick actions">
                             <CloudUploadOutlined
-                                style={{ fontSize: 20, color: '#1890ff', cursor: 'pointer' }}
+                                style={{ fontSize: 18, color: '#1890ff', cursor: 'pointer' }}
                             />
                         </Tooltip>
                     </Dropdown>
@@ -2256,8 +2276,9 @@ const GoogleDriveManager: React.FC = () => {
                             onClick={handleToggleUploads}
                             style={{
                                 color: PRIMARY_COLOR,
-                                fontSize: '13px',
-                                height: '28px'
+                                fontSize: '12px',
+                                height: '24px',
+                                fontFamily: FONT_FAMILY
                             }}
                         />
                     }
@@ -2265,7 +2286,7 @@ const GoogleDriveManager: React.FC = () => {
 
                 {/* Upload Area */}
                 {showUploadArea && (
-                    <div style={{ padding: '24px' }}>
+                    <div style={{ padding: '16px' }}>
                         <UploadArea
                             onUpload={handleFileUpload}
                             uploadProgress={uploadProgress}
@@ -2321,17 +2342,18 @@ const GoogleDriveManager: React.FC = () => {
                         {filteredFiles.length === 0 && filteredFolders.length === 0 && (
                             <div style={{
                                 textAlign: 'center',
-                                padding: '80px 20px',
-                                color: '#5f6368'
+                                padding: '60px 20px',
+                                color: '#5f6368',
+                                fontFamily: FONT_FAMILY
                             }}>
                                 <Empty
                                     image={Empty.PRESENTED_IMAGE_SIMPLE}
                                     description={
                                         <div>
-                                            <Text style={{ fontSize: '18px', color: '#5f6368', display: 'block', marginBottom: '8px' }}>
+                                            <Text style={{ fontSize: '16px', color: '#5f6368', display: 'block', marginBottom: '6px', fontFamily: FONT_FAMILY }}>
                                                 {searchQuery || selectedAccount ? 'No files found' : 'Your Drive is empty'}
                                             </Text>
-                                            <Text style={{ fontSize: '14px', color: '#9aa0a6' }}>
+                                            <Text style={{ fontSize: '12px', color: '#9aa0a6', fontFamily: FONT_FAMILY }}>
                                                 {searchQuery || selectedAccount ? 'Try different search terms or account filter' : 'Upload files to get started'}
                                             </Text>
                                         </div>
@@ -2346,9 +2368,9 @@ const GoogleDriveManager: React.FC = () => {
                 {/* Create Folder Modal */}
                 <Modal
                     title={
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: FONT_FAMILY }}>
                             <FolderOutlined style={{ color: PRIMARY_COLOR }} />
-                            <span style={{ fontSize: '16px', fontWeight: 500 }}>New folder</span>
+                            <span style={{ fontSize: '14px', fontWeight: 500, fontFamily: FONT_FAMILY }}>New folder</span>
                         </div>
                     }
                     open={showCreateFolder}
@@ -2357,34 +2379,34 @@ const GoogleDriveManager: React.FC = () => {
                         form.resetFields();
                     }}
                     footer={null}
-                    width={400}
-                    style={{ borderRadius: '8px' }}
+                    width={350}
+                    style={{ borderRadius: '6px', fontFamily: FONT_FAMILY }}
                 >
                     <Form
                         form={form}
                         onFinish={handleCreateFolder}
                         layout="vertical"
-                        style={{ marginTop: '20px' }}
+                        style={{ marginTop: '16px', fontFamily: FONT_FAMILY }}
                     >
                         <Form.Item
                             name="folderName"
-                            label="Folder name"
+                            label={<span style={{ fontFamily: FONT_FAMILY }}>Folder name</span>}
                             rules={[{ required: true, message: 'Please enter a folder name' }]}
                         >
                             <Input
                                 placeholder="Untitled folder"
-                                style={{ borderRadius: '4px' }}
+                                style={{ borderRadius: '4px', fontFamily: FONT_FAMILY }}
                                 autoFocus
                             />
                         </Form.Item>
-                        <Form.Item style={{ marginBottom: 0, textAlign: 'right', marginTop: '24px' }}>
+                        <Form.Item style={{ marginBottom: 0, textAlign: 'right', marginTop: '16px' }}>
                             <Space>
                                 <Button
                                     onClick={() => {
                                         setShowCreateFolder(false);
                                         form.resetFields();
                                     }}
-                                    style={{ borderRadius: '4px' }}
+                                    style={{ borderRadius: '4px', fontFamily: FONT_FAMILY }}
                                 >
                                     Cancel
                                 </Button>
@@ -2394,7 +2416,8 @@ const GoogleDriveManager: React.FC = () => {
                                     style={{
                                         backgroundColor: PRIMARY_COLOR,
                                         borderColor: PRIMARY_COLOR,
-                                        borderRadius: '4px'
+                                        borderRadius: '4px',
+                                        fontFamily: FONT_FAMILY
                                     }}
                                 >
                                     Create
@@ -2407,9 +2430,9 @@ const GoogleDriveManager: React.FC = () => {
                 {/* Share Modal */}
                 <Modal
                     title={
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: FONT_FAMILY }}>
                             <ShareAltOutlined style={{ color: PRIMARY_COLOR }} />
-                            <span style={{ fontSize: '16px', fontWeight: 500 }}>Share</span>
+                            <span style={{ fontSize: '14px', fontWeight: 500, fontFamily: FONT_FAMILY }}>Share</span>
                         </div>
                     }
                     open={showShareModal}
@@ -2419,18 +2442,18 @@ const GoogleDriveManager: React.FC = () => {
                         shareForm.resetFields();
                     }}
                     footer={null}
-                    width={500}
-                    style={{ borderRadius: '8px' }}
+                    width={450}
+                    style={{ borderRadius: '6px', fontFamily: FONT_FAMILY }}
                 >
                     <Form
                         form={shareForm}
                         onFinish={handleShareFile}
                         layout="vertical"
-                        style={{ marginTop: '20px' }}
+                        style={{ marginTop: '16px', fontFamily: FONT_FAMILY }}
                     >
                         <Form.Item
                             name="email"
-                            label="Add people"
+                            label={<span style={{ fontFamily: FONT_FAMILY }}>Add people</span>}
                             rules={[
                                 { required: true, message: 'Please enter an email address' },
                                 { type: 'email', message: 'Please enter a valid email address' }
@@ -2438,21 +2461,21 @@ const GoogleDriveManager: React.FC = () => {
                         >
                             <Input
                                 placeholder="Enter email address"
-                                style={{ borderRadius: '4px' }}
+                                style={{ borderRadius: '4px', fontFamily: FONT_FAMILY }}
                             />
                         </Form.Item>
                         <Form.Item
                             name="role"
-                            label="Permission"
+                            label={<span style={{ fontFamily: FONT_FAMILY }}>Permission</span>}
                             initialValue="reader"
                         >
-                            <Select style={{ borderRadius: '4px' }}>
+                            <Select style={{ borderRadius: '4px', fontFamily: FONT_FAMILY }}>
                                 <Select.Option value="reader">Viewer</Select.Option>
                                 <Select.Option value="commenter">Commenter</Select.Option>
                                 <Select.Option value="writer">Editor</Select.Option>
                             </Select>
                         </Form.Item>
-                        <Form.Item style={{ marginBottom: 0, textAlign: 'right', marginTop: '24px' }}>
+                        <Form.Item style={{ marginBottom: 0, textAlign: 'right', marginTop: '16px' }}>
                             <Space>
                                 <Button
                                     onClick={() => {
@@ -2460,7 +2483,7 @@ const GoogleDriveManager: React.FC = () => {
                                         setShareFileId('');
                                         shareForm.resetFields();
                                     }}
-                                    style={{ borderRadius: '4px' }}
+                                    style={{ borderRadius: '4px', fontFamily: FONT_FAMILY }}
                                 >
                                     Cancel
                                 </Button>
@@ -2470,7 +2493,8 @@ const GoogleDriveManager: React.FC = () => {
                                     style={{
                                         backgroundColor: PRIMARY_COLOR,
                                         borderColor: PRIMARY_COLOR,
-                                        borderRadius: '4px'
+                                        borderRadius: '4px',
+                                        fontFamily: FONT_FAMILY
                                     }}
                                 >
                                     Send
@@ -2483,9 +2507,9 @@ const GoogleDriveManager: React.FC = () => {
                 {/* Rename Modal */}
                 <Modal
                     title={
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: FONT_FAMILY }}>
                             <EditOutlined style={{ color: PRIMARY_COLOR }} />
-                            <span style={{ fontSize: '16px', fontWeight: 500 }}>Rename</span>
+                            <span style={{ fontSize: '14px', fontWeight: 500, fontFamily: FONT_FAMILY }}>Rename</span>
                         </div>
                     }
                     open={showRenameModal}
@@ -2495,22 +2519,23 @@ const GoogleDriveManager: React.FC = () => {
                         renameForm.resetFields();
                     }}
                     footer={null}
-                    width={400}
+                    width={350}
+                    style={{ fontFamily: FONT_FAMILY }}
                 >
                     <Form
                         form={renameForm}
                         onFinish={handleRename}
                         layout="vertical"
-                        style={{ marginTop: '20px' }}
+                        style={{ marginTop: '16px', fontFamily: FONT_FAMILY }}
                     >
                         <Form.Item
                             name="newName"
-                            label="New name"
+                            label={<span style={{ fontFamily: FONT_FAMILY }}>New name</span>}
                             rules={[{ required: true, message: 'Please enter a new name' }]}
                         >
-                            <Input autoFocus />
+                            <Input autoFocus style={{ fontFamily: FONT_FAMILY }} />
                         </Form.Item>
-                        <Form.Item style={{ marginBottom: 0, textAlign: 'right', marginTop: '24px' }}>
+                        <Form.Item style={{ marginBottom: 0, textAlign: 'right', marginTop: '16px' }}>
                             <Space>
                                 <Button
                                     onClick={() => {
@@ -2518,10 +2543,11 @@ const GoogleDriveManager: React.FC = () => {
                                         setCurrentActionItem(null);
                                         renameForm.resetFields();
                                     }}
+                                    style={{ fontFamily: FONT_FAMILY }}
                                 >
                                     Cancel
                                 </Button>
-                                <Button type="primary" htmlType="submit">
+                                <Button type="primary" htmlType="submit" style={{ fontFamily: FONT_FAMILY }}>
                                     Rename
                                 </Button>
                             </Space>
@@ -2532,24 +2558,24 @@ const GoogleDriveManager: React.FC = () => {
                 {/* Move Modal */}
                 <Modal
                     title={
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontFamily: FONT_FAMILY }}>
                             <div style={{
-                                width: '32px',
-                                height: '32px',
+                                width: '28px',
+                                height: '28px',
                                 backgroundColor: '#e8f0fe',
-                                borderRadius: '8px',
+                                borderRadius: '6px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center'
                             }}>
-                                <FolderOpenOutlined style={{ color: PRIMARY_COLOR, fontSize: '16px' }} />
+                                <FolderOpenOutlined style={{ color: PRIMARY_COLOR, fontSize: '14px' }} />
                             </div>
                             <div>
-                                <span style={{ fontSize: '18px', fontWeight: 600, color: '#202124' }}>
+                                <span style={{ fontSize: '16px', fontWeight: 600, color: '#202124', fontFamily: FONT_FAMILY }}>
                                     Move to
                                 </span>
                                 {currentActionItem && (
-                                    <div style={{ fontSize: '13px', color: '#5f6368', marginTop: '2px' }}>
+                                    <div style={{ fontSize: '11px', color: '#5f6368', marginTop: '1px', fontFamily: FONT_FAMILY }}>
                                         {currentActionItem.name}
                                     </div>
                                 )}
@@ -2563,87 +2589,90 @@ const GoogleDriveManager: React.FC = () => {
                         moveForm.resetFields();
                     }}
                     footer={null}
-                    width={500}
-                    style={{ borderRadius: '12px' }}
+                    width={450}
+                    style={{ borderRadius: '8px', fontFamily: FONT_FAMILY }}
                     styles={{
-                        header: { borderBottom: '1px solid #f0f0f0', paddingBottom: '16px' },
-                        body: { paddingTop: '24px' }
+                        header: { borderBottom: '1px solid #f0f0f0', paddingBottom: '12px' },
+                        body: { paddingTop: '16px' }
                     }}
                 >
                     <Form
                         form={moveForm}
                         onFinish={handleMove}
                         layout="vertical"
+                        style={{ fontFamily: FONT_FAMILY }}
                     >
                         <Form.Item
                             name="targetFolder"
                             label={
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: FONT_FAMILY }}>
                                     <FolderOutlined style={{ color: PRIMARY_COLOR }} />
-                                    <span style={{ fontSize: '14px', fontWeight: 500 }}>Select destination folder</span>
+                                    <span style={{ fontSize: '12px', fontWeight: 500, fontFamily: FONT_FAMILY }}>Select destination folder</span>
                                 </div>
                             }
                             rules={[{ required: true, message: 'Please select a destination folder' }]}
                         >
                             <TreeSelect
-                                style={{ borderRadius: '8px' }}
+                                style={{ borderRadius: '6px', fontFamily: FONT_FAMILY }}
                                 dropdownStyle={{
-                                    borderRadius: '12px',
-                                    boxShadow: '0 6px 16px rgba(0,0,0,0.12)',
+                                    borderRadius: '8px',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
                                     border: '1px solid #e8eaed'
                                 }}
                                 placeholder="Choose folder"
                                 allowClear
                                 treeDefaultExpandAll
                                 treeData={folderTreeData}
-                                size="large"
+                                size="middle"
                                 showSearch
                                 treeNodeFilterProp="title"
                             />
                         </Form.Item>
                         <div style={{
                             backgroundColor: '#f8f9fa',
-                            padding: '16px',
-                            borderRadius: '8px',
-                            marginBottom: '24px'
+                            padding: '12px',
+                            borderRadius: '6px',
+                            marginBottom: '16px'
                         }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                                <InfoCircleOutlined style={{ color: '#4285f4', fontSize: '16px' }} />
-                                <span style={{ fontSize: '14px', fontWeight: 500, color: '#202124' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                                <InfoCircleOutlined style={{ color: '#4285f4', fontSize: '14px' }} />
+                                <span style={{ fontSize: '12px', fontWeight: 500, color: '#202124', fontFamily: FONT_FAMILY }}>
                                     Moving files
                                 </span>
                             </div>
-                            <Text style={{ fontSize: '13px', color: '#5f6368', lineHeight: 1.5 }}>
+                            <Text style={{ fontSize: '11px', color: '#5f6368', lineHeight: 1.5, fontFamily: FONT_FAMILY }}>
                                 The file will be moved to the selected location. This action cannot be undone automatically.
                             </Text>
                         </div>
                         <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
                             <Space size="middle">
                                 <Button
-                                    size="large"
+                                    size="middle"
                                     onClick={() => {
                                         setShowMoveModal(false);
                                         setCurrentActionItem(null);
                                         moveForm.resetFields();
                                     }}
                                     style={{
-                                        borderRadius: '8px',
+                                        borderRadius: '6px',
                                         borderColor: '#dadce0',
-                                        color: '#5f6368'
+                                        color: '#5f6368',
+                                        fontFamily: FONT_FAMILY
                                     }}
                                 >
                                     Cancel
                                 </Button>
                                 <Button
                                     type="primary"
-                                    size="large"
+                                    size="middle"
                                     htmlType="submit"
                                     style={{
                                         backgroundColor: PRIMARY_COLOR,
                                         borderColor: PRIMARY_COLOR,
-                                        borderRadius: '8px',
+                                        borderRadius: '6px',
                                         fontWeight: 500,
-                                        minWidth: '80px'
+                                        minWidth: '70px',
+                                        fontFamily: FONT_FAMILY
                                     }}
                                 >
                                     Move
@@ -2656,24 +2685,24 @@ const GoogleDriveManager: React.FC = () => {
                 {/* Copy Modal */}
                 <Modal
                     title={
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontFamily: FONT_FAMILY }}>
                             <div style={{
-                                width: '32px',
-                                height: '32px',
+                                width: '28px',
+                                height: '28px',
                                 backgroundColor: '#e8f0fe',
-                                borderRadius: '8px',
+                                borderRadius: '6px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center'
                             }}>
-                                <CopyOutlined style={{ color: PRIMARY_COLOR, fontSize: '16px' }} />
+                                <CopyOutlined style={{ color: PRIMARY_COLOR, fontSize: '14px' }} />
                             </div>
                             <div>
-                                <span style={{ fontSize: '18px', fontWeight: 600, color: '#202124' }}>
+                                <span style={{ fontSize: '16px', fontWeight: 600, color: '#202124', fontFamily: FONT_FAMILY }}>
                                     Make a copy
                                 </span>
                                 {currentActionItem && (
-                                    <div style={{ fontSize: '13px', color: '#5f6368', marginTop: '2px' }}>
+                                    <div style={{ fontSize: '11px', color: '#5f6368', marginTop: '1px', fontFamily: FONT_FAMILY }}>
                                         {currentActionItem.name}
                                     </div>
                                 )}
@@ -2687,50 +2716,51 @@ const GoogleDriveManager: React.FC = () => {
                         copyForm.resetFields();
                     }}
                     footer={null}
-                    width={520}
-                    style={{ borderRadius: '12px' }}
+                    width={470}
+                    style={{ borderRadius: '8px', fontFamily: FONT_FAMILY }}
                     styles={{
-                        header: { borderBottom: '1px solid #f0f0f0', paddingBottom: '16px' },
-                        body: { paddingTop: '24px' }
+                        header: { borderBottom: '1px solid #f0f0f0', paddingBottom: '12px' },
+                        body: { paddingTop: '16px' }
                     }}
                 >
                     <Form
                         form={copyForm}
                         onFinish={handleCopy}
                         layout="vertical"
+                        style={{ fontFamily: FONT_FAMILY }}
                     >
                         <Form.Item
                             name="newName"
                             label={
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: FONT_FAMILY }}>
                                     <EditOutlined style={{ color: PRIMARY_COLOR }} />
-                                    <span style={{ fontSize: '14px', fontWeight: 500 }}>Name</span>
+                                    <span style={{ fontSize: '12px', fontWeight: 500, fontFamily: FONT_FAMILY }}>Name</span>
                                 </div>
                             }
                             rules={[{ required: true, message: 'Please enter a name for the copy' }]}
                         >
                             <Input
-                                size="large"
-                                style={{ borderRadius: '8px' }}
+                                size="middle"
+                                style={{ borderRadius: '6px', fontFamily: FONT_FAMILY }}
                                 placeholder="Enter name for the copy"
                             />
                         </Form.Item>
                         <Form.Item
                             name="targetFolder"
                             label={
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: FONT_FAMILY }}>
                                     <FolderOutlined style={{ color: PRIMARY_COLOR }} />
-                                    <span style={{ fontSize: '14px', fontWeight: 500 }}>Destination folder</span>
+                                    <span style={{ fontSize: '12px', fontWeight: 500, fontFamily: FONT_FAMILY }}>Destination folder</span>
                                 </div>
                             }
                             rules={[{ required: true, message: 'Please select a destination folder' }]}
                         >
                             <TreeSelect
-                                style={{ borderRadius: '8px' }}
-                                size="large"
+                                style={{ borderRadius: '6px', fontFamily: FONT_FAMILY }}
+                                size="middle"
                                 dropdownStyle={{
-                                    borderRadius: '12px',
-                                    boxShadow: '0 6px 16px rgba(0,0,0,0.12)',
+                                    borderRadius: '8px',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
                                     border: '1px solid #e8eaed'
                                 }}
                                 placeholder="Choose destination folder"
@@ -2743,47 +2773,49 @@ const GoogleDriveManager: React.FC = () => {
                         </Form.Item>
                         <div style={{
                             backgroundColor: '#f8f9fa',
-                            padding: '16px',
-                            borderRadius: '8px',
-                            marginBottom: '24px'
+                            padding: '12px',
+                            borderRadius: '6px',
+                            marginBottom: '16px'
                         }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                                <InfoCircleOutlined style={{ color: '#4285f4', fontSize: '16px' }} />
-                                <span style={{ fontSize: '14px', fontWeight: 500, color: '#202124' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                                <InfoCircleOutlined style={{ color: '#4285f4', fontSize: '14px' }} />
+                                <span style={{ fontSize: '12px', fontWeight: 500, color: '#202124', fontFamily: FONT_FAMILY }}>
                                     Creating copy
                                 </span>
                             </div>
-                            <Text style={{ fontSize: '13px', color: '#5f6368', lineHeight: 1.5 }}>
+                            <Text style={{ fontSize: '11px', color: '#5f6368', lineHeight: 1.5, fontFamily: FONT_FAMILY }}>
                                 A copy of the file will be created in the selected location with the specified name.
                             </Text>
                         </div>
                         <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
                             <Space size="middle">
                                 <Button
-                                    size="large"
+                                    size="middle"
                                     onClick={() => {
                                         setShowCopyModal(false);
                                         setCurrentActionItem(null);
                                         copyForm.resetFields();
                                     }}
                                     style={{
-                                        borderRadius: '8px',
+                                        borderRadius: '6px',
                                         borderColor: '#dadce0',
-                                        color: '#5f6368'
+                                        color: '#5f6368',
+                                        fontFamily: FONT_FAMILY
                                     }}
                                 >
                                     Cancel
                                 </Button>
                                 <Button
                                     type="primary"
-                                    size="large"
+                                    size="middle"
                                     htmlType="submit"
                                     style={{
                                         backgroundColor: PRIMARY_COLOR,
                                         borderColor: PRIMARY_COLOR,
-                                        borderRadius: '8px',
+                                        borderRadius: '6px',
                                         fontWeight: 500,
-                                        minWidth: '80px'
+                                        minWidth: '70px',
+                                        fontFamily: FONT_FAMILY
                                     }}
                                 >
                                     Create copy
@@ -2796,23 +2828,23 @@ const GoogleDriveManager: React.FC = () => {
                 {/* Bulk Share Modal */}
                 <Modal
                     title={
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontFamily: FONT_FAMILY }}>
                             <div style={{
-                                width: '32px',
-                                height: '32px',
+                                width: '28px',
+                                height: '28px',
                                 backgroundColor: '#e8f0fe',
-                                borderRadius: '8px',
+                                borderRadius: '6px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center'
                             }}>
-                                <ShareAltOutlined style={{ color: PRIMARY_COLOR, fontSize: '16px' }} />
+                                <ShareAltOutlined style={{ color: PRIMARY_COLOR, fontSize: '14px' }} />
                             </div>
                             <div>
-                                <span style={{ fontSize: '18px', fontWeight: 600, color: '#202124' }}>
+                                <span style={{ fontSize: '16px', fontWeight: 600, color: '#202124', fontFamily: FONT_FAMILY }}>
                                     Share files
                                 </span>
-                                <div style={{ fontSize: '13px', color: '#5f6368', marginTop: '2px' }}>
+                                <div style={{ fontSize: '11px', color: '#5f6368', marginTop: '1px', fontFamily: FONT_FAMILY }}>
                                     {selectedItems.length} item{selectedItems.length > 1 ? 's' : ''} selected
                                 </div>
                             </div>
@@ -2824,24 +2856,25 @@ const GoogleDriveManager: React.FC = () => {
                         bulkShareForm.resetFields();
                     }}
                     footer={null}
-                    width={520}
-                    style={{ borderRadius: '12px' }}
+                    width={470}
+                    style={{ borderRadius: '8px', fontFamily: FONT_FAMILY }}
                     styles={{
-                        header: { borderBottom: '1px solid #f0f0f0', paddingBottom: '16px' },
-                        body: { paddingTop: '24px' }
+                        header: { borderBottom: '1px solid #f0f0f0', paddingBottom: '12px' },
+                        body: { paddingTop: '16px' }
                     }}
                 >
                     <Form
                         form={bulkShareForm}
                         onFinish={handleBulkShareSubmit}
                         layout="vertical"
+                        style={{ fontFamily: FONT_FAMILY }}
                     >
                         <Form.Item
                             name="email"
                             label={
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: FONT_FAMILY }}>
                                     <UserOutlined style={{ color: PRIMARY_COLOR }} />
-                                    <span style={{ fontSize: '14px', fontWeight: 500 }}>Add people</span>
+                                    <span style={{ fontSize: '12px', fontWeight: 500, fontFamily: FONT_FAMILY }}>Add people</span>
                                 </div>
                             }
                             rules={[
@@ -2850,88 +2883,90 @@ const GoogleDriveManager: React.FC = () => {
                             ]}
                         >
                             <Input
-                                size="large"
+                                size="middle"
                                 placeholder="Enter email address"
-                                style={{ borderRadius: '8px' }}
+                                style={{ borderRadius: '6px', fontFamily: FONT_FAMILY }}
                                 prefix={<UserOutlined style={{ color: '#5f6368' }} />}
                             />
                         </Form.Item>
                         <Form.Item
                             name="role"
                             label={
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: FONT_FAMILY }}>
                                     <TeamOutlined style={{ color: PRIMARY_COLOR }} />
-                                    <span style={{ fontSize: '14px', fontWeight: 500 }}>Permission level</span>
+                                    <span style={{ fontSize: '12px', fontWeight: 500, fontFamily: FONT_FAMILY }}>Permission level</span>
                                 </div>
                             }
                             initialValue="reader"
                         >
-                            <Select size="large" style={{ borderRadius: '8px' }}>
+                            <Select size="middle" style={{ borderRadius: '6px', fontFamily: FONT_FAMILY }}>
                                 <Select.Option value="reader">
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontFamily: FONT_FAMILY }}>
                                         <EyeOutlined style={{ color: '#5f6368' }} />
-                                        <div >Viewer</div>
-                                        <div style={{ fontSize: '10px', color: '#5f6368' }}>*Can view and comment</div>
+                                        <div style={{ fontFamily: FONT_FAMILY }}>Viewer</div>
+                                        <div style={{ fontSize: '9px', color: '#5f6368', fontFamily: FONT_FAMILY }}>*Can view and comment</div>
                                     </div>
                                 </Select.Option>
                                 <Select.Option value="commenter">
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontFamily: FONT_FAMILY }}>
                                         <EditOutlined style={{ color: '#5f6368' }} />
-                                        <div >Commenter</div>
-                                        <div style={{ fontSize: '10px', color: '#5f6368' }}>*Can view and comment</div>
+                                        <div style={{ fontFamily: FONT_FAMILY }}>Commenter</div>
+                                        <div style={{ fontSize: '9px', color: '#5f6368', fontFamily: FONT_FAMILY }}>*Can view and comment</div>
                                     </div>
                                 </Select.Option>
                                 <Select.Option value="writer">
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontFamily: FONT_FAMILY }}>
                                         <EditOutlined style={{ color: '#5f6368' }} />
-                                        <div >Editor</div>
-                                        <div style={{ fontSize: '10px', color: '#5f6368' }}>*Can view, comment and edit</div>
+                                        <div style={{ fontFamily: FONT_FAMILY }}>Editor</div>
+                                        <div style={{ fontSize: '9px', color: '#5f6368', fontFamily: FONT_FAMILY }}>*Can view, comment and edit</div>
                                     </div>
                                 </Select.Option>
                             </Select>
                         </Form.Item>
                         <div style={{
                             backgroundColor: '#f8f9fa',
-                            padding: '16px',
-                            borderRadius: '8px',
-                            marginBottom: '24px'
+                            padding: '12px',
+                            borderRadius: '6px',
+                            marginBottom: '16px'
                         }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                                <InfoCircleOutlined style={{ color: '#4285f4', fontSize: '16px' }} />
-                                <span style={{ fontSize: '14px', fontWeight: 500, color: '#202124' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                                <InfoCircleOutlined style={{ color: '#4285f4', fontSize: '14px' }} />
+                                <span style={{ fontSize: '12px', fontWeight: 500, color: '#202124', fontFamily: FONT_FAMILY }}>
                                     Bulk sharing
                                 </span>
                             </div>
-                            <Text style={{ fontSize: '13px', color: '#5f6368', lineHeight: 1.5 }}>
+                            <Text style={{ fontSize: '11px', color: '#5f6368', lineHeight: 1.5, fontFamily: FONT_FAMILY }}>
                                 All selected files will be shared with the specified email address with the chosen permission level.
                             </Text>
                         </div>
                         <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
                             <Space size="middle">
                                 <Button
-                                    size="large"
+                                    size="middle"
                                     onClick={() => {
                                         setShowBulkShareModal(false);
                                         bulkShareForm.resetFields();
                                     }}
                                     style={{
-                                        borderRadius: '8px',
+                                        borderRadius: '6px',
                                         borderColor: '#dadce0',
-                                        color: '#5f6368'
+                                        color: '#5f6368',
+                                        fontFamily: FONT_FAMILY
                                     }}
                                 >
                                     Cancel
                                 </Button>
                                 <Button
                                     type="primary"
-                                    size="large"
+                                    size="middle"
                                     htmlType="submit"
                                     style={{
                                         backgroundColor: PRIMARY_COLOR,
                                         borderColor: PRIMARY_COLOR,
-                                        borderRadius: '8px',
+                                        borderRadius: '6px',
                                         fontWeight: 500,
-                                        minWidth: '80px'
+                                        minWidth: '70px',
+                                        fontFamily: FONT_FAMILY
                                     }}
                                 >
                                     Share files
@@ -2944,23 +2979,23 @@ const GoogleDriveManager: React.FC = () => {
                 {/* Bulk Move Modal */}
                 <Modal
                     title={
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontFamily: FONT_FAMILY }}>
                             <div style={{
-                                width: '32px',
-                                height: '32px',
+                                width: '28px',
+                                height: '28px',
                                 backgroundColor: '#e8f0fe',
-                                borderRadius: '8px',
+                                borderRadius: '6px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center'
                             }}>
-                                <FolderOpenOutlined style={{ color: PRIMARY_COLOR, fontSize: '16px' }} />
+                                <FolderOpenOutlined style={{ color: PRIMARY_COLOR, fontSize: '14px' }} />
                             </div>
                             <div>
-                                <span style={{ fontSize: '18px', fontWeight: 600, color: '#202124' }}>
+                                <span style={{ fontSize: '16px', fontWeight: 600, color: '#202124', fontFamily: FONT_FAMILY }}>
                                     Move files
                                 </span>
-                                <div style={{ fontSize: '13px', color: '#5f6368', marginTop: '2px' }}>
+                                <div style={{ fontSize: '11px', color: '#5f6368', marginTop: '1px', fontFamily: FONT_FAMILY }}>
                                     {selectedItems.length} item{selectedItems.length > 1 ? 's' : ''} selected
                                 </div>
                             </div>
@@ -2972,34 +3007,35 @@ const GoogleDriveManager: React.FC = () => {
                         bulkMoveForm.resetFields();
                     }}
                     footer={null}
-                    width={520}
-                    style={{ borderRadius: '12px' }}
+                    width={470}
+                    style={{ borderRadius: '8px', fontFamily: FONT_FAMILY }}
                     styles={{
-                        header: { borderBottom: '1px solid #f0f0f0', paddingBottom: '16px' },
-                        body: { paddingTop: '24px' }
+                        header: { borderBottom: '1px solid #f0f0f0', paddingBottom: '12px' },
+                        body: { paddingTop: '16px' }
                     }}
                 >
                     <Form
                         form={bulkMoveForm}
                         onFinish={handleBulkMoveSubmit}
                         layout="vertical"
+                        style={{ fontFamily: FONT_FAMILY }}
                     >
                         <Form.Item
                             name="targetFolder"
                             label={
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: FONT_FAMILY }}>
                                     <FolderOutlined style={{ color: PRIMARY_COLOR }} />
-                                    <span style={{ fontSize: '14px', fontWeight: 500 }}>Select destination folder</span>
+                                    <span style={{ fontSize: '12px', fontWeight: 500, fontFamily: FONT_FAMILY }}>Select destination folder</span>
                                 </div>
                             }
                             rules={[{ required: true, message: 'Please select a destination folder' }]}
                         >
                             <TreeSelect
-                                style={{ borderRadius: '8px' }}
-                                size="large"
+                                style={{ borderRadius: '6px', fontFamily: FONT_FAMILY }}
+                                size="middle"
                                 dropdownStyle={{
-                                    borderRadius: '12px',
-                                    boxShadow: '0 6px 16px rgba(0,0,0,0.12)',
+                                    borderRadius: '8px',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
                                     border: '1px solid #e8eaed'
                                 }}
                                 placeholder="Choose destination folder"
@@ -3013,46 +3049,48 @@ const GoogleDriveManager: React.FC = () => {
                         <div style={{
                             backgroundColor: '#fff3cd',
                             border: '1px solid #ffeaa7',
-                            padding: '16px',
-                            borderRadius: '8px',
-                            marginBottom: '24px'
+                            padding: '12px',
+                            borderRadius: '6px',
+                            marginBottom: '16px'
                         }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                                <InfoCircleOutlined style={{ color: '#e67e22', fontSize: '16px' }} />
-                                <span style={{ fontSize: '14px', fontWeight: 500, color: '#d68910' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                                <InfoCircleOutlined style={{ color: '#e67e22', fontSize: '14px' }} />
+                                <span style={{ fontSize: '12px', fontWeight: 500, color: '#d68910', fontFamily: FONT_FAMILY }}>
                                     Bulk move operation
                                 </span>
                             </div>
-                            <Text style={{ fontSize: '13px', color: '#b7950b', lineHeight: 1.5 }}>
+                            <Text style={{ fontSize: '11px', color: '#b7950b', lineHeight: 1.5, fontFamily: FONT_FAMILY }}>
                                 All selected items will be moved to the chosen location. This action cannot be undone automatically.
                             </Text>
                         </div>
                         <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
                             <Space size="middle">
                                 <Button
-                                    size="large"
+                                    size="middle"
                                     onClick={() => {
                                         setShowBulkMoveModal(false);
                                         bulkMoveForm.resetFields();
                                     }}
                                     style={{
-                                        borderRadius: '8px',
+                                        borderRadius: '6px',
                                         borderColor: '#dadce0',
-                                        color: '#5f6368'
+                                        color: '#5f6368',
+                                        fontFamily: FONT_FAMILY
                                     }}
                                 >
                                     Cancel
                                 </Button>
                                 <Button
                                     type="primary"
-                                    size="large"
+                                    size="middle"
                                     htmlType="submit"
                                     style={{
                                         backgroundColor: PRIMARY_COLOR,
                                         borderColor: PRIMARY_COLOR,
-                                        borderRadius: '8px',
+                                        borderRadius: '6px',
                                         fontWeight: 500,
-                                        minWidth: '80px'
+                                        minWidth: '70px',
+                                        fontFamily: FONT_FAMILY
                                     }}
                                 >
                                     Move files
@@ -3065,23 +3103,23 @@ const GoogleDriveManager: React.FC = () => {
                 {/* Bulk Copy Modal */}
                 <Modal
                     title={
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontFamily: FONT_FAMILY }}>
                             <div style={{
-                                width: '32px',
-                                height: '32px',
+                                width: '28px',
+                                height: '28px',
                                 backgroundColor: '#e8f0fe',
-                                borderRadius: '8px',
+                                borderRadius: '6px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center'
                             }}>
-                                <CopyOutlined style={{ color: PRIMARY_COLOR, fontSize: '16px' }} />
+                                <CopyOutlined style={{ color: PRIMARY_COLOR, fontSize: '14px' }} />
                             </div>
                             <div>
-                                <span style={{ fontSize: '18px', fontWeight: 600, color: '#202124' }}>
+                                <span style={{ fontSize: '16px', fontWeight: 600, color: '#202124', fontFamily: FONT_FAMILY }}>
                                     Copy files
                                 </span>
-                                <div style={{ fontSize: '13px', color: '#5f6368', marginTop: '2px' }}>
+                                <div style={{ fontSize: '11px', color: '#5f6368', marginTop: '1px', fontFamily: FONT_FAMILY }}>
                                     {selectedItems.length} item{selectedItems.length > 1 ? 's' : ''} selected
                                 </div>
                             </div>
@@ -3093,34 +3131,35 @@ const GoogleDriveManager: React.FC = () => {
                         bulkCopyForm.resetFields();
                     }}
                     footer={null}
-                    width={520}
-                    style={{ borderRadius: '12px' }}
+                    width={470}
+                    style={{ borderRadius: '8px', fontFamily: FONT_FAMILY }}
                     styles={{
-                        header: { borderBottom: '1px solid #f0f0f0', paddingBottom: '16px' },
-                        body: { paddingTop: '24px' }
+                        header: { borderBottom: '1px solid #f0f0f0', paddingBottom: '12px' },
+                        body: { paddingTop: '16px' }
                     }}
                 >
                     <Form
                         form={bulkCopyForm}
                         onFinish={handleBulkCopySubmit}
                         layout="vertical"
+                        style={{ fontFamily: FONT_FAMILY }}
                     >
                         <Form.Item
                             name="targetFolder"
                             label={
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: FONT_FAMILY }}>
                                     <FolderOutlined style={{ color: PRIMARY_COLOR }} />
-                                    <span style={{ fontSize: '14px', fontWeight: 500 }}>Select destination folder</span>
+                                    <span style={{ fontSize: '12px', fontWeight: 500, fontFamily: FONT_FAMILY }}>Select destination folder</span>
                                 </div>
                             }
                             rules={[{ required: true, message: 'Please select a destination folder' }]}
                         >
                             <TreeSelect
-                                style={{ borderRadius: '8px' }}
-                                size="large"
+                                style={{ borderRadius: '6px', fontFamily: FONT_FAMILY }}
+                                size="middle"
                                 dropdownStyle={{
-                                    borderRadius: '12px',
-                                    boxShadow: '0 6px 16px rgba(0,0,0,0.12)',
+                                    borderRadius: '8px',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
                                     border: '1px solid #e8eaed'
                                 }}
                                 placeholder="Choose destination folder"
@@ -3133,46 +3172,48 @@ const GoogleDriveManager: React.FC = () => {
                         </Form.Item>
                         <div style={{
                             backgroundColor: '#f8f9fa',
-                            padding: '16px',
-                            borderRadius: '8px',
-                            marginBottom: '24px'
+                            padding: '12px',
+                            borderRadius: '6px',
+                            marginBottom: '16px'
                         }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                                <InfoCircleOutlined style={{ color: '#4285f4', fontSize: '16px' }} />
-                                <span style={{ fontSize: '14px', fontWeight: 500, color: '#202124' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                                <InfoCircleOutlined style={{ color: '#4285f4', fontSize: '14px' }} />
+                                <span style={{ fontSize: '12px', fontWeight: 500, color: '#202124', fontFamily: FONT_FAMILY }}>
                                     Bulk copy operation
                                 </span>
                             </div>
-                            <Text style={{ fontSize: '13px', color: '#5f6368', lineHeight: 1.5 }}>
+                            <Text style={{ fontSize: '11px', color: '#5f6368', lineHeight: 1.5, fontFamily: FONT_FAMILY }}>
                                 Copies of all selected items will be created in the chosen destination folder.
                             </Text>
                         </div>
                         <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
                             <Space size="middle">
                                 <Button
-                                    size="large"
+                                    size="middle"
                                     onClick={() => {
                                         setShowBulkCopyModal(false);
                                         bulkCopyForm.resetFields();
                                     }}
                                     style={{
-                                        borderRadius: '8px',
+                                        borderRadius: '6px',
                                         borderColor: '#dadce0',
-                                        color: '#5f6368'
+                                        color: '#5f6368',
+                                        fontFamily: FONT_FAMILY
                                     }}
                                 >
                                     Cancel
                                 </Button>
                                 <Button
                                     type="primary"
-                                    size="large"
+                                    size="middle"
                                     htmlType="submit"
                                     style={{
                                         backgroundColor: PRIMARY_COLOR,
                                         borderColor: PRIMARY_COLOR,
-                                        borderRadius: '8px',
+                                        borderRadius: '6px',
                                         fontWeight: 500,
-                                        minWidth: '80px'
+                                        minWidth: '70px',
+                                        fontFamily: FONT_FAMILY
                                     }}
                                 >
                                     Copy files
@@ -3185,24 +3226,24 @@ const GoogleDriveManager: React.FC = () => {
                 {/* File Info Modal */}
                 <Modal
                     title={
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontFamily: FONT_FAMILY }}>
                             <div style={{
-                                width: '32px',
-                                height: '32px',
+                                width: '28px',
+                                height: '28px',
                                 backgroundColor: '#e8f0fe',
-                                borderRadius: '8px',
+                                borderRadius: '6px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center'
                             }}>
-                                <InfoCircleOutlined style={{ color: PRIMARY_COLOR, fontSize: '16px' }} />
+                                <InfoCircleOutlined style={{ color: PRIMARY_COLOR, fontSize: '14px' }} />
                             </div>
                             <div>
-                                <span style={{ fontSize: '18px', fontWeight: 600, color: '#202124' }}>
+                                <span style={{ fontSize: '16px', fontWeight: 600, color: '#202124', fontFamily: FONT_FAMILY }}>
                                     File Details
                                 </span>
                                 {currentActionItem && (
-                                    <div style={{ fontSize: '13px', color: '#5f6368', marginTop: '2px' }}>
+                                    <div style={{ fontSize: '11px', color: '#5f6368', marginTop: '1px', fontFamily: FONT_FAMILY }}>
                                         {currentActionItem.name}
                                     </div>
                                 )}
@@ -3216,32 +3257,32 @@ const GoogleDriveManager: React.FC = () => {
                         setFileInfo(null);
                     }}
                     footer={null}
-                    width={600}
-                    style={{ borderRadius: '12px' }}
+                    width={550}
+                    style={{ borderRadius: '8px', fontFamily: FONT_FAMILY }}
                     styles={{
-                        header: { borderBottom: '1px solid #f0f0f0', paddingBottom: '16px' },
-                        body: { paddingTop: '24px' }
+                        header: { borderBottom: '1px solid #f0f0f0', paddingBottom: '12px' },
+                        body: { paddingTop: '16px' }
                     }}
                 >
                     {fileInfo && currentActionItem && (
-                        <div>
+                        <div style={{ fontFamily: FONT_FAMILY }}>
                             {/* File Preview */}
                             {fileInfo.thumbnailLink && (
                                 <div style={{
                                     textAlign: 'center',
-                                    marginBottom: '24px',
-                                    padding: '20px',
+                                    marginBottom: '16px',
+                                    padding: '16px',
                                     backgroundColor: '#f8f9fa',
-                                    borderRadius: '8px'
+                                    borderRadius: '6px'
                                 }}>
                                     <img
                                         src={fileInfo.thumbnailLink}
                                         alt={currentActionItem.name}
                                         style={{
-                                            maxWidth: '200px',
-                                            maxHeight: '200px',
-                                            borderRadius: '8px',
-                                            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                                            maxWidth: '180px',
+                                            maxHeight: '180px',
+                                            borderRadius: '6px',
+                                            boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
                                         }}
                                     />
                                 </div>
@@ -3254,24 +3295,26 @@ const GoogleDriveManager: React.FC = () => {
                                 size="small"
                                 style={{
                                     backgroundColor: '#fff',
-                                    borderRadius: '8px'
+                                    borderRadius: '6px',
+                                    fontFamily: FONT_FAMILY
                                 }}
                                 labelStyle={{
                                     backgroundColor: '#f8f9fa',
                                     fontWeight: 500,
                                     color: '#202124',
-                                    width: '150px'
+                                    width: '130px',
+                                    fontFamily: FONT_FAMILY
                                 }}
                             >
                                 <Descriptions.Item
                                     label={
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontFamily: FONT_FAMILY }}>
                                             <FileOutlined style={{ color: PRIMARY_COLOR }} />
                                             Name
                                         </div>
                                     }
                                 >
-                                    <Text copyable style={{ fontWeight: 500 }}>
+                                    <Text copyable style={{ fontWeight: 500, fontFamily: FONT_FAMILY }}>
                                         {currentActionItem.name}
                                     </Text>
                                 </Descriptions.Item>
@@ -3279,75 +3322,75 @@ const GoogleDriveManager: React.FC = () => {
                                 {'mimeType' in currentActionItem && (
                                     <Descriptions.Item
                                         label={
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontFamily: FONT_FAMILY }}>
                                                 <TagsOutlined style={{ color: PRIMARY_COLOR }} />
                                                 Type
                                             </div>
                                         }
                                     >
-                                        <Tag color="blue">{currentActionItem.mimeType}</Tag>
+                                        <Tag color="blue" style={{ fontFamily: FONT_FAMILY }}>{currentActionItem.mimeType}</Tag>
                                     </Descriptions.Item>
                                 )}
 
                                 {'size' in currentActionItem && currentActionItem.size && (
                                     <Descriptions.Item
                                         label={
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontFamily: FONT_FAMILY }}>
                                                 <HddOutlined style={{ color: PRIMARY_COLOR }} />
                                                 Size
                                             </div>
                                         }
                                     >
-                                        <Text>{formatFileSize(currentActionItem.size)}</Text>
+                                        <Text style={{ fontFamily: FONT_FAMILY }}>{formatFileSize(currentActionItem.size)}</Text>
                                     </Descriptions.Item>
                                 )}
 
                                 <Descriptions.Item
                                     label={
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontFamily: FONT_FAMILY }}>
                                             <CalendarOutlined style={{ color: PRIMARY_COLOR }} />
                                             Modified
                                         </div>
                                     }
                                 >
-                                    <Text>{new Date(currentActionItem.modifiedTime).toLocaleString()}</Text>
+                                    <Text style={{ fontFamily: FONT_FAMILY }}>{new Date(currentActionItem.modifiedTime).toLocaleString()}</Text>
                                 </Descriptions.Item>
 
                                 {'createdTime' in currentActionItem && (
                                     <Descriptions.Item
                                         label={
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontFamily: FONT_FAMILY }}>
                                                 <CalendarOutlined style={{ color: PRIMARY_COLOR }} />
                                                 Created
                                             </div>
                                         }
                                     >
-                                        <Text>{new Date(currentActionItem.createdTime).toLocaleString()}</Text>
+                                        <Text style={{ fontFamily: FONT_FAMILY }}>{new Date(currentActionItem.createdTime).toLocaleString()}</Text>
                                     </Descriptions.Item>
                                 )}
 
                                 {'owners' in currentActionItem && currentActionItem.owners && (
                                     <Descriptions.Item
                                         label={
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontFamily: FONT_FAMILY }}>
                                                 <UserOutlined style={{ color: PRIMARY_COLOR }} />
                                                 Owner
                                             </div>
                                         }
                                     >
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                             {currentActionItem.owners[0]?.photoLink ? (
-                                                <Avatar size={24} src={currentActionItem.owners[0].photoLink} />
+                                                <Avatar size={20} src={currentActionItem.owners[0].photoLink} />
                                             ) : (
-                                                <Avatar size={24} style={{ backgroundColor: PRIMARY_COLOR }}>
+                                                <Avatar size={20} style={{ backgroundColor: PRIMARY_COLOR, fontFamily: FONT_FAMILY }}>
                                                     {(currentActionItem.owners[0]?.displayName || 'U')[0]}
                                                 </Avatar>
                                             )}
                                             <div>
-                                                <div style={{ fontWeight: 500 }}>
+                                                <div style={{ fontWeight: 500, fontFamily: FONT_FAMILY }}>
                                                     {currentActionItem.owners[0]?.displayName || 'Unknown'}
                                                 </div>
-                                                <div style={{ fontSize: '12px', color: '#5f6368' }}>
+                                                <div style={{ fontSize: '10px', color: '#5f6368', fontFamily: FONT_FAMILY }}>
                                                     {currentActionItem.owners[0]?.emailAddress}
                                                 </div>
                                             </div>
@@ -3357,18 +3400,18 @@ const GoogleDriveManager: React.FC = () => {
 
                                 <Descriptions.Item
                                     label={
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontFamily: FONT_FAMILY }}>
                                             <ShareAltOutlined style={{ color: PRIMARY_COLOR }} />
                                             Sharing
                                         </div>
                                     }
                                 >
                                     <Space>
-                                        <Tag color={currentActionItem.shared ? 'green' : 'default'}>
+                                        <Tag color={currentActionItem.shared ? 'green' : 'default'} style={{ fontFamily: FONT_FAMILY }}>
                                             {currentActionItem.shared ? 'Shared' : 'Private'}
                                         </Tag>
                                         {'starred' in currentActionItem && currentActionItem.starred && (
-                                            <Tag color="gold" icon={<StarOutlined />}>
+                                            <Tag color="gold" icon={<StarOutlined />} style={{ fontFamily: FONT_FAMILY }}>
                                                 Starred
                                             </Tag>
                                         )}
@@ -3378,7 +3421,7 @@ const GoogleDriveManager: React.FC = () => {
                                 {'webViewLink' in currentActionItem && currentActionItem.webViewLink && (
                                     <Descriptions.Item
                                         label={
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontFamily: FONT_FAMILY }}>
                                                 <LinkOutlined style={{ color: PRIMARY_COLOR }} />
                                                 Link
                                             </div>
@@ -3388,7 +3431,7 @@ const GoogleDriveManager: React.FC = () => {
                                             type="link"
                                             icon={<LinkOutlined />}
                                             onClick={() => window.open(currentActionItem.webViewLink, '_blank')}
-                                            style={{ padding: 0 }}
+                                            style={{ padding: 0, fontFamily: FONT_FAMILY }}
                                         >
                                             Open in Cloud Drive
                                         </Button>
@@ -3398,19 +3441,19 @@ const GoogleDriveManager: React.FC = () => {
                                 {fileInfo.description && (
                                     <Descriptions.Item
                                         label={
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontFamily: FONT_FAMILY }}>
                                                 <FileTextOutlined style={{ color: PRIMARY_COLOR }} />
                                                 Description
                                             </div>
                                         }
                                     >
-                                        <Text>{fileInfo.description}</Text>
+                                        <Text style={{ fontFamily: FONT_FAMILY }}>{fileInfo.description}</Text>
                                     </Descriptions.Item>
                                 )}
                             </Descriptions>
 
                             {/* Quick Actions */}
-                            <div style={{ marginTop: '24px', textAlign: 'center' }}>
+                            <div style={{ marginTop: '16px', textAlign: 'center' }}>
                                 <Space size="middle">
                                     {'webViewLink' in currentActionItem && (
                                         <Button
@@ -3420,7 +3463,8 @@ const GoogleDriveManager: React.FC = () => {
                                             style={{
                                                 backgroundColor: PRIMARY_COLOR,
                                                 borderColor: PRIMARY_COLOR,
-                                                borderRadius: '6px'
+                                                borderRadius: '4px',
+                                                fontFamily: FONT_FAMILY
                                             }}
                                         >
                                             Open
@@ -3433,7 +3477,7 @@ const GoogleDriveManager: React.FC = () => {
                                             setShareFileId(currentActionItem.id);
                                             setShowShareModal(true);
                                         }}
-                                        style={{ borderRadius: '6px' }}
+                                        style={{ borderRadius: '4px', fontFamily: FONT_FAMILY }}
                                     >
                                         Share
                                     </Button>
@@ -3441,7 +3485,7 @@ const GoogleDriveManager: React.FC = () => {
                                         <Button
                                             icon={<DownloadOutlined />}
                                             onClick={() => handleFileAction('download', currentActionItem)}
-                                            style={{ borderRadius: '6px' }}
+                                            style={{ borderRadius: '4px', fontFamily: FONT_FAMILY }}
                                         >
                                             Download
                                         </Button>
@@ -3455,38 +3499,41 @@ const GoogleDriveManager: React.FC = () => {
                 {/* Analytics Drawer */}
                 <Drawer
                     title={
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: FONT_FAMILY }}>
                             <BarChartOutlined style={{ color: PRIMARY_COLOR }} />
-                            <span>Storage Analytics</span>
+                            <span style={{ fontFamily: FONT_FAMILY }}>Storage Analytics</span>
                         </div>
                     }
                     placement="right"
                     onClose={() => setShowAnalytics(false)}
                     open={showAnalytics}
-                    width={400}
+                    width={350}
+                    style={{ fontFamily: FONT_FAMILY }}
                 >
                     {storageAnalytics && (
-                        <div>
-                            <Card size="small" style={{ marginBottom: '16px' }}>
+                        <div style={{ fontFamily: FONT_FAMILY }}>
+                            <Card size="small" style={{ marginBottom: '12px', fontFamily: FONT_FAMILY }}>
                                 <Statistic
                                     title="Total Files"
                                     value={storageAnalytics.totalFiles || 0}
                                     prefix={<FileOutlined />}
+                                    style={{ fontFamily: FONT_FAMILY }}
                                 />
                             </Card>
-                            <Card size="small" style={{ marginBottom: '16px' }}>
+                            <Card size="small" style={{ marginBottom: '12px', fontFamily: FONT_FAMILY }}>
                                 <Statistic
                                     title="Total Folders"
                                     value={storageAnalytics.totalFolders || 0}
                                     prefix={<FolderOutlined />}
+                                    style={{ fontFamily: FONT_FAMILY }}
                                 />
                             </Card>
                             {storageAnalytics.byType && (
-                                <Card size="small" title="Files by Type">
+                                <Card size="small" title="Files by Type" style={{ fontFamily: FONT_FAMILY }}>
                                     {Object.entries(storageAnalytics.byType).map(([type, count]: [string, any]) => (
-                                        <div key={type} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                            <Text>{type}</Text>
-                                            <Text strong>{count}</Text>
+                                        <div key={type} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                            <Text style={{ fontFamily: FONT_FAMILY }}>{type}</Text>
+                                            <Text strong style={{ fontFamily: FONT_FAMILY }}>{count}</Text>
                                         </div>
                                     ))}
                                 </Card>
@@ -3498,17 +3545,18 @@ const GoogleDriveManager: React.FC = () => {
                 {/* Activity Drawer */}
                 <Drawer
                     title={
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: FONT_FAMILY }}>
                             <HistoryOutlined style={{ color: PRIMARY_COLOR }} />
-                            <span>Activity Log</span>
+                            <span style={{ fontFamily: FONT_FAMILY }}>Activity Log</span>
                         </div>
                     }
                     placement="right"
                     onClose={() => setShowActivity(false)}
                     open={showActivity}
-                    width={500}
+                    width={450}
+                    style={{ fontFamily: FONT_FAMILY }}
                 >
-                    <Timeline>
+                    <Timeline style={{ fontFamily: FONT_FAMILY }}>
                         {activityLogs.map((log) => (
                             <Timeline.Item
                                 key={log.id}
@@ -3519,18 +3567,18 @@ const GoogleDriveManager: React.FC = () => {
                                                 <ClockCircleOutlined style={{ color: '#faad14' }} />
                                 }
                             >
-                                <div>
-                                    <Text strong>{log.action.replace('_', ' ').toUpperCase()}</Text>
+                                <div style={{ fontFamily: FONT_FAMILY }}>
+                                    <Text strong style={{ fontFamily: FONT_FAMILY }}>{log.action.replace('_', ' ').toUpperCase()}</Text>
                                     <br />
-                                    <Text>{log.fileName}</Text>
+                                    <Text style={{ fontFamily: FONT_FAMILY }}>{log.fileName}</Text>
                                     <br />
-                                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                                    <Text type="secondary" style={{ fontSize: '10px', fontFamily: FONT_FAMILY }}>
                                         {new Date(log.timestamp).toLocaleString()}
                                     </Text>
                                     {log.details && (
                                         <>
                                             <br />
-                                            <Text type="secondary" style={{ fontSize: '12px' }}>
+                                            <Text type="secondary" style={{ fontSize: '10px', fontFamily: FONT_FAMILY }}>
                                                 {log.details}
                                             </Text>
                                         </>
@@ -3544,35 +3592,36 @@ const GoogleDriveManager: React.FC = () => {
                 {/* Duplicates Drawer */}
                 <Drawer
                     title={
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: FONT_FAMILY }}>
                             <BugOutlined style={{ color: PRIMARY_COLOR }} />
-                            <span>Duplicate Files</span>
+                            <span style={{ fontFamily: FONT_FAMILY }}>Duplicate Files</span>
                         </div>
                     }
                     placement="right"
                     onClose={() => setShowDuplicates(false)}
                     open={showDuplicates}
-                    width={600}
+                    width={550}
+                    style={{ fontFamily: FONT_FAMILY }}
                 >
                     {duplicateFiles.length === 0 ? (
-                        <Empty description="No duplicate files found" />
+                        <Empty description="No duplicate files found" style={{ fontFamily: FONT_FAMILY }} />
                     ) : (
-                        <div>
+                        <div style={{ fontFamily: FONT_FAMILY }}>
                             <Alert
                                 message="Duplicate Files Found"
                                 description={`Found ${duplicateFiles.length} sets of duplicate files. Review and clean up to free storage space.`}
                                 type="info"
-                                style={{ marginBottom: '16px' }}
+                                style={{ marginBottom: '12px', fontFamily: FONT_FAMILY }}
                             />
-                            <Collapse>
+                            <Collapse style={{ fontFamily: FONT_FAMILY }}>
                                 {duplicateFiles.map((duplicate, index) => (
                                     <Panel
                                         header={
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <Text strong>{duplicate.name}</Text>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: FONT_FAMILY }}>
+                                                <Text strong style={{ fontFamily: FONT_FAMILY }}>{duplicate.name}</Text>
                                                 <div>
                                                     <Badge count={duplicate.files.length} style={{ backgroundColor: '#faad14' }} />
-                                                    <Text style={{ marginLeft: '8px', fontSize: '12px', color: '#5f6368' }}>
+                                                    <Text style={{ marginLeft: '6px', fontSize: '10px', color: '#5f6368', fontFamily: FONT_FAMILY }}>
                                                         {(duplicate.totalSize / (1024 * 1024)).toFixed(2)} MB
                                                     </Text>
                                                 </div>
@@ -3592,6 +3641,7 @@ const GoogleDriveManager: React.FC = () => {
                                                             size="small"
                                                             icon={<DeleteOutlined />}
                                                             onClick={() => handleFileAction('delete', file)}
+                                                            style={{ fontFamily: FONT_FAMILY }}
                                                         >
                                                             Delete
                                                         </Button>
@@ -3599,18 +3649,18 @@ const GoogleDriveManager: React.FC = () => {
                                                 >
                                                     <List.Item.Meta
                                                         avatar={
-                                                            <div style={{ fontSize: '16px', color: getFileIconColor(file.mimeType) }}>
+                                                            <div style={{ fontSize: '14px', color: getFileIconColor(file.mimeType) }}>
                                                                 {getFileIcon(file.mimeType)}
                                                             </div>
                                                         }
-                                                        title={file.name}
+                                                        title={<span style={{ fontFamily: FONT_FAMILY }}>{file.name}</span>}
                                                         description={
-                                                            <div>
-                                                                <Text type="secondary">
+                                                            <div style={{ fontFamily: FONT_FAMILY }}>
+                                                                <Text type="secondary" style={{ fontFamily: FONT_FAMILY }}>
                                                                     Modified {new Date(file.modifiedTime).toLocaleDateString()}
                                                                 </Text>
                                                                 <br />
-                                                                <Text type="secondary">
+                                                                <Text type="secondary" style={{ fontFamily: FONT_FAMILY }}>
                                                                     {formatFileSize(file.size)}
                                                                 </Text>
                                                             </div>
@@ -3674,13 +3724,13 @@ const GoogleDriveManager: React.FC = () => {
                 }
 
                 .ant-select-dropdown {
-                    border-radius: 12px !important;
-                    padding: 4px 0 !important;
+                    border-radius: 8px !important;
+                    padding: 2px 0 !important;
                 }
 
                 .ant-select-item {
-                    border-radius: 8px !important;  
-                    margin: 2px 8px !important;
+                    border-radius: 6px !important;  
+                    margin: 1px 6px !important;
                 }
 
                 .ant-select-item-option-selected {
@@ -3690,6 +3740,10 @@ const GoogleDriveManager: React.FC = () => {
 
                 .ant-select-item:hover {
                     background-color: #f8f9fa !important;
+                }
+
+                * {
+                    font-family: ${FONT_FAMILY} !important;
                 }
             `}</style>
         </Layout>

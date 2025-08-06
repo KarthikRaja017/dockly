@@ -1,17 +1,11 @@
 # Update routes to include all the new Outlook endpoints
 
 from .outlook import (
-    CopyOutlookFile,
     CreateOutlookFolder,
     DeleteOutlookFile,
-    DownloadOutlookFile,
-    GetOutlookFileInfo,
     ListOutlookFiles,
-    MoveOutlookFile,
-    RenameOutlookFile,
-    ShareOutlookFile,
+    # ShareOutlookFile,
     UploadOutlookFile,
-    GetOutlookStorage,
 )
 from .models import (
     AdvancedSearch,
@@ -76,16 +70,22 @@ google_drive_api.add_resource(GetStorageAnalytics, "/analytics/storage")
 google_drive_api.add_resource(GetActivityLog, "/activity")
 google_drive_api.add_resource(LogActivity, "/activity/log")
 
+# google_drive_api.add_resource(ListOutlookFiles, "/outlook/files")
+# google_drive_api.add_resource(UploadOutlookFile, "/outlook/upload")
+# google_drive_api.add_resource(DownloadOutlookFile, "/outlook/download")
+# google_drive_api.add_resource(DeleteOutlookFile, "/outlook/delete")
+# google_drive_api.add_resource(CreateOutlookFolder, "/outlook/folder/create")
+# google_drive_api.add_resource(ShareOutlookFile, "/outlook/share")
+# google_drive_api.add_resource(GetOutlookFileInfo, "/outlook/file/<string:file_id>")
+# google_drive_api.add_resource(GetOutlookStorage, "/outlook/storage")
+
+# # File Operations
+# google_drive_api.add_resource(RenameOutlookFile, "/outlook/rename")
+# google_drive_api.add_resource(CopyOutlookFile, "/outlook/copy")
+# google_drive_api.add_resource(MoveOutlookFile, "/outlook/move")
 google_drive_api.add_resource(ListOutlookFiles, "/outlook/files")
 google_drive_api.add_resource(UploadOutlookFile, "/outlook/upload")
-google_drive_api.add_resource(DownloadOutlookFile, "/outlook/download")
+# google_drive_api.add_resource(DownloadOutlookFile, "/outlook/download")
 google_drive_api.add_resource(DeleteOutlookFile, "/outlook/delete")
 google_drive_api.add_resource(CreateOutlookFolder, "/outlook/folder/create")
-google_drive_api.add_resource(ShareOutlookFile, "/outlook/share")
-google_drive_api.add_resource(GetOutlookFileInfo, "/outlook/file/<string:file_id>")
-google_drive_api.add_resource(GetOutlookStorage, "/outlook/storage")
-
-# File Operations
-google_drive_api.add_resource(RenameOutlookFile, "/outlook/rename")
-google_drive_api.add_resource(CopyOutlookFile, "/outlook/copy")
-google_drive_api.add_resource(MoveOutlookFile, "/outlook/move")
+# google_drive_api.add_resource(ShareOutlookFile, "/outlook/share")

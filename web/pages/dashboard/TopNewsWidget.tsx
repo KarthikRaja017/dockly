@@ -186,9 +186,9 @@ const TopNews: React.FC = () => {
                             background: "#f8fafc",
                             borderRadius: 10,
                             padding: 8,
-                            marginBottom: 5,
+                            marginBottom: 10,
                             border: "1px solid #f20c0c30",
-                            height: 72.5, // Shorter initial height
+                            height: 78.5, // Shorter initial height
                             display: "flex",
                             flexDirection: "column",
                             justifyContent: "space-between",
@@ -313,6 +313,7 @@ const TopNews: React.FC = () => {
                         alignItems: "center",
                         gap: 4,
                         cursor: "pointer",
+                        marginTop: -5,
                     }}
                 >
                     View all news <span style={{ fontSize: 9 }}>→</span>

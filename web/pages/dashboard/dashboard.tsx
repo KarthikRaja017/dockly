@@ -87,6 +87,7 @@ import { showNotification } from "../../utils/notification";
 import { useCurrentUser } from "../../app/userContext";
 import { useGlobalLoading } from "../../app/loadingContext";
 import { uploadDocklyRootFile } from '../../services/home';
+import { capitalizeEachWord } from "../../app/comman";
 
 
 const { Option } = Select;
@@ -184,6 +185,7 @@ function App() {
 
   const router = useRouter();
   const user = useCurrentUser();
+  const username = user?.user_name;
   const { loading, setLoading } = useGlobalLoading();
 
   const [aiInput, setAiInput] = useState("");
@@ -629,7 +631,7 @@ function App() {
                   fontWeight: 600,
                 }}
               >
-                Good morning, {mockData.user.name.split(" ")[0]}!
+                Good morning, {capitalizeEachWord(username)}!
               </Title>
               <Text
                 style={{
@@ -1678,7 +1680,7 @@ function App() {
         }
         
         .widgets-container .widget-card {
-          height: 123px; /* Shorter initial height */
+          height: 138px; /* Shorter initial height */
           transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
           transform-origin: center;
           overflow: hidden;

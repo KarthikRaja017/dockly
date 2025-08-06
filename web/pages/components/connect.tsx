@@ -2,12 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { Modal, Button, Card, Avatar, Typography, Space } from 'antd';
 import { Apple, Mail, Chrome, Check, UserPlus, User } from 'lucide-react';
 import { CatppuccinFolderConnection } from './icons';
-import { ACTIVE_BG_COLOR } from '../../app/comman';
+import { ACTIVE_BG_COLOR, PRIMARY_COLOR } from '../../app/comman';
 import { API_URL } from '../../services/apiConfig';
 import { useCurrentUser } from '../../app/userContext';
 import { getUserConnectedAccounts } from '../../services/dashboard';
-import { trimGooglePhotoUrl } from './header';
+// import { trimGooglePhotoUrl } from './CustomHeader';
 import { useGlobalLoading } from '../../app/loadingContext';
+import { trimGooglePhotoUrl } from './header';
+
+const FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 
 const { Title, Text } = Typography;
 
@@ -65,9 +68,15 @@ const FolderConnectionModal: React.FC<FolderConnectionModalProps> = ({ isModalVi
         const googleAccounts = connectedAccounts.filter(acc => acc.provider === 'google');
         if (!googleAccounts.length) return null;
 
-
         return (
-            <div style={{ marginTop: 12, paddingLeft: 64 }}>
+            <div style={{
+                marginTop: 16,
+                paddingLeft: 64,
+                background: `${PRIMARY_COLOR}05`,
+                borderRadius: 8,
+                padding: '12px 16px',
+                border: `1px solid ${PRIMARY_COLOR}15`
+            }}>
                 {googleAccounts.map((acc, idx) => {
                     let userData = null;
                     try {
@@ -76,14 +85,28 @@ const FolderConnectionModal: React.FC<FolderConnectionModalProps> = ({ isModalVi
                     const trimmedUrl = trimGooglePhotoUrl(userData?.picture);
 
                     return (
-                        <div key={idx} style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+                        <div key={idx} style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            marginBottom: idx === googleAccounts.length - 1 ? 0 : 12,
+                            padding: '8px',
+                            borderRadius: 6,
+                            background: 'white',
+                            boxShadow: `0 2px 4px ${PRIMARY_COLOR}10`,
+                            transition: 'all 0.3s ease'
+                        }}>
                             <Avatar
                                 size={32}
                                 src={trimmedUrl}
                                 icon={!userData?.picture && <User size={16} />}
-                                style={{ marginRight: 8 }}
+                                style={{
+                                    marginRight: 12,
+                                    border: `2px solid ${PRIMARY_COLOR}20`
+                                }}
                             />
-                            <Text>{userData?.email || acc.email}</Text>
+                            <Text style={{ fontFamily: FONT_FAMILY, fontWeight: 500 }}>
+                                {userData?.email || acc.email}
+                            </Text>
                         </div>
                     );
                 })}
@@ -92,7 +115,13 @@ const FolderConnectionModal: React.FC<FolderConnectionModalProps> = ({ isModalVi
                     icon={<UserPlus size={16} />}
                     onClick={() => handleConnect('google')}
                     size="small"
-                    style={{ marginTop: 8 }}
+                    style={{
+                        marginTop: 12,
+                        fontFamily: FONT_FAMILY,
+                        borderColor: PRIMARY_COLOR,
+                        color: PRIMARY_COLOR,
+                        transition: 'all 0.3s ease'
+                    }}
                 >
                     Add another account
                 </Button>
@@ -105,7 +134,14 @@ const FolderConnectionModal: React.FC<FolderConnectionModalProps> = ({ isModalVi
         if (!outlookAccounts.length) return null;
 
         return (
-            <div style={{ marginTop: 12, paddingLeft: 64 }}>
+            <div style={{
+                marginTop: 16,
+                paddingLeft: 64,
+                background: `${PRIMARY_COLOR}05`,
+                borderRadius: 8,
+                padding: '12px 16px',
+                border: `1px solid ${PRIMARY_COLOR}15`
+            }}>
                 {outlookAccounts.map((acc, idx) => {
                     let userData = null;
                     try {
@@ -115,14 +151,28 @@ const FolderConnectionModal: React.FC<FolderConnectionModalProps> = ({ isModalVi
                     const picture = userData?.picture || null;
 
                     return (
-                        <div key={idx} style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+                        <div key={idx} style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            marginBottom: idx === outlookAccounts.length - 1 ? 0 : 12,
+                            padding: '8px',
+                            borderRadius: 6,
+                            background: 'white',
+                            boxShadow: `0 2px 4px ${PRIMARY_COLOR}10`,
+                            transition: 'all 0.3s ease'
+                        }}>
                             <Avatar
                                 size={32}
                                 src={picture}
                                 icon={!picture && <User size={16} />}
-                                style={{ marginRight: 8 }}
+                                style={{
+                                    marginRight: 12,
+                                    border: `2px solid ${PRIMARY_COLOR}20`
+                                }}
                             />
-                            <Text>{userData?.email || acc.email}</Text>
+                            <Text style={{ fontFamily: FONT_FAMILY, fontWeight: 500 }}>
+                                {userData?.email || acc.email}
+                            </Text>
                         </div>
                     );
                 })}
@@ -131,7 +181,13 @@ const FolderConnectionModal: React.FC<FolderConnectionModalProps> = ({ isModalVi
                     icon={<UserPlus size={16} />}
                     onClick={() => handleConnect('outlook')}
                     size="small"
-                    style={{ marginTop: 8 }}
+                    style={{
+                        marginTop: 12,
+                        fontFamily: FONT_FAMILY,
+                        borderColor: PRIMARY_COLOR,
+                        color: PRIMARY_COLOR,
+                        transition: 'all 0.3s ease'
+                    }}
                 >
                     Add another account
                 </Button>
@@ -145,21 +201,21 @@ const FolderConnectionModal: React.FC<FolderConnectionModalProps> = ({ isModalVi
             name: 'Apple iCloud',
             icon: <Apple size={24} style={{ color: '#000' }} />,
             color: '#000',
-            bgColor: '#f5f5f5',
+            bgColor: `${PRIMARY_COLOR}08`,
         },
         {
             key: 'outlook',
             name: 'Microsoft Outlook',
             icon: <Mail size={24} style={{ color: '#0078d4' }} />,
             color: '#0078d4',
-            bgColor: '#e3f2fd',
+            bgColor: `${PRIMARY_COLOR}08`,
         },
         {
             key: 'google',
             name: 'Google Drive',
             icon: <Chrome size={24} style={{ color: '#4285f4' }} />,
             color: '#4285f4',
-            bgColor: '#e8f0fe',
+            bgColor: `${PRIMARY_COLOR}08`,
         },
     ];
 
@@ -168,61 +224,86 @@ const FolderConnectionModal: React.FC<FolderConnectionModalProps> = ({ isModalVi
             open={isModalVisible}
             onCancel={() => setIsModalVisible(false)}
             footer={null}
-            width={580}
+            width={600}
             centered
-            closeIcon={<div style={{ fontSize: '18px', color: '#999' }}>×</div>}
+            closeIcon={
+                <div style={{
+                    fontSize: '20px',
+                    color: '#999',
+                    transition: 'all 0.3s ease',
+                    fontFamily: FONT_FAMILY
+                }}>
+                    ×
+                </div>
+            }
             styles={{
                 body: {
                     padding: 0,
-                    background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+                    background: `linear-gradient(135deg, ${PRIMARY_COLOR}05 0%, ${PRIMARY_COLOR}02 100%)`,
                     borderRadius: '16px',
                     overflow: 'hidden',
-                    maxHeight: '80vh',
+                    maxHeight: '85vh',
                     display: 'flex',
-                    flexDirection: 'column'
+                    flexDirection: 'column',
+                    fontFamily: FONT_FAMILY
                 }
             }}
         >
-            {/* Sticky Header */}
+            {/* Enhanced Header */}
             <div
                 style={{
-                    padding: '24px 32px',
-                    background: ACTIVE_BG_COLOR,
+                    padding: '8px 12px',
+                    background: `linear-gradient(135deg, ${PRIMARY_COLOR} 0%, ${PRIMARY_COLOR}dd 100%)`,
                     position: 'sticky',
                     top: 0,
                     zIndex: 10,
-                    borderBottom: '1px solid #e0e0e0',
+                    borderBottom: `1px solid ${PRIMARY_COLOR}20`,
                 }}
             >
                 <div style={{ textAlign: 'center' }}>
                     <div
                         style={{
-                            width: '64px',
-                            height: '64px',
+                            width: '42px',
+                            height: '42px',
                             borderRadius: '20px',
-                            background: '#fff',
-                            margin: '0 auto 16px',
+                            background: 'white',
+                            margin: '0 auto 10px',
                             display: 'flex',
                             justifyContent: 'center',
                             alignItems: 'center',
-                            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)',
+                            boxShadow: `0 8px 24px ${PRIMARY_COLOR}30`,
+                            transition: 'all 0.3s ease',
                         }}
                     >
                         <CatppuccinFolderConnection />
                     </div>
-                    <Title level={3} style={{ margin: 0, color: '#2c3e50' }}>
+                    <Title
+                        level={3}
+                        style={{
+                            margin: 0,
+                            color: 'white',
+                            fontFamily: FONT_FAMILY,
+                            fontWeight: 400,
+                            textShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                        }}
+                    >
                         Connect Your Accounts
                     </Title>
-                    <Text style={{ color: '#7f8c8d', fontSize: '14px' }}>
+                    <Text style={{
+                        color: 'rgba(255,255,255,0.9)',
+                        fontSize: '15px',
+                        fontFamily: FONT_FAMILY,
+                        fontWeight: 200
+                    }}>
                         Link your accounts to sync your <strong>Files, Calendar and Health</strong>
                     </Text>
                 </div>
             </div>
 
-            {/* Scrollable Body */}
+            {/* Enhanced Scrollable Body */}
             <div
                 style={{
-                    padding: '24px 32px',
+                    padding: '18px 22px',
                     overflowY: 'auto',
                     flexGrow: 1,
                 }}
@@ -234,21 +315,58 @@ const FolderConnectionModal: React.FC<FolderConnectionModalProps> = ({ isModalVi
                             <Card
                                 key={service.key}
                                 style={{
-                                    borderRadius: '12px',
-                                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                                    borderRadius: '16px',
+                                    boxShadow: `0 4px 16px ${PRIMARY_COLOR}15`,
                                     cursor: 'pointer',
+                                    border: `1px solid ${PRIMARY_COLOR}10`,
+                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                    background: 'white',
+                                    fontFamily: FONT_FAMILY
                                 }}
-                            // bodyStyle={{ padding: '20px' }}
+                                bodyStyle={{ padding: '24px' }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                    e.currentTarget.style.boxShadow = `0 8px 24px ${PRIMARY_COLOR}25`;
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = `0 4px 16px ${PRIMARY_COLOR}15`;
+                                }}
                             >
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                                        <Avatar size={48} style={{ backgroundColor: service.bgColor }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+                                        <Avatar
+                                            size={46}
+                                            style={{
+                                                backgroundColor: service.bgColor,
+                                                border: `2px solid ${PRIMARY_COLOR}20`,
+                                                boxShadow: `0 4px 12px ${PRIMARY_COLOR}20`
+                                            }}
+                                        >
                                             {service.icon}
                                         </Avatar>
                                         <div>
-                                            <Title level={5} style={{ margin: 0 }}>{service.name}</Title>
-                                            <Text type={connections[key] ? 'success' : 'secondary'}>
-                                                {connections[key] ? 'Connected' : 'Not Connected'}
+                                            <Title
+                                                level={5}
+                                                style={{
+                                                    margin: 0,
+                                                    marginBottom: 2,
+                                                    fontFamily: FONT_FAMILY,
+                                                    fontWeight: 400,
+                                                    color: '#2c3e50'
+                                                }}
+                                            >
+                                                {service.name}
+                                            </Title>
+                                            <Text
+                                                type={connections[key] ? 'success' : 'secondary'}
+                                                style={{
+                                                    fontFamily: FONT_FAMILY,
+                                                    fontWeight: 200,
+                                                    fontSize: '14px'
+                                                }}
+                                            >
+                                                {connections[key] ? '✓ Connected' : 'Not Connected'}
                                             </Text>
                                         </div>
                                     </div>
@@ -259,12 +377,21 @@ const FolderConnectionModal: React.FC<FolderConnectionModalProps> = ({ isModalVi
                                         icon={connections[key] ? <Check size={16} style={{ color: '#52c41a' }} /> : null}
                                         loading={loading}
                                         style={{
-                                            borderRadius: 8,
+                                            borderRadius: 10,
+                                            height: 40,
+                                            paddingLeft: 20,
+                                            paddingRight: 20,
+                                            fontFamily: FONT_FAMILY,
+                                            fontWeight: 500,
                                             background: connections[key]
-                                                ? '#fff'
-                                                : `linear-gradient(135deg, ${service.color} 0%, ${service.color}dd 100%)`,
+                                                ? 'white'
+                                                : `linear-gradient(135deg, ${PRIMARY_COLOR} 0%, ${PRIMARY_COLOR}dd 100%)`,
                                             color: connections[key] ? '#333' : '#fff',
-                                            border: connections[key] ? '1px solid #d9d9d9' : 'none'
+                                            border: connections[key] ? `1px solid ${PRIMARY_COLOR}30` : 'none',
+                                            boxShadow: connections[key]
+                                                ? `0 2px 8px ${PRIMARY_COLOR}15`
+                                                : `0 4px 12px ${PRIMARY_COLOR}30`,
+                                            transition: 'all 0.3s ease'
                                         }}
                                     >
                                         {connections[key] ? 'Connected' : 'Connect'}
@@ -278,17 +405,22 @@ const FolderConnectionModal: React.FC<FolderConnectionModalProps> = ({ isModalVi
                 </Space>
             </div>
 
-            {/* Bottom Info */}
+            {/* Enhanced Bottom Info */}
             <div
                 style={{
-                    padding: '16px 24px',
-                    borderTop: '1px solid #e0e0e0',
+                    padding: '20px 32px',
+                    borderTop: `1px solid ${PRIMARY_COLOR}15`,
                     textAlign: 'center',
-                    background: '#f9fafb',
+                    background: `${PRIMARY_COLOR}03`,
                 }}
             >
-                <Text style={{ fontSize: 12, color: '#999' }}>
-                    Your data is encrypted and secure. We never access your personal files.
+                <Text style={{
+                    fontSize: 13,
+                    color: '#666',
+                    fontFamily: FONT_FAMILY,
+                    fontWeight: 400
+                }}>
+                    🔒 Your data is encrypted and secure. We never access your personal files.
                 </Text>
             </div>
         </Modal>
