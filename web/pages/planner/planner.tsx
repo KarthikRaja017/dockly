@@ -791,7 +791,7 @@ const Planner = () => {
     const [isEventModalVisible, setIsEventModalVisible] = useState(false);
     const [isTodoModalVisible, setIsTodoModalVisible] = useState(false);
     const [isProjectModalVisible, setIsProjectModalVisible] = useState(false);
-    const [isConnectAccountModalVisible, setIsConnectAccountModalVisible] = useState(true);
+    const [isConnectAccountModalVisible, setIsConnectAccountModalVisible] = useState(false);
     const [editingGoal, setEditingGoal] = useState<any>(null);
     const [editingTodo, setEditingTodo] = useState<any>(null);
     const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
