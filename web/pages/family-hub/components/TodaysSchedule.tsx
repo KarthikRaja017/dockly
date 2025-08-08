@@ -5,6 +5,7 @@ import { CalendarOutlined } from '@ant-design/icons';
 import { getAllPlannerData } from '../../../services/planner';
 import { useCurrentUser } from '../../../app/userContext';
 import { useRouter } from 'next/navigation';
+
 const { Text } = Typography;
 const FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 
@@ -30,16 +31,17 @@ interface FamilyMember {
 }
 
 interface Props {
-    familyMembers: FamilyMember[];
+    familyMembers?: FamilyMember[]; // Optional with fallback
 }
 
-const TodaysSchedule: React.FC<Props> = ({ familyMembers }) => {
+const TodaysSchedule: React.FC<Props> = ({ familyMembers = [] }) => {
     const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([]);
     const [activeFilter, setActiveFilter] = useState<string>('All');
     const currentUser = useCurrentUser();
     const [username, setUsername] = useState<string | null>(null);
     const duser = currentUser?.duser;
     const router = useRouter();
+
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -47,30 +49,18 @@ const TodaysSchedule: React.FC<Props> = ({ familyMembers }) => {
                 const events = response.data?.payload?.events || [];
                 console.log("All Events:", events);
 
-                const todayStr = new Date().toISOString().slice(0, 10); // '2025-08-06'
+                const today = new Date();
+                const todayStr = today.toLocaleDateString('en-CA'); // YYYY-MM-DD
 
                 const todaysEvents = events.filter((event: any) => {
-                    const rawDate =
-                        event.start?.dateTime || event.start?.date || event.date || null;
-
+                    const rawDate = event.start?.dateTime || event.start?.date || event.date || null;
                     if (!rawDate) return false;
 
                     const eventDate = new Date(rawDate);
-                    const today = new Date();
-
-                    // Convert both to local date strings (yyyy-mm-dd)
-                    const eventDateStr = eventDate.toLocaleDateString('en-CA'); // 'YYYY-MM-DD'
-                    const todayStr = today.toLocaleDateString('en-CA');
-                    console.log('🌍 Event Local Date:', eventDate.toLocaleString(), '→', eventDateStr);
-                    console.log('📅 Today Local Date:', today.toLocaleString(), '→', todayStr);
+                    const eventDateStr = eventDate.toLocaleDateString('en-CA');
 
                     return eventDateStr === todayStr;
                 });
-
-                console.log("Today's Events:", todaysEvents);
-
-                // Debug log
-                console.log('🧭 Filtered Today\'s Events:', todaysEvents);
 
                 const transformed = todaysEvents.map((event: any) => {
                     const eventTime = event.start?.dateTime
@@ -81,15 +71,12 @@ const TodaysSchedule: React.FC<Props> = ({ familyMembers }) => {
                         : 'All Day';
 
                     const member = familyMembers.find(fm => fm.user_id === event.user_id);
-                    console.log('Event User ID:', event.user_id);
-                    console.log('Family Members:', familyMembers.map(fm => ({ name: fm.name, user_id: fm.user_id })));
 
                     return {
                         time: eventTime,
                         title: event.summary || 'Untitled Event',
                         subtitle: member?.name || currentUser?.name || 'You',
                         person: member?.name || currentUser?.name || 'You',
-                        user_id: member?.user_id || event.user_id,
                         avatar: member?.initials || currentUser?.name?.substring(0, 2) || 'U',
                         avatarColor: member?.color || '#3b82f6',
                         location: event.location || '—',
@@ -97,7 +84,7 @@ const TodaysSchedule: React.FC<Props> = ({ familyMembers }) => {
                         tagColor: '#8b5cf6',
                     };
                 });
-                console.log(transformed);
+
                 setScheduleItems(transformed);
             } catch (err) {
                 console.error('Error fetching planner data:', err);
@@ -122,7 +109,6 @@ const TodaysSchedule: React.FC<Props> = ({ familyMembers }) => {
         }
     };
 
-
     const filteredSchedule = activeFilter === 'All'
         ? scheduleItems
         : scheduleItems.filter(item => item.person === activeFilter);
@@ -135,11 +121,7 @@ const TodaysSchedule: React.FC<Props> = ({ familyMembers }) => {
                         <CalendarOutlined style={{ color: '#3b82f6' }} />
                         <span style={{ fontSize: '14px', fontWeight: 600 }}>Today's Schedule</span>
                     </Space>
-                    <Button
-                        type="link"
-                        size="small"
-                        onClick={handleOk}
-                    >
+                    <Button type="link" size="small" onClick={handleOk}>
                         View in Planner →
                     </Button>
                 </div>
@@ -162,33 +144,36 @@ const TodaysSchedule: React.FC<Props> = ({ familyMembers }) => {
                             padding: '0 10px',
                             fontWeight: 500,
                             fontSize: '11px',
-                            fontFamily: FONT_FAMILY
+                            fontFamily: FONT_FAMILY,
                         }}
                         onClick={() => setActiveFilter('All')}
                     >
                         👥 All
                     </Button>
 
-                    {familyMembers.filter(fm => fm.status !== 'pending').map((member) => (
-                        <Button
-                            key={member.id}
-                            size="small"
-                            style={{
-                                backgroundColor: activeFilter === member.name ? `${member.color}20` : '#f8fafc',
-                                color: activeFilter === member.name ? member.color : '#64748b',
-                                border: activeFilter === member.name ? 'none' : '1px solid #e2e8f0',
-                                borderRadius: '14px',
-                                height: '24px',
-                                padding: '0 10px',
-                                fontWeight: 500,
-                                fontSize: '11px',
-                                fontFamily: FONT_FAMILY
-                            }}
-                            onClick={() => setActiveFilter(member.name)}
-                        >
-                            {member.name}
-                        </Button>
-                    ))}
+                    {Array.isArray(familyMembers) &&
+                        familyMembers
+                            .filter(fm => fm.status !== 'pending')
+                            .map((member) => (
+                                <Button
+                                    key={member.id}
+                                    size="small"
+                                    style={{
+                                        backgroundColor: activeFilter === member.name ? `${member.color}20` : '#f8fafc',
+                                        color: activeFilter === member.name ? member.color : '#64748b',
+                                        border: activeFilter === member.name ? 'none' : '1px solid #e2e8f0',
+                                        borderRadius: '14px',
+                                        height: '24px',
+                                        padding: '0 10px',
+                                        fontWeight: 500,
+                                        fontSize: '11px',
+                                        fontFamily: FONT_FAMILY,
+                                    }}
+                                    onClick={() => setActiveFilter(member.name)}
+                                >
+                                    {member.name}
+                                </Button>
+                            ))}
                 </Space>
             </div>
 
