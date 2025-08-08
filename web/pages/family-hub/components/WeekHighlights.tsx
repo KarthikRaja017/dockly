@@ -1,4 +1,5 @@
 'use client';
+
 import React, { useState, useEffect } from 'react';
 import { Card, Space, Typography, Button, Avatar, message } from 'antd';
 import { getAllPlannerData } from '../../../services/planner';
@@ -17,21 +18,20 @@ interface FamilyMember {
 }
 
 interface WeekHighlightsProps {
-    familyMembers: FamilyMember[];
+    familyMembers?: FamilyMember[];
 }
 
-const WeekHighlights: React.FC<WeekHighlightsProps> = ({ familyMembers }) => {
+const WeekHighlights: React.FC<WeekHighlightsProps> = ({ familyMembers = [] }) => {
     const [activeFilter, setActiveFilter] = useState('All');
     const [highlights, setHighlights] = useState<any[]>([]);
     const currentUser = useCurrentUser();
     const duser = currentUser?.duser;
 
-    // --- Helper: Get current week (Mon-Sun) ---
     const getWeekRange = () => {
         const now = new Date();
-        const day = now.getDay(); // 0 = Sun, 1 = Mon
+        const day = now.getDay();
         const monday = new Date(now);
-        monday.setDate(now.getDate() - ((day + 6) % 7)); // shift to Monday
+        monday.setDate(now.getDate() - ((day + 6) % 7));
         const sunday = new Date(monday);
         sunday.setDate(monday.getDate() + 6);
 
@@ -45,7 +45,6 @@ const WeekHighlights: React.FC<WeekHighlightsProps> = ({ familyMembers }) => {
 
     const weekLabel = getWeekRange();
 
-    // --- Helper: check if date is in current week ---
     const isInCurrentWeek = (date: Date) => {
         const now = new Date();
         const day = now.getDay();
@@ -60,7 +59,6 @@ const WeekHighlights: React.FC<WeekHighlightsProps> = ({ familyMembers }) => {
         return date >= monday && date <= sunday;
     };
 
-    // --- Fetch planner data ---
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -68,8 +66,7 @@ const WeekHighlights: React.FC<WeekHighlightsProps> = ({ familyMembers }) => {
                 const events = response.data?.payload?.events || [];
 
                 const filteredEvents = events.filter((event: any) => {
-                    const rawDate =
-                        event.start?.dateTime || event.start?.date || event.date || null;
+                    const rawDate = event.start?.dateTime || event.start?.date || event.date || null;
                     if (!rawDate) return false;
                     const eventDate = new Date(rawDate);
                     return isInCurrentWeek(eventDate);
@@ -90,7 +87,7 @@ const WeekHighlights: React.FC<WeekHighlightsProps> = ({ familyMembers }) => {
                         })
                         : 'All Day';
 
-                    const member = familyMembers.find(fm => fm.user_id === event.user_id);
+                    const member = familyMembers?.find(fm => fm.user_id === event.user_id);
 
                     return {
                         date,
@@ -114,7 +111,6 @@ const WeekHighlights: React.FC<WeekHighlightsProps> = ({ familyMembers }) => {
         if (duser) fetchData();
     }, [duser, familyMembers]);
 
-    // --- Filter logic ---
     const filteredHighlights =
         activeFilter === 'All'
             ? highlights
@@ -128,28 +124,13 @@ const WeekHighlights: React.FC<WeekHighlightsProps> = ({ familyMembers }) => {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                     <Space>
                         <span style={{ fontSize: '16px' }}>⭐</span>
-                        <span
-                            style={{
-                                fontSize: '14px',
-                                fontWeight: 600,
-                                color: '#1f2937',
-                                fontFamily: FONT_FAMILY
-                            }}
-                        >
+                        <span style={{ fontSize: '14px', fontWeight: 600, color: '#1f2937', fontFamily: FONT_FAMILY }}>
                             Week Highlights
                         </span>
                     </Space>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <span style={{ fontSize: '12px' }}>📅</span>
-                        <Text
-                            style={{
-                                fontSize: '11px',
-                                color: '#6b7280',
-                                fontFamily: FONT_FAMILY
-                            }}
-                        >
-                            {weekLabel}
-                        </Text>
+                        <Text style={{ fontSize: '11px', color: '#6b7280', fontFamily: FONT_FAMILY }}>{weekLabel}</Text>
                     </div>
                 </div>
             }
@@ -196,34 +177,35 @@ const WeekHighlights: React.FC<WeekHighlightsProps> = ({ familyMembers }) => {
                         ❤ Family
                     </Button>
 
-                    {familyMembers.filter(f => f.status !== 'pending').map(member => (
-                        <Button
-                            key={member.id}
-                            size="small"
-                            style={{
-                                backgroundColor: activeFilter === member.name ? `${member.color}20` : '#f8fafc',
-                                color: activeFilter === member.name ? member.color : '#64748b',
-                                border: activeFilter === member.name ? 'none' : '1px solid #e2e8f0',
-                                borderRadius: '14px',
-                                height: '24px',
-                                padding: '0 10px',
-                                fontWeight: 500,
-                                fontSize: '11px',
-                                fontFamily: FONT_FAMILY
-                            }}
-                            onClick={() => setActiveFilter(member.name)}
-                        >
-                            {member.name}
-                        </Button>
-                    ))}
+                    {(familyMembers || [])
+                        .filter(f => f.status !== 'pending')
+                        .map(member => (
+                            <Button
+                                key={member.id}
+                                size="small"
+                                style={{
+                                    backgroundColor: activeFilter === member.name ? `${member.color}20` : '#f8fafc',
+                                    color: activeFilter === member.name ? member.color : '#64748b',
+                                    border: activeFilter === member.name ? 'none' : '1px solid #e2e8f0',
+                                    borderRadius: '14px',
+                                    height: '24px',
+                                    padding: '0 10px',
+                                    fontWeight: 500,
+                                    fontSize: '11px',
+                                    fontFamily: FONT_FAMILY
+                                }}
+                                onClick={() => setActiveFilter(member.name)}
+                            >
+                                {member.name}
+                            </Button>
+                        ))}
                 </Space>
             </div>
 
-            {/* Highlights Items */}
+            {/* Highlights List */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflow: 'auto' }}>
                 {filteredHighlights.map((item, index) => (
                     <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '15px' }}>
-                        {/* Date */}
                         <div
                             style={{
                                 display: 'flex',
@@ -239,12 +221,9 @@ const WeekHighlights: React.FC<WeekHighlightsProps> = ({ familyMembers }) => {
                             <Text strong style={{ fontSize: '14px', color: '#3b82f6', lineHeight: 1 }}>
                                 {item.date}
                             </Text>
-                            <Text style={{ fontSize: '9px', color: '#6b7280', fontWeight: 500 }}>
-                                {item.day}
-                            </Text>
+                            <Text style={{ fontSize: '9px', color: '#6b7280', fontWeight: 500 }}>{item.day}</Text>
                         </div>
 
-                        {/* Content */}
                         <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ marginBottom: '4px' }}>
                                 <Text
@@ -283,13 +262,7 @@ const WeekHighlights: React.FC<WeekHighlightsProps> = ({ familyMembers }) => {
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                 <span style={{ color: '#ef4444', fontSize: '10px' }}>⏰</span>
-                                <Text
-                                    style={{
-                                        fontSize: '11px',
-                                        color: '#6b7280',
-                                        fontFamily: FONT_FAMILY
-                                    }}
-                                >
+                                <Text style={{ fontSize: '11px', color: '#6b7280', fontFamily: FONT_FAMILY }}>
                                     {item.time} • {item.location}
                                 </Text>
                             </div>
