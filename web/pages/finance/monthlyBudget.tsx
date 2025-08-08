@@ -1,9 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, Progress, Typography, Row, Col, Avatar, Spin, Button, InputNumber, message, Table } from 'antd';
-import { HomeOutlined } from '@ant-design/icons'; // Using HomeOutlined as a generic icon
+import { HomeOutlined } from '@ant-design/icons';
 import { generateMonthlyBudget, updateMonthlyBudget } from '../../services/apiConfig';
 import DocklyLoader from '../../utils/docklyLoader';
+
+const FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 
 const { Title, Text } = Typography;
 
@@ -25,7 +26,7 @@ interface BudgetSummary {
 }
 
 const categoryIcons: { [key: string]: React.ReactNode } = {
-  "All Expenses": <HomeOutlined style={{ fontSize: 20, color: '#4b5563' }} />,
+  "All Expenses": <HomeOutlined style={{ fontSize: 16, color: '#6b7280' }} />,
 };
 
 const MonthlyBudget: React.FC<{ uid: string }> = ({ uid }) => {
@@ -79,6 +80,7 @@ const MonthlyBudget: React.FC<{ uid: string }> = ({ uid }) => {
       )
     );
   };
+
   const handleBudgetChange = (category: string, value: number | null) => {
     if (value === null) return;
 
@@ -138,7 +140,6 @@ const MonthlyBudget: React.FC<{ uid: string }> = ({ uid }) => {
       };
       const response = await updateMonthlyBudget(updateData);
       if (response.status === 1) {
-        // Convert editedBudgets to BudgetCategory shape
         const updatedCategories: { [key: string]: BudgetCategory } = Object.fromEntries(
           Object.entries(editedBudgets).map(([catKey, catValue]) => [
             catKey,
@@ -203,7 +204,6 @@ const MonthlyBudget: React.FC<{ uid: string }> = ({ uid }) => {
 
   const sum = (items: any[], key: string) => items.reduce((sum, item) => sum + (item[key] || 0), 0);
 
-  // Prepare table data
   const tableData: any[] = [];
   const data: BudgetCategory = (isEditing ? editedBudgets : categories)["All Expenses"] as BudgetCategory || { spent: 0, budget: 0, descriptions: {} };
   if (data && Object.keys(data.descriptions).length > 0) {
@@ -211,7 +211,7 @@ const MonthlyBudget: React.FC<{ uid: string }> = ({ uid }) => {
       key: "All Expenses",
       key1: 'spent',
       key2: 'budget',
-      name: <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Avatar size={20} icon={categoryIcons["All Expenses"]} />All Expenses</div>,
+      name: <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: FONT_FAMILY }}><Avatar size={18} icon={categoryIcons["All Expenses"]} />All Expenses</div>,
       spent: `$${('spent' in data ? (data as BudgetCategory).spent : 0).toFixed(2)}`,
       budget: `$${data.budget.toFixed(2)}`,
       count: '',
@@ -222,14 +222,14 @@ const MonthlyBudget: React.FC<{ uid: string }> = ({ uid }) => {
         min={0}
         formatter={(value) => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
         parser={(value) => value ? value.replace(/\$\s?|(,*)/g, '') as unknown as number : 0}
-        style={{ width: 100 }}
+        style={{ width: 90, fontFamily: FONT_FAMILY, fontSize: '12px' }}
       /> : null,
     });
     Object.entries(data.descriptions || {}).forEach(([desc, descData]) => {
-      if (descData.count > 5) { // Filter for > 5 repetitions
+      if (descData.count > 5) {
         tableData.push({
           key: `desc-${desc}`,
-          name: <Text style={{ marginLeft: 24 }}>{desc}</Text>,
+          name: <Text style={{ marginLeft: 20, fontFamily: FONT_FAMILY, fontSize: '13px' }}>{desc}</Text>,
           spent: `$${descData.spent.toFixed(2)}`,
           budget: `$${descData.budget.toFixed(2)}`,
           count: `(Repeated ${descData.count} times)`,
@@ -240,7 +240,7 @@ const MonthlyBudget: React.FC<{ uid: string }> = ({ uid }) => {
             min={0}
             formatter={(value) => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
             parser={(value) => value ? value.replace(/\$\s?|(,*)/g, '') as unknown as number : 0}
-            style={{ width: 100 }}
+            style={{ width: 90, fontFamily: FONT_FAMILY, fontSize: '12px' }}
           /> : null,
         });
       }
@@ -255,10 +255,10 @@ const MonthlyBudget: React.FC<{ uid: string }> = ({ uid }) => {
 
   if (error) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontFamily: FONT_FAMILY }}>
         <Card style={{ maxWidth: 400, textAlign: 'center' }}>
-          <Text style={{ color: '#f5222d' }}>{error}</Text>
-          <Button type="primary" onClick={() => window.location.reload()} style={{ marginTop: 16 }}>
+          <Text style={{ color: '#ef4444', fontFamily: FONT_FAMILY }}>{error}</Text>
+          <Button type="primary" onClick={() => window.location.reload()} style={{ marginTop: 16, fontFamily: FONT_FAMILY }}>
             Retry
           </Button>
         </Card>
@@ -269,69 +269,71 @@ const MonthlyBudget: React.FC<{ uid: string }> = ({ uid }) => {
   return (
     <Card
       style={{
-        background: 'linear-gradient(145deg, rgb(255, 255, 255), rgb(249, 250, 251))',
-        borderRadius: '16px',
-        padding: '1.5rem',
-        boxShadow: 'rgba(0, 0, 0, 0.1) 0px 8px 24px',
+        background: 'linear-gradient(145deg, #ffffff, #f8fafc)',
+        borderRadius: '12px',
+        padding: '16px',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06)',
         maxWidth: '100%',
-        // width: 'min(400px, 90vw)',
-        minHeight: '716px',
-        maxHeight: '80vh',
-        margin: '20px',
+        minHeight: '680px',
+        maxHeight: '75vh',
+        margin: '12px',
         overflowY: 'auto',
         transition: '0.3s',
-        marginTop: '25px',
+        border: '1px solid #e2e8f0',
+        fontFamily: FONT_FAMILY,
       }}
       bodyStyle={{ padding: 0 }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
-        <Title level={4} style={{ margin: 0 }}>Monthly Budget</Title>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
+        <Title level={4} style={{ margin: 0, fontFamily: FONT_FAMILY, fontSize: '16px', fontWeight: 600, color: '#111827' }}>Monthly Budget</Title>
         <Text
-          style={{ color: '#3b82f6', cursor: 'pointer' }}
+          style={{ color: '#3b82f6', cursor: 'pointer', fontFamily: FONT_FAMILY, fontSize: '13px', fontWeight: 500 }}
           onClick={handleEditClick}
         >
           Edit Budget
         </Text>
       </div>
 
-      {/* Budget Summary */}
-      <Row gutter={16} style={{ marginBottom: 32 }}>
+      <Row gutter={12} style={{ marginBottom: 24 }}>
         {Object.entries(budgetSummary).map(([label, data]) => (
           <Col span={12} key={label}>
             <Card
               style={{
-                borderRadius: 12,
-                background: label === 'Needs' ? '#eff6ff' : '#d1fae5',
-                borderColor: label === 'Needs' ? '#3b82f6' : '#10b981',
+                borderRadius: 10,
+                background: label === 'Needs' ? 'linear-gradient(145deg, #eff6ff, #dbeafe)' : 'linear-gradient(145deg, #ecfdf5, #d1fae5)',
+                border: `1px solid ${label === 'Needs' ? '#bfdbfe' : '#a7f3d0'}`,
+                fontFamily: FONT_FAMILY,
               }}
-              bodyStyle={{ padding: 16 }}
+              bodyStyle={{ padding: 12 }}
             >
-              <Title level={4} style={{ marginBottom: 8 }}>
+              <Title level={5} style={{ marginBottom: 6, fontFamily: FONT_FAMILY, fontSize: '14px', fontWeight: 600 }}>
                 {label === 'Needs' ? '80%' : '20%'}
               </Title>
-              <Text strong>{label}</Text>
-              <div style={{ marginTop: 8, marginBottom: 8 }}>
-                <Text>${data.spent.toFixed(2)} of ${data.total.toFixed(2)}</Text>
+              <Text strong style={{ fontFamily: FONT_FAMILY, fontSize: '13px' }}>{label}</Text>
+              <div style={{ marginTop: 6, marginBottom: 6 }}>
+                <Text style={{ fontFamily: FONT_FAMILY, fontSize: '12px' }}>${data.spent.toFixed(2)} of ${data.total.toFixed(2)}</Text>
               </div>
               <Progress
                 percent={Math.round((data.spent / data.total) * 100)}
                 strokeColor={label === 'Needs' ? '#3b82f6' : '#10b981'}
                 trailColor="#f1f5f9"
                 showInfo={false}
+                strokeWidth={6}
               />
-              <Text style={{ fontSize: 12 }}>
+              <Text style={{ fontSize: 11, fontFamily: FONT_FAMILY, color: '#6b7280' }}>
                 {Math.round((data.spent / data.total) * 100)}% {label === 'Savings' ? 'saved' : 'used'}
               </Text>
             </Card>
           </Col>
         ))}
       </Row>
-      <Title level={5} style={{ marginBottom: 16 }}>Spending by Category</Title>
+      <Title level={5} style={{ marginBottom: 12, fontFamily: FONT_FAMILY, fontSize: '14px', fontWeight: 600 }}>Spending by Category</Title>
 
       <Table
         dataSource={tableData}
         pagination={false}
         showHeader={false}
+        size="small"
         columns={[
           {
             title: 'Name',
@@ -343,19 +345,15 @@ const MonthlyBudget: React.FC<{ uid: string }> = ({ uid }) => {
             dataIndex: 'spent',
             key: 'spent',
             align: 'right',
+            render: (text) => <span style={{ fontFamily: FONT_FAMILY, fontSize: '12px', fontWeight: 500 }}>{text}</span>
           },
           {
             title: 'Budget',
             dataIndex: 'budget',
             key: 'budget',
             align: 'right',
+            render: (text) => <span style={{ fontFamily: FONT_FAMILY, fontSize: '12px', color: '#6b7280' }}>{text}</span>
           },
-          // {
-          //   title: 'Count',
-          //   dataIndex: 'count',
-          //   key: 'count',
-          //   align: 'right',
-          // },
           {
             title: 'Edit',
             dataIndex: 'edit',
@@ -370,21 +368,23 @@ const MonthlyBudget: React.FC<{ uid: string }> = ({ uid }) => {
       <style>
         {`
           .category-row {
-            font-weight: bold;
-            background-color: #f9fafb;
+            font-weight: 600;
+            background-color: #f8fafc;
+            font-family: ${FONT_FAMILY};
           }
           .description-row {
-            margin-left: 20px;
+            margin-left: 16px;
+            font-family: ${FONT_FAMILY};
           }
         `}
       </style>
 
       {isEditing && (
-        <div style={{ textAlign: 'right', marginTop: 16 }}>
-          <Button onClick={handleCancel} style={{ marginRight: 8 }}>
+        <div style={{ textAlign: 'right', marginTop: 12 }}>
+          <Button onClick={handleCancel} style={{ marginRight: 8, fontFamily: FONT_FAMILY, fontSize: '12px' }}>
             Cancel
           </Button>
-          <Button type="primary" onClick={handleSave}>
+          <Button type="primary" onClick={handleSave} style={{ fontFamily: FONT_FAMILY, fontSize: '12px' }}>
             Save
           </Button>
         </div>
@@ -394,4 +394,3 @@ const MonthlyBudget: React.FC<{ uid: string }> = ({ uid }) => {
 };
 
 export default MonthlyBudget;
-

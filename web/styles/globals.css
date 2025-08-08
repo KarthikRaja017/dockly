@@ -6,7 +6,7 @@ body {
   overflow-x: hidden;
   width: 100%;
   caret-color: transparent !important;
-  background-color: #fefefe;
+  background-color: #fafafa !important;
 }
 
 * {

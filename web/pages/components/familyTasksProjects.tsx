@@ -7,7 +7,6 @@ import {
     Checkbox,
     Modal,
     Progress,
-    Tag,
     Input,
     DatePicker,
     Space,
@@ -17,27 +16,23 @@ import {
     Typography,
     Tooltip,
     Badge,
-    Divider,
     Radio,
+    message,
 } from 'antd';
 import {
     PlusOutlined,
     EditOutlined,
-    CheckSquareOutlined,
     ProjectOutlined,
     CalendarOutlined,
     ClockCircleOutlined,
-    UserOutlined,
-    DeleteOutlined,
     CheckCircleOutlined,
     ExclamationCircleOutlined,
-    MoreOutlined,
-    StarOutlined,
-    TeamOutlined,
     LeftOutlined,
-    RightOutlined
+    RightOutlined,
+    TagOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { getUsersFamilyMembers, shareProject } from '../../services/family';
 
 const { Text, Title } = Typography;
 
@@ -52,6 +47,7 @@ type Task = {
 };
 
 type Project = {
+    id?: string,
     color?: string;
     project_id: string;
     title: string;
@@ -59,6 +55,7 @@ type Project = {
     due_date: string;
     progress: number;
     tasks: Task[];
+    status?: string;
 };
 
 // Professional color palette
@@ -161,7 +158,12 @@ const FamilyTasksComponent: React.FC<Props> = ({
     const [loadingProject, setLoadingProject] = useState(false);
     const [loadingTask, setLoadingTask] = useState(false);
     const [loadingEdit, setLoadingEdit] = useState(false);
-
+    const [tagModalOpen, setTagModalOpen] = useState(false);
+    const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+    const [selectedEmails, setSelectedEmails] = useState<string[]>([]);
+    const [tagLoading, setTagLoading] = useState(false);
+    const [familyMember, setFamilyMember] = useState<any[]>([]);
+    const [selectedMemberIds, setSelectedMemberIds] = useState<number[]>([]);
     const filledProjects = projects.filter(p => p.title.trim());
     const showTemplateProjects = filledProjects.length < 2;
 
@@ -185,24 +187,62 @@ const FamilyTasksComponent: React.FC<Props> = ({
         }));
     };
     useEffect(() => {
-        if (familyMembers && familyMembers.length > 0) {
-            const currentUserName = (localStorage.getItem("userName") || "").toLowerCase();
+        const accepted = familyMember
+            .filter(m => m.email)
+            .map(m => ({
+                label: m.name,
+                value: m.email,
+            }));
+        setAssignees(accepted);
+    }, [familyMember]);
 
-            const accepted = familyMembers
-                .filter(
-                    (member) =>
-                        member.status?.toLowerCase() === "accepted" &&
-                        member.name.toLowerCase() !== currentUserName
-                )
-                .map((member) => ({
-                    label: member.name,
-                    value: member.name.toLowerCase(),
-                }));
+    useEffect(() => {
+        fetchMembers();
+    }, []);
 
-            setAssignees(accepted);
+    const fetchMembers = async () => {
+        try {
+            const res = await getUsersFamilyMembers({});
+            if (res?.payload?.members) {
+                // Remove 'me' from the dropdown list
+                const filtered = res.payload.members.filter((m: any) => m.relationship !== "me");
+                setFamilyMember(filtered);
+            }
+        } catch (err) {
+            console.error("Failed to fetch family members", err);
         }
-    }, [familyMembers]);
+    };
 
+    const handleShareProject = async (selectedIds: number[]) => {
+        setSelectedMemberIds(selectedIds);
+
+        if (!selectedProject) return;
+
+        const emails = familyMember
+            .filter((m: any) => selectedIds.includes(m.id))
+            .map((m: any) => m.email)
+            .filter(Boolean); // remove null/undefined
+
+        try {
+            await shareProject({
+                email: emails, // ✅ array of emails
+                tagged_members: emails, // ✅ for notification mapping
+                project: {
+                    project_id: selectedProject.project_id,
+                    title: selectedProject.title,
+                    description: selectedProject.description,
+                    deadline: selectedProject.due_date,
+                    status: selectedProject.status,
+                },
+            });
+
+            message.success("Project shared successfully!");
+            setSelectedMemberIds([]);
+        } catch (err) {
+            console.error("Share project failed:", err);
+            message.error("Failed to share project.");
+        }
+    };
 
     const displayedProjects = [...filledProjects, ...(showTemplateProjects ? templateProjects : [])];
     const [currentPage, setCurrentPage] = useState(0);
@@ -393,6 +433,25 @@ const FamilyTasksComponent: React.FC<Props> = ({
                                         </div>
                                         {proj.title && (
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                <Tooltip title="Tag this project">
+                                                    <Button
+                                                        shape="circle"
+                                                        icon={<TagOutlined />}
+                                                        size="small"
+                                                        onClick={() => {
+                                                            setSelectedProject(proj);
+                                                            setTagModalOpen(true);
+                                                        }}
+                                                        style={{
+                                                            backgroundColor: COLORS.surface,
+                                                            color: COLORS.accent,
+                                                            border: `1px solid ${COLORS.accent}`,
+                                                            boxShadow: `0 2px 6px ${COLORS.shadowLight}`,
+                                                            width: '24px',
+                                                            height: '24px',
+                                                        }}
+                                                    />
+                                                </Tooltip>
                                                 <Button
                                                     type="primary"
                                                     shape="circle"
@@ -601,38 +660,6 @@ const FamilyTasksComponent: React.FC<Props> = ({
                                         </Button>
                                     )}
                                 </div>
-
-                                {/* Footer */}
-                                {/* <div style={{
-                                        marginTop: 'auto', // 👈 locks the footer to bottom in flex column
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        paddingTop: SPACING.sm,
-                                        borderTop: `1px solid ${COLORS.borderLight}`,
-                                    }}>
-                                        <Button
-                                            type="link"
-                                            size="small"
-                                            icon={<PlusOutlined />}
-                                            onClick={() => proj.title ? onAddTask?.(proj.project_id) : setModalVisible(true)}
-                                            style={{
-                                                color: COLORS.accent,
-                                                fontWeight: 500,
-                                                fontSize: '13px',
-                                                padding: 0,
-                                            }}
-                                        >
-                                            {proj.title ? 'Add Task' : 'Add Project'}
-                                        </Button>
-                                        {proj.title && (
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.xs }}>
-                                                <Text style={{ fontSize: '11px', color: COLORS.textSecondary }}>
-                                                    {completedTasks} of {totalTasks} done
-                                                </Text>
-                                            </div>
-                                        )}
-                                    </div> */}
                             </Card>
                         );
                     })}
@@ -963,22 +990,48 @@ const FamilyTasksComponent: React.FC<Props> = ({
                         options={assignees}
 
                     />
-                    // <Select
-                    //     placeholder="Select assignee"
-                    //     value={editingTask.task?.assignee}
-                    //     onChange={(val) =>
-                    //         setEditingTask((prev) => ({
-                    //             ...prev,
-                    //             task: prev.task && { ...prev.task, assignee: val, type: val },
-                    //             }))
-                    //            }
-                    //     options={assignees}
-                    //     style={{ width: '100%', borderRadius: '8px' }}
-                    // />
                 )}
             </Modal>
+            <Modal
+                title="Tag Project with Family"
+                open={tagModalOpen}
+                onCancel={() => {
+                    setTagModalOpen(false);
+                    setSelectedProject(null);
+                    setSelectedEmails([]);
+                    setSelectedMemberIds([]);
+                }}
+                onOk={async () => {
+                    setTagLoading(true);
+                    await handleShareProject(selectedMemberIds); // ✅ Call only here
+                    setTagLoading(false);
+                    setTagModalOpen(false);
+                    setSelectedEmails([]);
+                    setSelectedMemberIds([]);
+                }}
+                confirmLoading={tagLoading}
+                okText="Tag"
+            >
 
-
+                <p>Select family members to tag:</p>
+                <div>
+                    <Select
+                        mode="multiple"
+                        style={{ width: "100%" }}
+                        placeholder="Select members"
+                        value={selectedMemberIds}
+                        onChange={setSelectedMemberIds}
+                    >
+                        {familyMember
+                            .filter((m: any) => m.relationship !== "me")
+                            .map((member: any) => (
+                                <Select.Option key={member.id} value={member.id}>
+                                    {member.name}
+                                </Select.Option>
+                            ))}
+                    </Select>
+                </div>
+            </Modal>
         </Card>
     );
 };

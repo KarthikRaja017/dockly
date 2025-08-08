@@ -9,7 +9,7 @@ import pytz
 import requests
 from root.common import DocklyUsers, Hubs, HubsEnum, Status
 from root.auth.auth import auth_required, getAccessTokens
-from root.utilis import handle_user_session, uniqueId
+from root.utilis import get_device_info, handle_user_session, uniqueId
 from root.config import (
     EMAIL_PASSWORD,
     EMAIL_SENDER,
@@ -90,6 +90,57 @@ def getUtcCurrentTime():
     return datetime.now(tz=pytz.UTC)
 
 
+def store_user_session(user_id: str, session_token: str, is_active=True):
+    ip_address = request.remote_addr
+    user_agent = request.headers.get("User-Agent")
+    device_info = get_device_info()
+
+    # 1️⃣ Check if session already exists
+    existing_session = DBHelper.find_one(
+        "user_sessions", filters={"user_id": user_id}, select_fields=["user_id"]
+    )
+
+    if existing_session:
+        # 🔁 Update session
+        DBHelper.update(
+            table_name="user_sessions",
+            filters={"user_id": user_id},
+            update_fields={
+                "session_token": session_token,
+                "ip_address": ip_address,
+                "user_agent": user_agent,
+                "device_info": device_info,
+                "is_active": is_active,
+                "last_active": datetime.utcnow(),
+                "logged_out": None,
+            },
+        )
+    else:
+        # 🆕 Insert session
+        DBHelper.insert(
+            "user_sessions",
+            user_id=user_id,
+            session_token=session_token,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            device_info=device_info,
+            is_active=is_active,
+            created_at=datetime.utcnow(),
+            last_active=datetime.utcnow(),
+            logged_out=None,
+        )
+
+    # 2️⃣ Always insert into session_logs
+    DBHelper.insert(
+        "session_logs",
+        user_id=user_id,
+        ip_address=ip_address,
+        device_info=device_info,
+        action="login",
+        timestamp=datetime.utcnow(),
+    )
+
+
 class RegisterUser(Resource):
     def post(self):
         data = request.get_json()
@@ -111,6 +162,7 @@ class RegisterUser(Resource):
 
             if isDockly and inputEmail == dbEmail:
                 token = getAccessTokens({"uid": userId})
+                store_user_session(user_id=userId, session_token=token["accessToken"])
                 return {
                     "status": 1,
                     "message": "Welcome back",
@@ -334,6 +386,7 @@ class OtpVerification(Resource):
             "uid": uid.get("uid"),
         }
         token = getAccessTokens(userInfo)
+        store_user_session(user_id=userId, session_token=token["accessToken"])
         # handle_user_session(uid)
         response["payload"]["token"] = token["accessToken"]
         response["payload"]["userId"] = uid.get("uid")

@@ -76,7 +76,7 @@ export default function BankBoardPage() {
   }
 
   return (
-    <div style={{ background: "#f0f2f5", minHeight: "100vh" }}>
+    <div style={{ background: "#fafafa", minHeight: "100vh" }}>
       <BankPage bankDetails={bankDetails} />
     </div>
   );

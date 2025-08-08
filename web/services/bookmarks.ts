@@ -32,13 +32,15 @@ export async function getStats(params: { source?: string } = {}) {
 }
 
 export async function shareBookmarks(params: {
-  email: string;
+  email: string | string[];
   bookmark: {
+    id?: string;
     title: string;
     url: string;
     category: string;
     created_at?: string;
   };
+  tagged_members?: string[]; // ✅ Add this line
 }) {
   return api.post('/bookmarks/share/bookmarks', params);
 }

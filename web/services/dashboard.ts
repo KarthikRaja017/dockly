@@ -21,3 +21,11 @@ export async function getUserConnectedAccounts(params: any) {
 export async function respondToNotification(params: any) {
   return api.post('/respond/notification', params);
 }
+
+export async function fetchSharedItemNotifications() {
+  return api.get('/get/notifications/shared-items');
+}
+
+export async function markNotificationAsRead(id: number) {
+  return api.post('/notifications/mark-read', { id });
+}

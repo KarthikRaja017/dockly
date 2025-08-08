@@ -461,10 +461,10 @@
         "created_at TIMESTAMP NOT NULL",
         "updated_at TIMESTAMP NOT NULL",
         "category_id INTEGER NOT NULL",
-        "is_active BOOLEAN DEFAULT TRUE"
+        "is_active BOOLEAN DEFAULT TRUE",
+        "tagged_ids TEXT[]"
       ]
     },
-
     {
       "table_name": "notes_categories",
       "columns": [
@@ -529,7 +529,9 @@
         "profile_id VARCHAR",
         "expiresAt TIMESTAMP",
         "created_at TIMESTAMP",
-        "updated_at TIMESTAMP"
+        "updated_at TIMESTAMP",
+        "is_active INT",
+        "is_finance_user INT DEFAULT 0"
       ]
     },
 
@@ -544,6 +546,7 @@
         "meta JSONB DEFAULT '[]'::jsonb",
         "progress INTEGER DEFAULT 0",
         "source VARCHAR(50) DEFAULT 'familyhub'",
+        "tagged_ids TEXT[]",
         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
         "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
         "FOREIGN KEY (uid) REFERENCES users(uid) ON DELETE CASCADE"
@@ -600,6 +603,7 @@
         "synced_to_outlook BOOLEAN DEFAULT FALSE",
         "google_calendar_id VARCHAR(255)",
         "status INT",
+        "tagged_ids TEXT[]",
         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
       ]
     },
@@ -742,6 +746,7 @@
         "category VARCHAR(100) NOT NULL",
         "tags TEXT[]",
         "is_favorite BOOLEAN NOT NULL DEFAULT FALSE",
+        "tagged_ids TEXT[]",
         "is_active INT DEFAULT 1",
         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
         "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"

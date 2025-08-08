@@ -38,6 +38,7 @@ import {
     DownloadOutlined,
     ShareAltOutlined,
     MailOutlined,
+    TagOutlined,
 } from "@ant-design/icons";
 import {
     addBookmark,
@@ -53,6 +54,7 @@ import { useGlobalLoading } from "../../loadingContext";
 import ExtensionDownloadModal from "../../../pages/bookmarks/smdownload";
 import { useRouter } from "next/navigation";
 import { useCurrentUser } from "../../userContext";
+import { getUsersFamilyMembers } from "../../../services/family";
 
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
@@ -95,6 +97,11 @@ const Bookmarks: React.FC = () => {
     const [shareForm] = Form.useForm();
     const [currentShareBookmark, setCurrentShareBookmark] = useState<Bookmark | null>(null);
     const username = useCurrentUser()?.user_name || "";
+    const [tagModalVisible, setTagModalVisible] = useState(false);
+    const [currentTagBookmark, setCurrentTagBookmark] = useState<Bookmark | null>(null);
+    const [familyMembers, setFamilyMembers] = useState([]);
+    const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+
 
     const showModal = () => {
         router.push(`/${username}/bookmarks/download`);
@@ -104,6 +111,7 @@ const Bookmarks: React.FC = () => {
         loadBookmarks();
         loadCategories();
         loadStats();
+        fetchFamilyMembers();
     }, []);
 
     useEffect(() => {
@@ -148,6 +156,16 @@ const Bookmarks: React.FC = () => {
             console.error("Error loading bookmarks:", error);
         } finally {
             setLoading(false);
+        }
+    };
+    const fetchFamilyMembers = async () => {
+        try {
+            const res = await getUsersFamilyMembers({});
+            if (res.status) {
+                setFamilyMembers(res.payload.members || []);
+            }
+        } catch (error) {
+            message.error("Failed to fetch family members");
         }
     };
 
@@ -339,6 +357,45 @@ const Bookmarks: React.FC = () => {
         }
     };
 
+    const handleTagSubmit = async () => {
+        if (!currentTagBookmark || selectedMemberIds.length === 0) {
+            message.warning("Please select family members to tag");
+            return;
+        }
+
+        const taggedMembers = familyMembers.filter((member: any) =>
+            selectedMemberIds.includes(member.id)
+        );
+
+        const emails = taggedMembers
+            .map((member: any) => member.email)
+            .filter((email: string) => !!email);
+
+        try {
+            setLoading(true);
+            await shareBookmarks({
+                email: emails,
+                bookmark: {
+                    id: currentTagBookmark.id,
+                    title: currentTagBookmark.title,
+                    url: currentTagBookmark.url,
+                    category: currentTagBookmark.category,
+                },
+                tagged_members: emails,
+            });
+
+            message.success("Bookmark tagged successfully!");
+            setTagModalVisible(false);
+            setCurrentTagBookmark(null);
+            setSelectedMemberIds([]);
+        } catch (err) {
+            console.error("Error tagging bookmark:", err);
+            message.error("Failed to tag bookmark");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const openCreateModal = () => {
         setModalMode("create");
         form.resetFields();
@@ -444,6 +501,17 @@ const Bookmarks: React.FC = () => {
                 icon: <ShareAltOutlined />,
                 label: "Share",
                 onClick: (e: { domEvent: any; }) => handleShareBookmark(bookmark, e.domEvent as any),
+            },
+            {
+                key: "tag",
+                icon: <TagOutlined />,
+                label: "Tag",
+                onClick: (e: { domEvent: any }) => {
+                    e.domEvent.stopPropagation();
+                    setCurrentTagBookmark(bookmark);
+                    setTagModalVisible(true);
+                    setSelectedMemberIds([]);
+                },
             },
             {
                 type: "divider" as const,
@@ -1313,6 +1381,87 @@ const Bookmarks: React.FC = () => {
                         </Form.Item>
                     </Form>
                 </Modal>
+                <Modal
+                    title={
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <TagOutlined style={{ color: "#52c41a" }} />
+                            <span>Tag Bookmark</span>
+                        </div>
+                    }
+                    open={tagModalVisible}
+                    onCancel={() => {
+                        setTagModalVisible(false);
+                        setCurrentTagBookmark(null);
+                        setSelectedMemberIds([]);
+                    }}
+                    onOk={handleTagSubmit}
+                    okText="Tag"
+                    centered
+                    width={500}
+                    confirmLoading={loading}
+                    destroyOnClose
+                >
+                    {currentTagBookmark && (
+                        <div style={{ marginBottom: 20 }}>
+                            <div
+                                style={{
+                                    padding: 16,
+                                    backgroundColor: "#f8f9fa",
+                                    borderRadius: 8,
+                                    border: "1px solid #e9ecef",
+                                }}
+                            >
+                                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                                    <Avatar
+                                        src={currentTagBookmark.favicon || getFaviconFromUrl(currentTagBookmark.url)}
+                                        size={32}
+                                        icon={<LinkOutlined />}
+                                    />
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontWeight: 600 }}>{currentTagBookmark.title}</div>
+                                        <div style={{ fontSize: 12, color: "#999" }}>
+                                            {new URL(currentTagBookmark.url).hostname}
+                                        </div>
+                                    </div>
+                                    <Tag color={categoryColors[currentTagBookmark.category] || "#666"}>
+                                        {currentTagBookmark.category}
+                                    </Tag>
+                                </div>
+                                <div style={{ color: "#666", marginBottom: 8 }}>
+                                    {currentTagBookmark.description}
+                                </div>
+                                <a href={currentTagBookmark.url} target="_blank" rel="noreferrer" style={{ color: "#1890ff" }}>
+                                    {currentTagBookmark.url}
+                                </a>
+                            </div>
+                        </div>
+                    )}
+
+                    <div style={{ marginTop: 16 }}>
+                        <label style={{ display: "block", marginBottom: 8 }}>Tag to Family Members:</label>
+                        <Select
+                            mode="multiple"
+                            style={{ width: "100%" }}
+                            placeholder="Select family members"
+                            value={selectedMemberIds}
+                            onChange={setSelectedMemberIds}
+                            optionLabelProp="label"
+                        >
+                            {familyMembers
+                                .filter((member: any) => member.relationship !== "me") // exclude self
+                                .map((member: any) => (
+                                    <Option
+                                        key={member.id}
+                                        value={member.id}
+                                        label={member.name}
+                                    >
+                                        {member.name}
+                                    </Option>
+                                ))}
+                        </Select>
+                    </div>
+                </Modal>
+
             </div>
         </div>
     );

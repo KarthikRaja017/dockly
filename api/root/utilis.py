@@ -358,6 +358,17 @@ def extract_datetime(text: str, now: datetime | None = None) -> datetime:
     return now
 
 
+from user_agents import parse
+from flask import request
+
+
+def get_device_info():
+    user_agent_str = request.headers.get("User-Agent")
+    user_agent = parse(user_agent_str)
+
+    return f"{user_agent.device.family} | {user_agent.os.family} {user_agent.os.version_string} | {user_agent.browser.family} {user_agent.browser.version_string}"
+
+
 # from root.db.db import postgres
 # from flask import request
 # from pywebpush import webpush, WebPushException

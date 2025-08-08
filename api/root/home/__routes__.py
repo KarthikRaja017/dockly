@@ -77,7 +77,7 @@ home_api.add_resource(UpdateMortgage, "/update/mortgage/<string:mortgage_id>")
 home_api.add_resource(DeleteMortgage, "/delete/mortgage/<string:mortgage_id>")
 
 home_api.add_resource(AddPlannerNotes, "/add/planner-notes")
-home_api.add_resource(GetPlannerNotes, "/get/planner-notes")
+# home_api.add_resource(GetPlannerNotes, "/get/planner-notes")
 home_api.add_resource(UpdatePlannerNotes, "/update/planner-notes")
 home_api.add_resource(DeletePlannerNotes, "/delete/planner-notes")
 

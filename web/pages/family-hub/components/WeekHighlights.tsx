@@ -1,78 +1,126 @@
 'use client';
-import React, { useState } from 'react';
-import { Card, Space, Typography, Button, Avatar } from 'antd';
-import { CalendarOutlined } from '@ant-design/icons';
-const { Text } = Typography;
+import React, { useState, useEffect } from 'react';
+import { Card, Space, Typography, Button, Avatar, message } from 'antd';
+import { getAllPlannerData } from '../../../services/planner';
+import { useCurrentUser } from '../../../app/userContext';
 
+const { Text } = Typography;
 const FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 
-const WeekHighlights: React.FC = () => {
+interface FamilyMember {
+    id: number;
+    name: string;
+    color: string;
+    initials: string;
+    status?: 'pending' | 'accepted';
+    user_id?: string;
+}
+
+interface WeekHighlightsProps {
+    familyMembers: FamilyMember[];
+}
+
+const WeekHighlights: React.FC<WeekHighlightsProps> = ({ familyMembers }) => {
     const [activeFilter, setActiveFilter] = useState('All');
+    const [highlights, setHighlights] = useState<any[]>([]);
+    const currentUser = useCurrentUser();
+    const duser = currentUser?.duser;
 
-    const filterButtons = [
-        { key: 'All', label: 'All', color: '#3b82f6', bgColor: '#3b82f6' },
-        { key: 'Family', label: 'Family', color: '#ef4444', bgColor: '#fef2f2', textColor: '#dc2626' },
-        { key: 'Emma', label: 'Emma', color: '#8b5cf6', bgColor: '#f3e8ff', textColor: '#7c3aed' },
-        { key: 'Liam', label: 'Liam', color: '#ec4899', bgColor: '#fce7f3', textColor: '#be185d' }
-    ];
+    // --- Helper: Get current week (Mon-Sun) ---
+    const getWeekRange = () => {
+        const now = new Date();
+        const day = now.getDay(); // 0 = Sun, 1 = Mon
+        const monday = new Date(now);
+        monday.setDate(now.getDate() - ((day + 6) % 7)); // shift to Monday
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
 
-    const highlights = [
-        {
-            date: '12',
-            day: 'THU',
-            title: "Emma's Science Fair",
-            person: 'Emma Smith',
-            avatar: 'ES',
-            avatarColor: '#8b5cf6',
-            time: '4:00 PM - 7:00 PM',
-            location: 'Springfield High School',
-            icon: '🔬'
-        },
-        {
-            date: '13',
-            day: 'FRI',
-            title: 'Dentist Appointment',
-            person: 'Liam Smith',
-            avatar: 'LS',
-            avatarColor: '#ec4899',
-            time: '2:30 PM',
-            location: 'Dr. Wilson Pediatric Dentistry',
-            icon: '🦷'
-        },
-        {
-            date: '14',
-            day: 'SAT',
-            title: 'Family 5K Fun Run',
-            person: 'Whole Family',
-            avatar: '👥',
-            avatarColor: '#f59e0b',
-            time: '8:00 AM',
-            location: 'Riverside Park',
-            icon: '🏃'
-        },
-        {
-            date: '14',
-            day: 'SAT',
-            title: 'Pizza & Movie Night',
-            person: 'Whole Family',
-            avatar: '👥',
-            avatarColor: '#f59e0b',
-            time: '6:00 PM',
-            location: 'Family Room',
-            icon: '🍕'
-        },
-        {
-            date: '15',
-            day: 'SUN',
-            title: "Grandma's Birthday Brunch",
-            person: 'Whole Family',
-            avatar: '👥',
-            avatarColor: '#f59e0b',
-            time: '11:00 AM',
-            location: 'The Garden Restaurant',
-            icon: '🎂'
-        }
-    ];
+        const formatDate = (d: Date) =>
+            d.toLocaleString('en-US', { month: 'short', day: 'numeric' });
+
+        const formatYear = (d: Date) => d.getFullYear();
+
+        return `${formatDate(monday)} - ${formatDate(sunday)}, ${formatYear(sunday)}`;
+    };
+
+    const weekLabel = getWeekRange();
+
+    // --- Helper: check if date is in current week ---
+    const isInCurrentWeek = (date: Date) => {
+        const now = new Date();
+        const day = now.getDay();
+        const monday = new Date(now);
+        monday.setDate(now.getDate() - ((day + 6) % 7));
+        monday.setHours(0, 0, 0, 0);
+
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        sunday.setHours(23, 59, 59, 999);
+
+        return date >= monday && date <= sunday;
+    };
+
+    // --- Fetch planner data ---
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const response = await getAllPlannerData({ show_dockly: true });
+                const events = response.data?.payload?.events || [];
+
+                const filteredEvents = events.filter((event: any) => {
+                    const rawDate =
+                        event.start?.dateTime || event.start?.date || event.date || null;
+                    if (!rawDate) return false;
+                    const eventDate = new Date(rawDate);
+                    return isInCurrentWeek(eventDate);
+                });
+
+                const transformed = filteredEvents.map((event: any) => {
+                    const eventDate = new Date(
+                        event.start?.dateTime || event.start?.date || event.date
+                    );
+
+                    const date = eventDate.getDate().toString().padStart(2, '0');
+                    const day = eventDate.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+
+                    const eventTime = event.start?.dateTime
+                        ? new Date(event.start.dateTime).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        })
+                        : 'All Day';
+
+                    const member = familyMembers.find(fm => fm.user_id === event.user_id);
+
+                    return {
+                        date,
+                        day,
+                        title: event.summary || 'Untitled Event',
+                        person: member?.name || currentUser?.name || 'You',
+                        avatar: member?.initials || (currentUser?.name?.substring(0, 2) ?? 'U'),
+                        avatarColor: member?.color || '#3b82f6',
+                        time: eventTime,
+                        location: event.location || '—'
+                    };
+                });
+
+                setHighlights(transformed);
+            } catch (err) {
+                console.error('Error fetching weekly planner data:', err);
+                message.error('Failed to load weekly highlights');
+            }
+        };
+
+        if (duser) fetchData();
+    }, [duser, familyMembers]);
+
+    // --- Filter logic ---
+    const filteredHighlights =
+        activeFilter === 'All'
+            ? highlights
+            : activeFilter === 'Family'
+                ? highlights.filter(h => h.person === 'Whole Family')
+                : highlights.filter(h => h.person.includes(activeFilter));
 
     return (
         <Card
@@ -80,29 +128,31 @@ const WeekHighlights: React.FC = () => {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                     <Space>
                         <span style={{ fontSize: '16px' }}>⭐</span>
-                        <span style={{
-                            fontSize: '14px',
-                            fontWeight: 600,
-                            color: '#1f2937',
-                            fontFamily: FONT_FAMILY
-                        }}>
+                        <span
+                            style={{
+                                fontSize: '14px',
+                                fontWeight: 600,
+                                color: '#1f2937',
+                                fontFamily: FONT_FAMILY
+                            }}
+                        >
                             Week Highlights
                         </span>
                     </Space>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <span style={{ fontSize: '12px' }}>📅</span>
-                        <Text style={{
-                            fontSize: '11px',
-                            color: '#6b7280',
-                            fontFamily: FONT_FAMILY
-                        }}>
-                            June 9-15, 2025
+                        <Text
+                            style={{
+                                fontSize: '11px',
+                                color: '#6b7280',
+                                fontFamily: FONT_FAMILY
+                            }}
+                        >
+                            {weekLabel}
                         </Text>
                     </div>
                 </div>
             }
-            // bodyStyle={{ padding: '12px' }}
-            // headStyle={{ padding: '12px', borderBottom: '1px solid #f3f4f6' }}
             bodyStyle={{ padding: '18px' }}
             headStyle={{ padding: '16px', borderBottom: '1px solid #f3f4f6' }}
             style={{ borderRadius: '12px', border: '1px solid #e5e7eb' }}
@@ -110,14 +160,50 @@ const WeekHighlights: React.FC = () => {
             {/* Filter Buttons */}
             <div style={{ marginBottom: '12px' }}>
                 <Space wrap size={6}>
-                    {filterButtons.map((filter) => (
+                    <Button
+                        size="small"
+                        style={{
+                            backgroundColor: activeFilter === 'All' ? '#3b82f6' : '#f8fafc',
+                            color: activeFilter === 'All' ? 'white' : '#64748b',
+                            border: activeFilter === 'All' ? 'none' : '1px solid #e2e8f0',
+                            borderRadius: '14px',
+                            height: '24px',
+                            padding: '0 10px',
+                            fontWeight: 500,
+                            fontSize: '11px',
+                            fontFamily: FONT_FAMILY
+                        }}
+                        onClick={() => setActiveFilter('All')}
+                    >
+                        👥 All
+                    </Button>
+
+                    <Button
+                        size="small"
+                        style={{
+                            backgroundColor: activeFilter === 'Family' ? '#fef2f2' : '#f8fafc',
+                            color: activeFilter === 'Family' ? '#dc2626' : '#64748b',
+                            border: activeFilter === 'Family' ? 'none' : '1px solid #e2e8f0',
+                            borderRadius: '14px',
+                            height: '24px',
+                            padding: '0 10px',
+                            fontWeight: 500,
+                            fontSize: '11px',
+                            fontFamily: FONT_FAMILY
+                        }}
+                        onClick={() => setActiveFilter('Family')}
+                    >
+                        ❤ Family
+                    </Button>
+
+                    {familyMembers.filter(f => f.status !== 'pending').map(member => (
                         <Button
-                            key={filter.key}
+                            key={member.id}
                             size="small"
                             style={{
-                                backgroundColor: activeFilter === filter.key ? filter.bgColor : '#f8fafc',
-                                color: activeFilter === filter.key ? (filter.key === 'All' ? 'white' : filter.textColor) : '#64748b',
-                                border: activeFilter === filter.key ? 'none' : '1px solid #e2e8f0',
+                                backgroundColor: activeFilter === member.name ? `${member.color}20` : '#f8fafc',
+                                color: activeFilter === member.name ? member.color : '#64748b',
+                                border: activeFilter === member.name ? 'none' : '1px solid #e2e8f0',
                                 borderRadius: '14px',
                                 height: '24px',
                                 padding: '0 10px',
@@ -125,31 +211,31 @@ const WeekHighlights: React.FC = () => {
                                 fontSize: '11px',
                                 fontFamily: FONT_FAMILY
                             }}
-                            onClick={() => setActiveFilter(filter.key)}
+                            onClick={() => setActiveFilter(member.name)}
                         >
-                            {filter.key === 'All' && '👥 '}
-                            {filter.key === 'Family' && '❤ '}
-                            {filter.label}
+                            {member.name}
                         </Button>
                     ))}
                 </Space>
             </div>
 
             {/* Highlights Items */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {highlights.map((item, index) => (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflow: 'auto' }}>
+                {filteredHighlights.map((item, index) => (
                     <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '15px' }}>
                         {/* Date */}
-                        <div style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            backgroundColor: '#f8fafc',
-                            borderRadius: '5px',
-                            padding: '6px 6px',
-                            minWidth: '40px',
-                            border: '1px solid #e2e8f0'
-                        }}>
+                        <div
+                            style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                backgroundColor: '#f8fafc',
+                                borderRadius: '5px',
+                                padding: '6px 6px',
+                                minWidth: '40px',
+                                border: '1px solid #e2e8f0'
+                            }}
+                        >
                             <Text strong style={{ fontSize: '14px', color: '#3b82f6', lineHeight: 1 }}>
                                 {item.date}
                             </Text>
@@ -161,13 +247,16 @@ const WeekHighlights: React.FC = () => {
                         {/* Content */}
                         <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ marginBottom: '4px' }}>
-                                <Text strong style={{
-                                    fontSize: '13px',
-                                    color: '#111827',
-                                    display: 'block',
-                                    lineHeight: 1.3,
-                                    fontFamily: FONT_FAMILY
-                                }}>
+                                <Text
+                                    strong
+                                    style={{
+                                        fontSize: '13px',
+                                        color: '#111827',
+                                        display: 'block',
+                                        lineHeight: 1.3,
+                                        fontFamily: FONT_FAMILY
+                                    }}
+                                >
                                     {item.title}
                                 </Text>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px' }}>
@@ -181,40 +270,29 @@ const WeekHighlights: React.FC = () => {
                                     >
                                         {item.avatar}
                                     </Avatar>
-                                    <Text style={{
-                                        fontSize: '11px',
-                                        color: '#6b7280',
-                                        fontFamily: FONT_FAMILY
-                                    }}>
+                                    <Text
+                                        style={{
+                                            fontSize: '11px',
+                                            color: '#6b7280',
+                                            fontFamily: FONT_FAMILY
+                                        }}
+                                    >
                                         {item.person}
                                     </Text>
                                 </div>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                 <span style={{ color: '#ef4444', fontSize: '10px' }}>⏰</span>
-                                <Text style={{
-                                    fontSize: '11px',
-                                    color: '#6b7280',
-                                    fontFamily: FONT_FAMILY
-                                }}>
+                                <Text
+                                    style={{
+                                        fontSize: '11px',
+                                        color: '#6b7280',
+                                        fontFamily: FONT_FAMILY
+                                    }}
+                                >
                                     {item.time} • {item.location}
                                 </Text>
                             </div>
-                        </div>
-
-                        {/* Icon */}
-                        <div style={{
-                            width: '30px',
-                            height: '30px',
-                            backgroundColor: '#f8fafc',
-                            borderRadius: '14px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '14px',
-                            border: '1px solid #e2e8f0'
-                        }}>
-                            {item.icon}
                         </div>
                     </div>
                 ))}

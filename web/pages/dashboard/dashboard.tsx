@@ -88,7 +88,8 @@ import { useCurrentUser } from "../../app/userContext";
 import { useGlobalLoading } from "../../app/loadingContext";
 import { uploadDocklyRootFile } from '../../services/home';
 import { capitalizeEachWord } from "../../app/comman";
-
+import AddNoteModal from "./AddNoteModal";
+import { fetchSharedItemNotifications, getRecentActivities, markNotificationAsRead, respondToNotification } from '../../services/dashboard';
 
 const { Option } = Select;
 const { Header, Sider, Content } = Layout;
@@ -166,6 +167,7 @@ function App() {
   const [starredItems, setStarredItems] = useState<string[]>(["budget"]);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const [sharedNotifications, setSharedNotifications] = useState<any[]>([]);
   const [aiMessages, setAiMessages] = useState([
     { type: "ai", content: "Hi! How can I help you today?" },
   ]);
@@ -174,6 +176,9 @@ function App() {
   const [modalMode, setModalMode] = useState("create");
   const [isFolderModalVisible, setIsFolderModalVisible] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [addNoteModalVisible, setAddNoteModalVisible] = useState(false);
 
   // Event modal specific states
   const [eventForm] = Form.useForm();
@@ -439,6 +444,48 @@ function App() {
       label: "Vault",
     },
   ];
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      setLoadingNotifications(true);
+      try {
+        const response = await getRecentActivities({}); // backend uses uid from token
+        if (response?.data?.status === 1) {
+          setNotifications(response.data.payload.notifications || []);
+        }
+      } catch (err) {
+        message.error('Failed to load notifications');
+      }
+      setLoadingNotifications(false);
+    };
+
+    fetchNotifications();
+  }, []);
+
+  useEffect(() => {
+    const loadNotifications = async () => {
+      try {
+        const res = await fetchSharedItemNotifications();
+        if (res.data.status) {
+          setSharedNotifications(res.data.payload.notifications || []);
+        }
+      } catch (err) {
+        console.error("Failed to load shared notifications", err);
+      }
+    };
+
+    loadNotifications();
+  }, []);
+
+  const handleDismissNotification = async (id: number) => {
+    try {
+      await markNotificationAsRead(id);
+      setSharedNotifications(prev => prev.filter(notif => notif.id !== id));
+    } catch (err) {
+      console.error("Failed to mark notification as read", err);
+    }
+  };
+
+
 
   const toggleTask = (taskId: string) => {
     setCompletedTasks((prev) =>
@@ -690,128 +737,92 @@ function App() {
                 }
               }}
             >
-              <Row gutter={[SPACING.lg, SPACING.lg]}>
+              <Row gutter={[24, 24]}>
                 {/* Left Column - Actions & Notifications */}
                 <Col xs={24} lg={8}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      marginBottom: SPACING.md,
-                    }}
-                  >
-                    <Title
-                      level={5}
-                      style={{
-                        margin: 0,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: SPACING.sm,
-                        color: "#4b5563",
-                        fontSize: "13px",
-                        fontFamily: FONT_FAMILY,
-                        fontWeight: 600,
-                      }}
-                    >
-                      <TabletOutlined
-                        style={{ color: "#6b7280", fontSize: "14px" }}
-                      />
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                    <Title level={5} style={{
+                      margin: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      color: '#4b5563',
+                      fontSize: '14px'
+                    }}>
+                      <TabletOutlined style={{ color: '#6b7280' }} />
                       Actions & Notifications
                     </Title>
-                    <Badge
-                      count={
-                        mockData.actions.filter(
-                          (a) => !completedTasks.includes(a.id)
-                        ).length
-                      }
-                      size="small"
-                    />
+                    <Badge count={notifications.length + sharedNotifications.length} size="small" />
                   </div>
-                  <div style={{ maxHeight: "500px", overflowY: "auto" }}>
+                  <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
                     <List
-                      dataSource={mockData.actions}
+                      dataSource={[...notifications, ...sharedNotifications]}
+                      loading={loadingNotifications}
+                      locale={{ emptyText: 'No new notifications' }}
                       renderItem={(item) => (
                         <List.Item
                           style={{
-                            padding: SPACING.sm,
-                            border: "none",
-                            borderRadius: "8px",
-                            marginBottom: SPACING.xs,
-                            transition: "background 0.2s ease",
-                            cursor: "pointer",
+                            padding: '8px',
+                            border: 'none',
+                            borderRadius: '8px',
+                            marginBottom: '4px',
+                            transition: 'background 0.2s ease',
+                            cursor: 'default'
                           }}
-                          onMouseEnter={(e) =>
-                            (e.currentTarget.style.background = "#f9fafb")
-                          }
-                          onMouseLeave={(e) =>
-                            (e.currentTarget.style.background = "transparent")
-                          }
                         >
-                          <Checkbox
-                            checked={completedTasks.includes(item.id)}
-                            onChange={() => toggleTask(item.id)}
-                            style={{ marginRight: SPACING.sm }}
-                          />
-                          <div
-                            style={{
-                              flex: 1,
-                              display: "flex",
-                              alignItems: "flex-start",
-                              gap: SPACING.sm,
-                            }}
-                          >
-                            <div
-                              style={{
-                                color: getPriorityColor(item.priority),
-                                marginTop: "2px",
-                                fontSize: "12px",
-                              }}
-                            >
-                              {item.icon}
-                            </div>
-                            <div style={{ flex: 1 }}>
-                              <Text
-                                style={{
-                                  fontSize: "13px",
-                                  fontWeight: 500,
-                                  color: "#1f2937",
-                                  textDecoration: completedTasks.includes(
-                                    item.id
-                                  )
-                                    ? "line-through"
-                                    : "none",
-                                  opacity: completedTasks.includes(item.id)
-                                    ? 0.6
-                                    : 1,
-                                  transition: "all 0.3s ease",
-                                  fontFamily: FONT_FAMILY,
-                                }}
-                              >
-                                {item.text}
-                              </Text>
-                              <br />
-                              <Text
-                                style={{
-                                  fontSize: "11px",
-                                  color:
-                                    item.priority === "high"
-                                      ? "#f59e0b"
-                                      : "#6b7280",
-                                  fontFamily: FONT_FAMILY,
-                                }}
-                              >
-                                {item.detail}
-                              </Text>
-                            </div>
+                          <div style={{ flex: 1 }}>
+                            <Text style={{ fontWeight: 500, fontSize: '14px', color: '#1f2937' }}>
+                              {item.message}
+                            </Text>
+
+                            {/* Family Request Type */}
+                            {item.taskType === 'family_request' && (
+                              <div style={{ marginTop: '8px', display: 'flex', gap: '10px' }}>
+                                <Button
+                                  type="primary"
+                                  size="small"
+                                  icon={<CheckOutlined />}
+                                  onClick={async () => {
+                                    try {
+                                      const res = await respondToNotification({ id: item.id, response: 'accepted' });
+                                      if (res?.data?.status === 1) {
+                                        message.success('Family invite accepted');
+                                        setNotifications(prev => prev.filter(n => n.id !== item.id));
+                                      }
+                                    } catch (err) {
+                                      message.error('Failed to respond to invite');
+                                    }
+                                  }}
+                                />
+                                <Button
+                                  danger
+                                  size="small"
+                                  icon={<CloseOutlined />}
+                                  onClick={() => {
+                                    // Optional: implement decline logic or just hide it
+                                    setNotifications(prev => prev.filter(n => n.id !== item.id));
+                                  }}
+                                />
+                              </div>
+                            )}
+
+                            {/* Tagged/Shared Type */}
+                            {item.taskType === 'tagged' && (
+                              <div style={{ marginTop: '8px' }}>
+                                <Button
+                                  danger
+                                  size="small"
+                                  icon={<CloseOutlined />}
+                                  onClick={() => handleDismissNotification(item.id)}
+                                />
+                              </div>
+                            )}
                           </div>
                         </List.Item>
                       )}
                     />
                   </div>
                 </Col>
-
-                {/* Middle Column - Upcoming Activities & Recent Activity */}
                 <Col xs={24} lg={8}>
                   {/* Upcoming Activities */}
                   <div style={{ marginBottom: SPACING.xl }}>
@@ -1170,6 +1181,7 @@ function App() {
 
                         <Col span={12}>
                           <Button
+                            onClick={() => setAddNoteModalVisible(true)}
                             style={{
                               width: "100%",
                               height: "32px",
@@ -1644,6 +1656,15 @@ function App() {
       <FolderConnectionModal
         isModalVisible={isFolderModalVisible}
         setIsModalVisible={setIsFolderModalVisible}
+      />
+
+      <AddNoteModal
+        visible={addNoteModalVisible}
+        onCancel={() => setAddNoteModalVisible(false)}
+        onSuccess={() => {
+          // Optional: Add any success callback here
+          console.log('Note added successfully from dashboard');
+        }}
       />
 
       {/* Custom Animations and Hover Effects */}

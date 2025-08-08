@@ -6,8 +6,8 @@ Handles OAuth flow, token management, and file operations
 from datetime import datetime, timedelta
 import json
 import os
-from flask import redirect, request, session
-from flask_jwt_extended import create_access_token
+from flask import redirect, request, session, jsonify
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from flask_restful import Resource
 import requests
 from urllib.parse import quote, unquote
@@ -33,6 +33,8 @@ MS_SCOPES = [
     "https://graph.microsoft.com/Files.ReadWrite",
     "https://graph.microsoft.com/Files.ReadWrite.All",
     "https://graph.microsoft.com/Sites.ReadWrite.All",
+    "https://graph.microsoft.com/Mail.Read",
+    "https://graph.microsoft.com/Calendars.Read",
 ]
 
 # Reduced timeout for OAuth sessions (authorization codes typically expire in 5-10 minutes)
@@ -523,6 +525,474 @@ class MicrosoftCallback(Resource):
             return False
 
 
+class GetCurrentUser(Resource):
+    @jwt_required()
+    def get(self):
+        """Get current authenticated user information"""
+        try:
+            current_user = get_jwt_identity()
+            if not current_user:
+                return {"user": None}, 200
+
+            # Get user account from database
+            account = DBHelper.find_one(
+                table_name="connected_accounts",
+                filters={
+                    "id": current_user,
+                    "provider": "outlook",
+                    "is_active": 1,
+                },
+                select_fields=["id", "email", "user_object", "provider"],
+            )
+
+            if not account:
+                return {"user": None}, 200
+
+            # Parse user object
+            try:
+                user_data = json.loads(account.get("user_object", "{}"))
+            except json.JSONDecodeError:
+                user_data = {
+                    "id": account["id"],
+                    "email": account["email"],
+                    "name": account["email"],
+                    "provider": account["provider"],
+                }
+
+            return {"user": user_data}, 200
+
+        except Exception as e:
+            print(f"❌ Error getting current user: {str(e)}")
+            return {"error": "Failed to get user information"}, 500
+
+
+class GetConnectedAccounts(Resource):
+    def get(self):
+        """Get user's connected accounts"""
+        try:
+            user_id = request.args.get("userId")
+            if not user_id:
+                return {"accounts": []}, 200
+
+            # Get all active accounts for user
+            accounts = DBHelper.find(
+                table_name="connected_accounts",
+                filters={
+                    "user_id": user_id,
+                    "provider": "outlook",
+                    "is_active": 1,
+                },
+                select_fields=[
+                    "id",
+                    "email",
+                    "provider",
+                    "user_object",
+                    "connected_at",
+                ],
+            )
+
+            account_list = []
+            for account in accounts:
+                try:
+                    user_object = json.loads(account.get("user_object", "{}"))
+                except json.JSONDecodeError:
+                    user_object = {
+                        "id": account["id"],
+                        "email": account["email"],
+                        "name": account["email"],
+                        "provider": account["provider"],
+                    }
+
+                account_data = {
+                    "id": account["id"],
+                    "email": account["email"],
+                    "name": user_object.get("name", account["email"]),
+                    "provider": account["provider"],
+                    "picture": user_object.get("picture"),
+                    "connected_at": account["connected_at"],
+                }
+                account_list.append(account_data)
+
+            return {"accounts": account_list}, 200
+
+        except Exception as e:
+            print(f"❌ Error getting connected accounts: {str(e)}")
+            return {"error": "Failed to get connected accounts"}, 500
+
+
+class RemoveAccount(Resource):
+    def delete(self, account_id):
+        """Remove/disconnect a connected account"""
+        try:
+            user_id = request.args.get("userId")
+            if not user_id:
+                return {"error": "Missing userId parameter"}, 400
+
+            # Verify account belongs to user
+            account = DBHelper.find_one(
+                table_name="connected_accounts",
+                filters={
+                    "id": account_id,
+                    "user_id": user_id,
+                    "provider": "outlook",
+                },
+                select_fields=["id"],
+            )
+
+            if not account:
+                return {"error": "Account not found"}, 404
+
+            # Deactivate account instead of deleting (for audit purposes)
+            result = DBHelper.update_one(
+                table_name="connected_accounts",
+                filters={"id": account_id},
+                updates={
+                    "is_active": 0,
+                    "updated_at": datetime.utcnow().isoformat(),
+                },
+            )
+
+            if result:
+                return {"success": True, "message": "Account removed successfully"}, 200
+            else:
+                return {"error": "Failed to remove account"}, 500
+
+        except Exception as e:
+            print(f"❌ Error removing account: {str(e)}")
+            return {"error": "Failed to remove account"}, 500
+
+
+def get_valid_token(account_id):
+    """Helper function to check and refresh token if needed"""
+    try:
+        # Get account from database
+        account = DBHelper.find_one(
+            table_name="connected_accounts",
+            filters={
+                "id": account_id,
+                "provider": "outlook",
+                "is_active": 1,
+            },
+            select_fields=["access_token", "refresh_token", "expires_at"],
+        )
+
+        if not account:
+            print(f"❌ Account {account_id} not found")
+            return None
+
+        access_token = account.get("access_token")
+        refresh_token = account.get("refresh_token")
+        expires_at_str = account.get("expires_at")
+
+        if not access_token:
+            print(f"❌ No access token for account {account_id}")
+            return None
+
+        # Check if token is expired
+        if expires_at_str:
+            try:
+                expires_at = datetime.fromisoformat(
+                    expires_at_str.replace("Z", "+00:00")
+                )
+                if datetime.utcnow() > expires_at:
+                    print(f"🔄 Token expired for account {account_id}, refreshing...")
+
+                    # Refresh token
+                    new_tokens = refresh_microsoft_token(refresh_token)
+                    if new_tokens:
+                        # Update database with new tokens
+                        expires_in = new_tokens.get("expires_in", 3600)
+                        new_expires_at = datetime.utcnow() + timedelta(
+                            seconds=expires_in - 300
+                        )
+
+                        DBHelper.update_one(
+                            table_name="connected_accounts",
+                            filters={"id": account_id},
+                            updates={
+                                "access_token": new_tokens.get("access_token"),
+                                "refresh_token": new_tokens.get(
+                                    "refresh_token", refresh_token
+                                ),
+                                "expires_at": new_expires_at.isoformat(),
+                                "updated_at": datetime.utcnow().isoformat(),
+                            },
+                        )
+
+                        print(f"✅ Token refreshed for account {account_id}")
+                        return new_tokens.get("access_token")
+                    else:
+                        print(f"❌ Failed to refresh token for account {account_id}")
+                        return None
+            except Exception as e:
+                print(f"⚠️ Error parsing expiry date: {str(e)}")
+
+        return access_token
+
+    except Exception as e:
+        print(f"❌ Error getting valid token: {str(e)}")
+        return None
+
+
+class GetAccountEmails(Resource):
+    def get(self, account_id):
+        """Get emails from Microsoft Graph API"""
+        try:
+            token = get_valid_token(account_id)
+            if not token:
+                return {"error": "Invalid or expired token"}, 401
+
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/json",
+                "User-Agent": "Microsoft-OAuth-Integration/1.0",
+            }
+
+            # Get query parameters
+            top = request.args.get("top", 50)
+            skip = request.args.get("skip", 0)
+
+            params = {
+                "$top": int(top),
+                "$skip": int(skip),
+                "$orderby": "receivedDateTime desc",
+                "$select": "id,subject,from,receivedDateTime,isRead,importance,hasAttachments,bodyPreview",
+            }
+
+            response = requests.get(
+                "https://graph.microsoft.com/v1.0/me/messages",
+                headers=headers,
+                params=params,
+                timeout=30,
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                print(
+                    f"✅ Retrieved {len(data.get('value', []))} emails for account {account_id}"
+                )
+                return {"emails": data.get("value", [])}, 200
+            else:
+                print(f"❌ Email fetch failed: {response.status_code}")
+                return {"error": "Failed to fetch emails"}, response.status_code
+
+        except Exception as e:
+            print(f"❌ Error fetching emails: {str(e)}")
+            return {"error": "Failed to fetch emails"}, 500
+
+
+class GetAccountEvents(Resource):
+    def get(self, account_id):
+        """Get calendar events from Microsoft Graph API"""
+        try:
+            token = get_valid_token(account_id)
+            if not token:
+                return {"error": "Invalid or expired token"}, 401
+
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/json",
+                "User-Agent": "Microsoft-OAuth-Integration/1.0",
+            }
+
+            # Get date range from query parameters
+            days = request.args.get("days", 7)
+            start_time = datetime.utcnow().isoformat() + "Z"
+            end_time = (datetime.utcnow() + timedelta(days=int(days))).isoformat() + "Z"
+
+            params = {
+                "$select": "id,subject,start,end,location,isAllDay,organizer",
+                "$orderby": "start/dateTime",
+                "$filter": f"start/dateTime ge '{start_time}' and end/dateTime le '{end_time}'",
+            }
+
+            response = requests.get(
+                "https://graph.microsoft.com/v1.0/me/calendar/events",
+                headers=headers,
+                params=params,
+                timeout=30,
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                print(
+                    f"✅ Retrieved {len(data.get('value', []))} events for account {account_id}"
+                )
+                return {"events": data.get("value", [])}, 200
+            else:
+                print(f"❌ Events fetch failed: {response.status_code}")
+                return {"error": "Failed to fetch events"}, response.status_code
+
+        except Exception as e:
+            print(f"❌ Error fetching events: {str(e)}")
+            return {"error": "Failed to fetch events"}, 500
+
+
+class GetAccountFiles(Resource):
+    def get(self, account_id):
+        """Get files from Microsoft OneDrive via Graph API"""
+        try:
+            token = get_valid_token(account_id)
+            if not token:
+                return {"error": "Invalid or expired token"}, 401
+
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/json",
+                "User-Agent": "Microsoft-OAuth-Integration/1.0",
+            }
+
+            # Get path parameter for folder navigation
+            path = request.args.get("path", "").strip()
+            top = request.args.get("top", 100)
+
+            # Build endpoint based on path
+            if path:
+                # Navigate to specific folder
+                encoded_path = urllib.parse.quote(path)
+                endpoint = f"https://graph.microsoft.com/v1.0/me/drive/root:/{encoded_path}:/children"
+            else:
+                # Get root folder contents
+                endpoint = "https://graph.microsoft.com/v1.0/me/drive/root/children"
+
+            params = {
+                "$top": int(top),
+                "$select": "id,name,size,lastModifiedDateTime,folder,file,webUrl,parentReference,createdDateTime",
+                "$orderby": "folder desc,name asc",  # Folders first, then files alphabetically
+            }
+
+            print(f"🔄 Fetching files from path: '{path}' for account {account_id}")
+            response = requests.get(
+                endpoint, headers=headers, params=params, timeout=30
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                files = data.get("value", [])
+
+                # Enhance file data
+                enhanced_files = []
+                for file_item in files:
+                    enhanced_file = {
+                        "id": file_item.get("id"),
+                        "name": file_item.get("name"),
+                        "size": file_item.get("size", 0),
+                        "lastModifiedDateTime": file_item.get("lastModifiedDateTime"),
+                        "createdDateTime": file_item.get("createdDateTime"),
+                        "webUrl": file_item.get("webUrl"),
+                        "isFolder": bool(file_item.get("folder")),
+                        "mimeType": (
+                            file_item.get("file", {}).get("mimeType")
+                            if file_item.get("file")
+                            else None
+                        ),
+                        "path": path,
+                    }
+
+                    # Add file extension for non-folders
+                    if not enhanced_file["isFolder"]:
+                        name = enhanced_file["name"]
+                        if "." in name:
+                            enhanced_file["extension"] = name.rsplit(".", 1)[-1].lower()
+                        else:
+                            enhanced_file["extension"] = ""
+
+                    enhanced_files.append(enhanced_file)
+
+                print(
+                    f"✅ Retrieved {len(enhanced_files)} files/folders from path '{path}' for account {account_id}"
+                )
+
+                return {
+                    "files": enhanced_files,
+                    "path": path,
+                    "count": len(enhanced_files),
+                }, 200
+
+            elif response.status_code == 404:
+                print(f"❌ Path not found: '{path}' for account {account_id}")
+                return {"error": f"Path '{path}' not found"}, 404
+            else:
+                print(f"❌ Files fetch failed: {response.status_code}")
+                try:
+                    error_data = response.json()
+                    error_message = error_data.get("error", {}).get(
+                        "message", "Unknown error"
+                    )
+                except:
+                    error_message = f"HTTP {response.status_code}"
+
+                return {
+                    "error": f"Failed to fetch files: {error_message}"
+                }, response.status_code
+
+        except Exception as e:
+            print(f"❌ Error fetching files: {str(e)}")
+            import traceback
+
+            traceback.print_exc()
+            return {"error": "Failed to fetch files"}, 500
+
+
+class GetFileContent(Resource):
+    def get(self, account_id, file_id):
+        """Get file content/download URL from Microsoft Graph API"""
+        try:
+            token = get_valid_token(account_id)
+            if not token:
+                return {"error": "Invalid or expired token"}, 401
+
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/json",
+                "User-Agent": "Microsoft-OAuth-Integration/1.0",
+            }
+
+            # Get file metadata first
+            metadata_response = requests.get(
+                f"https://graph.microsoft.com/v1.0/me/drive/items/{file_id}",
+                headers=headers,
+                timeout=15,
+            )
+
+            if metadata_response.status_code != 200:
+                return {"error": "File not found"}, 404
+
+            file_metadata = metadata_response.json()
+
+            # Check if it's a folder
+            if file_metadata.get("folder"):
+                return {"error": "Cannot download folder content"}, 400
+
+            # Get download URL
+            download_response = requests.get(
+                f"https://graph.microsoft.com/v1.0/me/drive/items/{file_id}/content",
+                headers=headers,
+                timeout=15,
+                allow_redirects=False,  # Don't follow redirect, just get the URL
+            )
+
+            if download_response.status_code == 302:
+                download_url = download_response.headers.get("Location")
+
+                return {
+                    "file": {
+                        "id": file_metadata.get("id"),
+                        "name": file_metadata.get("name"),
+                        "size": file_metadata.get("size"),
+                        "mimeType": file_metadata.get("file", {}).get("mimeType"),
+                        "downloadUrl": download_url,
+                        "webUrl": file_metadata.get("webUrl"),
+                    }
+                }, 200
+            else:
+                return {"error": "Failed to get download URL"}, 500
+
+        except Exception as e:
+            print(f"❌ Error getting file content: {str(e)}")
+            return {"error": "Failed to get file content"}, 500
+
+
 def refresh_microsoft_token(refresh_token):
     """Refresh Microsoft access token using refresh token"""
     try:
@@ -572,3 +1042,14 @@ def refresh_microsoft_token(refresh_token):
     except Exception as e:
         print(f"❌ Unexpected error in token refresh: {str(e)}")
         return None
+
+
+class LogoutUser(Resource):
+    def post(self):
+        """Log out user and clear session"""
+        try:
+            session.clear()
+            return {"success": True, "message": "Logged out successfully"}, 200
+        except Exception as e:
+            print(f"❌ Error during logout: {str(e)}")
+            return {"error": "Failed to logout"}, 500

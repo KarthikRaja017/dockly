@@ -1,8 +1,10 @@
-
 import React, { useEffect, useState } from 'react';
 import { Card, Typography, Row, Col, Avatar } from 'antd';
 import { getAccounts, getExpenseIncome } from '../../services/apiConfig';
 import { useRouter } from 'next/navigation';
+
+const FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+
 const { Title, Text } = Typography;
 
 const AccountsOverview = () => {
@@ -55,67 +57,132 @@ const AccountsOverview = () => {
   }, []);
 
   return (
-    <Card style={{ borderRadius: 16, padding: 24, margin: 24 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
-        <Title level={4}>Accounts & Net Worth</Title>
+    <Card style={{
+      borderRadius: 12,
+      padding: 16,
+      // margin: 12,
+      marginLeft: 12,
+      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06)',
+      border: '1px solid #e2e8f0',
+      fontFamily: FONT_FAMILY,
+      maxWidth: '1290px',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
+        <Title level={4} style={{
+          margin: 0,
+          fontFamily: FONT_FAMILY,
+          fontSize: '16px',
+          fontWeight: 600,
+          color: '#111827'
+        }}>
+          Accounts & Net Worth
+        </Title>
         <Text
-          style={{ color: '#3b82f6', cursor: 'pointer' }}
-        // onClick={() => router.push(`/${username}/finance-hub/setup`)}
+          style={{
+            color: '#3b82f6',
+            cursor: 'pointer',
+            fontFamily: FONT_FAMILY,
+            fontSize: '13px',
+            fontWeight: 500
+          }}
         >
           Manage Accounts
         </Text>
       </div>
 
       <Row
-        gutter={24}
+        gutter={16}
         style={{
-          background: '#f9fafb',
-          borderRadius: 12,
-          padding: '24px 16px',
-          marginBottom: 32,
+          background: 'linear-gradient(145deg, #f8fafc, #f1f5f9)',
+          borderRadius: 10,
+          padding: '16px',
+          marginBottom: 24,
+          border: '1px solid #e2e8f0',
         }}
       >
         <Col span={6}>
-          <Text type="secondary">Net Worth</Text>
-          <Title level={3} style={{ color: netWorth < 0 ? '#ef4444' : '#22c55e' }}>
+          <Text type="secondary" style={{ fontFamily: FONT_FAMILY, fontSize: '12px' }}>Net Worth</Text>
+          <Title level={4} style={{
+            color: netWorth < 0 ? '#ef4444' : '#059669',
+            fontFamily: FONT_FAMILY,
+            fontSize: '16px',
+            fontWeight: 600,
+            margin: '4px 0 0 0'
+          }}>
             {formatCurrency(netWorth)}
           </Title>
         </Col>
         <Col span={6}>
-          <Text type="secondary">Total Assets</Text>
-          <Title level={3}>{formatCurrency(assets)}</Title>
+          <Text type="secondary" style={{ fontFamily: FONT_FAMILY, fontSize: '12px' }}>Total Assets</Text>
+          <Title level={4} style={{
+            fontFamily: FONT_FAMILY,
+            fontSize: '16px',
+            fontWeight: 600,
+            margin: '4px 0 0 0',
+            color: '#111827'
+          }}>
+            {formatCurrency(assets)}
+          </Title>
         </Col>
         <Col span={6}>
-          <Text type="secondary">Total Liabilities</Text>
-          <Title level={3} style={{ color: '#ef4444' }}>
+          <Text type="secondary" style={{ fontFamily: FONT_FAMILY, fontSize: '12px' }}>Total Liabilities</Text>
+          <Title level={4} style={{
+            color: '#ef4444',
+            fontFamily: FONT_FAMILY,
+            fontSize: '16px',
+            fontWeight: 600,
+            margin: '4px 0 0 0'
+          }}>
             {formatCurrency(liabilities)}
           </Title>
         </Col>
         <Col span={6}>
-          <Text type="secondary">Monthly Cash Flow</Text>
-          <Title level={3} style={{ color: cashFlow < 0 ? '#ef4444' : '#111827' }}>
+          <Text type="secondary" style={{ fontFamily: FONT_FAMILY, fontSize: '12px' }}>Monthly Cash Flow</Text>
+          <Title level={4} style={{
+            color: cashFlow < 0 ? '#ef4444' : '#111827',
+            fontFamily: FONT_FAMILY,
+            fontSize: '16px',
+            fontWeight: 600,
+            margin: '4px 0 0 0'
+          }}>
             {formatCurrency(cashFlow)}
           </Title>
         </Col>
       </Row>
 
-      <Row gutter={[24, 24]}>
+      <Row gutter={[16, 16]}>
         {sections.map((section, index) => (
           <Col span={12} key={index}>
             <Card
-              title={section.title}
+              title={
+                <span style={{ fontFamily: FONT_FAMILY, fontSize: '14px', fontWeight: 600 }}>
+                  {section.title}
+                </span>
+              }
               extra={
                 <Text
                   style={{
-                    color: section.total >= 0 ? '#22c55e' : '#ef4444',
-                    fontWeight: 500,
+                    color: section.total >= 0 ? '#059669' : '#ef4444',
+                    fontWeight: 600,
+                    fontFamily: FONT_FAMILY,
+                    fontSize: '14px',
                   }}
                 >
                   {formatCurrency(section.total)}
                 </Text>
               }
-              style={{ borderRadius: 12, background: '#fff' }}
+              style={{
+                borderRadius: 10,
+                background: '#fff',
+                border: '1px solid #e5e7eb',
+                boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+              }}
               bodyStyle={{ padding: 0 }}
+              headStyle={{
+                padding: '12px 16px',
+                borderBottom: '1px solid #f3f4f6',
+                fontFamily: FONT_FAMILY
+              }}
             >
               {section.items.map((item: any, idx: number) => (
                 <div
@@ -124,19 +191,37 @@ const AccountsOverview = () => {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    padding: '12px 16px',
+                    padding: '10px 16px',
                     borderBottom:
                       idx !== section.items.length - 1 ? '1px solid #f3f4f6' : 'none',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <Avatar style={{ backgroundColor: item.color }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Avatar
+                      style={{
+                        backgroundColor: item.color,
+                        fontSize: '12px',
+                        width: 28,
+                        height: 28
+                      }}
+                      size={28}
+                    >
                       {item.name.charAt(0)}
                     </Avatar>
                     <div>
-                      <Text style={{ fontWeight: 500 }}>{item.name}</Text>
+                      <Text style={{
+                        fontWeight: 500,
+                        fontFamily: FONT_FAMILY,
+                        fontSize: '13px',
+                        color: '#111827'
+                      }}>
+                        {item.name}
+                      </Text>
                       <br />
-                      <Text type="secondary" style={{ fontSize: 12 }}>
+                      <Text type="secondary" style={{
+                        fontSize: 11,
+                        fontFamily: FONT_FAMILY
+                      }}>
                         {item.type}
                       </Text>
                     </div>
@@ -145,6 +230,9 @@ const AccountsOverview = () => {
                     strong
                     style={{
                       color: item.value < 0 ? '#ef4444' : '#111827',
+                      fontFamily: FONT_FAMILY,
+                      fontSize: '13px',
+                      fontWeight: 600,
                     }}
                   >
                     {formatCurrency(item.value)}
@@ -160,4 +248,3 @@ const AccountsOverview = () => {
 };
 
 export default AccountsOverview;
-

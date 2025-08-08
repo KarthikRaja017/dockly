@@ -17,6 +17,8 @@ import {
     updateFinanceGoal,
 } from "../../services/apiConfig";
 
+const FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+
 const { Option } = Select;
 
 interface FinanceGoal {
@@ -29,7 +31,12 @@ interface FinanceGoal {
     is_active: number;
 }
 
-const GoalsCard = ({ uid }: { uid: string }) => {
+interface GoalsCardProps {
+    uid: string;
+    onGoalsUpdate?: (goals: FinanceGoal[]) => void;
+}
+
+const GoalsCard = ({ uid, onGoalsUpdate }: GoalsCardProps) => {
     const [financeGoals, setFinanceGoals] = useState<FinanceGoal[]>([]);
     const [isGoalModalVisible, setIsGoalModalVisible] = useState(false);
     const [isEditModalVisible, setIsEditModalVisible] = useState(false);
@@ -136,8 +143,10 @@ const GoalsCard = ({ uid }: { uid: string }) => {
             }));
 
             setFinanceGoals(formattedGoals);
+            onGoalsUpdate?.(formattedGoals);
         } catch (error) {
             message.error("Failed to fetch finance goals");
+            onGoalsUpdate?.([]);
         }
     };
 
@@ -149,28 +158,31 @@ const GoalsCard = ({ uid }: { uid: string }) => {
         number,
         { text: string; bgColor: string; textColor: string }
     > = {
-        0: { text: "Pending", bgColor: "#FFF4E5", textColor: "#D48806" },
-        1: { text: "Active", bgColor: "#E6F7FF", textColor: "#1890FF" },
-        2: { text: "Cancelled", bgColor: "#FFF1F0", textColor: "#CF1322" },
-        3: { text: "Completed", bgColor: "#F6FFED", textColor: "#389E0D" },
+        0: { text: "Pending", bgColor: "#fef3c7", textColor: "#d97706" },
+        1: { text: "Active", bgColor: "#dbeafe", textColor: "#2563eb" },
+        2: { text: "Cancelled", bgColor: "#fecaca", textColor: "#dc2626" },
+        3: { text: "Completed", bgColor: "#d1fae5", textColor: "#059669" },
     };
 
     const renderGoalCard = (goal: FinanceGoal) => {
         const { text, bgColor, textColor } = statusMap[goal.goal_status] || statusMap[0];
+        const progress = (goal.saved_amount / goal.target_amount) * 100;
 
         return (
             <div
                 key={goal.id}
                 style={{
                     background: "#fff",
-                    borderRadius: 12,
-                    padding: "1rem",
-                    // boxShadow: "0 4px 12px rgba(0, 0, 0, 0.05)",
+                    borderRadius: 10,
+                    padding: "12px",
+                    border: "1px solid #e5e7eb",
+                    boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
                     transition: "transform 0.2s ease, box-shadow 0.2s ease",
                     cursor: "pointer",
+                    fontFamily: FONT_FAMILY,
                 }}
                 onMouseEnter={(e) =>
-                    (e.currentTarget.style.transform = "translateY(-4px)")
+                    (e.currentTarget.style.transform = "translateY(-2px)")
                 }
                 onMouseLeave={(e) => (e.currentTarget.style.transform = "translateY(0)")}
             >
@@ -178,110 +190,156 @@ const GoalsCard = ({ uid }: { uid: string }) => {
                     style={{
                         display: "flex",
                         justifyContent: "space-between",
-                        alignItems: "center",
-                        marginBottom: "0.5rem",
+                        alignItems: "flex-start",
+                        marginBottom: "8px",
                     }}
                 >
-                    <div style={{ display: "flex", alignItems: "center" }}>
-                        {/* <Button
-              type="link"
-              icon={<EditOutlined />}
-              onClick={() => handleEditClick(goal)}
-              style={{ color: "#1890FF", fontSize: "0.9rem", padding: "0 8px 0 0" }}
-            /> */}
+                    <div style={{ display: "flex", alignItems: "flex-start", flex: 1 }}>
                         <span
                             style={{
                                 fontWeight: 600,
-                                fontSize: "1rem",
-                                color: "#1f2a44",
+                                fontSize: "14px",
+                                color: "#111827",
+                                fontFamily: FONT_FAMILY,
+                                lineHeight: 1.3,
                             }}
                         >
                             {goal.name}
                             <br />
                             <span
                                 style={{
-                                    fontSize: "0.75rem",
-                                    padding: "0.25rem 0.5rem",
-                                    borderRadius: 6,
+                                    fontSize: "11px",
+                                    padding: "2px 6px",
+                                    borderRadius: 4,
                                     backgroundColor: bgColor,
                                     color: textColor,
                                     fontWeight: 500,
+                                    marginTop: "4px",
+                                    display: "inline-block",
                                 }}
                             >
                                 {text}
                             </span>
-                            {/* <br /> */}
                         </span>
-                        {/* <Button
-              type="link"
-              icon={<EditOutlined />}
-              onClick={() => handleEditClick(goal)}
-              style={{ color: "#1890FF", fontSize: "0.9rem", padding: "0 8px 0 0" }}
-            /> */}
                     </div>
-                    {/* <span
-            style={{
-              fontSize: "0.75rem",
-              padding: "0.25rem 0.5rem",
-              borderRadius: 6,
-              backgroundColor: bgColor,
-              color: textColor,
-              fontWeight: 500,
-            }}
-          >
-            {text}
-          </span> */}
                     <Button
                         type="link"
                         icon={<EditOutlined />}
                         onClick={() => handleEditClick(goal)}
-                        style={{ color: "#1890FF", fontSize: "0.9rem", padding: "0 8px 0 0" }}
+                        style={{
+                            color: "#6b7280",
+                            fontSize: "12px",
+                            padding: "0 4px",
+                            minWidth: 'auto',
+                            fontFamily: FONT_FAMILY
+                        }}
                     />
                 </div>
                 <div
                     style={{
                         display: "flex",
                         justifyContent: "space-between",
-                        fontSize: "0.85rem",
-                        color: "#555",
+                        fontSize: "12px",
+                        color: "#6b7280",
                         fontWeight: 500,
-                        marginBottom: "0.5rem",
+                        marginBottom: "6px",
+                        fontFamily: FONT_FAMILY,
                     }}
                 >
                     <span>Saved: ${goal.saved_amount.toLocaleString()}</span>
                     <span>Target: ${goal.target_amount.toLocaleString()}</span>
                 </div>
-                {goal.deadline && (
+                {/* Progress Bar */}
+                <div
+                    style={{
+                        width: '100%',
+                        height: 4,
+                        background: '#f3f4f6',
+                        borderRadius: 2,
+                        marginBottom: 6,
+                        overflow: 'hidden',
+                    }}
+                >
                     <div
                         style={{
-                            fontSize: "0.75rem",
-                            color: "#888",
-                            marginTop: "0.25rem",
+                            width: `${Math.min(progress, 100)}%`,
+                            height: '100%',
+                            background: progress >= 100 ? '#10b981' : '#3b82f6',
+                            borderRadius: 2,
+                            transition: 'width 0.3s ease',
                         }}
-                    >
-                        Deadline: {dayjs(goal.deadline).format("MMM YYYY")}
-                    </div>
-                )}
+                    />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 10, color: '#9ca3af', fontFamily: FONT_FAMILY }}>
+                        {progress.toFixed(1)}% complete
+                    </span>
+                    {goal.deadline && (
+                        <span
+                            style={{
+                                fontSize: "10px",
+                                color: "#9ca3af",
+                                fontFamily: FONT_FAMILY,
+                            }}
+                        >
+                            {dayjs(goal.deadline).format("MMM YYYY")}
+                        </span>
+                    )}
+                </div>
             </div>
         );
     };
 
+    const EmptyGoalsTemplate = () => (
+        <div
+            style={{
+                background: "linear-gradient(145deg, #f0f9ff, #e0f2fe)",
+                borderRadius: 12,
+                padding: "20px",
+                textAlign: "center",
+                border: "1px solid #bae6fd",
+                cursor: "pointer",
+            }}
+            onClick={openModal}
+        >
+            {/* <Target size={32} style={{ color: "#3b82f6", marginBottom: 8 }} /> */}
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#111827", marginBottom: 4, fontFamily: FONT_FAMILY }}>
+                Set Your First Goal
+            </div>
+            <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 12, fontFamily: FONT_FAMILY }}>
+                Start saving for what matters most
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <span style={{ background: '#dbeafe', padding: '2px 6px', borderRadius: 4, fontSize: 10, color: '#2563eb' }}>
+                    🏠 House
+                </span>
+                <span style={{ background: '#dcfce7', padding: '2px 6px', borderRadius: 4, fontSize: 10, color: '#16a34a' }}>
+                    🚗 Car
+                </span>
+                <span style={{ background: '#fef3c7', padding: '2px 6px', borderRadius: 4, fontSize: 10, color: '#d97706' }}>
+                    ✈️ Vacation
+                </span>
+            </div>
+        </div>
+    );
+
     return (
         <div
             style={{
-                background: "linear-gradient(145deg, #ffffff, #f9fafb)",
-                borderRadius: 16,
-                padding: "1.5rem",
-                boxShadow: "0 8px 24px rgba(0, 0, 0, 0.1)",
+                background: "linear-gradient(145deg, #ffffff, #f8fafc)",
+                borderRadius: 12,
+                padding: "16px",
+                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06)",
                 maxWidth: "100%",
-                width: "min(400px, 90vw)",
-                // minHeight: financeGoals.length === 2 ? "200px" : "716px",
-                maxHeight: "208vh",
+                width: "min(380px, 90vw)",
+                maxHeight: financeGoals.length === 0 ? "auto" : "195vh",
                 overflow: "hidden",
                 transition: "all 0.3s ease",
-                margin: "20px",
+                margin: "12px",
                 display: "flex",
                 flexDirection: "column",
+                border: "1px solid #e2e8f0",
+                fontFamily: FONT_FAMILY,
             }}
         >
             <div
@@ -289,31 +347,35 @@ const GoalsCard = ({ uid }: { uid: string }) => {
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
-                    marginBottom: "1rem",
-                    fontSize: "1.25rem",
-                    fontWeight: 700,
-                    color: "#1f2a44",
+                    marginBottom: "12px",
+                    fontSize: "16px",
+                    fontWeight: 600,
+                    color: "#111827",
                     position: "sticky",
                     top: 0,
-                    background: "linear-gradient(145deg, #ffffff, #f9fafb)",
+                    background: "linear-gradient(145deg, #ffffff, #f8fafc)",
                     zIndex: 10,
-                    padding: "0.5rem 0",
+                    padding: "8px 0",
+                    fontFamily: FONT_FAMILY,
                 }}
             >
                 <span>Financial Goals</span>
                 <Button
                     type="primary"
                     shape="circle"
-                    icon={<PlusOutlined />}
+                    icon={<PlusOutlined style={{ fontSize: '12px' }} />}
                     onClick={openModal}
+                    size="small"
                     style={{
-                        background: "#1890FF",
+                        background: "#2563eb",
                         border: "none",
-                        boxShadow: "0 2px 8px rgba(24, 144, 255, 0.3)",
+                        boxShadow: "0 1px 2px rgba(37, 99, 235, 0.3)",
                         transition: "transform 0.2s ease",
+                        width: '28px',
+                        height: '28px',
                     }}
                     onMouseEnter={(e) =>
-                        (e.currentTarget.style.transform = "scale(1.1)")
+                        (e.currentTarget.style.transform = "scale(1.05)")
                     }
                     onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
                 />
@@ -324,20 +386,13 @@ const GoalsCard = ({ uid }: { uid: string }) => {
                     flex: 1,
                     overflowY: "auto",
                     display: "grid",
-                    gap: "1rem",
+                    gap: "10px",
                     gridTemplateColumns: "1fr",
                 }}
             >
                 {financeGoals.length === 0 ? (
-                    <div
-                        style={{
-                            textAlign: "center",
-                            color: "#888",
-                            fontSize: "0.9rem",
-                            padding: "1rem",
-                        }}
-                    >
-                        No goals yet. Add one to get started!
+                    <div style={{ height: "200px" }}>
+                        <EmptyGoalsTemplate />
                     </div>
                 ) : (
                     financeGoals.slice(0, 3).map((goal) => renderGoalCard(goal))
@@ -348,13 +403,17 @@ const GoalsCard = ({ uid }: { uid: string }) => {
                 <div
                     style={{
                         textAlign: "center",
-                        padding: "1rem 0",
+                        padding: "12px 0",
                         position: "sticky",
                         bottom: 0,
-                        background: "linear-gradient(145deg, #ffffff, #f9fafb)",
+                        background: "linear-gradient(145deg, #ffffff, #f8fafc)",
                     }}
                 >
-                    <Button type="link" onClick={openViewMoreModal}>
+                    <Button
+                        type="link"
+                        onClick={openViewMoreModal}
+                        style={{ fontFamily: FONT_FAMILY, fontSize: '13px', padding: 0 }}
+                    >
                         View More
                     </Button>
                 </div>
@@ -369,23 +428,23 @@ const GoalsCard = ({ uid }: { uid: string }) => {
                 okText="Add Goal"
                 width="min(90vw, 400px)"
                 style={{ top: 20 }}
-                bodyStyle={{ padding: "1.5rem" }}
+                bodyStyle={{ padding: "20px", fontFamily: FONT_FAMILY }}
             >
-                <Form form={goalForm} layout="vertical" style={{ fontSize: "0.9rem" }}>
+                <Form form={goalForm} layout="vertical" style={{ fontSize: "14px", fontFamily: FONT_FAMILY }}>
                     <Form.Item
                         name="name"
-                        label="Goal Name"
+                        label={<span style={{ fontFamily: FONT_FAMILY }}>Goal Name</span>}
                         rules={[{ required: true, message: "Please enter goal name" }]}
                     >
-                        <Input placeholder="e.g., New Car Fund" />
+                        <Input placeholder="e.g., New Car Fund" style={{ fontFamily: FONT_FAMILY }} />
                     </Form.Item>
                     <Form.Item
                         name="goal_status"
-                        label="Goal Status"
+                        label={<span style={{ fontFamily: FONT_FAMILY }}>Goal Status</span>}
                         initialValue={1}
                         rules={[{ required: true, message: "Please select a status" }]}
                     >
-                        <Select placeholder="Select status">
+                        <Select placeholder="Select status" style={{ fontFamily: FONT_FAMILY }}>
                             <Option value={0}>Pending</Option>
                             <Option value={1}>Active</Option>
                             <Option value={2}>Cancelled</Option>
@@ -394,27 +453,27 @@ const GoalsCard = ({ uid }: { uid: string }) => {
                     </Form.Item>
                     <Form.Item
                         name="target_amount"
-                        label="Target Amount"
+                        label={<span style={{ fontFamily: FONT_FAMILY }}>Target Amount</span>}
                         rules={[{ required: true, message: "Please enter target amount" }]}
                     >
                         <InputNumber
                             prefix="$"
-                            style={{ width: "100%" }}
+                            style={{ width: "100%", fontFamily: FONT_FAMILY }}
                             min={0}
                             placeholder="e.g., 10000"
                         />
                     </Form.Item>
-                    <Form.Item name="saved_amount" label="Saved Amount">
+                    <Form.Item name="saved_amount" label={<span style={{ fontFamily: FONT_FAMILY }}>Saved Amount</span>}>
                         <InputNumber
                             prefix="$"
-                            style={{ width: "100%" }}
+                            style={{ width: "100%", fontFamily: FONT_FAMILY }}
                             min={0}
                             placeholder="e.g., 5000"
                         />
                     </Form.Item>
-                    <Form.Item name="deadline" label="Deadline (optional)">
+                    <Form.Item name="deadline" label={<span style={{ fontFamily: FONT_FAMILY }}>Deadline (optional)</span>}>
                         <DatePicker
-                            style={{ width: "100%" }}
+                            style={{ width: "100%", fontFamily: FONT_FAMILY }}
                             placeholder="Select deadline"
                             format="YYYY-MM-DD"
                         />
@@ -431,22 +490,22 @@ const GoalsCard = ({ uid }: { uid: string }) => {
                 okText="Update Goal"
                 width="min(90vw, 400px)"
                 style={{ top: 20 }}
-                bodyStyle={{ padding: "1.5rem" }}
+                bodyStyle={{ padding: "20px", fontFamily: FONT_FAMILY }}
             >
-                <Form form={editForm} layout="vertical" style={{ fontSize: "0.9rem" }}>
+                <Form form={editForm} layout="vertical" style={{ fontSize: "14px", fontFamily: FONT_FAMILY }}>
                     <Form.Item
                         name="name"
-                        label="Goal Name"
+                        label={<span style={{ fontFamily: FONT_FAMILY }}>Goal Name</span>}
                         rules={[{ required: true, message: "Please enter goal name" }]}
                     >
-                        <Input placeholder="e.g., New Car Fund" />
+                        <Input placeholder="e.g., New Car Fund" style={{ fontFamily: FONT_FAMILY }} />
                     </Form.Item>
                     <Form.Item
                         name="goal_status"
-                        label="Goal Status"
+                        label={<span style={{ fontFamily: FONT_FAMILY }}>Goal Status</span>}
                         rules={[{ required: true, message: "Please select a status" }]}
                     >
-                        <Select placeholder="Select status">
+                        <Select placeholder="Select status" style={{ fontFamily: FONT_FAMILY }}>
                             <Option value={0}>Pending</Option>
                             <Option value={1}>Active</Option>
                             <Option value={2}>Cancelled</Option>
@@ -455,27 +514,27 @@ const GoalsCard = ({ uid }: { uid: string }) => {
                     </Form.Item>
                     <Form.Item
                         name="target_amount"
-                        label="Target Amount"
+                        label={<span style={{ fontFamily: FONT_FAMILY }}>Target Amount</span>}
                         rules={[{ required: true, message: "Please enter target amount" }]}
                     >
                         <InputNumber
                             prefix="$"
-                            style={{ width: "100%" }}
+                            style={{ width: "100%", fontFamily: FONT_FAMILY }}
                             min={0}
                             placeholder="e.g., 10000"
                         />
                     </Form.Item>
-                    <Form.Item name="saved_amount" label="Saved Amount">
+                    <Form.Item name="saved_amount" label={<span style={{ fontFamily: FONT_FAMILY }}>Saved Amount</span>}>
                         <InputNumber
                             prefix="$"
-                            style={{ width: "100%" }}
+                            style={{ width: "100%", fontFamily: FONT_FAMILY }}
                             min={0}
                             placeholder="e.g., 5000"
                         />
                     </Form.Item>
-                    <Form.Item name="deadline" label="Deadline">
+                    <Form.Item name="deadline" label={<span style={{ fontFamily: FONT_FAMILY }}>Deadline</span>}>
                         <DatePicker
-                            style={{ width: "100%" }}
+                            style={{ width: "100%", fontFamily: FONT_FAMILY }}
                             placeholder="Select deadline"
                             format="YYYY-MM-DD"
                         />
@@ -491,12 +550,12 @@ const GoalsCard = ({ uid }: { uid: string }) => {
                 footer={null}
                 width="min(90vw, 600px)"
                 style={{ top: 20 }}
-                bodyStyle={{ padding: "1.5rem", maxHeight: "60vh", overflowY: "auto" }}
+                bodyStyle={{ padding: "20px", maxHeight: "60vh", overflowY: "auto", fontFamily: FONT_FAMILY }}
             >
                 <div
                     style={{
                         display: "grid",
-                        gap: "1rem",
+                        gap: "12px",
                         gridTemplateColumns: "1fr",
                     }}
                 >

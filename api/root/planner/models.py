@@ -1189,9 +1189,8 @@ class UpdateWeeklyTodos(Resource):
 class GetWeeklyGoals(Resource):
     @auth_required(isOptional=True)
     def get(self, uid, user):
-        goals = DBHelper.find_all(
-            "weekly_goals",
-            {"user_id": uid},
+        goals = DBHelper.find_with_or_and_array_match(
+            table_name="weekly_goals",
             select_fields=[
                 "id",
                 "goal",
@@ -1203,6 +1202,9 @@ class GetWeeklyGoals(Resource):
                 "google_calendar_id",
                 "synced_to_google",
             ],
+            uid=uid,
+            array_field="tagged_ids",
+            filters={"status": 1},
         )
         return {"status": 1, "payload": goals}
 
@@ -2028,3 +2030,375 @@ class DeletePlannerNotes(Resource):
             return {"status": 1, "message": "Note deleted successfully"}
         except Exception as e:
             return {"status": 0, "message": "Failed to delete note", "error": str(e)}
+
+
+class ShareGoal(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        try:
+            data = request.get_json(force=True)
+        except Exception as e:
+            return {"status": 0, "message": f"Invalid JSON: {str(e)}"}, 400
+
+        emails = data.get("email")
+        goal = data.get("goal")
+        tagged_members = data.get("tagged_members", [])
+
+        if not emails or not goal:
+            return {
+                "status": 0,
+                "message": "Both 'email' and 'goal' are required.",
+            }, 422
+
+        # Normalize email array
+        if isinstance(emails, str):
+            emails = [emails]
+
+        email_sender = EmailSender()
+        failures = []
+        notifications_created = []
+        resolved_tagged_ids = []
+
+        # 🧠 Resolve tagged user UIDs from emails
+        for member_email in tagged_members:
+            family_member = DBHelper.find_one(
+                "family_members",
+                filters={"email": member_email},
+                select_fields=["fm_user_id"],
+            )
+            if family_member and family_member["fm_user_id"]:
+                resolved_tagged_ids.append(family_member["fm_user_id"])
+
+        # 📧 Send emails
+        for email in emails:
+            success, msg = email_sender.send_goal_email(email, goal)
+            if not success:
+                failures.append((email, msg))
+
+        # 🔔 Create notifications
+        for member_email in tagged_members:
+            family_member = DBHelper.find_one(
+                "family_members",
+                filters={"email": member_email},
+                select_fields=["name", "email", "fm_user_id"],
+            )
+
+            if not family_member:
+                continue
+
+            receiver_uid = family_member.get("fm_user_id")
+            if not receiver_uid:
+                user_record = DBHelper.find_one(
+                    "users",
+                    filters={"email": family_member["email"]},
+                    select_fields=["uid"],
+                )
+                receiver_uid = user_record.get("uid") if user_record else None
+
+            if not receiver_uid:
+                continue
+
+            notification_data = {
+                "sender_id": uid,
+                "receiver_id": receiver_uid,
+                "message": f"{user['user_name']} tagged a goal '{goal.get('goal', 'Untitled')}' with you",
+                "task_type": "tagged",
+                "action_required": False,
+                "status": "unread",
+                "hub": None,
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
+                "metadata": {
+                    "goal": goal,
+                    "sender_name": user["user_name"],
+                    "tagged_member": {
+                        "name": family_member["name"],
+                        "email": family_member["email"],
+                    },
+                },
+            }
+
+            notif_id = DBHelper.insert(
+                "notifications", return_column="id", **notification_data
+            )
+            notifications_created.append(notif_id)
+
+        # 📝 Update tagged_ids in DB
+        if resolved_tagged_ids:
+            goal_record = DBHelper.find_one(
+                "weekly_goals", filters={"id": goal.get("id")}
+            )
+            if not goal_record:
+                return {
+                    "status": 0,
+                    "message": "Goal not found. Cannot tag members.",
+                }, 404
+
+            existing_ids = goal_record.get("tagged_ids") or []
+            combined_ids = list(set(existing_ids + resolved_tagged_ids))
+            pg_array_str = "{" + ",".join(f'"{str(i)}"' for i in combined_ids) + "}"
+
+            DBHelper.update_one(
+                table_name="weekly_goals",
+                filters={"id": goal.get("id")},
+                updates={"tagged_ids": pg_array_str},
+            )
+
+        if failures:
+            return {
+                "status": 0,
+                "message": f"Failed to send to {len(failures)} recipients",
+                "errors": failures,
+            }, 500
+
+        return {
+            "status": 1,
+            "message": f"Goal shared via email. {len(notifications_created)} notification(s) created.",
+            "payload": {"notifications_created": notifications_created},
+        }
+
+
+class GetWeeklyTodos(Resource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        todos = DBHelper.find_all(
+            "weekly_todos",
+            {"user_id": uid},
+            select_fields=[
+                "id",
+                "text",
+                "date",
+                "time",
+                "completed",
+                "priority",
+                "goal_id",
+                "google_calendar_id",
+                "synced_to_google",
+            ],
+        )
+        return {"status": 1, "payload": todos}
+
+
+class EmailSender:
+    def __init__(self):
+        self.smtp_server = SMTP_SERVER
+        self.smtp_port = SMTP_PORT
+        self.smtp_user = EMAIL_SENDER
+        self.smtp_password = EMAIL_PASSWORD
+
+    def send_goal_email(self, recipient_email, goal):
+        msg = EmailMessage()
+        msg["Subject"] = f"Shared Goal: {goal['title']}"
+        msg["From"] = self.smtp_user
+        msg["To"] = recipient_email
+
+        created = goal.get("created_at") or ""
+        if created:
+            created = created.split("T")[0]
+
+        msg.set_content(
+            f"""
+Hi there!
+
+I wanted to share this Goal with you:
+
+Title: {goal['title']}
+Date: {goal['date']}
+
+
+Best regards!
+""".strip()
+        )
+
+        try:
+            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
+                server.starttls()
+                server.login(self.smtp_user, self.smtp_password)
+                server.send_message(msg)
+            return True, "Email sent successfully"
+        except Exception as e:
+            return False, str(e)
+
+    def send_todo_email(self, recipient_email, todo):
+        msg = EmailMessage()
+        msg["Subject"] = f"Shared Todo: {todo['title']}"
+        msg["From"] = self.smtp_user
+        msg["To"] = recipient_email
+
+        created = todo.get("created_at") or ""
+        if created:
+            created = created.split("T")[0]
+
+        msg.set_content(
+            f"""
+Hi there!
+
+I wanted to share this Todo with you:
+
+Title: {todo['title']}
+Date: {todo['date']}
+priority: {todo['priority']}
+
+
+Best regards!
+""".strip()
+        )
+
+        try:
+            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
+                server.starttls()
+                server.login(self.smtp_user, self.smtp_password)
+                server.send_message(msg)
+            return True, "Email sent successfully"
+        except Exception as e:
+            return False, str(e)
+
+
+class ShareTodo(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        try:
+            data = request.get_json(force=True)
+        except Exception as e:
+            return {"status": 0, "message": f"Invalid JSON: {str(e)}"}, 400
+
+        emails = data.get("email")
+        todo = data.get("todo")
+        tagged_members = data.get("tagged_members", [])
+
+        if not emails or not todo:
+            return {
+                "status": 0,
+                "message": "Both 'email' and 'todo' are required.",
+            }, 422
+
+        # Normalize emails to list
+        if isinstance(emails, str):
+            emails = [emails]
+
+        email_sender = EmailSender()
+        failures = []
+        notifications_created = []
+
+        for email in emails:
+            success, message = email_sender.send_todo_email(email, todo)
+            if not success:
+                failures.append((email, message))
+
+        for member_identifier in tagged_members:
+            family_member = DBHelper.find_one(
+                "family_members",
+                filters={"user_id": uid, "email": member_identifier},
+                select_fields=["id", "name", "email", "fm_user_id"],
+            )
+
+            if not family_member:
+                continue
+
+            receiver_uid = family_member.get("fm_user_id")
+            if not receiver_uid:
+                user_record = DBHelper.find_one(
+                    "users",
+                    filters={"email": family_member["email"]},
+                    select_fields=["uid"],
+                )
+                receiver_uid = user_record.get("uid") if user_record else None
+
+            if not receiver_uid:
+                continue
+
+            notification_data = {
+                "sender_id": uid,
+                "receiver_id": receiver_uid,
+                "message": f"{user['user_name']} tagged a task '{todo.get('title', 'Untitled')}' with you",
+                "task_type": "tagged",
+                "action_required": False,
+                "status": "unread",
+                "hub": None,
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
+                "metadata": {
+                    "todo": todo,
+                    "sender_name": user["user_name"],
+                    "tagged_member": {
+                        "name": family_member["name"],
+                        "email": family_member["email"],
+                    },
+                },
+            }
+
+            notif_id = DBHelper.insert(
+                "notifications", return_column="id", **notification_data
+            )
+            notifications_created.append(notif_id)
+
+        if failures:
+            return {
+                "status": 0,
+                "message": f"Failed to send to {len(failures)} recipients",
+                "errors": failures,
+            }, 500
+
+        return {
+            "status": 1,
+            "message": f"Todo shared via email. {len(notifications_created)} notification(s) created.",
+            "payload": {"notifications_created": notifications_created},
+        }
+
+
+class DeleteWeeklyGoal(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        data = request.get_json(silent=True)
+        goal_id = data.get("id")
+
+        if not goal_id:
+            return {"status": 0, "message": "Goal ID is required", "payload": {}}
+
+        try:
+            DBHelper.update_one(
+                table_name="weekly_goals",
+                filters={"id": goal_id, "user_id": uid},
+                updates={"is_active": 0},
+            )
+            return {
+                "status": 1,
+                "message": "Weekly goal deleted successfully",
+                "payload": {},
+            }
+        except Exception as e:
+            print("Error deleting weekly goal:", e)
+            return {
+                "status": 0,
+                "message": "Failed to delete weekly goal",
+                "payload": {},
+            }
+
+
+class DeleteWeeklyTodo(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        data = request.get_json(silent=True)
+        todo_id = data.get("id")
+
+        if not todo_id:
+            return {"status": 0, "message": "Todo ID is required", "payload": {}}
+
+        try:
+            DBHelper.update_one(
+                table_name="weekly_todos",  # ✅ your todo table
+                filters={"id": todo_id, "user_id": uid},
+                updates={"is_active": 0},  # Using is_active column from schema
+            )
+            return {
+                "status": 1,
+                "message": "Weekly todo deleted successfully",
+                "payload": {},
+            }
+        except Exception as e:
+            print("Error deleting weekly todo:", e)
+            return {
+                "status": 0,
+                "message": "Failed to delete weekly todo",
+                "payload": {},
+            }

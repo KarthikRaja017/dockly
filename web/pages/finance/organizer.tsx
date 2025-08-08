@@ -1,6 +1,3 @@
-
-
-
 "use client";
 import React, { useEffect, useState } from "react";
 import { Tabs, Typography } from "antd";
@@ -19,6 +16,8 @@ import GoalsCard from "./goalcard";
 import RecurringTransactions from "./recurringTransactions";
 import { DollarSign } from "lucide-react";
 import DocklyLoader from "../../utils/docklyLoader";
+
+const FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 
 const { Text, Title } = Typography;
 
@@ -52,17 +51,17 @@ const FinanceTabs = () => {
       key: "1",
       children: (
         <>
-          <div style={{ display: "flex" }}>
+          <div style={{ display: "flex", gap: "16px", marginBottom: "16px" }}>
             {bankDetails && <CashFlow bankDetails={bankDetails} />}
           </div>
-          <div style={{ display: "flex" }}>
-            <div style={{ width: 950 }}>
+          <div style={{ display: "flex", marginBottom: "16px" }}>
+            <div style={{ width: 890 }}>
               <MonthlyBudget uid={""} />
             </div>
             <GoalsCard uid={""} />
           </div>
-          <div style={{ display: "flex" }}>
-            <div style={{ width: "100%" }}>
+          <div style={{ display: "flex", marginBottom: "16px" }}>
+            <div style={{ width: 920 }}>
               <RecentTransactions onViewAll={goToTransactionsTab} />
             </div>
             <RecurringTransactions />
@@ -100,15 +99,15 @@ const FinanceTabs = () => {
         </div>
       ),
     },
-    {
-      label: "Reports",
-      key: "5",
-      children: (
-        <div>
-          <h3 style={{ textAlign: "center" }}>Reports Section (Coming Soon)</h3>
-        </div>
-      ),
-    },
+    // {
+    //   label: "Reports",
+    //   key: "5",
+    //   children: (
+    //     <div>
+    //       <h3 style={{ textAlign: "center", fontFamily: FONT_FAMILY, color: "#6b7280", fontWeight: 500 }}>Reports Section (Coming Soon)</h3>
+    //     </div>
+    //   ),
+    // },
   ];
 
   if (loading) {
@@ -116,29 +115,24 @@ const FinanceTabs = () => {
   }
 
   return (
-    <div style={{ margin: "65px 10px 10px 60px" }}>
-      {/* <Title level={2} style={{ marginBottom: "20px", marginLeft: 40 }}>
-        Financesss
-      </Title> */}
+    <div style={{ margin: "60px 16px 16px 48px", fontFamily: FONT_FAMILY, background: "#fafafa" }}>
       <BoardTitle />
       <div
         style={{
-          margin: 20,
-          padding: 20,
-          background: "#f7f9fb",
-          borderRadius: 16,
+          marginLeft: "38px",
         }}
       >
         <Tabs
           activeKey={activeKey}
           onChange={(key) => setActiveKey(key)}
-          tabBarGutter={30}
+          tabBarGutter={24}
           tabBarStyle={{
-            marginBottom: 24,
-            fontWeight: "500",
-            fontSize: 16,
+            marginBottom: 16,
+            fontWeight: "600",
+            fontSize: 14,
+            fontFamily: FONT_FAMILY,
           }}
-          size="large"
+          size="middle"
           animated
           items={items}
         />
@@ -149,43 +143,44 @@ const FinanceTabs = () => {
 
 export default FinanceTabs;
 
-
 const BoardTitle: React.FC = () => {
   return (
     <div
       style={{
         display: 'flex',
         alignItems: 'center',
-        // marginBottom: '24px',
-        padding: '16px',
+        padding: '12px 16px',
+        fontFamily: FONT_FAMILY,
       }}
     >
       <div
         style={{
-          width: '48px',
-          height: '48px',
-          // backgroundColor: '#e6f4ea',
-          color: '#2e7d32',
-          borderRadius: '12px',
+          width: '40px',
+          height: '40px',
+          color: '#059669',
+          borderRadius: '10px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          marginRight: '16px',
+          marginRight: '12px',
+          background: 'linear-gradient(145deg, #ecfdf5, #d1fae5)',
+          border: '1px solid #a7f3d0',
         }}
       >
-        {/* <DollarSign size={24} /> */}
+        💵
       </div>
       <h1
         style={{
-          fontSize: '24px',
-          fontWeight: 600,
-          color: '#1b1f23',
+          fontSize: '20px',
+          fontWeight: 700,
+          color: '#111827',
           margin: 0,
+          fontFamily: FONT_FAMILY,
+          letterSpacing: '-0.025em',
         }}
       >
-        💵Finance Board
+        Finance Board
       </h1>
     </div>
   );
 };
-

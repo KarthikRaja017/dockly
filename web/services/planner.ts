@@ -169,3 +169,39 @@ export async function getTasks(params: any) {
 export async function updateTask(params: any) {
   return api.post('/update/task', params);
 }
+
+export async function deleteWeeklyGoal(params: any) {
+  return api.post('/planner/delete/weekly-goals', params);
+}
+
+export async function shareGoal(params: {
+  email: string[];
+  goal: {
+    id?: string;
+    title: string;
+    date: string;
+    time?: string;
+    completed?: boolean;
+  };
+  tagged_members?: string[];
+}) {
+  return api.post('/share/goals', params);
+}
+
+export async function shareTodo(params: {
+  email: string[];
+  tagged_members?: string[];
+  todo: {
+    title: string;
+    created_at?: string;
+    time?: string;
+    priority?: 'high' | 'medium' | 'low';
+    completed?: boolean;
+  };
+}) {
+  return api.post('/share/todo', params);
+}
+
+export async function deleteWeeklyTodo(params: any) {
+  return api.post('/planner/delete/weekly-todos', params);
+}

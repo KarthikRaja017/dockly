@@ -246,7 +246,11 @@ class DBHelper:
                 set_conditions.append(
                     sql.SQL("{key} = %s").format(key=sql.Identifier(str(key)))
                 )
-                set_values.append(str(val) if val is not None else None)
+                if isinstance(val, (list, dict, tuple)):
+                    set_values.append(val)
+                else:
+                    # set_values.append(str(val) if val is not None else None)
+                    set_values.append(str(val) if val is not None else None)
 
             set_clause = sql.SQL(", ").join(set_conditions)
 
@@ -582,6 +586,65 @@ class DBHelper:
             else:
                 cur.execute(query)
 
+            return cur.fetchall()
+
+        except Exception as e:
+            raise e
+        finally:
+            if cur:
+                cur.close()
+            if conn:
+                postgres.release_connection(conn)
+
+    @staticmethod
+    def find_with_or_and_array_match(
+        table_name, select_fields, uid, array_field, filters=None, or_field="user_id"
+    ):
+        """
+        Finds records where `or_field` = uid OR uid is in array_field (e.g., tagged_ids)
+        Also supports additional AND filters like category, is_active, etc.
+
+        :param table_name: Table name
+        :param select_fields: List of columns to fetch
+        :param uid: Logged in user's ID
+        :param array_field: Array column name (e.g., tagged_ids)
+        :param filters: Optional dict of AND filters (e.g., {"is_active": True})
+        :param or_field: Field name for direct UID match (default = "user_id")
+        """
+        conn = None
+        cur = None
+        try:
+            conn = postgres.get_connection()
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+
+            columns_sql = sql.SQL(", ").join(map(sql.Identifier, select_fields))
+
+            # OR condition: (or_field = uid OR uid = ANY(array_field))
+            conditions = [
+                sql.SQL("({field} = %s OR %s = ANY({array_field}))").format(
+                    field=sql.Identifier(or_field),
+                    array_field=sql.Identifier(array_field),
+                )
+            ]
+            params = [uid, uid]
+
+            # Additional filters (AND conditions)
+            if filters:
+                for key, val in filters.items():
+                    conditions.append(
+                        sql.SQL("{key} = %s").format(key=sql.Identifier(key))
+                    )
+                    params.append(val)
+
+            where_clause = sql.SQL(" AND ").join(conditions)
+
+            query = sql.SQL("SELECT {fields} FROM {table} WHERE {where}").format(
+                fields=columns_sql,
+                table=sql.Identifier(table_name),
+                where=where_clause,
+            )
+
+            cur.execute(query, params)
             return cur.fetchall()
 
         except Exception as e:

@@ -46,7 +46,7 @@ const Notes: React.FC = () => {
     };
 
     useEffect(() => {
-        fetchNotes();
+        // fetchNotes();
     }, [uid]); // Depend on uid to refetch if it changes
 
     const showNoteModal = (note?: Note) => {

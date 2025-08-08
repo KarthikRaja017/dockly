@@ -6,6 +6,8 @@ from .models import (
     AddWeeklyGoals,
     AddWeeklyTodos,
     DeletePlannerNotes,
+    DeleteWeeklyGoal,
+    DeleteWeeklyTodo,
     FrequentNotes,
     GetPlanner,
     GetPlannerNotes,
@@ -14,6 +16,8 @@ from .models import (
     GetWeeklyTodos,
     AddWeeklyFocus,
     GetWeeklyFocus,
+    ShareGoal,
+    ShareTodo,
     UpdatePlannerNotes,
     UpdateWeeklyGoals,
     UpdateWeeklyTodos,
@@ -49,3 +53,7 @@ planner_api.add_resource(AddPlannerNotes, "/add/planner-notes")
 planner_api.add_resource(GetPlannerNotes, "/get/planner-notes")
 planner_api.add_resource(UpdatePlannerNotes, "/update/planner-notes")
 planner_api.add_resource(DeletePlannerNotes, "/delete/planner-notes")
+planner_api.add_resource(DeleteWeeklyGoal, "/delete/weekly-goals")
+planner_api.add_resource(ShareGoal, "/share/goals")
+planner_api.add_resource(DeleteWeeklyTodo, "/delete/weekly-todos")
+planner_api.add_resource(ShareTodo, "/share/todo")

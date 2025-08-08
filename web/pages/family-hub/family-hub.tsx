@@ -40,6 +40,7 @@ interface FamilyMember {
     initials: string;
     status?: 'pending' | 'accepted';
     isPet?: boolean;
+    user_id?: string;
 }
 
 const FamilyHubPage: React.FC = () => {
@@ -124,7 +125,10 @@ const FamilyHubPage: React.FC = () => {
                             type: 'family',
                             color,
                             initials,
+                            user_id: member.user_id,
                             status: member.status || 'accepted',
+                            sharedItems: member.sharedItems || {},
+                            permissions: member.permissions || {},
                         };
                     });
 
@@ -281,10 +285,10 @@ const FamilyHubPage: React.FC = () => {
                         <>
                             <Row gutter={12} style={{ marginBottom: '16px' }}>
                                 <Col xs={24} lg={12}>
-                                    <TodaysSchedule />
+                                    <TodaysSchedule familyMembers={familyMembers} />
                                 </Col>
                                 <Col xs={24} lg={12}>
-                                    <WeekHighlights />
+                                    <WeekHighlights familyMembers={familyMembers} />
                                 </Col>
                             </Row>
 

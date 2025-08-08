@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -19,6 +18,7 @@ import {
     Empty,
     Badge,
     Tooltip,
+    Checkbox,
 } from "antd";
 import {
     PlusOutlined,
@@ -45,8 +45,13 @@ import {
     updateNoteCategory,
     deleteNote,
     shareNote,
+    getUsersFamilyMembers,
 } from "../../../services/family";
 import DocklyLoader from "../../../utils/docklyLoader";
+import { shareBookmarks } from "../../../services/bookmarks";
+
+const FONT_FAMILY =
+    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -58,6 +63,7 @@ interface Note {
     created_at?: string;
     updated_at?: string;
     hub?: string;
+    hubs?: string[]; // Array of hubs for multi-hub notes
 }
 
 interface Category {
@@ -98,7 +104,11 @@ const suggestedCategories = [
     { label: "🎨 Hobbies & Crafts", value: "Hobbies & Crafts", icon: "🎨" },
     { label: "📞 Contacts & Info", value: "Contacts & Info", icon: "📞" },
     { label: "🌱 Garden & Plants", value: "Garden & Plants", icon: "🌱" },
-    { label: "🎓 Education & Learning", value: "Education & Learning", icon: "🎓" },
+    {
+        label: "🎓 Education & Learning",
+        value: "Education & Learning",
+        icon: "🎓",
+    },
     { label: "💻 Technology & Apps", value: "Technology & Apps", icon: "💻" },
     { label: "✈ Travel & Vacation", value: "Travel & Vacation", icon: "✈" },
     { label: "🔧 Home Improvement", value: "Home Improvement", icon: "🔧" },
@@ -110,75 +120,50 @@ const suggestedCategories = [
     { label: "Others", value: "Others", icon: "✍" },
 ];
 
-const categoryColorMap: Record<string, string> = {
-    "Important Notes": "#ef4444",
-    "House Rules & Routines": "#10b981",
-    "Shopping Lists": "#3b82f6",
-    "Birthday & Gift Ideas": "#ec4899",
-    "Meal Ideas & Recipes": "#8b5cf6",
-    "Budget & Finance": "#f59e0b",
-    "Health & Medical": "#dc2626",
-    "Car & Maintenance": "#374151",
-    "Goals & Plans": "#7c3aed",
-    "Books & Movies": "#059669",
-    "Fitness & Exercise": "#ea580c",
-    "Cleaning & Chores": "#0891b2",
-    "Family Events": "#be185d",
-    "Hobbies & Crafts": "#9333ea",
-    "Contacts & Info": "#0d9488",
-    "Garden & Plants": "#16a34a",
-    "Education & Learning": "#2563eb",
-    "Technology & Apps": "#6b7280",
-    "Travel & Vacation": "#0ea5e9",
-    "Home Improvement": "#a16207",
-    "Work & Projects": "#4338ca",
-    "Party Planning": "#db2777",
-    "Pet Care": "#15803d",
-    "Kids Activities": "#dc2626",
-    "Ideas & Inspiration": "#7c2d12",
-};
+// Unified colors for all categories
+const categoryColors = { bg: "#f8fafc", text: "#475569", border: "#e2e8f0" };
 
 const hubOptions = [
-    { label: " All Hubs", value: "ALL" },
     { label: " Family", value: "FAMILY" },
     { label: " Finance", value: "FINANCE" },
     { label: " Planner", value: "PLANNER" },
     { label: " Health", value: "HEALTH" },
     { label: " Home", value: "HOME" },
+    { label: " None (Utilities)", value: "NONE" },
 ];
 
 const getHubDisplayName = (hub: string): string => {
     const hubNames: Record<string, string> = {
-        ALL: "All Hubs",
         FAMILY: "Family",
         FINANCE: "Finance",
         PLANNER: "Planner",
         HEALTH: "Health",
         HOME: "Home",
+        NONE: "Utilities",
     };
     return hubNames[hub] || hub;
 };
 
 const getHubIcon = (hub: string): string => {
     const hubIcons: Record<string, string> = {
-        ALL: "🌟",
         FAMILY: "",
         FINANCE: "",
         PLANNER: "",
         HEALTH: "",
         HOME: "",
+        NONE: "",
     };
     return hubIcons[hub] || "";
 };
 
 const getHubColor = (hub: string): string => {
     const hubColors: Record<string, string> = {
-        ALL: "#722ed1",
-        FAMILY: "#10b981",
-        FINANCE: "#f59e0b",
-        PLANNER: "#3b82f6",
-        HEALTH: "#ef4444",
-        HOME: "#8b5cf6",
+        FAMILY: "#eb2f96",
+        FINANCE: "#13c2c2",
+        PLANNER: "#9254de",
+        HEALTH: "#f5222d",
+        HOME: "#fa8c16",
+        NONE: "#6b7280",
     };
     return hubColors[hub] || "#6b7280";
 };
@@ -206,13 +191,8 @@ const categoryIdMapReverse: Record<number, string> = Object.entries(
     return acc;
 }, {} as Record<number, string>);
 
-const stringToColor = (str: string): string => {
-    let hash = 0;
-    for (let i = 0; str.length > i; i++) {
-        hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const color = Math.abs(hash).toString(16).substring(0, 6);
-    return `#${color.padStart(6, "0")}`;
+const getCategoryColors = (categoryTitle: string) => {
+    return categoryColors; // Return same colors for all categories
 };
 
 const IntegratedNotes = () => {
@@ -220,23 +200,32 @@ const IntegratedNotes = () => {
     const [loading, setLoading] = useState<boolean>(false);
     const [refreshing, setRefreshing] = useState<boolean>(false);
     const [newCategoryModal, setNewCategoryModal] = useState<boolean>(false);
-    const [selectedCategoryOption, setSelectedCategoryOption] = useState<string>("");
+    const [selectedCategoryOption, setSelectedCategoryOption] =
+        useState<string>("");
     const [customCategoryName, setCustomCategoryName] = useState<string>("");
     const [showAllCategories, setShowAllCategories] = useState<boolean>(false);
     const [searchTerm, setSearchTerm] = useState<string>("");
     const [tempNote, setTempNote] = useState<Note | null>(null);
     const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
     const [addNoteModalVisible, setAddNoteModalVisible] = useState(false);
-    const [currentCategoryId, setCurrentCategoryId] = useState<number | null>(null);
+    const [currentCategoryId, setCurrentCategoryId] = useState<number | null>(
+        null
+    );
     const [currentCategoryTitle, setCurrentCategoryTitle] = useState<string>("");
     const [form] = Form.useForm();
     const [totalNotes, setTotalNotes] = useState<number>(0);
     const [shareModalVisible, setShareModalVisible] = useState(false);
     const [shareForm] = Form.useForm();
     const [currentShareNote, setCurrentShareNote] = useState<Note | null>(null);
+    const [tagModalVisible, setTagModalVisible] = useState(false);
+    const [currentTagItem, setCurrentTagItem] = useState<any>(null);
+    const [familyMembers, setFamilyMembers] = useState([]);
+    const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+    const [selectedHubs, setSelectedHubs] = useState<string[]>([]);
 
     useEffect(() => {
         fetchCategoriesAndNotes();
+        fetchFamilyMembers();
     }, []);
 
     const fetchCategoriesAndNotes = async (showRefresh = false) => {
@@ -249,12 +238,19 @@ const IntegratedNotes = () => {
 
             console.log("🚀 Fetching all notes and categories...");
 
-            // Fetch from all hubs
-            const hubsToFetch = ["FAMILY", "FINANCE", "PLANNER", "HEALTH", "HOME"];
+            // Fetch from all hubs including utilities (NONE)
+            const hubsToFetch = [
+                "FAMILY",
+                "FINANCE",
+                "PLANNER",
+                "HEALTH",
+                "HOME",
+                "NONE",
+            ];
 
             const [categoriesRes, ...notesResponses] = await Promise.all([
                 getNoteCategories(),
-                ...hubsToFetch.map(hub => getAllNotes(hub))
+                ...hubsToFetch.map((hub) => getAllNotes(hub)),
             ]);
 
             console.log("📊 API Responses:", { categoriesRes, notesResponses });
@@ -266,17 +262,37 @@ const IntegratedNotes = () => {
 
             const categoriesPayload: ApiCategory[] = categoriesRes.data.payload || [];
 
-            // Combine all notes from all hubs
+            // Combine all notes from all hubs and group by title and description to merge duplicates
             const allNotes: ApiNote[] = [];
+            const noteMap = new Map<string, ApiNote & { hubs: string[] }>();
+
             hubsToFetch.forEach((hub, index) => {
                 const response = notesResponses[index];
                 if (response?.data?.status === 1 && response.data.payload) {
-                    const hubNotes = response.data.payload.map((note: ApiNote) => ({
-                        ...note,
-                        hub: hub // Ensure hub is set since backend doesn't return it
-                    }));
-                    allNotes.push(...hubNotes);
+                    response.data.payload.forEach((note: ApiNote) => {
+                        const noteKey = `${note.title}-${note.description}`;
+
+                        if (noteMap.has(noteKey)) {
+                            // Add hub to existing note
+                            const existingNote = noteMap.get(noteKey)!;
+                            if (!existingNote.hubs.includes(hub)) {
+                                existingNote.hubs.push(hub);
+                            }
+                        } else {
+                            // Create new note entry
+                            noteMap.set(noteKey, {
+                                ...note,
+                                hub: hub,
+                                hubs: [hub],
+                            });
+                        }
+                    });
                 }
+            });
+
+            // Convert map back to array
+            noteMap.forEach((note) => {
+                allNotes.push(note);
             });
 
             console.log("📋 Categories:", categoriesPayload);
@@ -314,7 +330,9 @@ const IntegratedNotes = () => {
                     catTitle = note.category_name;
                 } else {
                     // Find category by ID in fetched categories
-                    const foundCategory = categoriesPayload.find(cat => cat.id === note.category_id);
+                    const foundCategory = categoriesPayload.find(
+                        (cat) => cat.id === note.category_id
+                    );
                     if (foundCategory) {
                         catTitle = foundCategory.title;
                     }
@@ -330,7 +348,8 @@ const IntegratedNotes = () => {
                     description: note.description,
                     created_at: note.created_at,
                     updated_at: note.updated_at,
-                    hub: note.hub || "FAMILY",
+                    hub: note.hub || "NONE",
+                    hubs: (note as any).hubs || [note.hub || "NONE"],
                 };
 
                 groupedNotes[catTitle].unshift(noteItem);
@@ -364,7 +383,6 @@ const IntegratedNotes = () => {
             if (allNotes.length === 0) {
                 console.log("ℹ No notes found across all hubs");
             }
-
         } catch (error) {
             console.error("❌ Error fetching data:", error);
             message.error(
@@ -378,6 +396,17 @@ const IntegratedNotes = () => {
         } finally {
             setLoading(false);
             setRefreshing(false);
+        }
+    };
+
+    const fetchFamilyMembers = async () => {
+        try {
+            const res = await getUsersFamilyMembers({});
+            if (res.status) {
+                setFamilyMembers(res.payload.members || []);
+            }
+        } catch (error) {
+            message.error("Failed to fetch family members");
         }
     };
 
@@ -402,7 +431,7 @@ const IntegratedNotes = () => {
             });
 
             if (res.data.status === 1) {
-                message.success(`Category ${newPinnedStatus ? 'pinned' : 'unpinned'}`);
+                message.success(`Category ${newPinnedStatus ? "pinned" : "unpinned"}`);
                 fetchCategoriesAndNotes();
             } else {
                 message.error("Failed to update pin status");
@@ -465,7 +494,7 @@ const IntegratedNotes = () => {
                 title: tempNote.title,
                 description: tempNote.description,
                 category_id: categoryId as number,
-                hub: tempNote.hub || "FAMILY",
+                hub: tempNote.hub || "NONE",
             });
 
             if (res.data.status === 1) {
@@ -528,12 +557,11 @@ const IntegratedNotes = () => {
                     description: currentShareNote.description,
                     hub: currentShareNote.hub,
                     created_at: currentShareNote.created_at,
-                }
+                },
             });
             setShareModalVisible(false);
             shareForm.resetFields();
             setCurrentShareNote(null);
-
         } catch (err) {
             console.error("Error sharing note:", err);
             message.error("Failed to share note");
@@ -544,7 +572,7 @@ const IntegratedNotes = () => {
 
     const getNoteActionMenu = (note: Note) => {
         return (
-            <Menu>
+            <Menu style={{ fontFamily: FONT_FAMILY }}>
                 <Menu.Item
                     key="edit"
                     icon={<EditOutlined />}
@@ -564,6 +592,18 @@ const IntegratedNotes = () => {
                     }}
                 >
                     Share
+                </Menu.Item>
+                <Menu.Item
+                    key="tag"
+                    icon={<TagOutlined />}
+                    onClick={(e: any) => {
+                        e.domEvent?.stopPropagation();
+                        setCurrentTagItem(note); // or record/item depending on your variable
+                        setTagModalVisible(true);
+                        setSelectedMemberIds([]);
+                    }}
+                >
+                    Tag
                 </Menu.Item>
                 <Menu.Item
                     key="delete"
@@ -593,7 +633,7 @@ const IntegratedNotes = () => {
         setCurrentCategoryTitle(categoryTitle);
         setAddNoteModalVisible(true);
         form.resetFields();
-        form.setFieldsValue({ hub: "FAMILY" }); // Set default hub
+        setSelectedHubs([]); // Reset selected hubs
     };
 
     const handleAddNoteSubmit = async () => {
@@ -605,6 +645,13 @@ const IntegratedNotes = () => {
                 return;
             }
 
+            if (selectedHubs.length === 0) {
+                message.error(
+                    "Please select at least one hub or choose 'None' for utilities"
+                );
+                return;
+            }
+
             setLoading(true);
             const user_id = localStorage.getItem("userId") || "";
 
@@ -613,10 +660,8 @@ const IntegratedNotes = () => {
                 return;
             }
 
-            // Handle "ALL" hubs option
-            if (values.hub === "ALL") {
-                const allHubs = ["FAMILY", "FINANCE", "PLANNER", "HEALTH", "HOME"];
-                const addNotePromises = allHubs.map(hub =>
+            try {
+                const addNotePromises = selectedHubs.map((hub) =>
                     addNote({
                         title: values.title,
                         description: values.description,
@@ -626,50 +671,76 @@ const IntegratedNotes = () => {
                     })
                 );
 
-                try {
-                    const responses = await Promise.all(addNotePromises);
-                    const successCount = responses.filter(res => res.data.status === 1).length;
-                    const failureCount = allHubs.length - successCount;
+                const responses = await Promise.all(addNotePromises);
+                const successCount = responses.filter(
+                    (res) => res.data.status === 1
+                ).length;
+                const failureCount = selectedHubs.length - successCount;
 
-                    if (successCount === allHubs.length) {
-                        message.success(`Note added to all ${allHubs.length} hubs successfully! 🌟`);
-                    } else if (successCount > 0) {
-                        message.warning(`Note added to ${successCount} hubs, but failed for ${failureCount} hubs. Please check and try again.`);
-                    } else {
-                        message.error("Failed to add note to any hub");
-                        return;
-                    }
-
-                    setAddNoteModalVisible(false);
-                    await fetchCategoriesAndNotes();
-                    form.resetFields();
-
-                } catch (err) {
-                    console.error("Error adding note to all hubs:", err);
-                    message.error("Failed to add note to all hubs");
-                }
-            } else {
-                // Handle single hub
-                const res = await addNote({
-                    title: values.title,
-                    description: values.description,
-                    category_id: currentCategoryId,
-                    user_id,
-                    hub: values.hub,
-                });
-
-                if (res.data.status === 1) {
-                    message.success(`Note added to ${getHubDisplayName(values.hub)} successfully`);
-                    setAddNoteModalVisible(false);
-                    await fetchCategoriesAndNotes();
-                    form.resetFields();
+                if (successCount === selectedHubs.length) {
+                    const hubNames = selectedHubs
+                        .map((hub) => getHubDisplayName(hub))
+                        .join(", ");
+                    message.success(`Note added to ${hubNames} successfully! 📝`);
+                } else if (successCount > 0) {
+                    message.warning(
+                        `Note added to ${successCount} hubs, but failed for ${failureCount} hubs. Please check and try again.`
+                    );
                 } else {
-                    message.error("Failed to add note");
+                    message.error("Failed to add note to any hub");
+                    return;
                 }
+
+                setAddNoteModalVisible(false);
+                await fetchCategoriesAndNotes();
+                form.resetFields();
+                setSelectedHubs([]);
+            } catch (err) {
+                console.error("Error adding note:", err);
+                message.error("Failed to add note");
             }
         } catch (err) {
             console.error("Error adding note:", err);
             message.error("Failed to add note");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleTagSubmit = async () => {
+        if (!currentTagItem || selectedMemberIds.length === 0) {
+            message.warning("Please select members to tag.");
+            return;
+        }
+
+        const taggedMembers = familyMembers.filter((m: any) =>
+            selectedMemberIds.includes(m.id)
+        );
+
+        const emails = taggedMembers
+            .map((m: any) => m.email)
+            .filter((email: string) => !!email);
+
+        try {
+            setLoading(true);
+            for (const email of emails) {
+                await shareNote({
+                    email, // ✅ string
+                    note: {
+                        title: currentTagItem.title,
+                        description: currentTagItem.description,
+                        hub: currentTagItem.hub,
+                        created_at: currentTagItem.created_at,
+                    },
+                });
+            }
+            message.success("Note tagged successfully!");
+            setTagModalVisible(false);
+            setCurrentTagItem(null);
+            setSelectedMemberIds([]);
+        } catch (err) {
+            console.error("Tag failed:", err);
+            message.error("Failed to tag note.");
         } finally {
             setLoading(false);
         }
@@ -734,12 +805,14 @@ const IntegratedNotes = () => {
         }
     };
 
-    const filteredCategories = categories.filter((category) =>
-        category.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        category.items.some(note =>
-            note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            note.description.toLowerCase().includes(searchTerm.toLowerCase())
-        )
+    const filteredCategories = categories.filter(
+        (category) =>
+            category.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            category.items.some(
+                (note) =>
+                    note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    note.description.toLowerCase().includes(searchTerm.toLowerCase())
+            )
     );
 
     const displayedCategories = showAllCategories
@@ -747,439 +820,624 @@ const IntegratedNotes = () => {
         : filteredCategories.slice(0, 6);
 
     return (
-        <div style={{ minHeight: "100vh", padding: "100px 0", paddingLeft: 0 }}>
-            <div style={{ maxWidth: 1280, margin: "0 auto", marginLeft: "60px" }}>
+        <div
+            style={{
+                minHeight: "100vh",
+                padding: "75px 10px 20px 70px",
+                fontFamily: FONT_FAMILY,
+                maxWidth: "100%",
+                overflow: "hidden",
+            }}
+        >
+            <div
+                style={{
+                    maxWidth: "100%",
+                    margin: "0 auto",
+                    paddingLeft: 0,
+                    paddingRight: 0,
+                }}
+            >
                 {/* Header */}
                 <div
                     style={{
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
-                        marginBottom: 32,
+                        marginBottom: 20,
+                        flexWrap: "wrap",
+                        gap: 16,
                     }}
                 >
-                    <div>
-                        <Title level={2} style={{ margin: 0, color: "#333" }}>
-                            <FileTextOutlined style={{ marginRight: 12, color: "#1677ff" }} />
+                    <div style={{ flex: 1, minWidth: 300 }}>
+                        <Title
+                            level={2}
+                            style={{
+                                margin: 0,
+                                color: "#1a1a1a",
+                                fontSize: 28,
+                                fontFamily: FONT_FAMILY,
+                                fontWeight: 600,
+                            }}
+                        >
+                            <div
+                                style={{
+                                    width: 44,
+                                    height: 44,
+                                    backgroundColor: "#2563eb",
+                                    borderRadius: 12,
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    marginRight: 12,
+                                    fontSize: 18,
+                                }}
+                            >
+                                📝
+                            </div>
                             Notes & Lists
                             {totalNotes > 0 && (
                                 <Badge
                                     count={totalNotes}
                                     style={{
-                                        backgroundColor: "#1677ff",
+                                        backgroundColor: "#2563eb",
                                         marginLeft: 8,
-                                        fontSize: 12
+                                        fontSize: 11,
                                     }}
                                 />
                             )}
                         </Title>
-                        <Text style={{ color: "#666", fontSize: 16 }}>
-                            Organize your thoughts and keep track of important information across all your hubs
+                        <Text
+                            style={{
+                                color: "#6b7280",
+                                fontSize: 14,
+                                fontFamily: FONT_FAMILY,
+                                display: "block",
+                                marginTop: 4,
+                            }}
+                        >
+                            Organize your life efficiently
                         </Text>
                     </div>
-                    <div style={{ display: "flex", gap: 8 }}>
+                </div>
+
+                {/* Search Bar and Action Buttons Row */}
+                <Row gutter={16} style={{ marginBottom: 16, alignItems: "center" }}>
+                    <Col xs={24} sm={24} md={16} lg={18} xl={18}>
+                        <Input
+                            placeholder="Search categories or notes..."
+                            prefix={<SearchOutlined style={{ color: "#9ca3af" }} />}
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            style={{
+                                borderRadius: 8,
+                                height: 40,
+                                border: "1px solid #e5e7eb",
+                                backgroundColor: "white",
+                                fontSize: 14,
+                                fontFamily: FONT_FAMILY,
+                            }}
+                        />
+                    </Col>
+                    <Col
+                        xs={24}
+                        sm={24}
+                        md={8}
+                        lg={6}
+                        xl={6}
+                        style={{
+                            display: "flex",
+                            justifyContent: "flex-end",
+                            gap: 8,
+                        }}
+                    >
                         <Tooltip title="Refresh">
                             <Button
                                 icon={<ReloadOutlined />}
                                 onClick={handleRefresh}
                                 loading={refreshing}
                                 style={{
-                                    borderRadius: "12px",
+                                    borderRadius: 8,
+                                    height: 40,
+                                    border: "1px solid #e5e7eb",
+                                    fontFamily: FONT_FAMILY,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
                                 }}
                             />
                         </Tooltip>
-                        <Button
-                            type="primary"
-                            icon={<PlusOutlined />}
-                            onClick={() => setNewCategoryModal(true)}
-                            style={{
-                                borderRadius: "12px",
-                                background: "#1890ff",
-                                borderColor: "#1890ff",
-                                paddingRight: "100"
-                            }}
-                        >
-
-                        </Button>
-                    </div>
-                </div>
-
-                {/* Search Bar */}
-                <Row gutter={16} style={{ marginBottom: 24 }}>
-                    <Col xs={24} sm={16}>
-                        <Input
-                            placeholder="Search categories or notes..."
-                            prefix={<SearchOutlined style={{ color: "#999" }} />}
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            style={{
-                                borderRadius: 12,
-                                height: 44,
-                                border: "1px solid #e0e0e0",
-                                backgroundColor: "white",
-                                fontSize: 14,
-                            }}
-                        />
+                        <Tooltip title="Add category">
+                            <Button
+                                type="primary"
+                                icon={<PlusOutlined />}
+                                onClick={() => setNewCategoryModal(true)}
+                                style={{
+                                    borderRadius: 8,
+                                    height: 40,
+                                    background: "#2563eb",
+                                    borderColor: "#4f46e5",
+                                    fontFamily: FONT_FAMILY,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                }}
+                            />
+                        </Tooltip>
                     </Col>
                 </Row>
 
                 {/* Loading State */}
-                {loading && (
-                    <DocklyLoader />
-                )}
+                {loading && <DocklyLoader />}
 
                 {/* Categories Grid */}
                 {!loading && (
-                    <Row gutter={[20, 20]}>
-                        {displayedCategories.map((category, index) => (
-                            <Col key={index} xs={24} sm={12} lg={12} xl={8}>
-                                <div
-                                    style={{
-                                        borderRadius: 16,
-                                        padding: 20,
-                                        border: "1px solid #e0e0e0",
-                                        backgroundColor: "white",
-                                        cursor: "pointer",
-                                        height: 320,
-                                        minWidth: 400,
-                                        position: "relative",
-                                        transition: "all 0.3s ease",
-                                        boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-                                        display: "flex",
-                                        flexDirection: "column",
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.transform = "translateY(-4px)";
-                                        e.currentTarget.style.boxShadow = "0 8px 25px rgba(0,0,0,0.12)";
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.transform = "translateY(0)";
-                                        e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.06)";
-                                    }}
-                                >
+                    <Row gutter={[16, 16]}>
+                        {displayedCategories.map((category, index) => {
+                            const colors = getCategoryColors(category.title);
+                            return (
+                                <Col key={index} xs={24} sm={12} lg={12} xl={8}>
                                     <div
                                         style={{
+                                            borderRadius: 12,
+                                            padding: 16,
+                                            border: `1px solid ${colors.border}`,
+                                            backgroundColor: colors.bg,
+                                            cursor: "pointer",
+                                            height: 280,
+                                            position: "relative",
+                                            transition: "all 0.2s ease",
                                             display: "flex",
-                                            alignItems: "flex-start",
-                                            gap: 12,
-                                            marginBottom: 16,
+                                            flexDirection: "column",
+                                            fontFamily: FONT_FAMILY,
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.transform = "translateY(-2px)";
+                                            e.currentTarget.style.boxShadow =
+                                                "0 4px 12px rgba(0,0,0,0.08)";
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.transform = "translateY(0)";
+                                            e.currentTarget.style.boxShadow = "none";
                                         }}
                                     >
                                         <div
                                             style={{
-                                                width: 48,
-                                                height: 48,
-                                                background: `${categoryColorMap[category.title] ||
-                                                    stringToColor(category.title)
-                                                    }20`,
-                                                borderRadius: 14,
                                                 display: "flex",
-                                                justifyContent: "center",
-                                                alignItems: "center",
-                                                fontSize: 20,
+                                                alignItems: "flex-start",
+                                                gap: 10,
+                                                marginBottom: 12,
                                             }}
                                         >
-                                            {category.icon}
-                                        </div>
-                                        <div style={{ flex: 1 }}>
                                             <div
                                                 style={{
-                                                    fontWeight: 600,
-                                                    fontSize: 16,
-                                                    marginBottom: 4,
-                                                    color: "#333",
-                                                }}
-                                            >
-                                                {category.title}
-                                                {category.pinned && (
-                                                    <PushpinFilled
-                                                        style={{
-                                                            marginLeft: 8,
-                                                            color: "#1677ff",
-                                                            fontSize: 12
-                                                        }}
-                                                    />
-                                                )}
-                                            </div>
-                                            <div
-                                                style={{ display: "flex", alignItems: "center", gap: 6 }}
-                                            >
-                                                <TagOutlined style={{ fontSize: 12, color: "#999" }} />
-                                                <span style={{ color: "#666", fontSize: 12 }}>
-                                                    {category.items.length} notes
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Action buttons */}
-                                    <div
-                                        style={{
-                                            position: "absolute",
-                                            top: 16,
-                                            right: 16,
-                                            display: "flex",
-                                            gap: 8,
-                                        }}
-                                    >
-                                        <Button
-                                            type="primary"
-                                            icon={<PlusOutlined />}
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                showAddNoteModal(
-                                                    category.category_id || categoryIdMap[category.title] || 0,
-                                                    category.title
-                                                );
-                                            }}
-                                            style={{
-                                                borderRadius: "12px",
-                                                background: "#1890ff",
-                                                borderColor: "#1890ff",
-                                            }}
-                                        />
-                                        <Button
-                                            icon={
-                                                category.pinned ? <PushpinFilled /> : <PushpinOutlined />
-                                            }
-                                            onClick={(e) => togglePinCategory(category, e)}
-                                            type="text"
-                                            style={{
-                                                width: 30,
-                                                height: 30,
-                                                minWidth: 18,
-                                                padding: 0,
-                                                color: category.pinned ? "#1677ff" : "#999",
-                                                borderRadius: 8,
-                                            }}
-                                        />
-                                    </div>
-
-                                    {/* Notes Preview */}
-                                    <div style={{ flex: 1, overflow: "hidden", marginBottom: 16 }}>
-                                        {category.items.length === 0 ? (
-
-                                            <div
-                                                style={{
-
-                                                    textAlign: "center",
-                                                    color: "#999",
-                                                    height: "100%",
+                                                    width: 40,
+                                                    height: 40,
+                                                    background: "white",
+                                                    borderRadius: 10,
                                                     display: "flex",
-                                                    flexDirection: "column",
                                                     justifyContent: "center",
                                                     alignItems: "center",
+                                                    fontSize: 16,
+                                                    border: `1px solid ${colors.border}`,
                                                 }}
                                             >
-                                                <FileTextOutlined
-                                                    style={{ fontSize: 24, marginBottom: 8 }}
-                                                />
-                                                <Text style={{ fontSize: 12, color: "#999" }}>
-                                                    No notes yet
-                                                </Text>
-
+                                                {category.icon}
                                             </div>
-                                        ) : (
-                                            <div
-                                                style={{
-                                                    height: "100%",
-                                                    overflowY: "auto",
-                                                    paddingRight: 4,
-                                                }}
-                                            >
-                                                {category.items.map((note) => (
-                                                    <div
-                                                        key={note.id}
+                                            <div style={{ flex: 1 }}>
+                                                <div
+                                                    style={{
+                                                        fontWeight: 600,
+                                                        fontSize: 15,
+                                                        marginBottom: 2,
+                                                        color: colors.text,
+                                                        fontFamily: FONT_FAMILY,
+                                                    }}
+                                                >
+                                                    {category.title}
+                                                    {category.pinned && (
+                                                        <PushpinFilled
+                                                            style={{
+                                                                marginLeft: 6,
+                                                                color: colors.text,
+                                                                fontSize: 11,
+                                                            }}
+                                                        />
+                                                    )}
+                                                </div>
+                                                <div
+                                                    style={{
+                                                        display: "flex",
+                                                        alignItems: "center",
+                                                        gap: 4,
+                                                    }}
+                                                >
+                                                    <TagOutlined
+                                                        style={{ fontSize: 11, color: "#9ca3af" }}
+                                                    />
+                                                    <span
                                                         style={{
-                                                            padding: "8px 12px",
-                                                            backgroundColor: "#f8f9fa",
-                                                            borderRadius: 8,
-                                                            marginBottom: 6,
-                                                            fontSize: 12,
-                                                            position: "relative",
-                                                            border: `1px solid ${getHubColor(note.hub || "FAMILY")}20`,
+                                                            color: "#6b7280",
+                                                            fontSize: 11,
+                                                            fontFamily: FONT_FAMILY,
                                                         }}
-                                                        onDoubleClick={(e) => handleStartEdit(note, e)}
                                                     >
-                                                        {editingNoteId === note.id ? (
-                                                            <div onClick={(e) => e.stopPropagation()}>
-                                                                <Input
-                                                                    value={tempNote?.title || ""}
-                                                                    onChange={(e) =>
-                                                                        handleTempNoteChange("title", e.target.value)
-                                                                    }
-                                                                    style={{ marginBottom: 8 }}
-                                                                />
-                                                                <Input.TextArea
-                                                                    value={tempNote?.description || ""}
-                                                                    onChange={(e) =>
-                                                                        handleTempNoteChange("description", e.target.value)
-                                                                    }
-                                                                    maxLength={200}
-                                                                    style={{ marginBottom: 8 }}
-                                                                    rows={2}
-                                                                />
-                                                                <div
-                                                                    style={{
-                                                                        display: "flex",
-                                                                        justifyContent: "flex-end",
-                                                                        gap: 8,
-                                                                    }}
-                                                                >
-                                                                    <Button
-                                                                        size="small"
-                                                                        onClick={(e) => handleCancelEdit(e)}
-                                                                    >
-                                                                        Cancel
-                                                                    </Button>
-                                                                    <Button
-                                                                        type="primary"
-                                                                        size="small"
-                                                                        onClick={(e) => handleSaveEdit(note.id!, e)}
-                                                                        loading={loading}
-                                                                        disabled={
-                                                                            !tempNote?.title.trim() ||
-                                                                            !tempNote?.description.trim()
+                                                        {category.items.length} notes
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Action buttons */}
+                                        <div
+                                            style={{
+                                                position: "absolute",
+                                                top: 12,
+                                                right: 12,
+                                                display: "flex",
+                                                gap: 6,
+                                            }}
+                                        >
+                                            <Button
+                                                type="primary"
+                                                icon={<PlusOutlined />}
+                                                size="small"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    showAddNoteModal(
+                                                        category.category_id ||
+                                                        categoryIdMap[category.title] ||
+                                                        0,
+                                                        category.title
+                                                    );
+                                                }}
+                                                style={{
+                                                    borderRadius: 6,
+                                                    background: "#2563eb",
+                                                    borderColor: "#2563eb",
+                                                    fontSize: 11,
+                                                    height: 28,
+                                                    width: 28,
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                    padding: 0,
+                                                }}
+                                            />
+                                            <Button
+                                                icon={
+                                                    category.pinned ? (
+                                                        <PushpinFilled />
+                                                    ) : (
+                                                        <PushpinOutlined />
+                                                    )
+                                                }
+                                                onClick={(e) => togglePinCategory(category, e)}
+                                                type="text"
+                                                size="small"
+                                                style={{
+                                                    width: 28,
+                                                    height: 28,
+                                                    minWidth: 28,
+                                                    padding: 0,
+                                                    color: category.pinned ? colors.text : "#9ca3af",
+                                                    borderRadius: 6,
+                                                    fontSize: 11,
+                                                }}
+                                            />
+                                        </div>
+
+                                        {/* Notes Preview */}
+                                        <div
+                                            style={{ flex: 1, overflow: "hidden", marginBottom: 12 }}
+                                        >
+                                            {category.items.length === 0 ? (
+                                                <div
+                                                    style={{
+                                                        textAlign: "center",
+                                                        color: "#9ca3af",
+                                                        height: "100%",
+                                                        display: "flex",
+                                                        flexDirection: "column",
+                                                        justifyContent: "center",
+                                                        alignItems: "center",
+                                                    }}
+                                                >
+                                                    <FileTextOutlined
+                                                        style={{ fontSize: 20, marginBottom: 6 }}
+                                                    />
+                                                    <Text
+                                                        style={{
+                                                            fontSize: 11,
+                                                            color: "#9ca3af",
+                                                            fontFamily: FONT_FAMILY,
+                                                        }}
+                                                    >
+                                                        No notes yet
+                                                    </Text>
+                                                </div>
+                                            ) : (
+                                                <div
+                                                    style={{
+                                                        height: "100%",
+                                                        overflowY: "auto",
+                                                        paddingRight: 2,
+                                                    }}
+                                                >
+                                                    {category.items.map((note) => (
+                                                        <div
+                                                            key={note.id}
+                                                            style={{
+                                                                padding: "8px 10px",
+                                                                backgroundColor: "rgba(255,255,255,0.8)",
+                                                                borderRadius: 6,
+                                                                marginBottom: 4,
+                                                                fontSize: 11,
+                                                                position: "relative",
+                                                                border: `1px solid #e5e7eb`,
+                                                                fontFamily: FONT_FAMILY,
+                                                            }}
+                                                            onDoubleClick={(e) => handleStartEdit(note, e)}
+                                                        >
+                                                            {editingNoteId === note.id ? (
+                                                                <div onClick={(e) => e.stopPropagation()}>
+                                                                    <Input
+                                                                        value={tempNote?.title || ""}
+                                                                        onChange={(e) =>
+                                                                            handleTempNoteChange(
+                                                                                "title",
+                                                                                e.target.value
+                                                                            )
                                                                         }
+                                                                        style={{
+                                                                            marginBottom: 6,
+                                                                            fontSize: 11,
+                                                                            fontFamily: FONT_FAMILY,
+                                                                        }}
+                                                                        size="small"
+                                                                    />
+                                                                    <Input.TextArea
+                                                                        value={tempNote?.description || ""}
+                                                                        onChange={(e) =>
+                                                                            handleTempNoteChange(
+                                                                                "description",
+                                                                                e.target.value
+                                                                            )
+                                                                        }
+                                                                        maxLength={200}
+                                                                        style={{
+                                                                            marginBottom: 6,
+                                                                            fontSize: 11,
+                                                                            fontFamily: FONT_FAMILY,
+                                                                        }}
+                                                                        rows={2}
+                                                                    />
+                                                                    <div
+                                                                        style={{
+                                                                            display: "flex",
+                                                                            justifyContent: "flex-end",
+                                                                            gap: 6,
+                                                                        }}
                                                                     >
-                                                                        Save
-                                                                    </Button>
-                                                                </div>
-                                                            </div>
-                                                        ) : (
-                                                            <>
-                                                                <div
-                                                                    style={{
-                                                                        display: "flex",
-                                                                        justifyContent: "space-between",
-                                                                        alignItems: "flex-start",
-                                                                    }}
-                                                                >
-                                                                    <div style={{ flex: 1, paddingRight: 8 }}>
-                                                                        <div
-                                                                            style={{
-                                                                                fontWeight: 600,
-                                                                                marginBottom: 2,
-                                                                                color: "#333"
-                                                                            }}
-                                                                        >
-                                                                            {note.title}
-                                                                        </div>
-                                                                        <div style={{ color: "#666", lineHeight: 1.4 }}>
-                                                                            {note.description.substring(0, 60)}
-                                                                            {note.description.length > 60 && "..."}
-                                                                        </div>
-                                                                        {/* Hub badge */}
-                                                                        <div
+                                                                        <Button
+                                                                            size="small"
+                                                                            onClick={(e) => handleCancelEdit(e)}
                                                                             style={{
                                                                                 fontSize: 10,
-                                                                                marginTop: 4,
-                                                                                display: "flex",
-                                                                                alignItems: "center",
-                                                                                gap: 4,
+                                                                                fontFamily: FONT_FAMILY,
                                                                             }}
                                                                         >
+                                                                            Cancel
+                                                                        </Button>
+                                                                        <Button
+                                                                            type="primary"
+                                                                            size="small"
+                                                                            onClick={(e) =>
+                                                                                handleSaveEdit(note.id!, e)
+                                                                            }
+                                                                            loading={loading}
+                                                                            disabled={
+                                                                                !tempNote?.title.trim() ||
+                                                                                !tempNote?.description.trim()
+                                                                            }
+                                                                            style={{
+                                                                                fontSize: 10,
+                                                                                fontFamily: FONT_FAMILY,
+                                                                            }}
+                                                                        >
+                                                                            Save
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <>
+                                                                    <div
+                                                                        style={{
+                                                                            display: "flex",
+                                                                            justifyContent: "space-between",
+                                                                            alignItems: "flex-start",
+                                                                        }}
+                                                                    >
+                                                                        <div style={{ flex: 1, paddingRight: 6 }}>
+                                                                            <div
+                                                                                style={{
+                                                                                    fontWeight: 600,
+                                                                                    marginBottom: 2,
+                                                                                    color: "#374151",
+                                                                                    fontFamily: FONT_FAMILY,
+                                                                                    fontSize: 11,
+                                                                                }}
+                                                                            >
+                                                                                {note.title}
+                                                                            </div>
+                                                                            <div
+                                                                                style={{
+                                                                                    color: "#6b7280",
+                                                                                    lineHeight: 1.3,
+                                                                                    fontFamily: FONT_FAMILY,
+                                                                                    fontSize: 10,
+                                                                                    marginBottom: 4,
+                                                                                }}
+                                                                            >
+                                                                                {note.description.substring(0, 50)}
+                                                                                {note.description.length > 50 && "..."}
+                                                                            </div>
+                                                                        </div>
+                                                                        <Dropdown
+                                                                            overlay={getNoteActionMenu(note)}
+                                                                            trigger={["click"]}
+                                                                            placement="bottomRight"
+                                                                        >
+                                                                            <Button
+                                                                                type="text"
+                                                                                icon={<MoreOutlined />}
+                                                                                size="small"
+                                                                                onClick={(e) => e.stopPropagation()}
+                                                                                style={{
+                                                                                    width: 20,
+                                                                                    height: 20,
+                                                                                    minWidth: 20,
+                                                                                    padding: 0,
+                                                                                    color: "#070707ff",
+                                                                                    opacity: 0.7,
+                                                                                    transition: "all 0.2s ease",
+                                                                                    fontSize: 13,
+                                                                                }}
+                                                                            />
+                                                                        </Dropdown>
+                                                                    </div>
+
+                                                                    {/* Hub badges at the bottom */}
+                                                                    <div
+                                                                        style={{
+                                                                            display: "flex",
+                                                                            alignItems: "center",
+                                                                            gap: 3,
+                                                                            flexWrap: "wrap",
+                                                                            marginTop: 4,
+                                                                            justifyContent: "flex-start",
+                                                                        }}
+                                                                    >
+                                                                        {note.hubs && note.hubs.length > 0 ? (
+                                                                            note.hubs.map((hub) => (
+                                                                                <span
+                                                                                    key={hub}
+                                                                                    style={{
+                                                                                        display: "inline-flex",
+                                                                                        alignItems: "center",
+                                                                                        gap: 2,
+                                                                                        backgroundColor: getHubColor(hub),
+                                                                                        color: "white",
+                                                                                        padding: "2px 5px",
+                                                                                        borderRadius: 8,
+                                                                                        fontSize: 8,
+                                                                                        fontWeight: 500,
+                                                                                        fontFamily: FONT_FAMILY,
+                                                                                    }}
+                                                                                >
+                                                                                    <span style={{ fontSize: 7 }}>
+                                                                                        {getHubIcon(hub)}
+                                                                                    </span>
+                                                                                    {getHubDisplayName(hub)}
+                                                                                </span>
+                                                                            ))
+                                                                        ) : (
                                                                             <span
                                                                                 style={{
                                                                                     display: "inline-flex",
                                                                                     alignItems: "center",
                                                                                     gap: 2,
-                                                                                    backgroundColor: getHubColor(note.hub || "FAMILY"),
+                                                                                    backgroundColor: getHubColor(
+                                                                                        note.hub || "NONE"
+                                                                                    ),
                                                                                     color: "white",
-                                                                                    padding: "2px 6px",
-                                                                                    borderRadius: 10,
-                                                                                    fontSize: 9,
+                                                                                    padding: "2px 5px",
+                                                                                    borderRadius: 8,
+                                                                                    fontSize: 8,
                                                                                     fontWeight: 500,
+                                                                                    fontFamily: FONT_FAMILY,
                                                                                 }}
                                                                             >
-                                                                                <span style={{ fontSize: 8 }}>
-                                                                                    {getHubIcon(note.hub || "FAMILY")}
+                                                                                <span style={{ fontSize: 7 }}>
+                                                                                    {getHubIcon(note.hub || "NONE")}
                                                                                 </span>
-                                                                                {getHubDisplayName(note.hub || "FAMILY")}
+                                                                                {getHubDisplayName(note.hub || "NONE")}
                                                                             </span>
-                                                                        </div>
+                                                                        )}
                                                                     </div>
-                                                                    <Dropdown
-                                                                        overlay={getNoteActionMenu(note)}
-                                                                        trigger={["click"]}
-                                                                        placement="bottomRight"
-                                                                    >
-                                                                        <Button
-                                                                            type="text"
-                                                                            icon={<MoreOutlined />}
-                                                                            size="small"
-                                                                            onClick={(e) => e.stopPropagation()}
-                                                                            style={{
-                                                                                width: 24,
-                                                                                height: 24,
-                                                                                minWidth: 24,
-                                                                                padding: 0,
-                                                                                color: "#999",
-                                                                                opacity: 0.7,
-                                                                                transition: "all 0.2s ease",
-                                                                            }}
-                                                                        />
-                                                                    </Dropdown>
-                                                                </div>
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Footer with last updated info */}
-                                    <div
-                                        style={{
-                                            display: "flex",
-                                            justifyContent: "space-between",
-                                            alignItems: "center",
-                                            paddingTop: 12,
-                                            borderTop: "1px solid #f0f0f0",
-                                        }}
-                                    >
-                                        <div
-                                            style={{
-                                                fontSize: 11,
-                                                color: "#999",
-                                                display: "flex",
-                                                alignItems: "center",
-                                                gap: 4,
-                                            }}
-                                        >
-                                            <CalendarOutlined />
-                                            {category.items.length > 0 ? (
-                                                (() => {
-                                                    const latestNote = category.items.reduce((latest, note) => {
-                                                        const noteDate = new Date(note.updated_at || note.created_at || 0);
-                                                        const latestDate = new Date(latest.updated_at || latest.created_at || 0);
-                                                        return noteDate > latestDate ? note : latest;
-                                                    });
-                                                    return (
-                                                        <span>
-                                                            Updated: {new Date(latestNote.updated_at || latestNote.created_at || 0).toLocaleDateString()}
-                                                        </span>
-                                                    );
-                                                })()
-                                            ) : (
-                                                "No activity"
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             )}
                                         </div>
+
+                                        {/* Footer with last updated info */}
+                                        <div
+                                            style={{
+                                                display: "flex",
+                                                justifyContent: "space-between",
+                                                alignItems: "center",
+                                                paddingTop: 8,
+                                                borderTop: `1px solid ${colors.border}`,
+                                            }}
+                                        >
+                                            <div
+                                                style={{
+                                                    fontSize: 9,
+                                                    color: "#9ca3af",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    gap: 3,
+                                                    fontFamily: FONT_FAMILY,
+                                                }}
+                                            >
+                                                <CalendarOutlined style={{ fontSize: 9 }} />
+                                                {category.items.length > 0
+                                                    ? (() => {
+                                                        const latestNote = category.items.reduce(
+                                                            (latest, note) => {
+                                                                const noteDate = new Date(
+                                                                    note.updated_at || note.created_at || 0
+                                                                );
+                                                                const latestDate = new Date(
+                                                                    latest.updated_at || latest.created_at || 0
+                                                                );
+                                                                return noteDate > latestDate ? note : latest;
+                                                            }
+                                                        );
+                                                        return (
+                                                            <span>
+                                                                Updated:{" "}
+                                                                {new Date(
+                                                                    latestNote.updated_at ||
+                                                                    latestNote.created_at ||
+                                                                    0
+                                                                ).toLocaleDateString()}
+                                                            </span>
+                                                        );
+                                                    })()
+                                                    : "No activity"}
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                            </Col>
-                        ))}
+                                </Col>
+                            );
+                        })}
                     </Row>
                 )}
 
                 {/* Show More/Less Button */}
                 {!loading && filteredCategories.length > 6 && (
-                    <div style={{ textAlign: "center", marginTop: 24 }}>
+                    <div style={{ textAlign: "center", marginTop: 16 }}>
                         <Button
                             type="text"
                             onClick={() => setShowAllCategories(!showAllCategories)}
-                            style={{ color: "#1677ff", fontSize: 14 }}
+                            style={{
+                                color: "#4f46e5",
+                                fontSize: 13,
+                                fontFamily: FONT_FAMILY,
+                            }}
                         >
                             {showAllCategories
                                 ? "Show Less"
@@ -1190,16 +1448,30 @@ const IntegratedNotes = () => {
 
                 {/* Empty State */}
                 {!loading && filteredCategories.length === 0 && (
-                    <div style={{ textAlign: "center", padding: 48 }}>
+                    <div style={{ textAlign: "center", padding: 40 }}>
                         {searchTerm ? (
                             <Empty
                                 image={Empty.PRESENTED_IMAGE_SIMPLE}
                                 description={
                                     <div>
-                                        <Title level={3} style={{ color: "#999", marginBottom: 8 }}>
+                                        <Title
+                                            level={3}
+                                            style={{
+                                                color: "#9ca3af",
+                                                marginBottom: 6,
+                                                fontFamily: FONT_FAMILY,
+                                                fontSize: 18,
+                                            }}
+                                        >
                                             No results found
                                         </Title>
-                                        <Text style={{ color: "#999" }}>
+                                        <Text
+                                            style={{
+                                                color: "#9ca3af",
+                                                fontFamily: FONT_FAMILY,
+                                                fontSize: 13,
+                                            }}
+                                        >
                                             Try adjusting your search criteria
                                         </Text>
                                     </div>
@@ -1210,11 +1482,26 @@ const IntegratedNotes = () => {
                                 image={Empty.PRESENTED_IMAGE_SIMPLE}
                                 description={
                                     <div>
-                                        <Title level={3} style={{ color: "#999", marginBottom: 8 }}>
+                                        <Title
+                                            level={3}
+                                            style={{
+                                                color: "#9ca3af",
+                                                marginBottom: 6,
+                                                fontFamily: FONT_FAMILY,
+                                                fontSize: 18,
+                                            }}
+                                        >
                                             No notes available
                                         </Title>
-                                        <Text style={{ color: "#999" }}>
-                                            No notes found across all hubs. Create your first category to get started.
+                                        <Text
+                                            style={{
+                                                color: "#9ca3af",
+                                                fontFamily: FONT_FAMILY,
+                                                fontSize: 13,
+                                            }}
+                                        >
+                                            No notes found across all hubs. Create your first category
+                                            to get started.
                                         </Text>
                                     </div>
                                 }
@@ -1223,6 +1510,10 @@ const IntegratedNotes = () => {
                                     type="primary"
                                     icon={<PlusOutlined />}
                                     onClick={() => setNewCategoryModal(true)}
+                                    style={{
+                                        fontFamily: FONT_FAMILY,
+                                        borderRadius: 8,
+                                    }}
                                 >
                                     Create First Category
                                 </Button>
@@ -1233,35 +1524,31 @@ const IntegratedNotes = () => {
 
                 {/* Add Note Modal */}
                 <Modal
-                    title=
-                    {
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    title={
+                        <div
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                                fontFamily: FONT_FAMILY,
+                            }}
+                        >
                             <span>Add New Note to {currentCategoryTitle}</span>
-                            <Tooltip title="Select 'All Hubs' to save this note to all 5 hubs simultaneously">
-                                <Badge
-                                    // count="NEW" 
-                                    style={{
-                                        backgroundColor: "#722ed1",
-                                        fontSize: 10,
-                                        height: 16,
-                                        lineHeight: "16px",
-                                        padding: "0 4px"
-                                    }}
-                                />
-                            </Tooltip>
                         </div>
                     }
                     open={addNoteModalVisible}
                     onCancel={() => {
                         setAddNoteModalVisible(false);
                         form.resetFields();
+                        setSelectedHubs([]);
                     }}
                     onOk={handleAddNoteSubmit}
                     centered
-                    width={600}
+                    width={500}
                     okText="Add Note"
                     confirmLoading={loading}
                     destroyOnClose
+                    style={{ fontFamily: FONT_FAMILY }}
                 >
                     <Form form={form} layout="vertical">
                         <Form.Item
@@ -1272,7 +1559,10 @@ const IntegratedNotes = () => {
                                 { max: 100, message: "Title must be 100 characters or less" },
                             ]}
                         >
-                            <Input placeholder="Enter note title" />
+                            <Input
+                                placeholder="Enter note title"
+                                style={{ fontFamily: FONT_FAMILY }}
+                            />
                         </Form.Item>
                         <Form.Item
                             name="description"
@@ -1290,34 +1580,47 @@ const IntegratedNotes = () => {
                                 placeholder="Enter note description"
                                 showCount
                                 maxLength={200}
+                                style={{ fontFamily: FONT_FAMILY }}
                             />
                         </Form.Item>
                         <Form.Item
-                            name="hub"
-                            label={
-                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                    <span>Hub</span>
-                                    <Tooltip title="Choose 'All Hubs' to save this note across all your hubs at once! 🌟">
-                                        <span style={{
-                                            backgroundColor: "#722ed1",
-                                            color: "white",
-                                            padding: "2px 6px",
-                                            borderRadius: 8,
-                                            fontSize: 10,
-                                            fontWeight: "bold"
-                                        }}>
-                                            NEW
-                                        </span>
-                                    </Tooltip>
-                                </div>
-                            }
-                            rules={[{ required: true, message: "Please select a hub" }]}
+                            label="Select Hubs"
+                            rules={[
+                                { required: true, message: "Please select at least one hub" },
+                            ]}
                         >
                             <Select
-                                placeholder="Select which hub this note belongs to"
+                                mode="multiple"
+                                placeholder="Choose hubs for this note"
+                                value={selectedHubs}
+                                onChange={setSelectedHubs}
                                 options={hubOptions}
-                                size="large"
+                                style={{
+                                    width: "100%",
+                                    fontFamily: FONT_FAMILY,
+                                }}
+                                showSearch
+                                filterOption={(input, option) =>
+                                    (option?.label ?? "")
+                                        .toLowerCase()
+                                        .includes(input.toLowerCase())
+                                }
                             />
+                            <div
+                                style={{
+                                    fontSize: 12,
+                                    color: "#6b7280",
+                                    marginTop: 8,
+                                    fontFamily: FONT_FAMILY,
+                                    padding: "8px 12px",
+                                    backgroundColor: "#f8fafc",
+                                    borderRadius: 6,
+                                    border: "1px solid #e2e8f0",
+                                }}
+                            >
+                                💡 <strong>Multi-Hub Support:</strong> Select multiple hubs to
+                                add this note across all selected hubs simultaneously!
+                            </div>
                         </Form.Item>
                     </Form>
                 </Modal>
@@ -1325,8 +1628,15 @@ const IntegratedNotes = () => {
                 {/* Share Note Modal */}
                 <Modal
                     title={
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <ShareAltOutlined style={{ color: "#1677ff" }} />
+                        <div
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                                fontFamily: FONT_FAMILY,
+                            }}
+                        >
+                            <ShareAltOutlined style={{ color: "#4f46e5" }} />
                             <span>Share Note</span>
                         </div>
                     }
@@ -1338,48 +1648,107 @@ const IntegratedNotes = () => {
                     }}
                     onOk={handleShareSubmit}
                     centered
-                    width={500}
+                    width={450}
                     okText="Share via Email"
                     confirmLoading={loading}
                     destroyOnClose
+                    style={{ fontFamily: FONT_FAMILY }}
                 >
                     {currentShareNote && (
-                        <div style={{ marginBottom: 20 }}>
+                        <div style={{ marginBottom: 16 }}>
                             <div
                                 style={{
-                                    padding: 16,
-                                    backgroundColor: "#f8f9fa",
+                                    padding: 12,
+                                    backgroundColor: "#f8fafc",
                                     borderRadius: 8,
-                                    border: "1px solid #e9ecef",
+                                    border: "1px solid #e2e8f0",
                                 }}
                             >
-                                <div style={{ fontWeight: 600, marginBottom: 8, color: "#333" }}>
+                                <div
+                                    style={{
+                                        fontWeight: 600,
+                                        marginBottom: 6,
+                                        color: "#1e293b",
+                                        fontFamily: FONT_FAMILY,
+                                        fontSize: 13,
+                                    }}
+                                >
                                     {currentShareNote.title}
                                 </div>
-                                <div style={{ color: "#666", marginBottom: 8, lineHeight: 1.4 }}>
+                                <div
+                                    style={{
+                                        color: "#64748b",
+                                        marginBottom: 6,
+                                        lineHeight: 1.4,
+                                        fontFamily: FONT_FAMILY,
+                                        fontSize: 12,
+                                    }}
+                                >
                                     {currentShareNote.description}
                                 </div>
-                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 6,
+                                        flexWrap: "wrap",
+                                    }}
+                                >
+                                    {currentShareNote.hubs && currentShareNote.hubs.length > 0 ? (
+                                        currentShareNote.hubs.map((hub) => (
+                                            <span
+                                                key={hub}
+                                                style={{
+                                                    display: "inline-flex",
+                                                    alignItems: "center",
+                                                    gap: 3,
+                                                    backgroundColor: getHubColor(hub),
+                                                    color: "white",
+                                                    padding: "3px 6px",
+                                                    borderRadius: 10,
+                                                    fontSize: 10,
+                                                    fontWeight: 500,
+                                                    fontFamily: FONT_FAMILY,
+                                                }}
+                                            >
+                                                <span style={{ fontSize: 9 }}>{getHubIcon(hub)}</span>
+                                                {getHubDisplayName(hub)}
+                                            </span>
+                                        ))
+                                    ) : (
+                                        <span
+                                            style={{
+                                                display: "inline-flex",
+                                                alignItems: "center",
+                                                gap: 3,
+                                                backgroundColor: getHubColor(
+                                                    currentShareNote.hub || "NONE"
+                                                ),
+                                                color: "white",
+                                                padding: "3px 6px",
+                                                borderRadius: 10,
+                                                fontSize: 10,
+                                                fontWeight: 500,
+                                                fontFamily: FONT_FAMILY,
+                                            }}
+                                        >
+                                            <span style={{ fontSize: 9 }}>
+                                                {getHubIcon(currentShareNote.hub || "NONE")}
+                                            </span>
+                                            {getHubDisplayName(currentShareNote.hub || "NONE")}
+                                        </span>
+                                    )}
                                     <span
                                         style={{
-                                            display: "inline-flex",
-                                            alignItems: "center",
-                                            gap: 4,
-                                            backgroundColor: getHubColor(currentShareNote.hub || "FAMILY"),
-                                            color: "white",
-                                            padding: "4px 8px",
-                                            borderRadius: 12,
-                                            fontSize: 11,
-                                            fontWeight: 500,
+                                            fontSize: 10,
+                                            color: "#9ca3af",
+                                            fontFamily: FONT_FAMILY,
                                         }}
                                     >
-                                        <span style={{ fontSize: 10 }}>
-                                            {getHubIcon(currentShareNote.hub || "FAMILY")}
-                                        </span>
-                                        {getHubDisplayName(currentShareNote.hub || "FAMILY")}
-                                    </span>
-                                    <span style={{ fontSize: 11, color: "#999" }}>
-                                        Created: {new Date(currentShareNote.created_at || Date.now()).toLocaleDateString()}
+                                        Created:{" "}
+                                        {new Date(
+                                            currentShareNote.created_at || Date.now()
+                                        ).toLocaleDateString()}
                                     </span>
                                 </div>
                             </div>
@@ -1392,21 +1761,40 @@ const IntegratedNotes = () => {
                             label="Email Address"
                             rules={[
                                 { required: true, message: "Please enter an email address" },
-                                { type: "email", message: "Please enter a valid email address" },
+                                {
+                                    type: "email",
+                                    message: "Please enter a valid email address",
+                                },
                             ]}
                         >
                             <Input
                                 placeholder="Enter recipient's email address"
-                                prefix={<MailOutlined style={{ color: "#999" }} />}
-                                size="large"
+                                prefix={<MailOutlined style={{ color: "#9ca3af" }} />}
+                                style={{ fontFamily: FONT_FAMILY }}
                             />
                         </Form.Item>
                     </Form>
 
-                    <div style={{ fontSize: 12, color: "#666", marginTop: 16 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
+                    <div
+                        style={{
+                            fontSize: 11,
+                            color: "#64748b",
+                            marginTop: 12,
+                            fontFamily: FONT_FAMILY,
+                        }}
+                    >
+                        <div
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 4,
+                                marginBottom: 3,
+                            }}
+                        >
                             <span>📧</span>
-                            <span>This will open your default email client with the note content</span>
+                            <span>
+                                This will open your default email client with the note content
+                            </span>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                             <span>✉</span>
@@ -1425,10 +1813,11 @@ const IntegratedNotes = () => {
                     }}
                     onOk={handleAddCategory}
                     centered
-                    width={500}
+                    width={450}
                     okText="Add Category"
                     closable={false}
                     confirmLoading={loading}
+                    style={{ fontFamily: FONT_FAMILY }}
                     footer={[
                         <Button
                             key="cancel"
@@ -1437,6 +1826,7 @@ const IntegratedNotes = () => {
                                 setSelectedCategoryOption("");
                                 setCustomCategoryName("");
                             }}
+                            style={{ fontFamily: FONT_FAMILY }}
                         >
                             Cancel
                         </Button>,
@@ -1445,19 +1835,34 @@ const IntegratedNotes = () => {
                             type="primary"
                             onClick={handleAddCategory}
                             loading={loading}
+                            style={{ fontFamily: FONT_FAMILY }}
                         >
                             Add Category
                         </Button>,
                     ]}
                 >
-                    <div style={{ padding: "24px 0" }}>
-                        <Title level={4} style={{ marginBottom: 24, textAlign: "center" }}>
+                    <div style={{ padding: "20px 0" }}>
+                        <Title
+                            level={4}
+                            style={{
+                                marginBottom: 20,
+                                textAlign: "center",
+                                fontFamily: FONT_FAMILY,
+                                fontSize: 16,
+                            }}
+                        >
                             Create New Category
                         </Title>
 
-                        <div style={{ marginBottom: 16 }}>
+                        <div style={{ marginBottom: 12 }}>
                             <label
-                                style={{ display: "block", marginBottom: 8, fontWeight: 500 }}
+                                style={{
+                                    display: "block",
+                                    marginBottom: 6,
+                                    fontWeight: 500,
+                                    fontFamily: FONT_FAMILY,
+                                    fontSize: 13,
+                                }}
                             >
                                 Select Category Type:
                             </label>
@@ -1465,8 +1870,7 @@ const IntegratedNotes = () => {
                                 placeholder="Choose a category or select 'Others' for custom"
                                 value={selectedCategoryOption}
                                 onChange={handleCategorySelection}
-                                style={{ width: "100%" }}
-                                size="large"
+                                style={{ width: "100%", fontFamily: FONT_FAMILY }}
                                 showSearch
                                 filterOption={(input, option) =>
                                     (option?.label ?? "")
@@ -1483,9 +1887,15 @@ const IntegratedNotes = () => {
                         </div>
 
                         {selectedCategoryOption === "Others" && (
-                            <div style={{ marginBottom: 16 }}>
+                            <div style={{ marginBottom: 12 }}>
                                 <label
-                                    style={{ display: "block", marginBottom: 8, fontWeight: 500 }}
+                                    style={{
+                                        display: "block",
+                                        marginBottom: 6,
+                                        fontWeight: 500,
+                                        fontFamily: FONT_FAMILY,
+                                        fontSize: 13,
+                                    }}
                                 >
                                     Custom Category Name:
                                 </label>
@@ -1493,8 +1903,7 @@ const IntegratedNotes = () => {
                                     placeholder="Enter your custom category name"
                                     value={customCategoryName}
                                     onChange={(e) => setCustomCategoryName(e.target.value)}
-                                    size="large"
-                                    style={{ width: "100%" }}
+                                    style={{ width: "100%", fontFamily: FONT_FAMILY }}
                                 />
                             </div>
                         )}
@@ -1502,27 +1911,108 @@ const IntegratedNotes = () => {
                         {selectedCategoryOption && selectedCategoryOption !== "Others" && (
                             <div
                                 style={{
-                                    marginTop: 16,
-                                    padding: 12,
-                                    backgroundColor: "#f6ffed",
-                                    border: "1px solid #b7eb8f",
+                                    marginTop: 12,
+                                    padding: 10,
+                                    backgroundColor: "#f0fdf4",
+                                    border: "1px solid #bbf7d0",
                                     borderRadius: 8,
                                 }}
                             >
-                                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                                    <span style={{ fontSize: 20 }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                    <span style={{ fontSize: 16 }}>
                                         {
                                             suggestedCategories.find(
                                                 (cat) => cat.value === selectedCategoryOption
                                             )?.icon
                                         }
                                     </span>
-                                    <span style={{ fontWeight: 500 }}>
+                                    <span
+                                        style={{
+                                            fontWeight: 500,
+                                            fontFamily: FONT_FAMILY,
+                                            fontSize: 13,
+                                        }}
+                                    >
                                         {selectedCategoryOption}
                                     </span>
                                 </div>
                             </div>
                         )}
+                    </div>
+                </Modal>
+
+                <Modal
+                    title="Tag Item"
+                    open={tagModalVisible}
+                    onCancel={() => {
+                        setTagModalVisible(false);
+                        setCurrentTagItem(null);
+                        setSelectedMemberIds([]);
+                    }}
+                    onOk={handleTagSubmit}
+                    okText="Tag"
+                    centered
+                    confirmLoading={loading}
+                    style={{ fontFamily: FONT_FAMILY }}
+                >
+                    {currentTagItem && (
+                        <div style={{ marginBottom: 16 }}>
+                            <div
+                                style={{
+                                    padding: 10,
+                                    backgroundColor: "#f8fafc",
+                                    borderRadius: 6,
+                                    border: "1px solid #e2e8f0",
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        fontWeight: 600,
+                                        fontFamily: FONT_FAMILY,
+                                        fontSize: 13,
+                                    }}
+                                >
+                                    {currentTagItem?.title || "Untitled"}
+                                </div>
+                                <div
+                                    style={{
+                                        fontSize: 11,
+                                        color: "#64748b",
+                                        fontFamily: FONT_FAMILY,
+                                    }}
+                                >
+                                    {currentTagItem?.url}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div>
+                        <label
+                            style={{
+                                display: "block",
+                                marginBottom: 6,
+                                fontFamily: FONT_FAMILY,
+                                fontSize: 13,
+                            }}
+                        >
+                            Tag to Family Members:
+                        </label>
+                        <Select
+                            mode="multiple"
+                            style={{ width: "100%", fontFamily: FONT_FAMILY }}
+                            placeholder="Select members"
+                            value={selectedMemberIds}
+                            onChange={setSelectedMemberIds}
+                        >
+                            {familyMembers
+                                .filter((m: any) => m.relationship !== "me")
+                                .map((member: any) => (
+                                    <Select.Option key={member.id} value={member.id}>
+                                        {member.name} ({member.relationship})
+                                    </Select.Option>
+                                ))}
+                        </Select>
                     </div>
                 </Modal>
             </div>

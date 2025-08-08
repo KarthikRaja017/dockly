@@ -172,6 +172,7 @@ const Sidebar = forwardRef<HTMLDivElement, { collapsed: boolean }>(({ collapsed 
               transition: "all 0.3s ease-in-out",
               marginLeft: collapsed ? "-8px" : "-98px",
             }}
+            draggable="false"
           />
           {!collapsed && (
             <Text

@@ -144,13 +144,14 @@ class GetBookmark(Resource):
         category = args.get("category")
         sort_by = args.get("sortBy", "newest")
 
-        filters = {"user_id": uid, "is_active": Status.ACTIVE.value}
+        # Build filters
+        filters = {"is_active": Status.ACTIVE.value}
         if category:
             filters["category"] = category
 
-        bookmarks = DBHelper.find_all(
-            "bookmarks",
-            filters=filters,
+        # Use new helper method
+        bookmarks = DBHelper.find_with_or_and_array_match(
+            table_name="bookmarks",
             select_fields=[
                 "id",
                 "title",
@@ -161,7 +162,12 @@ class GetBookmark(Resource):
                 "tags",
                 "is_favorite",
                 "created_at",
+                "user_id",
+                "tagged_ids",
             ],
+            uid=uid,
+            array_field="tagged_ids",
+            filters=filters,
         )
 
         # Convert datetime to string
@@ -357,19 +363,131 @@ class ShareBookmark(Resource):
         except Exception as e:
             return {"status": 0, "message": f"Invalid JSON: {str(e)}"}, 400
 
-        email = data.get("email")
+        emails = data.get("email")
         bookmark = data.get("bookmark")
+        tagged_members = data.get("tagged_members", [])  # contains email IDs
 
-        if not email or not bookmark:
+        if not emails or not bookmark:
             return {
                 "status": 0,
                 "message": "Both 'email' and 'bookmark' are required.",
             }, 422
 
-        email_sender = EmailSender()
-        success, message = email_sender.send_bookmark_email(email, bookmark)
+        if isinstance(emails, str):
+            emails = [emails]
 
-        if success:
-            return {"status": 1, "message": "Bookmark shared via email."}
-        else:
-            return ({"status": 0, "message": f"Failed to send email: {message}"},)
+        email_sender = EmailSender()
+        failures = []
+        notifications_created = []
+        resolved_tagged_ids = []
+
+        for member_identifier in tagged_members:
+            family_member = DBHelper.find_one(
+                "family_members",
+                filters={"email": member_identifier},
+                select_fields=["fm_user_id"],
+            )
+            if family_member:
+                resolved_tagged_ids.append(family_member["fm_user_id"])
+
+        for email in emails:
+            success, message = email_sender.send_bookmark_email(email, bookmark)
+            if not success:
+                failures.append((email, message))
+
+        for member_email in tagged_members:
+            # 🔍 Find family member by email
+            family_member = DBHelper.find_one(
+                "family_members",
+                filters={"email": member_email},
+                select_fields=["id", "name", "email", "fm_user_id"],
+            )
+
+            if not family_member:
+                continue
+
+            receiver_uid = family_member.get("fm_user_id")
+            if not receiver_uid:
+                user_record = DBHelper.find_one(
+                    "users",
+                    filters={"email": family_member["email"]},
+                    select_fields=["uid"],
+                )
+                receiver_uid = user_record.get("uid") if user_record else None
+
+            if not receiver_uid:
+                continue
+
+            notification_data = {
+                "sender_id": uid,
+                "receiver_id": receiver_uid,
+                "message": f"{user['user_name']} tagged a bookmark '{bookmark.get('title', 'Untitled')}' with you",
+                "task_type": "tagged",
+                "action_required": False,
+                "status": "unread",
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
+                "metadata": {
+                    "bookmark": {
+                        "id": bookmark.get("id"),
+                        "title": bookmark.get("title"),
+                        "url": bookmark.get("url"),
+                        "category": bookmark.get("category"),
+                        "description": bookmark.get("description", ""),
+                    },
+                    "sender_name": user["user_name"],
+                    "tagged_member": {
+                        "name": family_member["name"],
+                        "email": family_member["email"],
+                    },
+                },
+            }
+
+            notification_id = DBHelper.insert(
+                "notifications", return_column="id", **notification_data
+            )
+
+            notifications_created.append(
+                {
+                    "notification_id": notification_id,
+                    "member_name": family_member["name"],
+                    "member_email": family_member["email"],
+                    "receiver_uid": receiver_uid,
+                }
+            )
+
+        if resolved_tagged_ids:
+            # Step 1: Get existing tagged_ids from the bookmark
+            bookmark_record = DBHelper.find_one(
+                "bookmarks",
+                filters={"id": bookmark.get("id")},
+                select_fields=["tagged_ids"],
+            )
+
+            existing_ids = bookmark_record.get("tagged_ids") or []
+
+            # Step 2: Merge and deduplicate
+            combined_ids = list(set(existing_ids + resolved_tagged_ids))
+
+            # Step 3: Format for PostgreSQL array
+            pg_array_str = "{" + ",".join(f'"{str(i)}"' for i in combined_ids) + "}"
+
+            # Step 4: Update the record
+            DBHelper.update_one(
+                table_name="bookmarks",
+                filters={"id": bookmark.get("id")},
+                updates={"tagged_ids": pg_array_str},
+            )
+
+        if failures:
+            return {
+                "status": 0,
+                "message": f"Failed to send to {len(failures)} recipients",
+                "errors": failures,
+            }, 500
+
+        return {
+            "status": 1,
+            "message": f"Bookmark shared successfully and {len(notifications_created)} notifications created.",
+            "payload": {"notifications_created": notifications_created},
+        }

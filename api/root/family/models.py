@@ -303,7 +303,14 @@ class GetFamilyMembers(Resource):
         # Step 2: Get all members in that group
         group_members = DBHelper.find_all(
             table_name="family_members",
-            select_fields=["name", "relationship", "fm_user_id", "email", "id"],
+            select_fields=[
+                "name",
+                "relationship",
+                "fm_user_id",
+                "email",
+                "id",
+                "user_id",
+            ],
             filters={"family_group_id": group_id},
         )
 
@@ -325,6 +332,7 @@ class GetFamilyMembers(Resource):
                     "relationship": relationship,
                     "email": email,
                     "id": member.get("id", ""),
+                    "user_id": member.get("fm_user_id") or member.get("user_id"),
                     "sharedItems": sharedItems,
                     "permissions": permissions,
                 }
@@ -361,7 +369,6 @@ class GetFamilyMembers(Resource):
             email = member.get("email", "").lower().strip()
             if not email or email not in seen_emails:
                 seen_emails.add(email)
-                member.pop("email", None)
                 unique_members.append(member)
 
         return {
@@ -1170,60 +1177,143 @@ class ShareNote(Resource):
         except Exception as e:
             return {"status": 0, "message": f"Invalid JSON: {str(e)}"}, 400
 
-        email = data.get("email")
+        emails = data.get("email")
         note = data.get("note")
+        tagged_members = data.get("tagged_members", [])
 
-        if not email or not note:
+        if not emails or not note:
             return {
                 "status": 0,
                 "message": "Both 'email' and 'note' are required.",
             }, 422
 
-        email_sender = EmailSender()
-        success, message = email_sender.send_note_email(email, note)
+        if isinstance(emails, str):
+            emails = [emails]
 
-        if success:
-            return {"status": 1, "message": "Note shared via email."}
-        else:
-            return {"status": 0, "message": f"Failed to send email: {message}"}, 500
+        email_sender = EmailSender()
+        failures = []
+        notifications_created = []
+        resolved_tagged_ids = []
+
+        # 🔹 Resolve tagged emails to fm_user_ids
+        for email in tagged_members:
+            family_member = DBHelper.find_one(
+                "family_members", filters={"email": email}, select_fields=["fm_user_id"]
+            )
+            if family_member:
+                resolved_tagged_ids.append(family_member["fm_user_id"])
+
+        # 🔹 Send email
+        for email in emails:
+            success, message = email_sender.send_note_email(email, note)
+            if not success:
+                failures.append((email, message))
+
+        # 🔹 Send notifications
+        for email in tagged_members:
+            family_member = DBHelper.find_one(
+                "family_members",
+                filters={"email": email},
+                select_fields=["id", "name", "email", "fm_user_id"],
+            )
+
+            if not family_member:
+                continue
+
+            receiver_uid = family_member.get("fm_user_id")
+            if not receiver_uid:
+                user_record = DBHelper.find_one(
+                    "users",
+                    filters={"email": family_member["email"]},
+                    select_fields=["uid"],
+                )
+                receiver_uid = user_record.get("uid") if user_record else None
+
+            if not receiver_uid:
+                continue
+
+            notification_data = {
+                "sender_id": uid,
+                "receiver_id": receiver_uid,
+                "message": f"{user['user_name']} tagged a note '{note.get('title', 'Untitled')}' with you",
+                "task_type": "tagged",
+                "action_required": False,
+                "status": "unread",
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
+                "metadata": {
+                    "note": note,
+                    "sender_name": user["user_name"],
+                    "tagged_member": {
+                        "name": family_member["name"],
+                        "email": family_member["email"],
+                    },
+                },
+            }
+
+            notif_id = DBHelper.insert(
+                "notifications", return_column="id", **notification_data
+            )
+            notifications_created.append(notif_id)
+
+        # ✅ Update note with merged tagged_ids
+        if resolved_tagged_ids:
+            # 1. Fetch current tagged_ids
+            note_record = DBHelper.find_one(
+                table_name="notes_lists",
+                filters={"id": note.get("id")},
+                select_fields=["tagged_ids"],
+            )
+            existing_ids = note_record.get("tagged_ids") or []
+
+            # 2. Merge & deduplicate
+            combined_ids = list(set(existing_ids + resolved_tagged_ids))
+
+            # 3. Format for PostgreSQL
+            pg_array_str = "{" + ",".join(f'"{i}"' for i in combined_ids) + "}"
+
+            # 4. Update
+            DBHelper.update_one(
+                table_name="notes_lists",
+                filters={"id": note.get("id")},
+                updates={"tagged_ids": pg_array_str},
+            )
+
+        if failures:
+            return {
+                "status": 0,
+                "message": f"Failed to send to {len(failures)} recipients",
+                "errors": failures,
+            }, 500
+
+        return {
+            "status": 1,
+            "message": f"Note shared via email. {len(notifications_created)} notification(s) created.",
+            "payload": {"notifications_created": notifications_created},
+        }
 
 
 class GetNotes(Resource):
     @auth_required(isOptional=True)
     def get(self, uid=None, user=None):
         try:
-            # 1. Get all family member IDs
-            sent_invites = DBHelper.find_all(
-                table_name="family_members",
-                select_fields=["fm_user_id"],
-                filters={"user_id": uid},
-            )
-            received_invites = DBHelper.find_all(
-                table_name="family_members",
-                select_fields=["user_id"],
-                filters={"fm_user_id": uid},
-            )
-
-            family_member_ids = [m["fm_user_id"] for m in sent_invites] + [
-                m["user_id"] for m in received_invites
-            ]
-            family_member_ids = list(set(family_member_ids + [uid]))
-
-            # 2. Get hub from query param (safe handling)
+            # 1. Get hub filter
             hub = request.args.get("hub")
             if hub:
                 hub = hub.strip().upper()
                 if hub == "UNDEFINED":
-                    hub = None  # Treat invalid 'undefined' string as None
+                    hub = None
             else:
                 hub = None
 
-            # 3. Prepare filters
-            extra_filters = {"is_active": True}
+            # 2. Build filters
+            filters = {"is_active": True}
             if hub:
-                extra_filters["hub"] = hub
+                filters["hub"] = hub
 
-            # 4. Fetch notes
+            # 3. Fetch notes where:
+            # - user_id == uid OR
+            # - uid exists in tagged_ids[]
             select_fields = [
                 "id",
                 "title",
@@ -1232,16 +1322,18 @@ class GetNotes(Resource):
                 "created_at",
                 "updated_at",
                 "hub",
+                "user_id",
+                "tagged_ids",
             ]
-            notes_raw = DBHelper.find_in(
+            notes_raw = DBHelper.find_with_or_and_array_match(
                 table_name="notes_lists",
                 select_fields=select_fields,
-                field="user_id",
-                values=family_member_ids,
-                extra_filters=extra_filters,
+                uid=uid,
+                array_field="tagged_ids",
+                filters=filters,
             )
 
-            # 5. Format notes and include category_name
+            # 4. Format notes and include category_name
             notes = []
             for note in notes_raw:
                 notes.append(
@@ -1463,25 +1555,9 @@ class AddProject(Resource):
 class GetProjects(Resource):
     @auth_required(isOptional=True)
     def get(self, uid, user):
-        sent_invites = DBHelper.find_all(
-            table_name="family_members",
-            select_fields=["fm_user_id"],
-            filters={"user_id": uid},
-        )
-        received_invites = DBHelper.find_all(
-            table_name="family_members",
-            select_fields=["user_id"],
-            filters={"fm_user_id": uid},
-        )
-
-        # Extract IDs
-        familyMembersIds = [m["fm_user_id"] for m in sent_invites] + [
-            m["user_id"] for m in received_invites
-        ]
-        familyMembersIds = list(set(familyMembersIds + [uid]))
-
-        # Fetch projects for all related user IDs
-        projects = DBHelper.find_in(
+        # 🔍 Fetch projects owned or tagged
+        # For projects (where primary field is 'uid' not 'user_id')
+        projects = DBHelper.find_with_or_and_array_match(
             table_name="projects",
             select_fields=[
                 "project_id",
@@ -1493,11 +1569,16 @@ class GetProjects(Resource):
                 "created_at",
                 "updated_at",
                 "source",
+                "uid",
+                "tagged_ids",
             ],
-            field="uid",
-            values=familyMembersIds,
+            uid=uid,
+            array_field="tagged_ids",
+            filters={"source": "familyhub"},
+            or_field="uid",  # ✅ Custom match column
         )
 
+        # Format response
         formatted = [
             {
                 "project_id": p["project_id"],
@@ -3086,3 +3167,172 @@ class UpdateDevice(Resource):
 
         except Exception as e:
             return {"status": 0, "message": f"Failed to update device: {str(e)}"}, 500
+
+
+class TagEmailSender:
+    def __init__(self):
+        self.smtp_server = SMTP_SERVER
+        self.smtp_port = SMTP_PORT
+        self.smtp_user = EMAIL_SENDER
+        self.smtp_password = EMAIL_PASSWORD
+
+    def send_project_email(self, recipient_email, project):
+        msg = EmailMessage()
+        msg["Subject"] = f"Shared Project: {project['title']}"
+        msg["From"] = self.smtp_user
+        msg["To"] = recipient_email
+
+        created = project.get("created_at", "")
+        description = project.get("description", "")
+        deadline = project.get("deadline", "")
+        status = project.get("status", "")
+
+        msg.set_content(
+            f"""
+Hi there!
+
+I wanted to tag this Project with you:
+
+Title: {project['title']}
+Description: {description}
+Deadline: {deadline}
+Status: {status}
+
+Best regards!
+""".strip()
+        )
+
+        try:
+            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
+                server.starttls()
+                server.login(self.smtp_user, self.smtp_password)
+                server.send_message(msg)
+            return True, "Email sent successfully"
+        except Exception as e:
+            return False, str(e)
+
+
+class ShareProject(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        try:
+            data = request.get_json(force=True)
+        except Exception as e:
+            return {"status": 0, "message": f"Invalid JSON: {str(e)}"}, 400
+
+        emails = data.get("email")
+        project = data.get("project")
+        tagged_members = data.get("tagged_members", [])
+
+        if not emails or not project:
+            return {
+                "status": 0,
+                "message": "Both 'email' and 'project' are required.",
+            }, 422
+
+        if isinstance(emails, str):
+            emails = [emails]
+
+        email_sender = TagEmailSender()
+        failures = []
+        notifications_created = []
+        resolved_tagged_ids = []
+
+        # Resolve UIDs for tagged_members
+        for member_email in tagged_members:
+            family_member = DBHelper.find_one(
+                "family_members",
+                filters={"email": member_email},
+                select_fields=["fm_user_id"],
+            )
+            if family_member and family_member["fm_user_id"]:
+                resolved_tagged_ids.append(family_member["fm_user_id"])
+
+        # Send emails
+        for email in emails:
+            success, message = email_sender.send_project_email(email, project)
+            if not success:
+                failures.append((email, message))
+
+        # Send notifications
+        for member_email in tagged_members:
+            family_member = DBHelper.find_one(
+                "family_members",
+                filters={"email": member_email},
+                select_fields=["id", "name", "email", "fm_user_id"],
+            )
+
+            if not family_member:
+                continue
+
+            receiver_uid = family_member.get("fm_user_id")
+            if not receiver_uid:
+                user_record = DBHelper.find_one(
+                    "users",
+                    filters={"email": family_member["email"]},
+                    select_fields=["uid"],
+                )
+                receiver_uid = user_record.get("uid") if user_record else None
+
+            if not receiver_uid:
+                continue
+
+            notification_data = {
+                "sender_id": uid,
+                "receiver_id": receiver_uid,
+                "message": f"{user['user_name']} tagged a project '{project.get('title', 'Untitled')}' with you",
+                "task_type": "tagged",
+                "action_required": False,
+                "status": "unread",
+                "hub": None,
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
+                "metadata": {
+                    "project": project,
+                    "sender_name": user["user_name"],
+                    "tagged_member": {
+                        "name": family_member["name"],
+                        "email": family_member["email"],
+                    },
+                },
+            }
+
+            notif_id = DBHelper.insert(
+                "notifications", return_column="id", **notification_data
+            )
+            notifications_created.append(notif_id)
+
+        # 🔁 Update tagged_ids in the project
+        if resolved_tagged_ids:
+            project_record = DBHelper.find_one(
+                "projects", filters={"project_id": project.get("project_id")}
+            )
+            if not project_record:
+                return {
+                    "status": 0,
+                    "message": "Project not found. Cannot tag members.",
+                }, 404
+
+            existing_ids = project_record.get("tagged_ids") or []
+
+            combined_ids = list(set(existing_ids + resolved_tagged_ids))
+            pg_array_str = "{" + ",".join(f'"{str(i)}"' for i in combined_ids) + "}"
+
+            DBHelper.update_one(
+                table_name="projects",
+                filters={"project_id": project.get("project_id")},
+                updates={"tagged_ids": pg_array_str},
+            )
+
+        if failures:
+            return {
+                "status": 0,
+                "message": f"Failed to send to {len(failures)} recipients",
+                "errors": failures,
+            }, 500
+
+        return {
+            "status": 1,
+            "message": f"Project shared via email. {len(notifications_created)} notification(s) created.",
+            "payload": {"notifications_created": notifications_created},
+        }

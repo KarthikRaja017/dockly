@@ -378,13 +378,15 @@ export async function deleteNote(params: any) {
 }
 
 export async function shareNote(params: {
-  email: string;
+  email: string[]; // array for bulk support
   note: {
+    id?: string;
     title: string;
     description: string;
     hub?: string;
     created_at?: string;
   };
+  tagged_members?: string[];
 }) {
   return api.post('/family/share/note', params);
 }
@@ -803,4 +805,19 @@ export async function updateDevice(payload: any): Promise<any> {
     console.error('Error updating device:', error);
     throw error;
   }
+}
+
+export async function shareProject(params: {
+  email: string[];
+  tagged_members?: string[];
+  project: {
+    project_id: string;
+    title: string;
+    description: string;
+    deadline?: string;
+    status?: string;
+    created_at?: string;
+  };
+}) {
+  return api.post('/share/projects', params);
 }

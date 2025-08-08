@@ -124,3 +124,51 @@ class RespondNotification(Resource):
                 "response": inputData.get("response"),
             },
         }
+
+
+class GetSharedItemNotifications(Resource):
+    @auth_required(isOptional=True)
+    def get(self, uid, user):
+        print("Logged in UID:", uid)
+        notifications = DBHelper.find_all(
+            table_name="notifications",
+            filters={"receiver_id": uid, "status": "unread", "task_type": "tagged"},
+            select_fields=["message", "task_type", "id", "created_at"],
+        )
+        print("Found Notifications:", notifications)
+        shared_notifications = [
+            {
+                "message": n["message"],
+                "taskType": n["task_type"],
+                "id": n["id"],
+            }
+            for n in notifications
+        ]
+
+        return {
+            "status": 1,
+            "message": "Shared item notifications fetched successfully",
+            "payload": {"notifications": shared_notifications},
+        }
+
+
+class MarkNotificationAsRead(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        inputData = request.get_json(silent=True)
+        notification_id = inputData.get("id")
+
+        if not notification_id:
+            return {"status": 0, "message": "Notification ID is required"}, 400
+
+        DBHelper.update_one(
+            table_name="notifications",
+            filters={"id": notification_id, "receiver_id": uid},
+            updates={"status": "read"},
+            return_fields=["id"],
+        )
+
+        return {
+            "status": 1,
+            "message": "Notification read successfully",
+        }

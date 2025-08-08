@@ -248,7 +248,7 @@ class GetBankAccount(Resource):
             return {"error": "Missing Authorization header"}, 401
 
         try:
-            data = wait_for_balances(token)
+            data = getBankData(token)
             return data
         except TimeoutError:
             return {
@@ -271,7 +271,7 @@ def getBankData(token):
     response = requests.post(GRAPHQL_ENDPOINT, json={"query": query}, headers=headers)
 
     data = response.json()
-    print(f"data: {data}")
+    # print(f"data: {data}")
     return data
 
 

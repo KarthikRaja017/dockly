@@ -1,4 +1,4 @@
-'use client';
+"use client";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
     DatePicker,
@@ -61,17 +61,37 @@ import {
     ExportOutlined,
     ImportOutlined,
     RobotOutlined,
+    MoreOutlined,
+    ShareAltOutlined,
     LinkOutlined,
     FireOutlined,
     SmileOutlined,
     MehOutlined,
     FrownOutlined,
     SoundOutlined,
-    WindowsOutlined,
+    TagOutlined,
 } from "@ant-design/icons";
 import { Calendar } from "lucide-react";
 import dayjs from "dayjs";
-import { addEvents, addProject, addTask, addWeeklyGoal, addWeeklyTodo, deletePlannerNote, getAllPlannerData, getProjects, getTasks, updateTask, updateWeeklyGoal, updateWeeklyTodo } from "../../services/planner";
+import {
+    addEvents,
+    addProject,
+    addTask,
+    addWeeklyGoal,
+    addWeeklyTodo,
+    deletePlannerNote,
+    deleteWeeklyGoal,
+    deleteWeeklyTodo,
+    getAllPlannerData,
+    getProjects,
+    getTasks,
+    updateTask,
+    updateWeeklyGoal,
+    updateWeeklyTodo,
+    shareGoal,
+    shareTodo,
+    getWeeklyGoals,
+} from "../../services/planner";
 import { showNotification } from "../../utils/notification";
 import { useCurrentUser } from "../../app/userContext";
 import { useGlobalLoading } from "../../app/loadingContext";
@@ -80,37 +100,37 @@ import CustomCalendar from "../components/customCalendar";
 import FamilyTasksComponent from "../components/familyTasksProjects";
 import NotesLists from "../family-hub/components/familyNotesLists";
 import DocklyLoader from "../../utils/docklyLoader";
-import { API_URL } from "../../services/apiConfig";
+import { getUsersFamilyMembers } from "../../services/family";
 
 const { Title, Text } = Typography;
 
 // Enhanced Professional color palette with better contrast
 const COLORS = {
-    primary: '#1a1a1a',
-    secondary: '#4a4a4a',
-    accent: '#2563eb',
-    success: '#059669',
-    warning: '#d97706',
-    error: '#dc2626',
-    background: '#fafbfc',
-    surface: '#ffffff',
-    surfaceSecondary: '#f8fafc',
-    surfaceElevated: '#fdfdfd',
-    border: '#e2e8f0',
-    borderLight: '#f1f5f9',
-    borderMedium: '#cbd5e1',
-    text: '#1a1a1a',
-    textSecondary: '#64748b',
-    textTertiary: '#94a3b8',
-    overlay: 'rgba(0, 0, 0, 0.5)',
-    shadowLight: 'rgba(0, 0, 0, 0.05)',
-    shadowMedium: 'rgba(0, 0, 0, 0.1)',
-    shadowHeavy: 'rgba(0, 0, 0, 0.15)',
-    shadowElevated: 'rgba(0, 0, 0, 0.2)',
-    habit: '#8b5cf6',
-    mood: '#ec4899',
-    energy: '#f59e0b',
-    time: '#10b981',
+    primary: "#1a1a1a",
+    secondary: "#4a4a4a",
+    accent: "#2563eb",
+    success: "#059669",
+    warning: "#d97706",
+    error: "#dc2626",
+    background: "#fafbfc",
+    surface: "#ffffff",
+    surfaceSecondary: "#f8fafc",
+    surfaceElevated: "#fdfdfd",
+    border: "#e2e8f0",
+    borderLight: "#f1f5f9",
+    borderMedium: "#cbd5e1",
+    text: "#1a1a1a",
+    textSecondary: "#64748b",
+    textTertiary: "#94a3b8",
+    overlay: "rgba(0, 0, 0, 0.5)",
+    shadowLight: "rgba(0, 0, 0, 0.05)",
+    shadowMedium: "rgba(0, 0, 0, 0.1)",
+    shadowHeavy: "rgba(0, 0, 0, 0.15)",
+    shadowElevated: "rgba(0, 0, 0, 0.2)",
+    habit: "#8b5cf6",
+    mood: "#ec4899",
+    energy: "#f59e0b",
+    time: "#10b981",
 };
 
 const SPACING = {
@@ -122,7 +142,8 @@ const SPACING = {
     xxl: 36,
 };
 
-const FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+const FONT_FAMILY =
+    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 
 type Task = {
     id: number;
@@ -161,7 +182,7 @@ interface ConnectedAccount {
 
 interface ConnectedAccountType {
     email: string;
-    provider: 'google' | 'dockly' | 'outlook';
+    provider: "google" | "dockly" | "outlook";
     color: string;
 }
 
@@ -170,7 +191,7 @@ interface HabitTracker {
     id: string;
     name: string;
     description: string;
-    frequency: 'daily' | 'weekly' | 'monthly';
+    frequency: "daily" | "weekly" | "monthly";
     target: number;
     current: number;
     streak: number;
@@ -197,13 +218,13 @@ interface TimeEntry {
     endTime?: string;
     duration: number; // in minutes
     description: string;
-    category: 'work' | 'personal' | 'learning' | 'exercise' | 'other';
+    category: "work" | "personal" | "learning" | "exercise" | "other";
 }
 
 interface Template {
     id: string;
     name: string;
-    type: 'goal' | 'task' | 'project';
+    type: "goal" | "task" | "project";
     content: any;
     category: string;
     description: string;
@@ -212,7 +233,7 @@ interface Template {
 
 interface SmartSuggestion {
     id: string;
-    type: 'goal' | 'task' | 'habit' | 'time-optimization';
+    type: "goal" | "task" | "habit" | "time-optimization";
     title: string;
     description: string;
     confidence: number;
@@ -229,25 +250,25 @@ const createAccountIdentifier = (account: ConnectedAccount): string => {
 // Updated function to get provider icon
 const getProviderIcon = (provider: string) => {
     switch (provider.toLowerCase()) {
-        case 'google':
+        case "google":
             return <GoogleOutlined />;
-        case 'outlook':
+        case "outlook":
             return <MailOutlined />;
-        case 'dockly':
+        case "dockly":
         default:
-            return 'D';
+            return "D";
     }
 };
 
 // Updated function to get provider display name
 const getProviderDisplayName = (provider: string): string => {
     switch (provider.toLowerCase()) {
-        case 'google':
-            return 'Google';
-        case 'outlook':
-            return 'Outlook';
-        case 'dockly':
-            return 'Dockly';
+        case "google":
+            return "Google";
+        case "outlook":
+            return "Outlook";
+        case "dockly":
+            return "Dockly";
         default:
             return provider.charAt(0).toUpperCase() + provider.slice(1);
     }
@@ -257,57 +278,71 @@ const getProviderDisplayName = (provider: string): string => {
 const CalendarAccountFilter: React.FC<{
     connectedAccounts: ConnectedAccount[];
     onFilterChange: (filteredAccountIds: string[]) => void;
-    // onConnectAccount: () => void;
-}> = ({ connectedAccounts, onFilterChange,
-    // onConnectAccount
-}) => {
-        const [selectedAccounts, setSelectedAccounts] = useState<string[]>(['all']);
+    onConnectAccount: () => void;
+}> = ({ connectedAccounts, onFilterChange, onConnectAccount }) => {
+    const [selectedAccounts, setSelectedAccounts] = useState<string[]>(["all"]);
 
-        // Memoize account IDs to prevent infinite loops
-        const allAccountIds = useMemo(() =>
-            connectedAccounts.map((acc) => createAccountIdentifier(acc)),
-            [connectedAccounts]
-        );
+    // Memoize account IDs to prevent infinite loops
+    const allAccountIds = useMemo(
+        () => connectedAccounts.map((acc) => createAccountIdentifier(acc)),
+        [connectedAccounts]
+    );
 
-        // Use callback to prevent infinite re-renders
-        const handleFilterUpdate = useCallback(() => {
-            if (connectedAccounts.length > 0 && selectedAccounts.includes('all')) {
-                onFilterChange(allAccountIds);
-            } else if (!selectedAccounts.includes('all')) {
-                onFilterChange(selectedAccounts);
-            }
-        }, [selectedAccounts, connectedAccounts.length, allAccountIds, onFilterChange]);
+    // Use callback to prevent infinite re-renders
+    const handleFilterUpdate = useCallback(() => {
+        if (connectedAccounts.length > 0 && selectedAccounts.includes("all")) {
+            onFilterChange(allAccountIds);
+        } else if (!selectedAccounts.includes("all")) {
+            onFilterChange(selectedAccounts);
+        }
+    }, [
+        selectedAccounts,
+        connectedAccounts.length,
+        allAccountIds,
+        onFilterChange,
+    ]);
 
-        // Fixed useEffect with proper dependencies
-        useEffect(() => {
-            handleFilterUpdate();
-        }, [handleFilterUpdate]);
+    // Fixed useEffect with proper dependencies
+    useEffect(() => {
+        handleFilterUpdate();
+    }, [handleFilterUpdate]);
 
-        const handleSelectChange = useCallback((values: string[]) => {
-            if (values.includes('all')) {
-                setSelectedAccounts(['all']);
-            } else {
-                setSelectedAccounts(values);
-            }
-        }, []);
+    const handleSelectChange = useCallback((values: string[]) => {
+        if (values.includes("all")) {
+            setSelectedAccounts(["all"]);
+        } else {
+            setSelectedAccounts(values);
+        }
+    }, []);
 
-        if (connectedAccounts.length === 0) {
-            return (
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
+    if (connectedAccounts.length === 0) {
+        return (
+            <div
+                style={{
+                    display: "flex",
+                    alignItems: "center",
                     gap: SPACING.xs,
                     padding: `${SPACING.sm}px ${SPACING.md}px`,
                     background: COLORS.surfaceSecondary,
-                    borderRadius: '8px',
+                    borderRadius: "8px",
                     border: `1px solid ${COLORS.borderLight}`,
                     fontFamily: FONT_FAMILY,
-                }}>
-                    <GoogleOutlined style={{ color: COLORS.textSecondary, fontSize: '14px' }} />
-                    <Text style={{ color: COLORS.textSecondary, fontSize: '13px', fontWeight: 500, fontFamily: FONT_FAMILY }}>
-                        No accounts connected
-                    </Text>
-                    {/* <Button
+                }}
+            >
+                <GoogleOutlined
+                    style={{ color: COLORS.textSecondary, fontSize: "14px" }}
+                />
+                <Text
+                    style={{
+                        color: COLORS.textSecondary,
+                        fontSize: "13px",
+                        fontWeight: 500,
+                        fontFamily: FONT_FAMILY,
+                    }}
+                >
+                    No accounts connected
+                </Text>
+                <Button
                     type="primary"
                     size="small"
                     icon={<PlusOutlined />}
@@ -315,136 +350,148 @@ const CalendarAccountFilter: React.FC<{
                     style={{
                         backgroundColor: COLORS.accent,
                         borderColor: COLORS.accent,
-                        borderRadius: '6px',
-                        height: '28px',
+                        borderRadius: "6px",
+                        height: "28px",
                         fontWeight: 600,
-                        fontSize: '12px',
+                        fontSize: "12px",
                         fontFamily: FONT_FAMILY,
                     }}
                 >
                     Connect
-                </Button> */}
-                </div>
-            );
-        }
+                </Button>
+            </div>
+        );
+    }
 
-        return (
-            <Select
-                mode="multiple"
-                value={selectedAccounts}
-                onChange={handleSelectChange}
-                placeholder="Select accounts"
-                style={{
-                    minWidth: '200px',
-                    maxWidth: '350px',
-                    fontFamily: FONT_FAMILY,
-                    color: COLORS.textSecondary,
-                }}
-                size="middle"
-                suffixIcon={<CalendarOutlined style={{ color: COLORS.textSecondary }} />}
-                // dropdownStyle={{
-                //     fontFamily: FONT_FAMILY,
-                //     borderRadius: '12px',
-                //     boxShadow: `0 8px 24px ${COLORS.shadowMedium}`,
-                //     backgroundColor: COLORS.surface,
-                //     padding: '8px',
-                //     border: `1px solid ${COLORS.borderLight}`,
-                // }}
-                tagRender={(props) => {
-                    const { label, value, closable, onClose } = props;
-                    if (value === 'all') {
-                        return (
-                            <Tag
-                                color="blue"
-                                closable={closable}
-                                onClose={onClose}
-                                style={{
-                                    margin: '2px',
-                                    borderRadius: '4px',
-                                    fontSize: '11px',
-                                    fontWeight: 500,
-                                    fontFamily: FONT_FAMILY,
-                                    // color: COLORS.textSecondary,
-                                }}
-                            >
-                                All Accounts
-                            </Tag>
-                        );
-                    }
-
-                    const account = connectedAccounts.find(acc => createAccountIdentifier(acc) === value);
-                    if (!account) return <span />;
-
+    return (
+        <Select
+            mode="multiple"
+            value={selectedAccounts}
+            onChange={handleSelectChange}
+            placeholder="Select accounts"
+            style={{
+                minWidth: "200px",
+                maxWidth: "350px",
+                fontFamily: FONT_FAMILY,
+                color: COLORS.textSecondary,
+            }}
+            size="middle"
+            suffixIcon={<CalendarOutlined style={{ color: COLORS.textSecondary }} />}
+            tagRender={(props) => {
+                const { label, value, closable, onClose } = props;
+                if (value === "all") {
                     return (
                         <Tag
-                            // color={account.color}
+                            color="blue"
                             closable={closable}
                             onClose={onClose}
                             style={{
-                                margin: '2px',
-                                borderRadius: '4px',
-                                fontSize: '11px',
+                                margin: "2px",
+                                borderRadius: "4px",
+                                fontSize: "11px",
                                 fontWeight: 500,
                                 fontFamily: FONT_FAMILY,
-                                background: `${account.color}15`,
-                                borderColor: account.color,
-                                color: account.color,
                             }}
                         >
-                            <Avatar size={14} style={{ backgroundColor: account.color, marginRight: '4px' }}>
-                                {getProviderIcon(account.provider)}
-                            </Avatar>
-                            {account.email.split('@')[0]}
+                            All Accounts
                         </Tag>
                     );
-                }}
-            >
-                <Select.Option
-                    key="all"
-                    value="all"
-                    style={{ fontFamily: FONT_FAMILY }}
-                >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.xs }}>
-                        <Avatar size={20} style={{ backgroundColor: COLORS.accent }}>
-                            <CalendarOutlined style={{ fontSize: '12px' }} />
-                        </Avatar>
-                        <Text style={{ fontSize: '13px', fontWeight: 500, fontFamily: FONT_FAMILY }}>
-                            All Accounts
-                        </Text>
-                    </div>
-                </Select.Option>
-                {connectedAccounts.map((account) => {
-                    const accountId = createAccountIdentifier(account);
-                    return (
-                        <Select.Option
-                            key={accountId}
-                            value={accountId}
-                            style={{ fontFamily: FONT_FAMILY, color: COLORS.textSecondary }}
+                }
+
+                const account = connectedAccounts.find(
+                    (acc) => createAccountIdentifier(acc) === value
+                );
+                if (!account) return <span />;
+
+                return (
+                    <Tag
+                        closable={closable}
+                        onClose={onClose}
+                        style={{
+                            margin: "2px",
+                            borderRadius: "4px",
+                            fontSize: "11px",
+                            fontWeight: 500,
+                            fontFamily: FONT_FAMILY,
+                            background: `${account.color}15`,
+                            borderColor: account.color,
+                            color: account.color,
+                        }}
+                    >
+                        <Avatar
+                            size={14}
+                            style={{ backgroundColor: account.color, marginRight: "4px" }}
                         >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.xs }}>
-                                <Avatar size={20} style={{ backgroundColor: account.color }}>
-                                    {getProviderIcon(account.provider)}
-                                </Avatar>
-                                <div>
-                                    <Text style={{ fontSize: '13px', fontWeight: 500, fontFamily: FONT_FAMILY }}>
-                                        {account.email.split('@')[0]}
-                                    </Text>
-                                    <Text style={{ fontSize: '11px', color: COLORS.textSecondary, display: 'block', fontFamily: FONT_FAMILY }}>
-                                        {getProviderDisplayName(account.provider)}
-                                    </Text>
-                                </div>
+                            {getProviderIcon(account.provider)}
+                        </Avatar>
+                        {account.email.split("@")[0]}
+                    </Tag>
+                );
+            }}
+        >
+            <Select.Option key="all" value="all" style={{ fontFamily: FONT_FAMILY }}>
+                <div style={{ display: "flex", alignItems: "center", gap: SPACING.xs }}>
+                    <Avatar size={20} style={{ backgroundColor: COLORS.accent }}>
+                        <CalendarOutlined style={{ fontSize: "12px" }} />
+                    </Avatar>
+                    <Text
+                        style={{
+                            fontSize: "13px",
+                            fontWeight: 500,
+                            fontFamily: FONT_FAMILY,
+                        }}
+                    >
+                        All Accounts
+                    </Text>
+                </div>
+            </Select.Option>
+            {connectedAccounts.map((account) => {
+                const accountId = createAccountIdentifier(account);
+                return (
+                    <Select.Option
+                        key={accountId}
+                        value={accountId}
+                        style={{ fontFamily: FONT_FAMILY, color: COLORS.textSecondary }}
+                    >
+                        <div
+                            style={{ display: "flex", alignItems: "center", gap: SPACING.xs }}
+                        >
+                            <Avatar size={20} style={{ backgroundColor: account.color }}>
+                                {getProviderIcon(account.provider)}
+                            </Avatar>
+                            <div>
+                                <Text
+                                    style={{
+                                        fontSize: "13px",
+                                        fontWeight: 500,
+                                        fontFamily: FONT_FAMILY,
+                                    }}
+                                >
+                                    {account.email.split("@")[0]}
+                                </Text>
+                                <Text
+                                    style={{
+                                        fontSize: "11px",
+                                        color: COLORS.textSecondary,
+                                        display: "block",
+                                        fontFamily: FONT_FAMILY,
+                                    }}
+                                >
+                                    {getProviderDisplayName(account.provider)}
+                                </Text>
                             </div>
-                        </Select.Option>
-                    );
-                })}
-            </Select>
-        );
-    };
+                        </div>
+                    </Select.Option>
+                );
+            })}
+        </Select>
+    );
+};
 
 const ConnectAccountModal: React.FC<{
     isVisible: boolean;
     onClose: () => void;
-    onConnect: (service: 'google' | 'outlook') => void;
+    onConnect: () => void;
 }> = ({ isVisible, onClose, onConnect }) => {
     return (
         <Modal
@@ -454,70 +501,82 @@ const ConnectAccountModal: React.FC<{
             width={450}
             centered
         >
-            <div style={{ textAlign: 'center', padding: '18px', fontFamily: FONT_FAMILY }}>
-                <CalendarOutlined style={{ fontSize: '48px', color: COLORS.accent, marginBottom: '18px' }} />
-                <Title level={4} style={{ marginBottom: '12px', color: COLORS.text, fontFamily: FONT_FAMILY }}>
-                    Connect Your Calendar Account
-                </Title>
-                <Text style={{
-                    display: 'block',
-                    marginBottom: '18px',
-                    color: COLORS.textSecondary,
+            <div
+                style={{
+                    textAlign: "center",
+                    padding: "18px",
                     fontFamily: FONT_FAMILY,
-                    fontSize: '14px'
-                }}>
-                    To view and manage your calendar events, please connect your Google or Microsoft Outlook account.
-                    You can connect multiple accounts to see all your events in one place.
+                }}
+            >
+                <CalendarOutlined
+                    style={{
+                        fontSize: "48px",
+                        color: COLORS.accent,
+                        marginBottom: "18px",
+                    }}
+                />
+                <Title
+                    level={4}
+                    style={{
+                        marginBottom: "12px",
+                        color: COLORS.text,
+                        fontFamily: FONT_FAMILY,
+                    }}
+                >
+                    Connect Your Google Calendar
+                </Title>
+                <Text
+                    style={{
+                        display: "block",
+                        marginBottom: "18px",
+                        color: COLORS.textSecondary,
+                        fontFamily: FONT_FAMILY,
+                        fontSize: "14px",
+                    }}
+                >
+                    To view and manage your calendar events, please connect your Google
+                    account. You can connect multiple accounts to see all your events in
+                    one place.
                 </Text>
-                <div style={{
-                    background: COLORS.surfaceSecondary,
-                    padding: '12px',
-                    borderRadius: '6px',
-                    marginBottom: '18px'
-                }}>
-                    <Text style={{ fontSize: '13px', color: COLORS.textSecondary, fontFamily: FONT_FAMILY }}>
+                <div
+                    style={{
+                        background: COLORS.surfaceSecondary,
+                        padding: "12px",
+                        borderRadius: "6px",
+                        marginBottom: "18px",
+                    }}
+                >
+                    <Text
+                        style={{
+                            fontSize: "13px",
+                            color: COLORS.textSecondary,
+                            fontFamily: FONT_FAMILY,
+                        }}
+                    >
                         🔒 Your data is secure and we only access your calendar events
                     </Text>
                 </div>
-                <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                <Space direction="vertical" size="middle" style={{ width: "100%" }}>
                     <Button
                         type="primary"
                         size="large"
                         icon={<GoogleOutlined />}
-                        onClick={() => onConnect('google')}
+                        onClick={onConnect}
                         style={{
-                            width: '100%',
-                            height: '42px',
-                            backgroundColor: '#4285F4', // Google Blue
-                            borderColor: '#4285F4',
-                            borderRadius: '6px',
+                            width: "100%",
+                            height: "42px",
+                            backgroundColor: COLORS.accent,
+                            borderColor: COLORS.accent,
+                            borderRadius: "6px",
                             fontFamily: FONT_FAMILY,
                         }}
                     >
                         Connect Google Account
                     </Button>
-
-                    <Button
-                        type="primary"
-                        size="large"
-                        icon={<WindowsOutlined />}
-                        onClick={() => onConnect('outlook')}
-                        style={{
-                            width: '100%',
-                            height: '42px',
-                            backgroundColor: '#0078D4', // Microsoft Blue
-                            borderColor: '#0078D4',
-                            borderRadius: '6px',
-                            fontFamily: FONT_FAMILY,
-                        }}
-                    >
-                        Connect Outlook Account
-                    </Button>
-
                     <Button
                         type="text"
                         onClick={onClose}
-                        style={{ width: '100%', fontFamily: FONT_FAMILY }}
+                        style={{ width: "100%", fontFamily: FONT_FAMILY }}
                     >
                         Maybe Later
                     </Button>
@@ -526,64 +585,93 @@ const ConnectAccountModal: React.FC<{
         </Modal>
     );
 };
+
 // Advanced Feature: Habit Tracker Component
 const HabitTracker: React.FC<{
     habits: HabitTracker[];
     onToggleHabit: (habitId: string) => void;
-    // onAddHabit: () => void;
 }> = ({ habits, onToggleHabit }) => {
     const todayHabits = habits.slice(0, 4); // Show top 4 habits
 
     return (
-        <div style={{
-            background: COLORS.surface,
-            borderRadius: '12px',
-            // padding: SPACING.md,
-            // border: `1px solid ${COLORS.borderLight}`,
-            fontFamily: FONT_FAMILY,
-        }}>
-            <Space direction="vertical" size="small" style={{ width: '100%' }}>
+        <div
+            style={{
+                background: COLORS.surface,
+                borderRadius: "12px",
+                fontFamily: FONT_FAMILY,
+            }}
+        >
+            <Space direction="vertical" size="small" style={{ width: "100%" }}>
                 {todayHabits.map((habit) => (
                     <div
                         key={habit.id}
                         style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
                             padding: SPACING.sm,
                             background: COLORS.surfaceSecondary,
-                            borderRadius: '8px',
+                            borderRadius: "8px",
                             border: `1px solid ${COLORS.borderLight}`,
                         }}
                     >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.sm }}>
-                            <div style={{
-                                fontSize: '16px',
-                                color: habit.color,
-                            }}>
+                        <div
+                            style={{ display: "flex", alignItems: "center", gap: SPACING.sm }}
+                        >
+                            <div
+                                style={{
+                                    fontSize: "16px",
+                                    color: habit.color,
+                                }}
+                            >
                                 {habit.icon}
                             </div>
                             <div>
-                                <Text style={{ fontSize: '13px', fontWeight: 500, fontFamily: FONT_FAMILY }}>
+                                <Text
+                                    style={{
+                                        fontSize: "13px",
+                                        fontWeight: 500,
+                                        fontFamily: FONT_FAMILY,
+                                    }}
+                                >
                                     {habit.name}
                                 </Text>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.xs }}>
-                                    <Text style={{ fontSize: '11px', color: COLORS.textSecondary, fontFamily: FONT_FAMILY }}>
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: SPACING.xs,
+                                    }}
+                                >
+                                    <Text
+                                        style={{
+                                            fontSize: "11px",
+                                            color: COLORS.textSecondary,
+                                            fontFamily: FONT_FAMILY,
+                                        }}
+                                    >
                                         {habit.current}/{habit.target}
                                     </Text>
-                                    <div style={{
-                                        width: '40px',
-                                        height: '4px',
-                                        background: COLORS.borderLight,
-                                        borderRadius: '2px',
-                                        overflow: 'hidden',
-                                    }}>
-                                        <div style={{
-                                            width: `${Math.min((habit.current / habit.target) * 100, 100)}%`,
-                                            height: '100%',
-                                            background: habit.color,
-                                            transition: 'width 0.3s ease',
-                                        }} />
+                                    <div
+                                        style={{
+                                            width: "40px",
+                                            height: "4px",
+                                            background: COLORS.borderLight,
+                                            borderRadius: "2px",
+                                            overflow: "hidden",
+                                        }}
+                                    >
+                                        <div
+                                            style={{
+                                                width: `${Math.min(
+                                                    (habit.current / habit.target) * 100,
+                                                    100
+                                                )}%`,
+                                                height: "100%",
+                                                background: habit.color,
+                                                transition: "width 0.3s ease",
+                                            }}
+                                        />
                                     </div>
                                 </div>
                             </div>
@@ -594,9 +682,11 @@ const HabitTracker: React.FC<{
                             icon={<CheckCircleOutlined />}
                             onClick={() => onToggleHabit(habit.id)}
                             style={{
-                                borderRadius: '6px',
-                                backgroundColor: habit.current >= habit.target ? COLORS.success : undefined,
-                                borderColor: habit.current >= habit.target ? COLORS.success : undefined,
+                                borderRadius: "6px",
+                                backgroundColor:
+                                    habit.current >= habit.target ? COLORS.success : undefined,
+                                borderColor:
+                                    habit.current >= habit.target ? COLORS.success : undefined,
                                 fontFamily: FONT_FAMILY,
                             }}
                         />
@@ -606,71 +696,630 @@ const HabitTracker: React.FC<{
         </div>
     );
 };
+
+// Goal Share Modal Component
+const GoalShareModal: React.FC<{
+    isVisible: boolean;
+    onClose: () => void;
+    goal: any;
+    loading: boolean;
+    onShare: (goal: any, email: string) => void;
+}> = ({ isVisible, onClose, goal, loading, onShare }) => {
+    const [shareForm] = Form.useForm();
+
+    const handleShare = async () => {
+        try {
+            const values = await shareForm.validateFields();
+            await onShare(goal, values.email);
+            handleClose();
+        } catch (error) {
+            console.error("Share validation failed:", error);
+        }
+    };
+
+    const handleClose = () => {
+        onClose();
+        shareForm.resetFields();
+    };
+
+    return (
+        <Modal
+            title={
+                <div
+                    style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        fontFamily: FONT_FAMILY,
+                    }}
+                >
+                    <TrophyOutlined style={{ color: COLORS.success }} />
+                    <span>Share Goal</span>
+                </div>
+            }
+            open={isVisible}
+            onCancel={handleClose}
+            onOk={handleShare}
+            centered
+            width={500}
+            okText="Share Goal"
+            confirmLoading={loading}
+            destroyOnClose
+            style={{ fontFamily: FONT_FAMILY }}
+        >
+            {goal && (
+                <div style={{ marginBottom: 20 }}>
+                    <div
+                        style={{
+                            padding: 16,
+                            backgroundColor: COLORS.surfaceSecondary,
+                            borderRadius: 8,
+                            border: `1px solid ${COLORS.borderLight}`,
+                            fontFamily: FONT_FAMILY,
+                        }}
+                    >
+                        <div
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 12,
+                                marginBottom: 12,
+                            }}
+                        >
+                            <div
+                                style={{
+                                    width: "40px",
+                                    height: "40px",
+                                    background: `linear-gradient(135deg, ${COLORS.success}, ${COLORS.success}dd)`,
+                                    borderRadius: "10px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    boxShadow: `0 4px 12px ${COLORS.success}30`,
+                                }}
+                            >
+                                <TrophyOutlined style={{ color: "white" }} />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <div
+                                    style={{
+                                        fontWeight: 600,
+                                        marginBottom: 4,
+                                        color: COLORS.text,
+                                        fontFamily: FONT_FAMILY,
+                                        fontSize: "16px",
+                                    }}
+                                >
+                                    {goal.text}
+                                </div>
+                                <div
+                                    style={{
+                                        fontSize: 12,
+                                        color: COLORS.textSecondary,
+                                        fontFamily: FONT_FAMILY,
+                                    }}
+                                >
+                                    Goal • Due: {goal.date} • {goal.time}
+                                </div>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <Tag
+                                    color={goal.completed ? "green" : "orange"}
+                                    style={{
+                                        borderRadius: "6px",
+                                        fontSize: "11px",
+                                        fontFamily: FONT_FAMILY,
+                                    }}
+                                >
+                                    {goal.completed ? "Completed" : "In Progress"}
+                                </Tag>
+                            </div>
+                        </div>
+                        {goal.completed && (
+                            <div
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 4,
+                                    fontSize: 12,
+                                    color: COLORS.success,
+                                    fontFamily: FONT_FAMILY,
+                                }}
+                            >
+                                <CheckCircleOutlined />
+                                <span>This goal has been completed!</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            <Form form={shareForm} layout="vertical">
+                <Form.Item
+                    name="email"
+                    label={<span style={{ fontFamily: FONT_FAMILY }}>Email Address</span>}
+                    rules={[
+                        { required: true, message: "Please enter an email address" },
+                        { type: "email", message: "Please enter a valid email address" },
+                    ]}
+                >
+                    <Input
+                        placeholder="Enter recipient's email address"
+                        prefix={<MailOutlined style={{ color: COLORS.textSecondary }} />}
+                        size="large"
+                        style={{ fontFamily: FONT_FAMILY }}
+                    />
+                </Form.Item>
+            </Form>
+
+            <div
+                style={{
+                    fontSize: 12,
+                    color: COLORS.textSecondary,
+                    marginTop: 16,
+                    fontFamily: FONT_FAMILY,
+                    background: COLORS.surfaceSecondary,
+                    padding: 12,
+                    borderRadius: 6,
+                }}
+            >
+                <div
+                    style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                        marginBottom: 4,
+                    }}
+                >
+                    <span>🎯</span>
+                    <span>Share your goal progress and inspire others</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <span>📧</span>
+                    <span>This will send an email with your goal details</span>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
+// Task Share Modal Component
+const TaskShareModal: React.FC<{
+    isVisible: boolean;
+    onClose: () => void;
+    task: any;
+    loading: boolean;
+    onShare: (task: any, email: string) => void;
+}> = ({ isVisible, onClose, task, loading, onShare }) => {
+    const [shareForm] = Form.useForm();
+
+    const handleShare = async () => {
+        try {
+            const values = await shareForm.validateFields();
+            await onShare(task, values.email);
+            handleClose();
+        } catch (error) {
+            console.error("Share validation failed:", error);
+        }
+    };
+
+    const handleClose = () => {
+        onClose();
+        shareForm.resetFields();
+    };
+
+    const getPriorityColor = (priority: string) => {
+        switch (priority) {
+            case "high":
+                return COLORS.error;
+            case "medium":
+                return COLORS.warning;
+            case "low":
+                return COLORS.success;
+            default:
+                return COLORS.textSecondary;
+        }
+    };
+
+    return (
+        <Modal
+            title={
+                <div
+                    style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        fontFamily: FONT_FAMILY,
+                    }}
+                >
+                    <CheckSquareOutlined style={{ color: COLORS.warning }} />
+                    <span>Share Task</span>
+                </div>
+            }
+            open={isVisible}
+            onCancel={handleClose}
+            onOk={handleShare}
+            centered
+            width={500}
+            okText="Share Task"
+            confirmLoading={loading}
+            destroyOnClose
+            style={{ fontFamily: FONT_FAMILY }}
+        >
+            {task && (
+                <div style={{ marginBottom: 20 }}>
+                    <div
+                        style={{
+                            padding: 16,
+                            backgroundColor: COLORS.surfaceSecondary,
+                            borderRadius: 8,
+                            border: `1px solid ${COLORS.borderLight}`,
+                            fontFamily: FONT_FAMILY,
+                        }}
+                    >
+                        <div
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 12,
+                                marginBottom: 12,
+                            }}
+                        >
+                            <div
+                                style={{
+                                    width: "40px",
+                                    height: "40px",
+                                    background: `linear-gradient(135deg, ${COLORS.warning}, ${COLORS.warning}dd)`,
+                                    borderRadius: "10px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    boxShadow: `0 4px 12px ${COLORS.warning}30`,
+                                }}
+                            >
+                                <CheckSquareOutlined style={{ color: "white" }} />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <div
+                                    style={{
+                                        fontWeight: 600,
+                                        marginBottom: 4,
+                                        color: COLORS.text,
+                                        fontFamily: FONT_FAMILY,
+                                        fontSize: "16px",
+                                    }}
+                                >
+                                    {task.text}
+                                </div>
+                                <div
+                                    style={{
+                                        fontSize: 12,
+                                        color: COLORS.textSecondary,
+                                        fontFamily: FONT_FAMILY,
+                                    }}
+                                >
+                                    Task • Due: {task.date} • {task.time}
+                                </div>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <div
+                                    style={{
+                                        width: "8px",
+                                        height: "8px",
+                                        borderRadius: "50%",
+                                        backgroundColor: getPriorityColor(task.priority),
+                                    }}
+                                />
+                                <Tag
+                                    color={task.completed ? "green" : "orange"}
+                                    style={{
+                                        borderRadius: "6px",
+                                        fontSize: "11px",
+                                        fontFamily: FONT_FAMILY,
+                                    }}
+                                >
+                                    {task.completed ? "Completed" : "Pending"}
+                                </Tag>
+                            </div>
+                        </div>
+
+                        <div style={{ marginBottom: 8 }}>
+                            <Tag
+                                color={getPriorityColor(task.priority)}
+                                style={{
+                                    fontSize: 10,
+                                    padding: "2px 6px",
+                                    borderRadius: 4,
+                                    fontFamily: FONT_FAMILY,
+                                }}
+                            >
+                                {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}{" "}
+                                Priority
+                            </Tag>
+                        </div>
+
+                        {task.completed && (
+                            <div
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 4,
+                                    fontSize: 12,
+                                    color: COLORS.success,
+                                    fontFamily: FONT_FAMILY,
+                                }}
+                            >
+                                <CheckCircleOutlined />
+                                <span>This task has been completed!</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            <Form form={shareForm} layout="vertical">
+                <Form.Item
+                    name="email"
+                    label={<span style={{ fontFamily: FONT_FAMILY }}>Email Address</span>}
+                    rules={[
+                        { required: true, message: "Please enter an email address" },
+                        { type: "email", message: "Please enter a valid email address" },
+                    ]}
+                >
+                    <Input
+                        placeholder="Enter recipient's email address"
+                        prefix={<MailOutlined style={{ color: COLORS.textSecondary }} />}
+                        size="large"
+                        style={{ fontFamily: FONT_FAMILY }}
+                    />
+                </Form.Item>
+            </Form>
+
+            <div
+                style={{
+                    fontSize: 12,
+                    color: COLORS.textSecondary,
+                    marginTop: 16,
+                    fontFamily: FONT_FAMILY,
+                    background: COLORS.surfaceSecondary,
+                    padding: 12,
+                    borderRadius: 6,
+                }}
+            >
+                <div
+                    style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                        marginBottom: 4,
+                    }}
+                >
+                    <span>✅</span>
+                    <span>Share your task progress and collaborate</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <span>📧</span>
+                    <span>This will send an email with your task details</span>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
+const GoalTagModal: React.FC<{
+    isVisible: boolean;
+    onClose: () => void;
+    goal: any;
+    loading: boolean;
+    onTag: (goal: any, emails: string[]) => void;
+    familyMembers: any[];
+}> = ({ isVisible, onClose, goal, loading, onTag, familyMembers }) => {
+    const [selectedEmails, setSelectedEmails] = useState<string[]>([]);
+
+    const handleTag = async () => {
+        if (!selectedEmails.length) {
+            message.warning("Please select at least one member.");
+            return;
+        }
+
+        await onTag(goal, selectedEmails);
+        setSelectedEmails([]);
+        onClose();
+    };
+
+    const memberOptions = familyMembers
+        .filter((m) => !!m.email)
+        .map((m) => ({
+            label: `${m.name}`,
+            value: m.email,
+        }));
+
+    return (
+        <Modal
+            title="Tag Goal"
+            open={isVisible}
+            onCancel={() => {
+                setSelectedEmails([]);
+                onClose();
+            }}
+            onOk={handleTag}
+            okText="Tag Goal"
+            confirmLoading={loading}
+            centered
+            destroyOnClose
+        >
+            {goal && (
+                <div style={{ marginBottom: 16 }}>
+                    <Title level={5}>Title:</Title>
+                    <Text>{goal.title || goal.text || "Untitled Goal"}</Text>
+                    <br />
+                    <Title level={5} style={{ marginTop: 12 }}>Date:</Title>
+                    <Text>{goal.date || "N/A"}</Text>
+                </div>
+            )}
+
+            <Form layout="vertical">
+                <Form.Item label="Select members to tag">
+                    <Select
+                        mode="multiple"
+                        allowClear
+                        placeholder="Select members"
+                        options={memberOptions}
+                        value={selectedEmails}
+                        onChange={setSelectedEmails}
+                    />
+                </Form.Item>
+            </Form>
+        </Modal>
+    );
+};
+
+const TaskTagModal: React.FC<{
+    isVisible: boolean;
+    onClose: () => void;
+    task: any;
+    loading: boolean;
+    onTag: (task: any, emails: string[]) => void;
+    familyMembers: any[];
+}> = ({ isVisible, onClose, task, loading, onTag, familyMembers }) => {
+    const [selectedEmails, setSelectedEmails] = useState<string[]>([]);
+
+    const handleTag = async () => {
+        if (!selectedEmails.length) {
+            message.warning("Please select at least one member.");
+            return;
+        }
+
+        await onTag(task, selectedEmails);
+        setSelectedEmails([]);
+        onClose();
+    };
+
+    const memberOptions = familyMembers
+        .filter((m) => !!m.email)
+        .map((m) => ({
+            label: `${m.name}`,
+            value: m.email,
+        }));
+
+    return (
+        <Modal
+            title="Tag Task"
+            open={isVisible}
+            onCancel={() => {
+                setSelectedEmails([]);
+                onClose();
+            }}
+            onOk={handleTag}
+            okText="Tag Task"
+            confirmLoading={loading}
+            centered
+            destroyOnClose
+        >
+            {task && (
+                <div style={{ marginBottom: 16 }}>
+                    <Title level={5}>Title:</Title>
+                    <Text>{task.title || task.text || "Untitled Task"}</Text>
+                    <br />
+                    <Title level={5} style={{ marginTop: 12 }}>Date:</Title>
+                    <Text>{task.date || "N/A"}</Text>
+                </div>
+            )}
+
+            <Form layout="vertical">
+                <Form.Item label="Select members to tag">
+                    <Select
+                        mode="multiple"
+                        allowClear
+                        placeholder="Select members"
+                        options={memberOptions}
+                        value={selectedEmails}
+                        onChange={setSelectedEmails}
+                    />
+                </Form.Item>
+            </Form>
+        </Modal>
+    );
+};
+
+
 // Enhanced PlannerTitle with new CalendarAccountFilter
 const PlannerTitle: React.FC<{
     connectedAccounts: ConnectedAccount[];
     onFilterChange: (filteredAccountIds: string[]) => void;
-    onConnectAccount: (service: string) => void;
+    onConnectAccount: () => void;
 }> = ({ connectedAccounts, onFilterChange, onConnectAccount }) => {
     return (
-        <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: SPACING.xl,
-            padding: `${SPACING.xs}px ${SPACING.sm}px`,
-            borderRadius: '16px',
-        }}>
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: SPACING.md,
-            }}>
-                <div style={{
-                    width: '42px',
-                    height: '42px',
-                    background: `linear-gradient(135deg, ${COLORS.accent}, ${COLORS.accent}dd)`,
-                    color: 'white',
-                    borderRadius: '14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: `0 6px 20px ${COLORS.accent}30`,
-                }}>
+        <div
+            style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: SPACING.xl,
+                padding: `${SPACING.xs}px ${SPACING.sm}px`,
+                borderRadius: "16px",
+            }}
+        >
+            <div
+                style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: SPACING.md,
+                }}
+            >
+                <div
+                    style={{
+                        width: "42px",
+                        height: "42px",
+                        background: `linear-gradient(135deg, ${COLORS.accent}, ${COLORS.accent}dd)`,
+                        color: "white",
+                        borderRadius: "14px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        boxShadow: `0 6px 20px ${COLORS.accent}30`,
+                    }}
+                >
                     <Calendar size={22} />
                 </div>
                 <div>
-                    <h1 style={{
-                        fontSize: '26px',
-                        fontWeight: 600,
-                        color: COLORS.text,
-                        margin: 0,
-                        lineHeight: 1.2,
-                        fontFamily: FONT_FAMILY,
-                    }}>
+                    <h1
+                        style={{
+                            fontSize: "26px",
+                            fontWeight: 600,
+                            color: COLORS.text,
+                            margin: 0,
+                            lineHeight: 1.2,
+                            fontFamily: FONT_FAMILY,
+                        }}
+                    >
                         Planner
                     </h1>
-                    <Text style={{
-                        color: COLORS.textSecondary,
-                        fontSize: '14px',
-                        fontWeight: 400,
-                        display: 'block',
-                        marginTop: '2px',
-                        fontFamily: FONT_FAMILY,
-                    }}>
+                    <Text
+                        style={{
+                            color: COLORS.textSecondary,
+                            fontSize: "14px",
+                            fontWeight: 400,
+                            display: "block",
+                            marginTop: "2px",
+                            fontFamily: FONT_FAMILY,
+                        }}
+                    >
                         Organize your life efficiently
                     </Text>
                 </div>
             </div>
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: SPACING.md,
-            }}>
+            <div
+                style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: SPACING.md,
+                }}
+            >
                 <CalendarAccountFilter
                     connectedAccounts={connectedAccounts}
                     onFilterChange={onFilterChange}
-                // onConnectAccount={onConnectAccount}
+                    onConnectAccount={onConnectAccount}
                 />
             </div>
         </div>
@@ -688,74 +1337,85 @@ const StatisticsCard: React.FC<{
     const percentage = total ? Math.round((value / total) * 100) : 0;
 
     return (
-        <div style={{
-            background: `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceElevated})`,
-            borderRadius: '14px',
-            padding: SPACING.lg,
-            border: `1px solid ${COLORS.borderLight}`,
-            boxShadow: `0 4px 16px ${COLORS.shadowLight}`,
-            transition: 'all 0.2s ease',
-            position: 'relative',
-            overflow: 'hidden',
-            fontFamily: FONT_FAMILY,
-        }}
+        <div
+            style={{
+                background: `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceElevated})`,
+                borderRadius: "14px",
+                padding: SPACING.lg,
+                border: `1px solid ${COLORS.borderLight}`,
+                boxShadow: `0 4px 16px ${COLORS.shadowLight}`,
+                transition: "all 0.2s ease",
+                position: "relative",
+                overflow: "hidden",
+                fontFamily: FONT_FAMILY,
+            }}
             onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.transform = "translateY(-2px)";
                 e.currentTarget.style.boxShadow = `0 8px 24px ${COLORS.shadowMedium}`;
             }}
             onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.transform = "translateY(0)";
                 e.currentTarget.style.boxShadow = `0 4px 16px ${COLORS.shadowLight}`;
             }}
         >
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: SPACING.sm,
-            }}>
-                <div style={{
-                    width: '32px',
-                    height: '32px',
-                    background: `linear-gradient(135deg, ${color}, ${color}dd)`,
-                    color: 'white',
-                    borderRadius: '10px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: `0 4px 12px ${color}30`,
-                }}>
+            <div
+                style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: SPACING.sm,
+                }}
+            >
+                <div
+                    style={{
+                        width: "32px",
+                        height: "32px",
+                        background: `linear-gradient(135deg, ${color}, ${color}dd)`,
+                        color: "white",
+                        borderRadius: "10px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        boxShadow: `0 4px 12px ${color}30`,
+                    }}
+                >
                     {icon}
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                    <div style={{
-                        fontSize: '20px',
-                        fontWeight: 600,
-                        color: COLORS.text,
-                        lineHeight: 1,
-                        marginBottom: '2px',
-                        fontFamily: FONT_FAMILY,
-                    }}>
+                <div style={{ textAlign: "right" }}>
+                    <div
+                        style={{
+                            fontSize: "20px",
+                            fontWeight: 600,
+                            color: COLORS.text,
+                            lineHeight: 1,
+                            marginBottom: "2px",
+                            fontFamily: FONT_FAMILY,
+                        }}
+                    >
                         {value}
                         {total && (
-                            <span style={{
-                                fontSize: '14px',
-                                color: COLORS.textSecondary,
-                                fontWeight: 400,
-                            }}>
+                            <span
+                                style={{
+                                    fontSize: "14px",
+                                    color: COLORS.textSecondary,
+                                    fontWeight: 400,
+                                }}
+                            >
                                 /{total}
                             </span>
                         )}
                     </div>
                 </div>
             </div>
-            <div style={{
-                fontSize: '13px',
-                color: COLORS.textSecondary,
-                fontWeight: 500,
-                marginBottom: showProgress ? SPACING.sm : 0,
-                fontFamily: FONT_FAMILY,
-            }}>
+            <div
+                style={{
+                    fontSize: "13px",
+                    color: COLORS.textSecondary,
+                    fontWeight: 500,
+                    marginBottom: showProgress ? SPACING.sm : 0,
+                    fontFamily: FONT_FAMILY,
+                }}
+            >
                 {title}
             </div>
         </div>
@@ -791,13 +1451,18 @@ const Planner = () => {
     const [isEventModalVisible, setIsEventModalVisible] = useState(false);
     const [isTodoModalVisible, setIsTodoModalVisible] = useState(false);
     const [isProjectModalVisible, setIsProjectModalVisible] = useState(false);
-    const [isConnectAccountModalVisible, setIsConnectAccountModalVisible] = useState(false);
+    const [isConnectAccountModalVisible, setIsConnectAccountModalVisible] =
+        useState(false);
     const [editingGoal, setEditingGoal] = useState<any>(null);
     const [editingTodo, setEditingTodo] = useState<any>(null);
     const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
-    const [connectedAccounts, setConnectedAccounts] = useState<ConnectedAccount[]>([]);
+    const [connectedAccounts, setConnectedAccounts] = useState<
+        ConnectedAccount[]
+    >([]);
     const [filteredAccountIds, setFilteredAccountIds] = useState<string[]>([]);
-    const [personColors, setPersonColors] = useState<{ [person: string]: { color: string; email: string } }>({});
+    const [personColors, setPersonColors] = useState<{
+        [person: string]: { color: string; email: string };
+    }>({});
     const [currentDate, setCurrentDate] = useState(new Date());
     const [view, setView] = useState<"Day" | "Week" | "Month" | "Year">("Week");
     const [eventForm] = Form.useForm();
@@ -807,82 +1472,103 @@ const Planner = () => {
     const [notes, setNotes] = useState<
         { id: string; title: string; description: string; created_at: string }[]
     >([]);
-    const [editingNote, setEditingNote] = useState<{ id: string; title: string; description: string } | null>(null);
+    const [editingNote, setEditingNote] = useState<{
+        id: string;
+        title: string;
+        description: string;
+    } | null>(null);
     const [isNoteModalVisible, setIsNoteModalVisible] = useState(false);
     const [noteForm] = Form.useForm();
-    const [expandedSection, setExpandedSection] = useState<"habits" | "goals" | "todos" | null>("habits");
-    const username = useCurrentUser()?.user_name;
+    const [expandedSection, setExpandedSection] = useState<
+        "habits" | "goals" | "todos" | null
+    >("habits");
 
-    // {
-    //     if (!calendarEvents) {
-    //         return <DocklyLoader />
-    //     }
-    // }
+    // Separate Share Modal States
+    const [isGoalShareModalVisible, setIsGoalShareModalVisible] = useState(false);
+    const [isTaskShareModalVisible, setIsTaskShareModalVisible] = useState(false);
+    const [sharingGoal, setSharingGoal] = useState<any>(null);
+    const [sharingTask, setSharingTask] = useState<any>(null);
+    const [isGoalTagModalVisible, setIsGoalTagModalVisible] = useState(false);
+    const [isTaskTagModalVisible, setIsTaskTagModalVisible] = useState(false);
+    const [taggingGoal, setTaggingGoal] = useState<any>(null);
+    const [taggingTask, setTaggingTask] = useState<any>(null);
+
+    const [familyMembers, setFamilyMembers] = useState<any[]>([]);
+    const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+    const [currentTagItem, setCurrentTagItem] = useState<any>(null);
+    const [tagModalVisible, setTagModalVisible] = useState(false);
+
     // Advanced Features State
     const [habits, setHabits] = useState<HabitTracker[]>([
         {
-            id: '1',
-            name: 'Morning Exercise',
-            description: '30 minutes of workout',
-            frequency: 'daily',
+            id: "1",
+            name: "Morning Exercise",
+            description: "30 minutes of workout",
+            frequency: "daily",
             target: 1,
             current: 0,
             streak: 5,
             color: COLORS.success,
-            icon: '🏃',
+            icon: "🏃",
         },
         {
-            id: '2',
-            name: 'Read Books',
-            description: '20 pages daily',
-            frequency: 'daily',
+            id: "2",
+            name: "Read Books",
+            description: "20 pages daily",
+            frequency: "daily",
             target: 20,
             current: 15,
             streak: 3,
             color: COLORS.accent,
-            icon: '📚',
+            icon: "📚",
         },
         {
-            id: '3',
-            name: 'Meditation',
-            description: '10 minutes mindfulness',
-            frequency: 'daily',
+            id: "3",
+            name: "Meditation",
+            description: "10 minutes mindfulness",
+            frequency: "daily",
             target: 1,
             current: 1,
             streak: 7,
             color: COLORS.habit,
-            icon: '🧘',
+            icon: "🧘",
         },
         {
-            id: '4',
-            name: 'Water Intake',
-            description: '8 glasses of water',
-            frequency: 'daily',
+            id: "4",
+            name: "Water Intake",
+            description: "8 glasses of water",
+            frequency: "daily",
             target: 8,
             current: 5,
             streak: 2,
             color: COLORS.time,
-            icon: '💧',
+            icon: "💧",
         },
     ]);
 
     const [todayMood, setTodayMood] = useState<MoodEntry | undefined>(undefined);
-    const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(null);
+    const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(
+        null
+    );
 
     // Helper functions
     const getPriorityColor = (priority: string) => {
         switch (priority) {
-            case "high": return COLORS.error;
-            case "medium": return COLORS.warning;
-            case "low": return COLORS.success;
-            default: return COLORS.textSecondary;
+            case "high":
+                return COLORS.error;
+            case "medium":
+                return COLORS.warning;
+            case "low":
+                return COLORS.success;
+            default:
+                return COLORS.textSecondary;
         }
     };
 
     const formatDateString = (date: Date): string => {
         const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
         return `${year}-${month}-${day}`;
     };
 
@@ -916,23 +1602,28 @@ const Planner = () => {
         const { start, end } = getDateRange(currentDate, view);
         const startStr = formatDateString(start);
         const endStr = formatDateString(end);
-        return goals.filter(goal => goal.date >= startStr && goal.date <= endStr);
+        return goals.filter((goal) => goal.date >= startStr && goal.date <= endStr);
     };
 
     const getFilteredTodos = () => {
         const { start, end } = getDateRange(currentDate, view);
         const startStr = formatDateString(start);
         const endStr = formatDateString(end);
-        return todos.filter(todo => todo.date >= startStr && todo.date <= endStr);
+        return todos.filter((todo) => todo.date >= startStr && todo.date <= endStr);
     };
 
-    const getViewTitle = (type: 'Goals' | 'Tasks') => {
+    const getViewTitle = (type: "Goals" | "Tasks") => {
         switch (view) {
-            case "Day": return `Daily ${type}`;
-            case "Week": return `Weekly ${type}`;
-            case "Month": return `Monthly ${type}`;
-            case "Year": return `Yearly ${type}`;
-            default: return `Weekly ${type}`;
+            case "Day":
+                return `Daily ${type}`;
+            case "Week":
+                return `Weekly ${type}`;
+            case "Month":
+                return `Monthly ${type}`;
+            case "Year":
+                return `Yearly ${type}`;
+            default:
+                return `Weekly ${type}`;
         }
     };
 
@@ -942,7 +1633,7 @@ const Planner = () => {
         }
 
         // Filter events based on active account IDs
-        return calendarEvents.filter(event => {
+        return calendarEvents.filter((event) => {
             const eventAccountId = `${event.source_email}-${event.provider}`;
             return filteredAccountIds.includes(eventAccountId);
         });
@@ -953,48 +1644,148 @@ const Planner = () => {
         setFilteredAccountIds(filteredIds);
     }, []);
 
-    const handleConnectAccount = (service: string) => {
-        if (service === 'google') {
-            window.location.href = `${API_URL}/add-googleCalendar?username=${username}&userId=${userId}`;
-        } else if (service === "outlook") {
-            window.location.href = `${API_URL}/add-microsoftAccount?username=${username}&userId=${userId}`;
-        }
+    const handleConnectAccount = () => {
+        window.location.href = `/add-googleCalendar?username=user&userId=123`;
     };
 
     const handleToggleHabit = (habitId: string) => {
-        setHabits(prev => prev.map(habit => {
-            if (habit.id === habitId) {
-                const newCurrent = Math.min(habit.current + 1, habit.target);
-                return {
-                    ...habit,
-                    current: newCurrent,
-                    lastCompleted: new Date().toISOString(),
-                };
+        setHabits((prev) =>
+            prev.map((habit) => {
+                if (habit.id === habitId) {
+                    const newCurrent = Math.min(habit.current + 1, habit.target);
+                    return {
+                        ...habit,
+                        current: newCurrent,
+                        lastCompleted: new Date().toISOString(),
+                    };
+                }
+                return habit;
+            })
+        );
+    };
+
+    // Delete Functions
+    const handleDeleteGoal = async (goalId: string) => {
+        console.log("Deleting goal with ID:", goalId);
+        setLoading(true);
+        try {
+            await deleteWeeklyGoal({ id: goalId });
+            message.success("Goal deleted successfully");
+            fetchAllPlannerData();
+        } catch (error) {
+            console.error("Delete goal error:", error);
+            message.error("Failed to delete goal");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDeleteTodo = async (todoId: string) => {
+        setLoading(true);
+        try {
+            const response = await deleteWeeklyTodo({ id: todoId });
+            const { status, message: msg } = response.data;
+
+            if (status) {
+                message.success("Todo deleted successfully");
+                await fetchAllPlannerData();
+            } else {
+                message.error(msg || "Failed to delete todo");
             }
-            return habit;
-        }));
+        } catch (error) {
+            console.error("Error deleting todo:", error);
+            message.error("Failed to delete todo");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Share Functions
+    const handleShareGoal = async (goal: any, email: string) => {
+        setLoading(true);
+        try {
+            const payload = {
+                email: [email],
+                goal: {
+                    title: goal.text,
+                    date: goal.date, // ✅ instead of created_at
+                    time: goal.time, // ✅ optional
+                    completed: goal.completed, // ✅ optional
+                },
+            };
+            await shareGoal(payload);
+
+            const response = await shareGoal(payload);
+            const { status, message: msg } = response.data;
+
+            if (status) {
+                message.success("Goal shared successfully!");
+            } else {
+                message.error(msg || "Failed to share goal");
+            }
+        } catch (error) {
+            console.error("Share goal error:", error);
+            message.error("Something went wrong while sharing goal");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleShareTodo = async (todo: any, email: string) => {
+        setLoading(true);
+        try {
+            const payload = {
+                email: [email],
+                todo: {
+                    title: todo.text,
+                    date: todo.date,
+                    time: todo.time,
+                    priority: todo.priority,
+                    completed: todo.completed,
+                },
+            };
+
+            const response = await shareTodo(payload);
+            const { status, message: msg } = response.data;
+
+            if (status) {
+                message.success("Task shared successfully!");
+            } else {
+                message.error(msg || "Failed to share todo");
+            }
+        } catch (error) {
+            console.error("Share todo error:", error);
+            message.error("Something went wrong while sharing todo");
+        } finally {
+            setLoading(false);
+        }
     };
 
     // Statistics calculations
     const filteredGoalsData = getFilteredGoals();
     const filteredTodosData = getFilteredTodos();
-    const completedGoals = filteredGoalsData.filter(g => g.completed).length;
-    const completedTodos = filteredTodosData.filter(t => t.completed).length;
+    const completedGoals = filteredGoalsData.filter((g) => g.completed).length;
+    const completedTodos = filteredTodosData.filter((t) => t.completed).length;
     const totalProjects = projects.length;
-    const completedProjects = projects.filter(p => p.progress === 100).length;
+    const completedProjects = projects.filter((p) => p.progress === 100).length;
     const totalEvents = getFilteredCalendarEvents().length;
 
-    const handleEditNote = (note: { id: string; title: string; description: string }) => {
-        noteForm.setFieldsValue({ title: note.title, description: note.description });
+    const handleEditNote = (note: {
+        id: string;
+        title: string;
+        description: string;
+    }) => {
+        noteForm.setFieldsValue({
+            title: note.title,
+            description: note.description,
+        });
         setEditingNote(note);
         setIsNoteModalVisible(true);
     };
 
-    const publicProjects = projects.filter(p => p.visibility === 'public');
+    const publicProjects = projects.filter((p) => p.visibility === "public");
 
-    const filteredProjects = projects.filter(
-        (proj) => proj.source === 'planner'
-    );
+    const filteredProjects = projects.filter((proj) => proj.source === "planner");
 
     const handleDeleteNote = async (id: string) => {
         try {
@@ -1012,45 +1803,48 @@ const Planner = () => {
 
     const handleAddEvent = () => {
         setLoading(true);
-        eventForm.validateFields().then(async (values) => {
-            try {
-                values.date = values.date.format("YYYY-MM-DD");
-                values.time = values.time.format("h:mm A");
+        eventForm
+            .validateFields()
+            .then(async (values) => {
+                try {
+                    values.date = values.date.format("YYYY-MM-DD");
+                    values.time = values.time.format("h:mm A");
 
-                const response = await addEvents({ ...values });
-                const { message: msg, status } = response.data;
+                    const response = await addEvents({ ...values });
+                    const { message: msg, status } = response.data;
 
-                if (status) {
-                    showNotification("Success", msg, "success");
-                } else {
-                    showNotification("Error", msg, "error");
+                    if (status) {
+                        showNotification("Success", msg, "success");
+                    } else {
+                        showNotification("Error", msg, "error");
+                    }
+
+                    setIsEventModalVisible(false);
+                    await fetchAllPlannerData();
+                    eventForm.resetFields();
+                } catch (err) {
+                    showNotification("Error", "Something went wrong", "error");
+                } finally {
+                    setLoading(false);
                 }
-
-                setIsEventModalVisible(false);
-                await fetchAllPlannerData();
-                eventForm.resetFields();
-            } catch (err) {
-                showNotification("Error", "Something went wrong", "error");
-            } finally {
+            })
+            .catch(() => {
                 setLoading(false);
-            }
-        }).catch(() => {
-            setLoading(false);
-        });
+            });
     };
 
     const handleAddProjects = async (project: {
         title: string;
         description: string;
         due_date: string;
-        visibility: 'public' | 'private';
+        visibility: "public" | "private";
     }) => {
         setLoading(true);
         try {
             await addProject({
                 ...project,
-                source: 'planner',
-                meta: { visibility: project.visibility }
+                source: "planner",
+                meta: { visibility: project.visibility },
             });
             fetchProjects();
         } catch {
@@ -1059,7 +1853,8 @@ const Planner = () => {
         setLoading(false);
     };
 
-    const handleAddTask = async (projectId: string,
+    const handleAddTask = async (
+        projectId: string,
         taskData?: { title: string; due_date: string; assignee?: string }
     ) => {
         if (!taskData) return;
@@ -1068,14 +1863,14 @@ const Planner = () => {
             await addTask({
                 project_id: projectId,
                 title: taskData.title,
-                assignee: taskData.assignee || 'All',
-                type: 'low',
+                assignee: taskData.assignee || "All",
+                type: "low",
                 due_date: taskData.due_date,
                 completed: false,
             });
             fetchProjects();
         } catch {
-            message.error('Failed to add task');
+            message.error("Failed to add task");
         }
         setLoading(false);
     };
@@ -1090,7 +1885,7 @@ const Planner = () => {
             await updateTask({ task_id: taskId, completed: !task.completed });
             fetchProjects();
         } catch {
-            message.error('Failed to toggle task');
+            message.error("Failed to toggle task");
         }
         setLoading(false);
     };
@@ -1105,11 +1900,11 @@ const Planner = () => {
             type: task.type,
         })
             .then(() => {
-                message.success('Task updated');
+                message.success("Task updated");
                 fetchProjects();
             })
             .catch(() => {
-                message.error('Failed to update task');
+                message.error("Failed to update task");
             });
         setLoading(false);
     };
@@ -1117,7 +1912,7 @@ const Planner = () => {
     const fetchProjects = useCallback(async () => {
         setLoading(true);
         try {
-            const projRes = await getProjects({ source: 'planner' });
+            const projRes = await getProjects({ source: "planner" });
             const rawProjects = projRes.data.payload.projects || [];
 
             const projectsWithTasks = await Promise.all(
@@ -1125,17 +1920,24 @@ const Planner = () => {
                     const taskRes = await getTasks({ project_id: proj.project_id });
                     const rawTasks = taskRes.data.payload.tasks || [];
 
-                    const tasks = rawTasks.map((task: any, i: number): Task => ({
-                        id: typeof task.task_id === 'number' ? task.task_id : parseInt(task.task_id) || i + 1,
-                        title: task.title,
-                        assignee: task.assignee,
-                        type: task.type,
-                        completed: task.completed,
-                        due: task.completed ? 'Completed' : `Due ${dayjs(task.due_date).format('MMM D')}`,
-                        dueDate: task.due_date ? String(task.due_date) : '',
-                        timeSpent: task.timeSpent || 0,
-                        estimatedTime: task.estimatedTime || 60,
-                    }));
+                    const tasks = rawTasks.map(
+                        (task: any, i: number): Task => ({
+                            id:
+                                typeof task.task_id === "number"
+                                    ? task.task_id
+                                    : parseInt(task.task_id) || i + 1,
+                            title: task.title,
+                            assignee: task.assignee,
+                            type: task.type,
+                            completed: task.completed,
+                            due: task.completed
+                                ? "Completed"
+                                : `Due ${dayjs(task.due_date).format("MMM D")}`,
+                            dueDate: task.due_date ? String(task.due_date) : "",
+                            timeSpent: task.timeSpent || 0,
+                            estimatedTime: task.estimatedTime || 60,
+                        })
+                    );
 
                     return {
                         project_id: proj.project_id,
@@ -1144,13 +1946,23 @@ const Planner = () => {
                         due_date: proj.due_date,
                         color: proj.color || COLORS.accent,
                         progress: tasks.length
-                            ? Math.round((tasks.filter((t: Task) => t.completed).length / tasks.length) * 100)
+                            ? Math.round(
+                                (tasks.filter((t: Task) => t.completed).length /
+                                    tasks.length) *
+                                100
+                            )
                             : 0,
                         tasks,
-                        visibility: proj.meta?.visibility || 'public',
-                        source: proj.source || '',
-                        timeSpent: tasks.reduce((acc: number, task: Task) => acc + (task.timeSpent || 0), 0),
-                        estimatedTime: tasks.reduce((acc: number, task: Task) => acc + (task.estimatedTime || 0), 0),
+                        visibility: proj.meta?.visibility || "public",
+                        source: proj.source || "",
+                        timeSpent: tasks.reduce(
+                            (acc: number, task: Task) => acc + (task.timeSpent || 0),
+                            0
+                        ),
+                        estimatedTime: tasks.reduce(
+                            (acc: number, task: Task) => acc + (task.estimatedTime || 0),
+                            0
+                        ),
                     };
                 })
             );
@@ -1214,18 +2026,32 @@ const Planner = () => {
 
                 let response;
                 if (editingGoal) {
-                    response = await updateWeeklyGoal({ id: editingGoal.id, ...goalPayload });
+                    response = await updateWeeklyGoal({
+                        id: editingGoal.id,
+                        ...goalPayload,
+                    });
                 } else {
                     response = await addWeeklyGoal(goalPayload);
                 }
                 const { message: msg, status } = response.data;
-                const prefix = view === "Day" ? "Daily"
-                    : view === "Month" ? "Monthly"
-                        : view === "Year" ? "Yearly"
-                            : "Weekly";
+                const prefix =
+                    view === "Day"
+                        ? "Daily"
+                        : view === "Month"
+                            ? "Monthly"
+                            : view === "Year"
+                                ? "Yearly"
+                                : "Weekly";
 
-                const fullMessage = status ? `${prefix} ${editingGoal ? "goal updated" : "goal added"} successfully` : msg;
-                showNotification(status ? "Success" : "Error", fullMessage, status ? "success" : "error");
+                const fullMessage = status
+                    ? `${prefix} ${editingGoal ? "goal updated" : "goal added"
+                    } successfully`
+                    : msg;
+                showNotification(
+                    status ? "Success" : "Error",
+                    fullMessage,
+                    status ? "success" : "error"
+                );
                 await fetchAllPlannerData();
                 setIsGoalModalVisible(false);
                 setEditingGoal(null);
@@ -1239,104 +2065,124 @@ const Planner = () => {
     };
 
     // Single comprehensive fetch function - FIXED with useCallback
-    const fetchAllPlannerData = useCallback(async (preserveView: boolean = false, preservedDate: Date | null = null) => {
-        setLoading(true);
-        try {
-            // Determine filter parameters
-            const show_dockly = true; // Always show Dockly data
-            const show_google = connectedAccounts.length > 0; // Show Google if accounts connected
+    const fetchAllPlannerData = useCallback(
+        async (
+            preserveView: boolean = false,
+            preservedDate: Date | null = null
+        ) => {
+            setLoading(true);
+            try {
+                // Determine filter parameters
+                const show_dockly = true; // Always show Dockly data
+                const show_google = connectedAccounts.length > 0; // Show Google if accounts connected
 
-            // Convert account IDs back to emails for backend compatibility
-            const filtered_emails = filteredAccountIds.length > 0
-                ? filteredAccountIds.map(id => id.split('-')[0]) // Extract email from account ID
-                : undefined;
+                // Convert account IDs back to emails for backend compatibility
+                const filtered_emails =
+                    filteredAccountIds.length > 0
+                        ? filteredAccountIds.map((id) => id.split("-")[0]) // Extract email from account ID
+                        : undefined;
 
-            const response = await getAllPlannerData({
-                show_dockly,
-                show_google,
-                filtered_emails
-            });
+                const response = await getAllPlannerData({
+                    show_dockly,
+                    show_google,
+                    filtered_emails,
+                });
 
-            const payload = response.data.payload;
+                const payload = response.data.payload;
 
-            // Process goals
-            const rawGoals = payload.goals || [];
-            const formattedGoals = rawGoals.map((item: any) => ({
-                id: item.id,
-                text: item.goal,
-                completed: item.completed ?? item.goal_status === 2,
-                date: dayjs(item.date).format("YYYY-MM-DD"),
-                time: dayjs(item.time, ["h:mm A", "HH:mm"]).format("h:mm A"),
-            }));
-            setGoals(formattedGoals);
+                // Process goals
+                const rawGoals = payload.goals || [];
+                const formattedGoals = rawGoals.map((item: any) => ({
+                    id: item.id,
+                    text: item.goal,
+                    completed: item.completed ?? item.goal_status === 2,
+                    date: dayjs(item.date).format("YYYY-MM-DD"),
+                    time: dayjs(item.time, ["h:mm A", "HH:mm"]).format("h:mm A"),
+                }));
+                setGoals(formattedGoals);
 
-            // Process todos
-            const rawTodos = payload.todos || [];
-            const formattedTodos = rawTodos.map((item: any) => ({
-                id: item.id,
-                text: item.text,
-                completed: item.completed ?? false,
-                priority: item.priority || "medium",
-                date: dayjs(item.date).format("YYYY-MM-DD"),
-                time: dayjs(item.time, ["h:mm A", "HH:mm"]).format("h:mm A"),
-                goal_id: item.goal_id,
-            }));
-            setTodos(formattedTodos);
+                // Process todos
+                const rawTodos = payload.todos || [];
+                const formattedTodos = rawTodos.map((item: any) => ({
+                    id: item.id,
+                    text: item.text,
+                    completed: item.completed ?? false,
+                    priority: item.priority || "medium",
+                    date: dayjs(item.date).format("YYYY-MM-DD"),
+                    time: dayjs(item.time, ["h:mm A", "HH:mm"]).format("h:mm A"),
+                    goal_id: item.goal_id,
+                }));
+                setTodos(formattedTodos);
 
-            // Process events
-            const rawEvents = payload.events || [];
-            setCalendarEvents(transformEvents(rawEvents));
+                // Process events
+                const rawEvents = payload.events || [];
+                setCalendarEvents(transformEvents(rawEvents));
 
-            // Process connected accounts
-            const connectedAccountsData = payload.connected_accounts || [];
+                // Process connected accounts
+                const connectedAccountsData = payload.connected_accounts || [];
 
-            // Only update if actually different to prevent infinite loops
-            if (JSON.stringify(connectedAccountsData) !== JSON.stringify(connectedAccounts)) {
-                setConnectedAccounts(connectedAccountsData);
+                // Only update if actually different to prevent infinite loops
+                if (
+                    JSON.stringify(connectedAccountsData) !==
+                    JSON.stringify(connectedAccounts)
+                ) {
+                    setConnectedAccounts(connectedAccountsData);
+                }
+
+                // Set up person colors
+                const newPersonColors: {
+                    [key: string]: { color: string; email: string };
+                } = {};
+                connectedAccountsData.forEach((account: any) => {
+                    const colorToUse =
+                        account.provider === "dockly" ? PRIMARY_COLOR : account.color;
+                    newPersonColors[account.userName] = {
+                        color: colorToUse,
+                        email: account.email,
+                    };
+                });
+                setPersonColors(newPersonColors);
+
+                // Set backup email
+                if (connectedAccountsData.length > 0) {
+                    setBackup(connectedAccountsData[0].email);
+                }
+
+                // Process notes
+                const rawNotes = payload.notes || [];
+                setNotes(rawNotes);
+
+                // Update filtered account IDs if needed (only if empty)
+                if (
+                    filteredAccountIds.length === 0 &&
+                    connectedAccountsData.length > 0
+                ) {
+                    const allAccountIds = connectedAccountsData.map((acc: any) =>
+                        createAccountIdentifier(acc)
+                    );
+                    setFilteredAccountIds(allAccountIds);
+                }
+
+                // Show connect modal if no Google accounts connected
+                if (
+                    connectedAccountsData.filter((acc: any) => acc.provider === "google")
+                        .length === 0
+                ) {
+                    setIsConnectAccountModalVisible(true);
+                }
+
+                if (preservedDate) {
+                    setCurrentDate(preservedDate);
+                }
+            } catch (error) {
+                console.error("Error fetching planner data:", error);
+                message.error("Failed to load planner data");
+            } finally {
+                setLoading(false);
             }
-
-            // Set up person colors
-            const newPersonColors: { [key: string]: { color: string; email: string } } = {};
-            connectedAccountsData.forEach((account: any) => {
-                const colorToUse = account.provider === "dockly" ? PRIMARY_COLOR : account.color;
-                newPersonColors[account.userName] = {
-                    color: colorToUse,
-                    email: account.email,
-                };
-            });
-            setPersonColors(newPersonColors);
-
-            // Set backup email
-            if (connectedAccountsData.length > 0) {
-                setBackup(connectedAccountsData[0].email);
-            }
-
-            // Process notes
-            const rawNotes = payload.notes || [];
-            setNotes(rawNotes);
-
-            // Update filtered account IDs if needed (only if empty)
-            if (filteredAccountIds.length === 0 && connectedAccountsData.length > 0) {
-                const allAccountIds = connectedAccountsData.map((acc: any) => createAccountIdentifier(acc));
-                setFilteredAccountIds(allAccountIds);
-            }
-
-            // Show connect modal if no Google accounts connected
-            if (connectedAccountsData.filter((acc: any) => acc.provider === 'google').length === 0) {
-                setIsConnectAccountModalVisible(true);
-            }
-
-            if (preservedDate) {
-                setCurrentDate(preservedDate);
-            }
-
-        } catch (error) {
-            console.error("Error fetching planner data:", error);
-            message.error("Failed to load planner data");
-        } finally {
-            setLoading(false);
-        }
-    }, [setLoading, connectedAccounts, filteredAccountIds]);
+        },
+        [setLoading, connectedAccounts, filteredAccountIds]
+    );
 
     const handleAddTodo = () => {
         setLoading(true);
@@ -1354,22 +2200,33 @@ const Planner = () => {
 
                 let response;
                 if (editingTodo) {
-                    response = await updateWeeklyTodo({ id: editingTodo.id, ...todoPayload });
+                    response = await updateWeeklyTodo({
+                        id: editingTodo.id,
+                        ...todoPayload,
+                    });
                 } else {
                     response = await addWeeklyTodo(todoPayload);
                 }
 
                 const { status, message: backendMsg } = response.data;
 
-                const prefix = view === "Day" ? "Daily"
-                    : view === "Month" ? "Monthly"
-                        : view === "Year" ? "Yearly"
-                            : "Weekly";
+                const prefix =
+                    view === "Day"
+                        ? "Daily"
+                        : view === "Month"
+                            ? "Monthly"
+                            : view === "Year"
+                                ? "Yearly"
+                                : "Weekly";
 
                 const action = editingTodo ? "task updated" : "task added";
                 const msg = status ? `${prefix} ${action} successfully` : backendMsg;
 
-                showNotification(status ? "Success" : "Error", msg, status ? "success" : "error");
+                showNotification(
+                    status ? "Success" : "Error",
+                    msg,
+                    status ? "success" : "error"
+                );
                 await fetchAllPlannerData();
                 setIsTodoModalVisible(false);
                 setEditingTodo(null);
@@ -1389,7 +2246,8 @@ const Planner = () => {
             const endDateTime = event.end?.dateTime ?? null;
             const startDate = event.start?.date ?? null;
             const endDate = event.end?.date ?? null;
-            const creatorEmail = event.creator?.email || event.source_email || "Unknown";
+            const creatorEmail =
+                event.creator?.email || event.source_email || "Unknown";
             const isGoogleEvent = event.kind === "calendar#event";
 
             // Fallback: if manual event was added via Planner modal
@@ -1402,7 +2260,7 @@ const Planner = () => {
                 : startDate
                     ? dayjs(startDate)
                     : manualDate
-                        ? dayjs(`${manualDate} ${manualTime || '00:00'}`)
+                        ? dayjs(`${manualDate} ${manualTime || "00:00"}`)
                         : null;
 
             // Determine end
@@ -1424,7 +2282,9 @@ const Planner = () => {
             return {
                 id: event.id || index.toString(),
                 title: event.summary || event.title || "Untitled Event",
-                startTime: isAllDay ? "12:00 AM" : start?.format("hh:mm A") ?? "12:00 AM",
+                startTime: isAllDay
+                    ? "12:00 AM"
+                    : start?.format("hh:mm A") ?? "12:00 AM",
                 endTime: isAllDay ? "11:59 PM" : end?.format("hh:mm A") ?? "11:59 PM",
                 date: formattedStart || "N/A",
                 person: creatorEmail.split("@")[0],
@@ -1442,6 +2302,8 @@ const Planner = () => {
     useEffect(() => {
         fetchAllPlannerData();
         fetchProjects();
+        fetchMembers();
+        fetchWeeklyGoals();
     }, []);
 
     // Cleanup timer on unmount
@@ -1452,6 +2314,91 @@ const Planner = () => {
             }
         };
     }, [timerInterval]);
+
+    const fetchMembers = async () => {
+        try {
+            const res = await getUsersFamilyMembers({});
+            if (res?.payload?.members) {
+                // Remove 'me' from the dropdown list
+                const filtered = res.payload.members.filter((m: any) => m.relationship !== "me");
+                setFamilyMembers(filtered);
+            }
+        } catch (err) {
+            console.error("Failed to fetch family members", err);
+        }
+    };
+
+    const fetchWeeklyGoals = async () => {
+        try {
+            const res = await getWeeklyGoals({});
+            if (res.data.status === 1) {
+                return res.data.payload; // This is the array of goals
+            } else {
+                console.error('Failed to fetch weekly goals:', res.data.message);
+                return [];
+            }
+        } catch (err) {
+            console.error('Error fetching weekly goals:', err);
+            return [];
+        }
+    };
+
+    const handleTagGoal = async (goal: any, emails: string[]) => {
+        setLoading(true);
+        try {
+            await shareGoal({
+                email: emails,  // array
+                goal: {
+                    id: goal.id,
+                    title: goal.text,
+                    date: goal.date,
+                    time: goal.time,
+                    completed: goal.completed,
+                },
+                tagged_members: emails
+            });
+            message.success("Goal tagged successfully!");
+        } catch (err) {
+            message.error("Failed to tag goal.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleTagTask = async (task: any, emails: string[]) => {
+        setLoading(true);
+        try {
+            const payload = {
+                email: emails,  // ✅ Array
+                tagged_members: emails,  // ✅ For notifications
+                todo: {
+                    title: task.text,
+                    date: task.date,
+                    time: task.time,
+                    priority: task.priority,
+                    completed: task.completed,
+                },
+            };
+
+
+            const response = await shareTodo(payload);
+            const { status, message: msg } = response.data;
+
+            if (status) {
+                message.success("Task tagged successfully!");
+            } else {
+                message.error(msg || "Failed to tag task.");
+            }
+        } catch (err) {
+            message.error("Failed to tag task.");
+            console.error("Task tag error:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+
+
 
     const handleToggleTodo = async (id: string) => {
         const todo = todos.find((t) => t.id === id);
@@ -1479,7 +2426,6 @@ const Planner = () => {
                 completed: updatedCompleted,
                 sync_to_google: false,
             });
-
         } catch (err) {
             // Revert UI on failure
             setTodos((prevTodos) =>
@@ -1487,7 +2433,7 @@ const Planner = () => {
                     t.id === id ? { ...t, completed: !updatedCompleted } : t
                 )
             );
-            showNotification("Error", "Failed to update task status", "error");
+            showNotification("Error", "Failed to update todo status", "error");
         }
     };
 
@@ -1525,7 +2471,9 @@ const Planner = () => {
         setCurrentDate(date);
     };
 
-    const handleMainCalendarViewChange = (newView: "Day" | "Week" | "Month" | "Year") => {
+    const handleMainCalendarViewChange = (
+        newView: "Day" | "Week" | "Month" | "Year"
+    ) => {
         setView(newView);
         const newDate = new Date(currentDate);
         if (newView === "Month") {
@@ -1542,33 +2490,37 @@ const Planner = () => {
     const filteredCalendarEvents = getFilteredCalendarEvents();
 
     return (
-        <div style={{
-            minHeight: "100vh",
-            backgroundColor: COLORS.background,
-            marginLeft: "40px",
-            marginTop: "50px",
-            fontFamily: FONT_FAMILY,
-        }}>
-            <div style={{
-                padding: SPACING.lg,
-                backgroundColor: COLORS.background,
+        <div
+            style={{
                 minHeight: "100vh",
-            }}>
+                backgroundColor: COLORS.background,
+                marginLeft: "40px",
+                marginTop: "50px",
+                fontFamily: FONT_FAMILY,
+            }}
+        >
+            <div
+                style={{
+                    padding: SPACING.lg,
+                    backgroundColor: COLORS.background,
+                    minHeight: "100vh",
+                }}
+            >
                 <PlannerTitle
                     connectedAccounts={connectedAccounts}
                     onFilterChange={handleAccountFilterChange}
                     onConnectAccount={handleConnectAccount}
                 />
 
-                {/* Smart Suggestions Section */}
-
-
-                <Row gutter={[SPACING.lg, SPACING.lg]} style={{ marginBottom: SPACING.lg }}>
+                <Row
+                    gutter={[SPACING.lg, SPACING.lg]}
+                    style={{ marginBottom: SPACING.lg }}
+                >
                     <Col span={6}>
                         <StatisticsCard
                             title="Goals"
                             value={filteredGoalsData2.length}
-                            icon={<TrophyOutlined style={{ fontSize: '14px' }} />}
+                            icon={<TrophyOutlined style={{ fontSize: "14px" }} />}
                             color={COLORS.success}
                         />
                     </Col>
@@ -1577,7 +2529,7 @@ const Planner = () => {
                             title="Tasks Progress"
                             value={completedTodos}
                             total={filteredTodosData2.length}
-                            icon={<CheckSquareOutlined style={{ fontSize: '14px' }} />}
+                            icon={<CheckSquareOutlined style={{ fontSize: "14px" }} />}
                             color={COLORS.warning}
                         />
                     </Col>
@@ -1586,37 +2538,46 @@ const Planner = () => {
                             title="Active Projects"
                             value={completedProjects}
                             total={totalProjects}
-                            icon={<ProjectOutlined style={{ fontSize: '14px' }} />}
+                            icon={<ProjectOutlined style={{ fontSize: "14px" }} />}
                             color={COLORS.accent}
                         />
                     </Col>
                     <Col span={6}>
                         <StatisticsCard
                             title={`Calendar Events (${view})`}
-                            value={getFilteredCalendarEvents().filter(event => {
-                                const { start, end } = getDateRange(currentDate, view);
-                                const startDay = dayjs(start).startOf("day");
-                                const endDay = dayjs(end).endOf("day");
+                            value={
+                                getFilteredCalendarEvents().filter((event) => {
+                                    const { start, end } = getDateRange(currentDate, view);
+                                    const startDay = dayjs(start).startOf("day");
+                                    const endDay = dayjs(end).endOf("day");
 
-                                const eventStart = dayjs(event.start_date);
-                                const eventEnd = dayjs(event.end_date);
+                                    const eventStart = dayjs(event.start_date);
+                                    const eventEnd = dayjs(event.end_date);
 
-                                return eventStart.isBefore(endDay) && eventEnd.isAfter(startDay);
-                            }).length}
-                            icon={<CalendarOutlined style={{ fontSize: '14px' }} />}
+                                    return (
+                                        eventStart.isBefore(endDay) && eventEnd.isAfter(startDay)
+                                    );
+                                }).length
+                            }
+                            icon={<CalendarOutlined style={{ fontSize: "14px" }} />}
                             color={COLORS.secondary}
                         />
                     </Col>
                 </Row>
-                <Row gutter={[SPACING.sm, SPACING.sm]} style={{ marginBottom: SPACING.lg }}>
+                <Row
+                    gutter={[SPACING.sm, SPACING.sm]}
+                    style={{ marginBottom: SPACING.lg }}
+                >
                     <Col span={17}>
-                        <div style={{
-                            background: COLORS.surface,
-                            borderRadius: '16px',
-                            border: `1px solid ${COLORS.borderLight}`,
-                            boxShadow: `0 4px 16px ${COLORS.shadowLight}`,
-                            overflow: 'hidden',
-                        }}>
+                        <div
+                            style={{
+                                background: COLORS.surface,
+                                borderRadius: "16px",
+                                border: `1px solid ${COLORS.borderLight}`,
+                                boxShadow: `0 4px 16px ${COLORS.shadowLight}`,
+                                overflow: "hidden",
+                            }}
+                        >
                             <CustomCalendar
                                 data={{ events: filteredCalendarEvents, meals: [] }}
                                 personColors={personColors}
@@ -1640,19 +2601,23 @@ const Planner = () => {
                             />
                         </div>
                     </Col>
-                    <Col span={7} >
-                        <div style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: SPACING.sm,
-                        }}>
-                            <div style={{
-                                background: COLORS.surface,
-                                borderRadius: '14px',
-                                border: `1px solid ${COLORS.borderLight}`,
-                                boxShadow: `0 4px 16px ${COLORS.shadowLight}`,
-                                overflow: 'hidden',
-                            }}>
+                    <Col span={7}>
+                        <div
+                            style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: SPACING.sm,
+                            }}
+                        >
+                            <div
+                                style={{
+                                    background: COLORS.surface,
+                                    borderRadius: "14px",
+                                    border: `1px solid ${COLORS.borderLight}`,
+                                    boxShadow: `0 4px 16px ${COLORS.shadowLight}`,
+                                    overflow: "hidden",
+                                }}
+                            >
                                 <MiniCalendar
                                     currentDate={currentDate}
                                     onDateSelect={handleDateSelect}
@@ -1662,84 +2627,111 @@ const Planner = () => {
                                 />
                             </div>
 
-                            <div style={{
-                                background: COLORS.surface,
-                                borderRadius: '14px',
-                                border: `1px solid ${COLORS.borderLight}`,
-                                boxShadow: `0 4px 16px ${COLORS.shadowLight}`,
-                                overflow: 'hidden',
-                            }}>
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    padding: SPACING.lg,
-                                    borderBottom: `1px solid ${COLORS.borderLight}`,
-                                    cursor: 'pointer',
-                                    background: COLORS.surfaceElevated,
-                                }} onClick={() =>
-                                    expandedSection === "habits"
-                                        ? setExpandedSection(null)
-                                        : setExpandedSection("habits")
-                                }>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.md }}>
-                                        <div style={{
-                                            width: '32px',
-                                            height: '32px',
-                                            background: `linear-gradient(135deg, ${COLORS.habit}, ${COLORS.habit}dd)`,
-                                            borderRadius: '8px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            boxShadow: `0 2px 8px ${COLORS.habit}20`,
-                                            fontSize: '18px',
-                                        }}>
-                                            <FireOutlined style={{ color: 'white' }} />
+                            <div
+                                style={{
+                                    background: COLORS.surface,
+                                    borderRadius: "14px",
+                                    border: `1px solid ${COLORS.borderLight}`,
+                                    boxShadow: `0 4px 16px ${COLORS.shadowLight}`,
+                                    overflow: "hidden",
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "space-between",
+                                        padding: SPACING.lg,
+                                        borderBottom: `1px solid ${COLORS.borderLight}`,
+                                        cursor: "pointer",
+                                        background: COLORS.surfaceElevated,
+                                    }}
+                                    onClick={() =>
+                                        expandedSection === "habits"
+                                            ? setExpandedSection(null)
+                                            : setExpandedSection("habits")
+                                    }
+                                >
+                                    <div
+                                        style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: SPACING.md,
+                                        }}
+                                    >
+                                        <div
+                                            style={{
+                                                width: "32px",
+                                                height: "32px",
+                                                background: `linear-gradient(135deg, ${COLORS.habit}, ${COLORS.habit}dd)`,
+                                                borderRadius: "8px",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                boxShadow: `0 2px 8px ${COLORS.habit}20`,
+                                                fontSize: "18px",
+                                            }}
+                                        >
+                                            <FireOutlined style={{ color: "white" }} />
                                         </div>
-                                        <Text strong style={{ fontSize: '14px', color: COLORS.text, fontFamily: FONT_FAMILY }}>
-                                            {/* {getViewTitle("Habits")} */}
+                                        <Text
+                                            strong
+                                            style={{
+                                                fontSize: "14px",
+                                                color: COLORS.text,
+                                                fontFamily: FONT_FAMILY,
+                                            }}
+                                        >
                                             Daily Habits
                                         </Text>
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.xs }}>
-
+                                    <div
+                                        style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: SPACING.xs,
+                                        }}
+                                    >
                                         <Button
                                             type="primary"
                                             size="small"
                                             icon={<PlusOutlined />}
-                                            // onClick={(e) => {
-                                            //     e.stopPropagation();
-                                            //     setIsGoalModalVisible(true);
-                                            // }}
                                             style={{
                                                 backgroundColor: COLORS.accent,
                                                 borderColor: COLORS.accent,
-                                                borderRadius: '6px',
-                                                width: '28px',
-                                                height: '28px',
+                                                borderRadius: "6px",
+                                                width: "28px",
+                                                height: "28px",
                                                 padding: 0,
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
                                             }}
                                         />
-                                        <span style={{
-                                            fontSize: '12px',
-                                            color: COLORS.textSecondary,
-                                            transform: expandedSection === "habits" ? 'rotate(180deg)' : 'rotate(0deg)',
-                                            transition: 'transform 0.2s ease',
-                                        }}>
+                                        <span
+                                            style={{
+                                                fontSize: "12px",
+                                                color: COLORS.textSecondary,
+                                                transform:
+                                                    expandedSection === "habits"
+                                                        ? "rotate(180deg)"
+                                                        : "rotate(0deg)",
+                                                transition: "transform 0.2s ease",
+                                            }}
+                                        >
                                             ▼
                                         </span>
                                     </div>
                                 </div>
                                 {expandedSection === "habits" && (
-                                    <div style={{
-                                        padding: SPACING.lg,
-                                        maxHeight: '320px',
-                                        overflowY: 'auto',
-                                        fontFamily: FONT_FAMILY,
-                                    }}>
+                                    <div
+                                        style={{
+                                            padding: SPACING.lg,
+                                            maxHeight: "320px",
+                                            overflowY: "auto",
+                                            fontFamily: FONT_FAMILY,
+                                        }}
+                                    >
                                         <HabitTracker
                                             habits={habits}
                                             onToggleHabit={handleToggleHabit}
@@ -1748,56 +2740,88 @@ const Planner = () => {
                                 )}
                             </div>
 
-                            <div style={{
-                                background: COLORS.surface,
-                                borderRadius: '14px',
-                                border: `1px solid ${COLORS.borderLight}`,
-                                boxShadow: `0 4px 16px ${COLORS.shadowLight}`,
-                                overflow: 'hidden',
-                            }}>
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    padding: SPACING.lg,
-                                    borderBottom: `1px solid ${COLORS.borderLight}`,
-                                    cursor: 'pointer',
-                                    background: COLORS.surfaceElevated,
-                                }} onClick={() =>
-                                    expandedSection === "goals" ? setExpandedSection(null) : setExpandedSection("goals")
-                                }>
-                                    <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: SPACING.md,
-                                    }}>
-                                        <div style={{
-                                            width: '32px',
-                                            height: '32px',
-                                            background: `linear-gradient(135deg, ${COLORS.success}, ${COLORS.success}dd)`,
-                                            borderRadius: '8px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            boxShadow: `0 2px 8px ${COLORS.success}20`,
-                                        }}>
-                                            <TrophyOutlined style={{ color: 'white', fontSize: '16px' }} />
+                            <div
+                                style={{
+                                    background: COLORS.surface,
+                                    borderRadius: "14px",
+                                    border: `1px solid ${COLORS.borderLight}`,
+                                    boxShadow: `0 4px 16px ${COLORS.shadowLight}`,
+                                    overflow: "hidden",
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "space-between",
+                                        padding: SPACING.lg,
+                                        borderBottom: `1px solid ${COLORS.borderLight}`,
+                                        cursor: "pointer",
+                                        background: COLORS.surfaceElevated,
+                                    }}
+                                    onClick={() =>
+                                        expandedSection === "goals"
+                                            ? setExpandedSection(null)
+                                            : setExpandedSection("goals")
+                                    }
+                                >
+                                    <div
+                                        style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: SPACING.md,
+                                        }}
+                                    >
+                                        <div
+                                            style={{
+                                                width: "32px",
+                                                height: "32px",
+                                                background: `linear-gradient(135deg, ${COLORS.success}, ${COLORS.success}dd)`,
+                                                borderRadius: "8px",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                boxShadow: `0 2px 8px ${COLORS.success}20`,
+                                            }}
+                                        >
+                                            <TrophyOutlined
+                                                style={{ color: "white", fontSize: "16px" }}
+                                            />
                                         </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.xs }}>
-                                            <Text strong style={{ fontSize: '14px', color: COLORS.text, fontFamily: FONT_FAMILY }}>
+                                        <div
+                                            style={{
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: SPACING.xs,
+                                            }}
+                                        >
+                                            <Text
+                                                strong
+                                                style={{
+                                                    fontSize: "14px",
+                                                    color: COLORS.text,
+                                                    fontFamily: FONT_FAMILY,
+                                                }}
+                                            >
                                                 {getViewTitle("Goals")}
                                             </Text>
                                             <Badge
                                                 count={`${filteredGoalsData2.length}`}
                                                 style={{
                                                     backgroundColor: COLORS.success,
-                                                    fontSize: '10px',
+                                                    fontSize: "10px",
                                                     fontWeight: 500,
                                                 }}
                                             />
                                         </div>
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.xs }}>
+                                    <div
+                                        style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: SPACING.xs,
+                                        }}
+                                    >
                                         <Button
                                             type="primary"
                                             size="small"
@@ -1809,198 +2833,311 @@ const Planner = () => {
                                             style={{
                                                 backgroundColor: COLORS.accent,
                                                 borderColor: COLORS.accent,
-                                                borderRadius: '6px',
-                                                width: '28px',
-                                                height: '28px',
+                                                borderRadius: "6px",
+                                                width: "28px",
+                                                height: "28px",
                                                 padding: 0,
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
                                             }}
                                         />
-                                        <span style={{
-                                            fontSize: '12px',
-                                            color: COLORS.textSecondary,
-                                            transform: expandedSection === "goals" ? 'rotate(180deg)' : 'rotate(0deg)',
-                                            transition: 'transform 0.2s ease',
-                                        }}>
+                                        <span
+                                            style={{
+                                                fontSize: "12px",
+                                                color: COLORS.textSecondary,
+                                                transform:
+                                                    expandedSection === "goals"
+                                                        ? "rotate(180deg)"
+                                                        : "rotate(0deg)",
+                                                transition: "transform 0.2s ease",
+                                            }}
+                                        >
                                             ▼
                                         </span>
                                     </div>
                                 </div>
                                 {expandedSection === "goals" && (
-                                    <div style={{
-                                        padding: SPACING.lg,
-                                        maxHeight: '300px',
-                                        overflowY: 'auto',
-                                        fontFamily: FONT_FAMILY,
-                                    }}>
-                                        {[...filteredGoalsData2,
-                                        ...Array(Math.max(3, filteredGoalsData2.length + 1) - filteredGoalsData2.length).fill({})]
-                                            .map((goal, index) => (
+                                    <div
+                                        style={{
+                                            padding: SPACING.lg,
+                                            maxHeight: "300px",
+                                            overflowY: "auto",
+                                            fontFamily: FONT_FAMILY,
+                                        }}
+                                    >
+                                        {[
+                                            ...filteredGoalsData2,
+                                            ...Array(
+                                                Math.max(3, filteredGoalsData2.length + 1) -
+                                                filteredGoalsData2.length
+                                            ).fill({}),
+                                        ].map((goal, index) => (
+                                            <div
+                                                key={goal.id || `empty-goal-${index}`}
+                                                style={{
+                                                    display: "flex",
+                                                    alignItems: "flex-start",
+                                                    padding: SPACING.lg,
+                                                    backgroundColor: COLORS.surfaceSecondary,
+                                                    borderRadius: "8px",
+                                                    border: goal?.id
+                                                        ? `1px solid ${COLORS.success}20`
+                                                        : `2px dashed ${COLORS.borderMedium}`,
+                                                    marginBottom: SPACING.sm,
+                                                    transition: "all 0.2s ease",
+                                                }}
+                                            >
                                                 <div
-                                                    key={goal.id || `empty-goal-${index}`}
                                                     style={{
+                                                        width: "22px",
+                                                        height: "22px",
+                                                        backgroundColor: goal?.id
+                                                            ? COLORS.success
+                                                            : COLORS.borderMedium,
+                                                        color: goal?.id
+                                                            ? COLORS.surface
+                                                            : COLORS.textSecondary,
+                                                        borderRadius: "50%",
                                                         display: "flex",
-                                                        alignItems: "flex-start",
-                                                        padding: SPACING.lg,
-                                                        backgroundColor: COLORS.surfaceSecondary,
-                                                        borderRadius: '8px',
-                                                        border: goal?.id
-                                                            ? `1px solid ${COLORS.success}20`
-                                                            : `2px dashed ${COLORS.borderMedium}`,
-                                                        marginBottom: SPACING.sm,
-                                                        transition: 'all 0.2s ease',
-                                                    }}
-                                                >
-                                                    <div style={{
-                                                        width: '22px',
-                                                        height: '22px',
-                                                        backgroundColor: goal?.id ? COLORS.success : COLORS.borderMedium,
-                                                        color: goal?.id ? COLORS.surface : COLORS.textSecondary,
-                                                        borderRadius: '50%',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        fontSize: '11px',
+                                                        alignItems: "center",
+                                                        justifyContent: "center",
+                                                        fontSize: "11px",
                                                         fontWeight: 600,
                                                         marginRight: SPACING.xs,
                                                         flexShrink: 0,
-                                                    }}>
-                                                        {goal?.completed ? '✓' : index + 1}
-                                                    </div>
-                                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                                        {goal?.id ? (
-                                                            <>
-                                                                <div style={{
-                                                                    fontSize: '13px',
+                                                    }}
+                                                >
+                                                    {goal?.completed ? "✓" : index + 1}
+                                                </div>
+                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                    {goal?.id ? (
+                                                        <>
+                                                            <div
+                                                                style={{
+                                                                    fontSize: "13px",
                                                                     fontWeight: 500,
-                                                                    color: goal.completed ? COLORS.textSecondary : COLORS.text,
-                                                                    textDecoration: goal.completed ? 'line-through' : 'none',
+                                                                    color: goal.completed
+                                                                        ? COLORS.textSecondary
+                                                                        : COLORS.text,
+                                                                    textDecoration: goal.completed
+                                                                        ? "line-through"
+                                                                        : "none",
                                                                     marginBottom: SPACING.xs,
-                                                                    wordBreak: 'break-word',
+                                                                    wordBreak: "break-word",
                                                                     lineHeight: 1.3,
                                                                     fontFamily: FONT_FAMILY,
-                                                                }}>
-                                                                    {goal.text}
-                                                                </div>
-                                                                <div style={{
-                                                                    display: 'flex',
-                                                                    justifyContent: 'space-between',
-                                                                    alignItems: 'center',
-                                                                }}>
-                                                                    <Text style={{
-                                                                        fontSize: '11px',
+                                                                }}
+                                                            >
+                                                                {goal.text}
+                                                            </div>
+                                                            <div
+                                                                style={{
+                                                                    display: "flex",
+                                                                    justifyContent: "space-between",
+                                                                    alignItems: "center",
+                                                                }}
+                                                            >
+                                                                <Text
+                                                                    style={{
+                                                                        fontSize: "11px",
                                                                         color: COLORS.textSecondary,
                                                                         fontWeight: 500,
                                                                         fontFamily: FONT_FAMILY,
-                                                                    }}>
-                                                                        {goal.date}
-                                                                    </Text>
-                                                                    <Button
-                                                                        type="text"
-                                                                        size="small"
-                                                                        icon={<EditOutlined />}
-                                                                        onClick={() => handleEditGoal(goal)}
-                                                                        style={{
-                                                                            fontSize: '10px',
-                                                                            color: COLORS.textSecondary,
-                                                                            padding: '2px 4px',
-                                                                            borderRadius: '4px',
-                                                                            width: '20px',
-                                                                            height: '20px',
+                                                                    }}
+                                                                >
+                                                                    {goal.date}
+                                                                </Text>
+                                                                {goal?.id && (
+                                                                    <Dropdown
+                                                                        menu={{
+                                                                            items: [
+                                                                                {
+                                                                                    key: "edit",
+                                                                                    label: "Edit",
+                                                                                    icon: <EditOutlined />,
+                                                                                    onClick: () => handleEditGoal(goal),
+                                                                                },
+                                                                                {
+                                                                                    key: "share",
+                                                                                    label: "Share",
+                                                                                    icon: <ShareAltOutlined />,
+                                                                                    onClick: () => {
+                                                                                        setSharingGoal(goal);
+                                                                                        setIsGoalShareModalVisible(true);
+                                                                                    },
+                                                                                },
+                                                                                {
+                                                                                    key: "tag",
+                                                                                    label: "Tag",
+                                                                                    icon: <TagOutlined />,
+                                                                                    onClick: () => {
+                                                                                        setTaggingGoal(goal);
+                                                                                        setIsGoalTagModalVisible(true);
+                                                                                    },
+                                                                                },
+                                                                                {
+                                                                                    key: "delete",
+                                                                                    label: "Delete",
+                                                                                    icon: <DeleteOutlined />,
+                                                                                    onClick: () => {
+                                                                                        console.log(
+                                                                                            "Clicked delete for",
+                                                                                            goal.id
+                                                                                        );
+                                                                                        Modal.confirm({
+                                                                                            title: "Delete Goal",
+                                                                                            content:
+                                                                                                "Are you sure you want to delete this goal?",
+                                                                                            okText: "Delete",
+                                                                                            okType: "danger",
+                                                                                            cancelText: "Cancel",
+                                                                                            onOk: () =>
+                                                                                                handleDeleteGoal(goal.id),
+                                                                                        });
+                                                                                    },
+                                                                                    danger: true,
+                                                                                },
+                                                                            ],
                                                                         }}
-                                                                    />
-                                                                </div>
-                                                            </>
-                                                        ) : (
-                                                            <Text
-                                                                style={{
-                                                                    color: COLORS.textTertiary,
-                                                                    fontStyle: "italic",
-                                                                    fontSize: '13px',
-                                                                    cursor: "pointer",
-                                                                    fontWeight: 500,
-                                                                    fontFamily: FONT_FAMILY,
-                                                                }}
-                                                                onClick={() => setIsGoalModalVisible(true)}
-                                                            >
-                                                                Add Goal {index + 1}
-                                                            </Text>
-                                                        )}
-                                                    </div>
+                                                                        trigger={["click"]}
+                                                                        placement="bottomRight"
+                                                                    >
+                                                                        <Button
+                                                                            type="text"
+                                                                            size="small"
+                                                                            icon={<MoreOutlined />}
+                                                                            style={{
+                                                                                fontSize: "10px",
+                                                                                color: COLORS.textSecondary,
+                                                                                padding: "2px 4px",
+                                                                                borderRadius: "4px",
+                                                                                width: "20px",
+                                                                                height: "20px",
+                                                                            }}
+                                                                        />
+                                                                    </Dropdown>
+                                                                )}
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        <Text
+                                                            style={{
+                                                                color: COLORS.textTertiary,
+                                                                fontStyle: "italic",
+                                                                fontSize: "13px",
+                                                                cursor: "pointer",
+                                                                fontWeight: 500,
+                                                                fontFamily: FONT_FAMILY,
+                                                            }}
+                                                            onClick={() => setIsGoalModalVisible(true)}
+                                                        >
+                                                            Add Goal {index + 1}
+                                                        </Text>
+                                                    )}
                                                 </div>
-                                            ))}
+                                            </div>
+                                        ))}
                                     </div>
                                 )}
                             </div>
-                            <div style={{
-                                background: COLORS.surface,
-                                borderRadius: '14px',
-                                border: `1px solid ${COLORS.borderLight}`,
-                                boxShadow: `0 4px 16px ${COLORS.shadowLight}`,
-                                overflow: 'hidden',
-                            }}>
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    padding: SPACING.lg,
-                                    borderBottom: `1px solid ${COLORS.borderLight}`,
-                                    cursor: 'pointer',
-                                    background: COLORS.surfaceElevated,
-                                }} onClick={() =>
-                                    setExpandedSection(expandedSection === "todos" ? null : "todos")
-                                }>
-                                    <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: SPACING.md,
-                                    }}>
-                                        <div style={{
-                                            width: '32px',
-                                            height: '32px',
-                                            background: `linear-gradient(135deg, ${COLORS.warning}, ${COLORS.warning}dd)`,
-                                            borderRadius: '8px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            boxShadow: `0 2px 8px ${COLORS.warning}20`,
-                                        }}>
-                                            <CheckSquareOutlined style={{ color: 'white', fontSize: '16px' }} />
+                            <div
+                                style={{
+                                    background: COLORS.surface,
+                                    borderRadius: "14px",
+                                    border: `1px solid ${COLORS.borderLight}`,
+                                    boxShadow: `0 4px 16px ${COLORS.shadowLight}`,
+                                    overflow: "hidden",
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "space-between",
+                                        padding: SPACING.lg,
+                                        borderBottom: `1px solid ${COLORS.borderLight}`,
+                                        cursor: "pointer",
+                                        background: COLORS.surfaceElevated,
+                                    }}
+                                    onClick={() =>
+                                        setExpandedSection(
+                                            expandedSection === "todos" ? null : "todos"
+                                        )
+                                    }
+                                >
+                                    <div
+                                        style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: SPACING.md,
+                                        }}
+                                    >
+                                        <div
+                                            style={{
+                                                width: "32px",
+                                                height: "32px",
+                                                background: `linear-gradient(135deg, ${COLORS.warning}, ${COLORS.warning}dd)`,
+                                                borderRadius: "8px",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                boxShadow: `0 2px 8px ${COLORS.warning}20`,
+                                            }}
+                                        >
+                                            <CheckSquareOutlined
+                                                style={{ color: "white", fontSize: "16px" }}
+                                            />
                                         </div>
                                         <div>
-                                            <Text strong style={{ fontSize: '14px', color: COLORS.text, fontFamily: FONT_FAMILY }}>
+                                            <Text
+                                                strong
+                                                style={{
+                                                    fontSize: "14px",
+                                                    color: COLORS.text,
+                                                    fontFamily: FONT_FAMILY,
+                                                }}
+                                            >
                                                 {getViewTitle("Tasks")}
                                             </Text>
-                                            <div style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: SPACING.xs,
-                                                marginTop: '2px',
-                                            }}>
+                                            <div
+                                                style={{
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    gap: SPACING.xs,
+                                                    marginTop: "2px",
+                                                }}
+                                            >
                                                 <Badge
                                                     count={`${completedTodos}/${filteredTodosData2.length}`}
                                                     style={{
                                                         backgroundColor: COLORS.warning,
-                                                        fontSize: '10px',
+                                                        fontSize: "10px",
                                                         fontWeight: 500,
                                                     }}
                                                 />
                                                 {filteredTodosData2.length > 0 && (
                                                     <Progress
-                                                        percent={Math.round((completedTodos / filteredTodosData2.length) * 100)}
+                                                        percent={Math.round(
+                                                            (completedTodos / filteredTodosData2.length) * 100
+                                                        )}
                                                         strokeColor={COLORS.warning}
                                                         trailColor={COLORS.borderLight}
                                                         showInfo={false}
                                                         strokeWidth={3}
-                                                        style={{ width: '40px' }}
+                                                        style={{ width: "40px" }}
                                                     />
                                                 )}
                                             </div>
                                         </div>
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: SPACING.xs }}>
+                                    <div
+                                        style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: SPACING.xs,
+                                        }}
+                                    >
                                         <Button
                                             type="primary"
                                             size="small"
@@ -2012,133 +3149,210 @@ const Planner = () => {
                                             style={{
                                                 backgroundColor: COLORS.accent,
                                                 borderColor: COLORS.accent,
-                                                borderRadius: '6px',
-                                                width: '28px',
-                                                height: '28px',
+                                                borderRadius: "6px",
+                                                width: "28px",
+                                                height: "28px",
                                                 padding: 0,
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
                                             }}
                                         />
-                                        <span style={{
-                                            fontSize: '12px',
-                                            color: COLORS.textSecondary,
-                                            transform: expandedSection === "todos" ? 'rotate(180deg)' : 'rotate(0deg)',
-                                            transition: 'transform 0.2s ease',
-                                        }}>
+                                        <span
+                                            style={{
+                                                fontSize: "12px",
+                                                color: COLORS.textSecondary,
+                                                transform:
+                                                    expandedSection === "todos"
+                                                        ? "rotate(180deg)"
+                                                        : "rotate(0deg)",
+                                                transition: "transform 0.2s ease",
+                                            }}
+                                        >
                                             ▼
                                         </span>
                                     </div>
                                 </div>
                                 {expandedSection === "todos" && (
-                                    <div style={{
-                                        padding: SPACING.lg,
-                                        maxHeight: '300px',
-                                        overflowY: 'auto',
-                                        fontFamily: FONT_FAMILY,
-                                    }}>
-                                        {[...filteredTodosData2,
-                                        ...Array(Math.max(3, filteredTodosData2.length + 1) - filteredTodosData2.length).fill({})]
-                                            .map((todo, index) => (
-                                                <div
-                                                    key={todo.id || `empty-todo-${index}`}
-                                                    style={{
-                                                        display: "flex",
-                                                        alignItems: "center",
-                                                        padding: SPACING.lg,
-                                                        backgroundColor: COLORS.surfaceSecondary,
-                                                        borderRadius: '8px',
-                                                        border: todo?.id
-                                                            ? `1px solid ${getPriorityColor(todo.priority)}20`
-                                                            : `2px dashed ${COLORS.borderMedium}`,
-                                                        marginBottom: SPACING.sm,
-                                                        transition: 'all 0.2s ease',
-                                                    }}
-                                                >
-                                                    {todo?.id ? (
-                                                        <>
-                                                            <Checkbox
-                                                                checked={todo.completed}
-                                                                onChange={() => handleToggleTodo(todo.id)}
+                                    <div
+                                        style={{
+                                            padding: SPACING.lg,
+                                            maxHeight: "300px",
+                                            overflowY: "auto",
+                                            fontFamily: FONT_FAMILY,
+                                        }}
+                                    >
+                                        {[
+                                            ...filteredTodosData2,
+                                            ...Array(
+                                                Math.max(3, filteredTodosData2.length + 1) -
+                                                filteredTodosData2.length
+                                            ).fill({}),
+                                        ].map((todo, index) => (
+                                            <div
+                                                key={todo.id || `empty-todo-${index}`}
+                                                style={{
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    padding: SPACING.lg,
+                                                    backgroundColor: COLORS.surfaceSecondary,
+                                                    borderRadius: "8px",
+                                                    border: todo?.id
+                                                        ? `1px solid ${getPriorityColor(todo.priority)}20`
+                                                        : `2px dashed ${COLORS.borderMedium}`,
+                                                    marginBottom: SPACING.sm,
+                                                    transition: "all 0.2s ease",
+                                                }}
+                                            >
+                                                {todo?.id ? (
+                                                    <>
+                                                        <Checkbox
+                                                            checked={todo.completed}
+                                                            onChange={() => handleToggleTodo(todo.id)}
+                                                            style={{
+                                                                marginRight: SPACING.xs,
+                                                                transform: "scale(0.9)",
+                                                            }}
+                                                        />
+                                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                                            <div
                                                                 style={{
-                                                                    marginRight: SPACING.xs,
-                                                                    transform: 'scale(0.9)',
-                                                                }}
-                                                            />
-                                                            <div style={{ flex: 1, minWidth: 0 }}>
-                                                                <div style={{
-                                                                    fontSize: '13px',
+                                                                    fontSize: "13px",
                                                                     fontWeight: 500,
-                                                                    color: todo.completed ? COLORS.textSecondary : COLORS.text,
-                                                                    textDecoration: todo.completed ? 'line-through' : 'none',
+                                                                    color: todo.completed
+                                                                        ? COLORS.textSecondary
+                                                                        : COLORS.text,
+                                                                    textDecoration: todo.completed
+                                                                        ? "line-through"
+                                                                        : "none",
                                                                     marginBottom: SPACING.xs,
-                                                                    wordBreak: 'break-word',
+                                                                    wordBreak: "break-word",
                                                                     lineHeight: 1.3,
                                                                     fontFamily: FONT_FAMILY,
-                                                                }}>
-                                                                    {todo.text}
-                                                                </div>
-                                                                <div style={{
-                                                                    display: 'flex',
-                                                                    justifyContent: 'space-between',
-                                                                    alignItems: 'center',
-                                                                }}>
-                                                                    <Text style={{
-                                                                        fontSize: '11px',
+                                                                }}
+                                                            >
+                                                                {todo.text}
+                                                            </div>
+                                                            <div
+                                                                style={{
+                                                                    display: "flex",
+                                                                    justifyContent: "space-between",
+                                                                    alignItems: "center",
+                                                                }}
+                                                            >
+                                                                <Text
+                                                                    style={{
+                                                                        fontSize: "11px",
                                                                         color: COLORS.textSecondary,
                                                                         fontWeight: 500,
                                                                         fontFamily: FONT_FAMILY,
-                                                                    }}>
-                                                                        {todo.date}
-                                                                    </Text>
-                                                                    <div style={{
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
+                                                                    }}
+                                                                >
+                                                                    {todo.date}
+                                                                </Text>
+                                                                <div
+                                                                    style={{
+                                                                        display: "flex",
+                                                                        alignItems: "center",
                                                                         gap: SPACING.xs,
-                                                                    }}>
-                                                                        <div style={{
-                                                                            width: '6px',
-                                                                            height: '6px',
-                                                                            borderRadius: '50%',
-                                                                            backgroundColor: getPriorityColor(todo.priority),
-                                                                        }} />
+                                                                    }}
+                                                                >
+                                                                    <div
+                                                                        style={{
+                                                                            width: "6px",
+                                                                            height: "6px",
+                                                                            borderRadius: "50%",
+                                                                            backgroundColor: getPriorityColor(
+                                                                                todo.priority
+                                                                            ),
+                                                                        }}
+                                                                    />
+                                                                    <Dropdown
+                                                                        menu={{
+                                                                            items: [
+                                                                                {
+                                                                                    key: "edit",
+                                                                                    label: "Edit",
+                                                                                    icon: <EditOutlined />,
+                                                                                    onClick: () => handleEditTodo(todo),
+                                                                                },
+                                                                                {
+                                                                                    key: "share",
+                                                                                    label: "Share",
+                                                                                    icon: <ShareAltOutlined />,
+                                                                                    onClick: () => {
+                                                                                        setSharingTask(todo);
+                                                                                        setIsTaskShareModalVisible(true);
+                                                                                    },
+                                                                                },
+                                                                                {
+                                                                                    key: "tag",
+                                                                                    label: "Tag",
+                                                                                    icon: <TagOutlined />,
+                                                                                    onClick: () => {
+                                                                                        setTaggingTask(todo);
+                                                                                        setIsTaskTagModalVisible(true);
+                                                                                    },
+                                                                                },
+                                                                                {
+                                                                                    key: "delete",
+                                                                                    label: "Delete",
+                                                                                    icon: <DeleteOutlined />,
+                                                                                    onClick: () => {
+                                                                                        Modal.confirm({
+                                                                                            title: "Delete Task",
+                                                                                            content:
+                                                                                                "Are you sure you want to delete this task?",
+                                                                                            okText: "Delete",
+                                                                                            okType: "danger",
+                                                                                            cancelText: "Cancel",
+                                                                                            onOk: () =>
+                                                                                                handleDeleteTodo(todo.id),
+                                                                                        });
+                                                                                    },
+                                                                                    danger: true,
+                                                                                },
+                                                                            ],
+                                                                        }}
+                                                                        trigger={["click"]}
+                                                                        placement="bottomRight"
+                                                                    >
                                                                         <Button
                                                                             type="text"
                                                                             size="small"
-                                                                            icon={<EditOutlined />}
-                                                                            onClick={() => handleEditTodo(todo)}
+                                                                            icon={<MoreOutlined />}
                                                                             style={{
-                                                                                fontSize: '10px',
+                                                                                fontSize: "10px",
                                                                                 color: COLORS.textSecondary,
-                                                                                padding: '2px 4px',
-                                                                                borderRadius: '4px',
-                                                                                width: '20px',
-                                                                                height: '20px',
+                                                                                padding: "2px 4px",
+                                                                                borderRadius: "4px",
+                                                                                width: "20px",
+                                                                                height: "20px",
                                                                             }}
                                                                         />
-                                                                    </div>
+                                                                    </Dropdown>
                                                                 </div>
                                                             </div>
-                                                        </>
-                                                    ) : (
-                                                        <Text
-                                                            style={{
-                                                                color: COLORS.textTertiary,
-                                                                fontStyle: "italic",
-                                                                fontSize: '13px',
-                                                                cursor: "pointer",
-                                                                paddingLeft: SPACING.sm,
-                                                                fontWeight: 500,
-                                                                fontFamily: FONT_FAMILY,
-                                                            }}
-                                                            onClick={() => setIsTodoModalVisible(true)}
-                                                        >
-                                                            Add Task {index + 1}
-                                                        </Text>
-                                                    )}
-                                                </div>
-                                            ))}
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <Text
+                                                        style={{
+                                                            color: COLORS.textTertiary,
+                                                            fontStyle: "italic",
+                                                            fontSize: "13px",
+                                                            cursor: "pointer",
+                                                            paddingLeft: SPACING.sm,
+                                                            fontWeight: 500,
+                                                            fontFamily: FONT_FAMILY,
+                                                        }}
+                                                        onClick={() => setIsTodoModalVisible(true)}
+                                                    >
+                                                        Add Task {index + 1}
+                                                    </Text>
+                                                )}
+                                            </div>
+                                        ))}
                                     </div>
                                 )}
                             </div>
@@ -2172,26 +3386,80 @@ const Planner = () => {
                     onConnect={handleConnectAccount}
                 />
 
+                {/* Separate Share Modals */}
+                <GoalShareModal
+                    isVisible={isGoalShareModalVisible}
+                    onClose={() => {
+                        setIsGoalShareModalVisible(false);
+                        setSharingGoal(null);
+                    }}
+                    goal={sharingGoal}
+                    loading={loading}
+                    onShare={handleShareGoal}
+                />
+
+                <TaskShareModal
+                    isVisible={isTaskShareModalVisible}
+                    onClose={() => {
+                        setIsTaskShareModalVisible(false);
+                        setSharingTask(null);
+                    }}
+                    task={sharingTask}
+                    loading={loading}
+                    onShare={handleShareTodo}
+                />
+
+                <GoalTagModal
+                    isVisible={isGoalTagModalVisible}
+                    onClose={() => {
+                        setIsGoalTagModalVisible(false);
+                        setTaggingGoal(null);
+                    }}
+                    goal={taggingGoal}
+                    loading={loading}
+                    onTag={handleTagGoal}
+                    familyMembers={familyMembers}
+                />
+
+                <TaskTagModal
+                    isVisible={isTaskTagModalVisible}
+                    onClose={() => {
+                        setIsTaskTagModalVisible(false);
+                        setTaggingTask(null);
+                    }}
+                    task={taggingTask}
+                    loading={loading}
+                    onTag={handleTagTask}
+                    familyMembers={familyMembers}
+                />
+
+
                 <Modal
                     title={
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: SPACING.xs,
-                            fontSize: '16px',
-                            fontWeight: 600,
-                            fontFamily: FONT_FAMILY,
-                        }}>
-                            <div style={{
-                                width: '30px',
-                                height: '30px',
-                                background: `linear-gradient(135deg, ${COLORS.accent}, ${COLORS.accent}dd)`,
-                                borderRadius: '8px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                            }}>
-                                <CalendarOutlined style={{ color: 'white', fontSize: '14px' }} />
+                        <div
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: SPACING.xs,
+                                fontSize: "16px",
+                                fontWeight: 600,
+                                fontFamily: FONT_FAMILY,
+                            }}
+                        >
+                            <div
+                                style={{
+                                    width: "30px",
+                                    height: "30px",
+                                    background: `linear-gradient(135deg, ${COLORS.accent}, ${COLORS.accent}dd)`,
+                                    borderRadius: "8px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                }}
+                            >
+                                <CalendarOutlined
+                                    style={{ color: "white", fontSize: "14px" }}
+                                />
                             </div>
                             Add New Event
                         </div>
@@ -2203,8 +3471,8 @@ const Planner = () => {
                             key="cancel"
                             onClick={() => setIsEventModalVisible(false)}
                             style={{
-                                borderRadius: '6px',
-                                height: '36px',
+                                borderRadius: "6px",
+                                height: "36px",
                                 fontWeight: 500,
                                 fontFamily: FONT_FAMILY,
                             }}
@@ -2218,8 +3486,8 @@ const Planner = () => {
                             style={{
                                 backgroundColor: COLORS.accent,
                                 borderColor: COLORS.accent,
-                                borderRadius: '6px',
-                                height: '36px',
+                                borderRadius: "6px",
+                                height: "36px",
                                 fontWeight: 500,
                                 fontFamily: FONT_FAMILY,
                             }}
@@ -2229,41 +3497,70 @@ const Planner = () => {
                     ]}
                     width={500}
                 >
-                    <Form form={eventForm} layout="vertical" style={{ marginTop: SPACING.sm, fontFamily: FONT_FAMILY }}>
+                    <Form
+                        form={eventForm}
+                        layout="vertical"
+                        style={{ marginTop: SPACING.sm, fontFamily: FONT_FAMILY }}
+                    >
                         <Form.Item
                             name="title"
-                            label={<Text strong style={{ fontSize: '13px', fontFamily: FONT_FAMILY }}>Event Title</Text>}
-                            rules={[{ required: true, message: "Please enter the event title" }]}
+                            label={
+                                <Text
+                                    strong
+                                    style={{ fontSize: "13px", fontFamily: FONT_FAMILY }}
+                                >
+                                    Event Title
+                                </Text>
+                            }
+                            rules={[
+                                { required: true, message: "Please enter the event title" },
+                            ]}
                         >
                             <Input
                                 placeholder="Event title"
                                 style={{
-                                    borderRadius: '6px',
-                                    height: '36px',
-                                    fontSize: '13px',
+                                    borderRadius: "6px",
+                                    height: "36px",
+                                    fontSize: "13px",
                                     fontFamily: FONT_FAMILY,
                                 }}
                             />
                         </Form.Item>
                         <Form.Item
                             name="date"
-                            label={<Text strong style={{ fontSize: '13px', fontFamily: FONT_FAMILY }}>Date</Text>}
+                            label={
+                                <Text
+                                    strong
+                                    style={{ fontSize: "13px", fontFamily: FONT_FAMILY }}
+                                >
+                                    Date
+                                </Text>
+                            }
                             rules={[{ required: true, message: "Please select a date" }]}
                             initialValue={dayjs()}
                         >
                             <DatePicker
                                 style={{
                                     width: "100%",
-                                    borderRadius: '6px',
-                                    height: '36px',
+                                    borderRadius: "6px",
+                                    height: "36px",
                                     fontFamily: FONT_FAMILY,
                                 }}
-                                disabledDate={(current) => current && current < dayjs().startOf("day")}
+                                disabledDate={(current) =>
+                                    current && current < dayjs().startOf("day")
+                                }
                             />
                         </Form.Item>
                         <Form.Item
                             name="time"
-                            label={<Text strong style={{ fontSize: '13px', fontFamily: FONT_FAMILY }}>Time</Text>}
+                            label={
+                                <Text
+                                    strong
+                                    style={{ fontSize: "13px", fontFamily: FONT_FAMILY }}
+                                >
+                                    Time
+                                </Text>
+                            }
                             rules={[{ required: true, message: "Please select a time" }]}
                             initialValue={dayjs().add(10, "minute").startOf("minute")}
                         >
@@ -2274,8 +3571,8 @@ const Planner = () => {
                                 showSecond={false}
                                 style={{
                                     width: "100%",
-                                    borderRadius: '6px',
-                                    height: '36px',
+                                    borderRadius: "6px",
+                                    height: "36px",
                                     fontFamily: FONT_FAMILY,
                                 }}
                             />
@@ -2285,24 +3582,28 @@ const Planner = () => {
 
                 <Modal
                     title={
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: SPACING.xs,
-                            fontSize: '16px',
-                            fontWeight: 600,
-                            fontFamily: FONT_FAMILY,
-                        }}>
-                            <div style={{
-                                width: '30px',
-                                height: '30px',
-                                background: `linear-gradient(135deg, ${COLORS.success}, ${COLORS.success}dd)`,
-                                borderRadius: '8px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                            }}>
-                                <TrophyOutlined style={{ color: 'white', fontSize: '14px' }} />
+                        <div
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: SPACING.xs,
+                                fontSize: "16px",
+                                fontWeight: 600,
+                                fontFamily: FONT_FAMILY,
+                            }}
+                        >
+                            <div
+                                style={{
+                                    width: "30px",
+                                    height: "30px",
+                                    background: `linear-gradient(135deg, ${COLORS.success}, ${COLORS.success}dd)`,
+                                    borderRadius: "8px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                }}
+                            >
+                                <TrophyOutlined style={{ color: "white", fontSize: "14px" }} />
                             </div>
                             {editingGoal ? "Edit Goal" : "Add New Goal"}
                         </div>
@@ -2314,17 +3615,20 @@ const Planner = () => {
                         goalForm.resetFields();
                     }}
                     footer={[
-                        <Button key="cancel" onClick={() => {
-                            setIsGoalModalVisible(false);
-                            setEditingGoal(null);
-                            goalForm.resetFields();
-                        }}
+                        <Button
+                            key="cancel"
+                            onClick={() => {
+                                setIsGoalModalVisible(false);
+                                setEditingGoal(null);
+                                goalForm.resetFields();
+                            }}
                             style={{
-                                borderRadius: '6px',
-                                height: '36px',
+                                borderRadius: "6px",
+                                height: "36px",
                                 fontWeight: 500,
                                 fontFamily: FONT_FAMILY,
-                            }}>
+                            }}
+                        >
                             Cancel
                         </Button>,
                         <Button
@@ -2334,8 +3638,8 @@ const Planner = () => {
                             style={{
                                 backgroundColor: COLORS.accent,
                                 borderColor: COLORS.accent,
-                                borderRadius: '6px',
-                                height: '36px',
+                                borderRadius: "6px",
+                                height: "36px",
                                 fontWeight: 500,
                                 fontFamily: FONT_FAMILY,
                             }}
@@ -2345,32 +3649,57 @@ const Planner = () => {
                     ]}
                     width={500}
                 >
-                    <Form form={goalForm} layout="vertical" style={{ marginTop: SPACING.sm, fontFamily: FONT_FAMILY }}>
+                    <Form
+                        form={goalForm}
+                        layout="vertical"
+                        style={{ marginTop: SPACING.sm, fontFamily: FONT_FAMILY }}
+                    >
                         <Form.Item
                             name="goal"
-                            label={<Text strong style={{ fontSize: '13px', fontFamily: FONT_FAMILY }}>Goal</Text>}
+                            label={
+                                <Text
+                                    strong
+                                    style={{ fontSize: "13px", fontFamily: FONT_FAMILY }}
+                                >
+                                    Goal
+                                </Text>
+                            }
                             rules={[{ required: true, message: "Please enter your goal" }]}
                         >
                             <Input
                                 placeholder="Enter your Goal.."
                                 style={{
-                                    borderRadius: '6px',
-                                    height: '36px',
-                                    fontSize: '13px',
+                                    borderRadius: "6px",
+                                    height: "36px",
+                                    fontSize: "13px",
                                     fontFamily: FONT_FAMILY,
                                 }}
                             />
                         </Form.Item>
                         <Form.Item
                             name="date"
-                            label={<Text strong style={{ fontSize: '13px', fontFamily: FONT_FAMILY }}>Due Date</Text>}
+                            label={
+                                <Text
+                                    strong
+                                    style={{ fontSize: "13px", fontFamily: FONT_FAMILY }}
+                                >
+                                    Due Date
+                                </Text>
+                            }
                             rules={[{ required: true, message: "Please select a due date" }]}
                             initialValue={dayjs(getDueDateByView(view, currentDate))}
                         >
                             <DatePicker
                                 format="YYYY-MM-DD"
-                                disabledDate={(current) => current && current < dayjs().startOf('day')}
-                                style={{ borderRadius: '6px', height: '36px', width: '100%', fontFamily: FONT_FAMILY }}
+                                disabledDate={(current) =>
+                                    current && current < dayjs().startOf("day")
+                                }
+                                style={{
+                                    borderRadius: "6px",
+                                    height: "36px",
+                                    width: "100%",
+                                    fontFamily: FONT_FAMILY,
+                                }}
                             />
                         </Form.Item>
                     </Form>
@@ -2378,24 +3707,30 @@ const Planner = () => {
 
                 <Modal
                     title={
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: SPACING.xs,
-                            fontSize: '16px',
-                            fontWeight: 600,
-                            fontFamily: FONT_FAMILY,
-                        }}>
-                            <div style={{
-                                width: '30px',
-                                height: '30px',
-                                background: `linear-gradient(135deg, ${COLORS.warning}, ${COLORS.warning}dd)`,
-                                borderRadius: '8px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                            }}>
-                                <CheckSquareOutlined style={{ color: 'white', fontSize: '14px' }} />
+                        <div
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: SPACING.xs,
+                                fontSize: "16px",
+                                fontWeight: 600,
+                                fontFamily: FONT_FAMILY,
+                            }}
+                        >
+                            <div
+                                style={{
+                                    width: "30px",
+                                    height: "30px",
+                                    background: `linear-gradient(135deg, ${COLORS.warning}, ${COLORS.warning}dd)`,
+                                    borderRadius: "8px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                }}
+                            >
+                                <CheckSquareOutlined
+                                    style={{ color: "white", fontSize: "14px" }}
+                                />
                             </div>
                             {editingTodo ? "Edit Task" : "Add New Task"}
                         </div>
@@ -2407,17 +3742,20 @@ const Planner = () => {
                         todoForm.resetFields();
                     }}
                     footer={[
-                        <Button key="cancel" onClick={() => {
-                            setIsTodoModalVisible(false);
-                            setEditingTodo(null);
-                            todoForm.resetFields();
-                        }}
+                        <Button
+                            key="cancel"
+                            onClick={() => {
+                                setIsTodoModalVisible(false);
+                                setEditingTodo(null);
+                                todoForm.resetFields();
+                            }}
                             style={{
-                                borderRadius: '6px',
-                                height: '36px',
+                                borderRadius: "6px",
+                                height: "36px",
                                 fontWeight: 500,
                                 fontFamily: FONT_FAMILY,
-                            }}>
+                            }}
+                        >
                             Cancel
                         </Button>,
                         <Button
@@ -2427,8 +3765,8 @@ const Planner = () => {
                             style={{
                                 backgroundColor: COLORS.accent,
                                 borderColor: COLORS.accent,
-                                borderRadius: '6px',
-                                height: '36px',
+                                borderRadius: "6px",
+                                height: "36px",
                                 fontWeight: 500,
                                 fontFamily: FONT_FAMILY,
                             }}
@@ -2438,40 +3776,82 @@ const Planner = () => {
                     ]}
                     width={500}
                 >
-                    <Form form={todoForm} layout="vertical" style={{ marginTop: SPACING.sm, fontFamily: FONT_FAMILY }}>
+                    <Form
+                        form={todoForm}
+                        layout="vertical"
+                        style={{ marginTop: SPACING.sm, fontFamily: FONT_FAMILY }}
+                    >
                         <Form.Item
                             name="text"
-                            label={<Text strong style={{ fontSize: '13px', fontFamily: FONT_FAMILY }}>Task</Text>}
+                            label={
+                                <Text
+                                    strong
+                                    style={{ fontSize: "13px", fontFamily: FONT_FAMILY }}
+                                >
+                                    Task
+                                </Text>
+                            }
                             rules={[{ required: true, message: "Please enter the task" }]}
                         >
                             <Input
                                 placeholder="Task title"
-                                style={{ borderRadius: '6px', height: '36px', fontSize: '13px', fontFamily: FONT_FAMILY }}
+                                style={{
+                                    borderRadius: "6px",
+                                    height: "36px",
+                                    fontSize: "13px",
+                                    fontFamily: FONT_FAMILY,
+                                }}
                             />
                         </Form.Item>
 
-                        <Space direction="horizontal" style={{ width: '100%' }}>
+                        <Space direction="horizontal" style={{ width: "100%" }}>
                             <Form.Item
                                 name="date"
-                                label={<Text strong style={{ fontSize: '13px', fontFamily: FONT_FAMILY }}>Due Date</Text>}
+                                label={
+                                    <Text
+                                        strong
+                                        style={{ fontSize: "13px", fontFamily: FONT_FAMILY }}
+                                    >
+                                        Due Date
+                                    </Text>
+                                }
                                 rules={[{ required: true, message: "Please select due date" }]}
                                 initialValue={dayjs(getDueDateByView(view, currentDate))}
                             >
                                 <DatePicker
                                     format="YYYY-MM-DD"
-                                    disabledDate={(current) => current && current < dayjs().startOf('day')}
-                                    style={{ borderRadius: '6px', height: '36px', fontFamily: FONT_FAMILY }}
+                                    disabledDate={(current) =>
+                                        current && current < dayjs().startOf("day")
+                                    }
+                                    style={{
+                                        borderRadius: "6px",
+                                        height: "36px",
+                                        fontFamily: FONT_FAMILY,
+                                    }}
                                 />
                             </Form.Item>
 
                             <Form.Item
                                 name="goal_id"
-                                label={<Text strong style={{ fontSize: '13px', fontFamily: FONT_FAMILY }}>Goal</Text>}
+                                label={
+                                    <Text
+                                        strong
+                                        style={{ fontSize: "13px", fontFamily: FONT_FAMILY }}
+                                    >
+                                        Goal
+                                    </Text>
+                                }
                             >
+
                                 <Select
                                     placeholder="Select a goal (optional)"
                                     allowClear
-                                    style={{ borderRadius: '6px', minWidth: '180px', height: '36px', fontFamily: FONT_FAMILY }}
+                                    style={{
+                                        borderRadius: "6px",
+                                        minWidth: "180px",
+                                        height: "36px",
+                                        fontFamily: FONT_FAMILY,
+                                    }}
                                 >
                                     {getAvailableGoals().map((goal) => (
                                         <Select.Option key={goal.id} value={goal.id}>
@@ -2484,11 +3864,18 @@ const Planner = () => {
 
                         <Form.Item
                             name="priority"
-                            label={<Text strong style={{ fontSize: '13px', fontFamily: FONT_FAMILY }}>Priority</Text>}
+                            label={
+                                <Text
+                                    strong
+                                    style={{ fontSize: "13px", fontFamily: FONT_FAMILY }}
+                                >
+                                    Priority
+                                </Text>
+                            }
                             rules={[{ required: true, message: "Please select a priority" }]}
                             initialValue="medium"
                         >
-                            <Select style={{ borderRadius: '6px', fontFamily: FONT_FAMILY }}>
+                            <Select style={{ borderRadius: "6px", fontFamily: FONT_FAMILY }}>
                                 <Select.Option value="low">Low</Select.Option>
                                 <Select.Option value="medium">Medium</Select.Option>
                                 <Select.Option value="high">High</Select.Option>

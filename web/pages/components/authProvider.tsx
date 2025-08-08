@@ -45,14 +45,32 @@ export default function AuthProvider({ children }: AuthProviderProps) {
       try {
         const response = await getCurrentUser(uid);
         const user = response?.data?.payload?.user;
-        const sessionId = user?.session_id;
-        const ipAddress = user?.ip_address;
+        const session_data = user?.session_data;
+        const ipAddress = session_data?.ip_address;
+        const session_token = session_data?.session_token;
 
         if (!user) {
           localStorage.clear();
           router.replace(ROUTES.home);
         }
 
+        if (!session_token || !ipAddress) {
+          localStorage.clear();
+          router.replace(ROUTES.home);
+          return;
+        }
+
+        if (session_token !== token) {
+          localStorage.clear();
+          router.replace(ROUTES.home);
+          return;
+        }
+
+        // if (ipAddress !== window.location.hostname) {
+        //   localStorage.clear();
+        //   router.replace(ROUTES.home);
+        //   return;
+        // }
         setUser(user);
       } catch (err) {
         console.error("User fetch failed:", err);
@@ -70,10 +88,6 @@ export default function AuthProvider({ children }: AuthProviderProps) {
   if (user === undefined) {
     return
   }
-
-  // if (loading) {
-  //   return <DocklyLoader />
-  // }
 
   return (
     <UserContext.Provider value={user}>
