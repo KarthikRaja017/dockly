@@ -288,6 +288,9 @@ def create_app(test_config=None):
     from root.google import google_bp
 
     app.register_blueprint(google_bp)
+    from root.dropbox import dropbox_bp
+
+    app.register_blueprint(dropbox_bp)
     from root.microsoft import microsoft_bp
 
     app.register_blueprint(microsoft_bp)

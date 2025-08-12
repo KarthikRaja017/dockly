@@ -821,3 +821,17 @@ export async function shareProject(params: {
 }) {
   return api.post('/share/projects', params);
 }
+
+export async function addFamilyMemberWithoutInvite(params: any): Promise<any> {
+  try {
+    const response = await api.post('/add/family_without_invite', params, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error adding family member without invite:', error);
+    throw error;
+  }
+}

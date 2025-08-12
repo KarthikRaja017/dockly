@@ -165,9 +165,9 @@ const FamilyTasksComponent: React.FC<Props> = ({
     const [familyMember, setFamilyMember] = useState<any[]>([]);
     const [selectedMemberIds, setSelectedMemberIds] = useState<number[]>([]);
     const filledProjects = projects.filter(p => p.title.trim());
-    const showTemplateProjects = filledProjects.length < 2;
+    const showTemplateProjects = filledProjects.length < 1;
 
-    const templateProjects = Array.from({ length: 2 - filledProjects.length }, (_, i) => ({
+    const templateProjects = Array.from({ length: 1 - filledProjects.length }, (_, i) => ({
         project_id: `template-${i + 1}`,
         title: '',
         description: '',
@@ -246,7 +246,7 @@ const FamilyTasksComponent: React.FC<Props> = ({
 
     const displayedProjects = [...filledProjects, ...(showTemplateProjects ? templateProjects : [])];
     const [currentPage, setCurrentPage] = useState(0);
-    const projectsPerPage = 2;
+    const projectsPerPage = 1;
     const totalPages = Math.ceil(displayedProjects.length / projectsPerPage);
     const paginatedProjects = displayedProjects.slice(
         currentPage * projectsPerPage,
@@ -285,15 +285,18 @@ const FamilyTasksComponent: React.FC<Props> = ({
         <Card
             style={{
                 background: COLORS.surface,
-                borderRadius: '12px',
+                borderRadius: '16px',
                 border: `1px solid ${COLORS.borderLight}`,
                 boxShadow: `0 2px 8px ${COLORS.shadowLight}`,
-                // width: "950px"
+                height: '360px', // Fixed height to match other cards
+                width: '100%', // Use full width of the grid column
             }}
-            // bodyStyle={{ padding: '12px' }}
             styles={{
                 body: {
-                    padding: '12px',
+                    padding: '16px',
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
                 }
             }}
         >
@@ -346,7 +349,14 @@ const FamilyTasksComponent: React.FC<Props> = ({
                 </Button>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: SPACING.md }}>
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: SPACING.md,
+                flex: 1,
+                overflow: 'hidden'
+            }}>
                 <Button
                     icon={<LeftOutlined />}
                     disabled={currentPage === 0}
@@ -360,9 +370,11 @@ const FamilyTasksComponent: React.FC<Props> = ({
                 />
                 <div style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(2, 1fr)',
+                    gridTemplateColumns: '1fr',
                     gap: '12px',
                     flex: 1,
+                    height: '100%',
+                    overflow: 'hidden',
                 }}>
                     {paginatedProjects.map((proj) => {
                         const isTemplate = !proj.title;
@@ -385,18 +397,22 @@ const FamilyTasksComponent: React.FC<Props> = ({
                                     boxShadow: `0 2px 8px ${COLORS.shadowLight}`,
                                     transition: 'all 0.3s ease',
                                     cursor: proj.title ? 'default' : 'pointer',
-                                    height: '280px',
-                                    overflowY: 'auto',         // 👈 Set fixed height
-                                    display: 'flex',            // 👈 These help with consistent layout
+                                    height: '100%',
+                                    display: 'flex',
                                     flexDirection: 'column',
-                                    justifyContent: 'space-between',
                                 }}
-                                bodyStyle={{ padding: '10px' }}
+                                bodyStyle={{
+                                    padding: '10px',
+                                    height: '100%',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    justifyContent: 'space-between'
+                                }}
                                 hoverable={!proj.title}
                                 onClick={() => !proj.title && setModalVisible(true)}
                             >
                                 {/* Title + Progress */}
-                                <div style={{ marginBottom: '10px' }}>
+                                <div style={{ marginBottom: '10px', flex: '0 0 auto' }}>
                                     <div style={{
                                         display: 'flex',
                                         justifyContent: 'space-between',
@@ -528,7 +544,6 @@ const FamilyTasksComponent: React.FC<Props> = ({
                                             />
                                         </div>
                                     )}
-
                                 </div>
 
                                 {/* Tasks */}
@@ -538,7 +553,7 @@ const FamilyTasksComponent: React.FC<Props> = ({
                                         overflowY: 'auto',
                                         marginBottom: '8px',
                                         paddingRight: '4px',
-                                        minHeight: '0', // ensures flex layout respects overflow
+                                        minHeight: '0',
                                     }}
                                 >
                                     {sortedTasks.length === 0 ? (
@@ -549,14 +564,13 @@ const FamilyTasksComponent: React.FC<Props> = ({
                                         />
                                     ) : (
                                         visibleTasks.map((task) => (
-
                                             <div
                                                 key={task.id}
                                                 style={{
                                                     display: 'flex',
                                                     alignItems: 'center',
                                                     padding: '6px',
-                                                    minHeight: 32, // ✅ ensures it's not too small
+                                                    minHeight: 32,
                                                     background: task.completed
                                                         ? `${COLORS.success}08`
                                                         : task.title
@@ -644,7 +658,6 @@ const FamilyTasksComponent: React.FC<Props> = ({
                                                 </div>
                                             </div>
                                         ))
-
                                     )}
                                     {sortedTasks.filter(task => task.title).length > 2 && proj.title && (
                                         <Button
@@ -677,8 +690,6 @@ const FamilyTasksComponent: React.FC<Props> = ({
                     }}
                 />
             </div>
-
-
 
             {/* Enhanced Add Project Modal */}
             <Modal

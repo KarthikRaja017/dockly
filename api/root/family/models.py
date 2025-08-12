@@ -245,11 +245,11 @@ class GetFamilyMembers(Resource):
         notifications = DBHelper.find_all(
             table_name="notifications",
             filters={"sender_id": uid},  # include all (pending or accepted)
-            select_fields=["metadata", "status"],  # Added status field
+            select_fields=["metadata", "status"],
         )
 
         email_to_metadata = {}
-        pending_invites = []  # Store pending invites separately
+        pending_invites = []
 
         for notif in notifications:
             meta = notif.get("metadata", {})
@@ -262,7 +262,6 @@ class GetFamilyMembers(Resource):
                     "permissions": input_data.get("permissions", {}),
                 }
 
-            # Collect pending invites here instead of separate query
             if notif.get("status") == "pending" and input_data:
                 pending_invites.append(
                     {
@@ -296,7 +295,7 @@ class GetFamilyMembers(Resource):
                             "id": uid,
                         }
                     ]
-                    + pending_invites  # Include pending invites even without group
+                    + pending_invites
                 },
             }
 
@@ -314,6 +313,16 @@ class GetFamilyMembers(Resource):
             filters={"family_group_id": group_id},
         )
 
+        # Step 2b: Keep only unique fm_user_id
+        seen_fm_ids = set()
+        unique_group_members = []
+        for m in group_members:
+            if m["fm_user_id"] not in seen_fm_ids:
+                seen_fm_ids.add(m["fm_user_id"])
+                unique_group_members.append(m)
+        group_members = unique_group_members
+
+        # Step 3: Build the member list
         for member in group_members:
             relationship = (
                 "me"
@@ -321,7 +330,8 @@ class GetFamilyMembers(Resource):
                 else clean_relationship(member["relationship"])
             )
 
-            email = member.get("email", "").lower().strip()
+            raw_email = member.get("email")
+            email = raw_email.lower().strip() if raw_email else ""
             metadata = email_to_metadata.get(email, {})
             sharedItems = metadata.get("sharedItems", {})
             permissions = metadata.get("permissions", {})
@@ -338,7 +348,7 @@ class GetFamilyMembers(Resource):
                 }
             )
 
-        # Step 3: If guest, add the owner
+        # Step 4: If guest, add the owner
         if duser is not None and fuser:
             try:
                 if int(duser) == DocklyUsers.Guests.value:
@@ -357,16 +367,16 @@ class GetFamilyMembers(Resource):
                             }
                         )
             except ValueError:
-                pass  # Invalid duser, skip
+                pass
 
-        # Step 4: Add pending invites (already collected in Step 0)
+        # Step 5: Add pending invites
         familyMembers.extend(pending_invites)
 
-        # Step 5: Remove duplicate emails and hide email from output
+        # Step 6: Remove duplicate emails (extra safety)
         unique_members = []
         seen_emails = set()
         for member in familyMembers:
-            email = member.get("email", "").lower().strip()
+            email = (member.get("email") or "").lower().strip()
             if not email or email not in seen_emails:
                 seen_emails.add(email)
                 unique_members.append(member)
@@ -1555,8 +1565,27 @@ class AddProject(Resource):
 class GetProjects(Resource):
     @auth_required(isOptional=True)
     def get(self, uid, user):
-        # 🔍 Fetch projects owned or tagged
-        # For projects (where primary field is 'uid' not 'user_id')
+        source = request.args.get("source", None)  # optional, so we can filter later
+
+        # ✅ Get all family member IDs (your older logic)
+        sent_invites = DBHelper.find_all(
+            table_name="family_members",
+            select_fields=["fm_user_id"],
+            filters={"user_id": uid},
+        )
+        received_invites = DBHelper.find_all(
+            table_name="family_members",
+            select_fields=["user_id"],
+            filters={"fm_user_id": uid},
+        )
+        family_member_ids = [m["fm_user_id"] for m in sent_invites] + [
+            m["user_id"] for m in received_invites
+        ]
+        family_member_ids = list(set(family_member_ids + [uid]))
+
+        # ✅ Fetch projects where:
+        # - The `uid` is in your family members (owned by them), OR
+        # - The `tagged_ids` contains the current user
         projects = DBHelper.find_with_or_and_array_match(
             table_name="projects",
             select_fields=[
@@ -1574,11 +1603,29 @@ class GetProjects(Resource):
             ],
             uid=uid,
             array_field="tagged_ids",
-            filters={"source": "familyhub"},
-            or_field="uid",  # ✅ Custom match column
+            filters={},  # filter after fetch
+            or_field="uid",
         )
 
-        # Format response
+        # ✅ Filter projects according to rules
+        filtered_projects = []
+        for p in projects:
+            src = p.get("source")
+            meta = p.get("meta") or {}
+            visibility = meta.get("visibility", "private")
+
+            if src == "familyhub":
+                if source == "familyhub" or source is None:
+                    filtered_projects.append(p)
+            elif src == "planner":
+                if visibility == "private" and source == "planner":
+                    filtered_projects.append(p)
+                elif visibility == "public" and (
+                    source in ["planner", "familyhub"] or source is None
+                ):
+                    filtered_projects.append(p)
+
+        # ✅ Format output
         formatted = [
             {
                 "project_id": p["project_id"],
@@ -1591,7 +1638,7 @@ class GetProjects(Resource):
                 "updated_at": p["updated_at"].isoformat(),
                 "source": p["source"],
             }
-            for p in projects
+            for p in filtered_projects
         ]
 
         return {
@@ -3335,4 +3382,98 @@ class ShareProject(Resource):
             "status": 1,
             "message": f"Project shared via email. {len(notifications_created)} notification(s) created.",
             "payload": {"notifications_created": notifications_created},
+        }
+
+
+class AddFamilyMemberWithoutInvite(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        inputData = request.get_json(silent=True)
+
+        # Generate UID for the new user
+        new_uid = uniqueId(digit=5, isNum=True, prefix="USERX")
+
+        # Step 1: Insert into users table
+        DBHelper.insert(
+            "users",
+            return_column="uid",
+            uid=new_uid,
+            user_name=inputData.get("name", ""),
+            email=None,
+            is_email_verified=False,
+            is_active=1,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+            duser=1,
+            splan=0,
+        )
+
+        # Step 2: Get or create family_group_id for current user
+        gid_record = DBHelper.find_one(
+            "family_members",
+            filters={"user_id": uid},
+            select_fields=["family_group_id"],
+        )
+        if gid_record:
+            gid = gid_record.get("family_group_id")
+        else:
+            gid = uniqueId(digit=5, isNum=True, prefix="G")
+
+        # Step 3: Prepare shared items
+        sharedKeys = list(inputData.get("sharedItems", {}).keys())
+        sharedItems = [
+            DBHelper.find_one("hubs", filters={"name": key}, select_fields=["hid"])
+            for key in sharedKeys
+        ]
+        sharedItemsIds = [item["hid"] for item in sharedItems if item]
+
+        # Step 4: Insert into family_members for current user
+        fid1 = DBHelper.insert(
+            "family_members",
+            return_column="id",
+            name=inputData.get("name", ""),
+            relationship=inputData.get("relationship", ""),
+            user_id=uid,  # Current logged-in user's UID
+            fm_user_id=new_uid,  # Newly created UID
+            email=None,
+            access_code=inputData.get("accessCode", ""),
+            family_group_id=gid,
+            method="Direct",
+            shared_items=",".join(sharedKeys),
+            permissions="",  # Optional
+            created_at=datetime.utcnow(),
+        )
+
+        # Step 4b: Insert into family_members for the new user
+        fid2 = DBHelper.insert(
+            "family_members",
+            return_column="id",
+            name=user.get("user_name", ""),
+            relationship=inputData.get("relationship", ""),  # Or different if needed
+            user_id=new_uid,  # New user's UID
+            fm_user_id=uid,  # Current logged-in user UID
+            email=None,
+            access_code=inputData.get("accessCode", ""),
+            family_group_id=gid,
+            method="Direct",
+            shared_items=",".join(sharedKeys),
+            permissions="",
+            created_at=datetime.utcnow(),
+        )
+
+        # Step 5: Insert shared items mapping
+        for hub_id in sharedItemsIds:
+            DBHelper.insert(
+                "family_hubs_access_mapping",
+                return_column="id",
+                user_id=uid,
+                family_member_id=fid1,
+                hubs=hub_id,
+                permissions=Permissions.Read.value,
+            )
+
+        return {
+            "status": 1,
+            "message": "Family member added successfully without invite",
+            "payload": {"id": fid1, "new_user_uid": new_uid},
         }

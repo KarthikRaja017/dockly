@@ -52,7 +52,7 @@ const SmartInputBox: React.FC<SmartInputBoxProps> = ({
     // const memberNames = (familyMembers ?? []).map((m) => m.toLowerCase());
 
     const memberNames = (familyMembers ?? [])
-        .filter((m) => m.status?.toLowerCase() === 'accepted') // ✅ Filter accepted
+        .filter((m) => m.status?.toLowerCase() !== 'pending')
         .map((m) => m.name.toLowerCase());
 
 

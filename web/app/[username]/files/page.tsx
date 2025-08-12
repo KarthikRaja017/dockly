@@ -38,7 +38,8 @@ import {
     InputNumber,
     DatePicker,
     Descriptions,
-    TreeSelect
+    TreeSelect,
+    Radio
 } from 'antd';
 import {
     SearchOutlined,
@@ -87,40 +88,45 @@ import {
     FileOutlined,
     CalendarOutlined,
     TagsOutlined,
-    LinkOutlined
+    LinkOutlined,
+    CloudOutlined,
+    DatabaseOutlined,
+    GoogleOutlined,
+    WindowsOutlined
 } from '@ant-design/icons';
 import {
-    createDriveFolder,
-    deleteDriveFile,
-    downloadDriveFile,
     listDriveFiles,
-    shareDriveFile,
     uploadDriveFile,
-    bulkDownloadFiles,
-    bulkDeleteFiles,
+    downloadDriveFile,
+    deleteDriveFile,
+    createDriveFolder,
+    shareDriveFile,
+    getDriveFileInfo,
+    getDriveStorage,
     renameDriveFile,
     copyDriveFile,
     moveDriveFile,
     starDriveFile,
-    getDriveStorage,
+    bulkDownloadFiles,
+    bulkDeleteFiles,
+    bulkMoveFiles,
+    bulkCopyFiles,
+    bulkShareFiles,
     findDuplicateFiles,
     getStorageAnalytics,
     getActivityLog,
     logActivity,
-    getDriveFileInfo,
-    bulkShareFiles,
-    bulkMoveFiles,
-    bulkCopyFiles,
     getAccountColor,
     getFileSource,
+    getProviderDisplayName,
+    getProviderIcon,
     type DriveFile,
     type DriveFolder,
     type StorageInfo,
     type ActivityLog,
-    type DuplicateFile
+    type DuplicateFile,
+    type CloudProvider
 } from '../../../services/files';
-import DocklyLoader from '../../../utils/docklyLoader';
-import { trimGooglePhotoUrl } from '../../../pages/components/header';
 
 const PRIMARY_COLOR = '#1890ff';
 const FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
@@ -136,7 +142,7 @@ interface AccountFilter {
     email: string;
     displayName: string;
     photoLink?: string;
-    provider: string; // Add provider field to distinguish Google vs Outlook
+    provider: string;
 }
 
 const { Content } = Layout;
@@ -146,18 +152,203 @@ const { Dragger } = Upload;
 const { Panel } = Collapse;
 const { RangePicker } = DatePicker;
 
-// Enhanced Upload Area Component
+// Provider Selection Modal Component
+const ProviderSelectionModal: React.FC<{
+    visible: boolean;
+    onClose: () => void;
+    onSelect: (provider: CloudProvider) => void;
+    title: string;
+    description: string;
+}> = ({ visible, onClose, onSelect, title, description }) => {
+    const [selectedProvider, setSelectedProvider] = useState<CloudProvider>('google');
+
+    const providerOptions = [
+        {
+            value: 'google',
+            label: (
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '12px',
+                    border: '2px solid transparent',
+                    borderRadius: '8px',
+                    transition: 'all 0.3s ease',
+                    backgroundColor: selectedProvider === 'google' ? '#e8f0fe' : '#fff',
+                    borderColor: selectedProvider === 'google' ? '#4285f4' : '#e8eaed',
+                    fontFamily: FONT_FAMILY
+                }}>
+                    <div style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '8px',
+                        backgroundColor: '#4285f4',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 2px 8px rgba(66, 133, 244, 0.3)'
+                    }}>
+                        <span style={{ color: 'white', fontSize: '18px', fontWeight: 'bold', fontFamily: FONT_FAMILY }}>G</span>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '16px', fontWeight: 600, color: '#202124', marginBottom: '4px', fontFamily: FONT_FAMILY }}>
+                            Google Drive
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#5f6368', fontFamily: FONT_FAMILY }}>
+                            15GB free storage • Seamless integration with Google Workspace
+                        </div>
+                    </div>
+                    {selectedProvider === 'google' && (
+                        <CheckOutlined style={{ color: '#4285f4', fontSize: '18px' }} />
+                    )}
+                </div>
+            )
+        },
+        {
+            value: 'dropbox',
+            label: (
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '12px',
+                    border: '2px solid transparent',
+                    borderRadius: '8px',
+                    transition: 'all 0.3s ease',
+                    backgroundColor: selectedProvider === 'dropbox' ? '#e8f5ff' : '#fff',
+                    borderColor: selectedProvider === 'dropbox' ? '#0061ff' : '#e8eaed',
+                    fontFamily: FONT_FAMILY
+                }}>
+                    <div style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '8px',
+                        backgroundColor: '#0061ff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 2px 8px rgba(0, 97, 255, 0.3)'
+                    }}>
+                        <span style={{ color: 'white', fontSize: '18px', fontWeight: 'bold', fontFamily: FONT_FAMILY }}>D</span>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '16px', fontWeight: 600, color: '#202124', marginBottom: '4px', fontFamily: FONT_FAMILY }}>
+                            Dropbox
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#5f6368', fontFamily: FONT_FAMILY }}>
+                            2GB free storage • Advanced sync and sharing features
+                        </div>
+                    </div>
+                    {selectedProvider === 'dropbox' && (
+                        <CheckOutlined style={{ color: '#0061ff', fontSize: '18px' }} />
+                    )}
+                </div>
+            )
+        }
+    ];
+
+    return (
+        <Modal
+            title={
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontFamily: FONT_FAMILY }}>
+                    <div style={{
+                        width: '32px',
+                        height: '32px',
+                        backgroundColor: '#e8f0fe',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }}>
+                        <CloudOutlined style={{ color: PRIMARY_COLOR, fontSize: '16px' }} />
+                    </div>
+                    <div>
+                        <span style={{ fontSize: '18px', fontWeight: 600, color: '#202124', fontFamily: FONT_FAMILY }}>
+                            {title}
+                        </span>
+                        <div style={{ fontSize: '12px', color: '#5f6368', marginTop: '2px', fontFamily: FONT_FAMILY }}>
+                            {description}
+                        </div>
+                    </div>
+                </div>
+            }
+            open={visible}
+            onCancel={onClose}
+            footer={[
+                <Button key="cancel" onClick={onClose} style={{ fontFamily: FONT_FAMILY }}>
+                    Cancel
+                </Button>,
+                <Button
+                    key="select"
+                    type="primary"
+                    onClick={() => onSelect(selectedProvider)}
+                    style={{
+                        backgroundColor: PRIMARY_COLOR,
+                        borderColor: PRIMARY_COLOR,
+                        fontFamily: FONT_FAMILY
+                    }}
+                >
+                    Continue with {getProviderDisplayName(selectedProvider)}
+                </Button>
+            ]}
+            width={520}
+            style={{ borderRadius: '12px', fontFamily: FONT_FAMILY }}
+        >
+            <div style={{ marginTop: '16px' }}>
+                <Radio.Group
+                    value={selectedProvider}
+                    onChange={(e) => setSelectedProvider(e.target.value)}
+                    style={{ width: '100%' }}
+                >
+                    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                        {providerOptions.map(option => (
+                            <Radio
+                                key={option.value}
+                                value={option.value}
+                                style={{
+                                    width: '100%',
+                                    margin: 0,
+                                    fontFamily: FONT_FAMILY
+                                }}
+                            >
+                                {option.label}
+                            </Radio>
+                        ))}
+                    </Space>
+                </Radio.Group>
+            </div>
+        </Modal>
+    );
+};
+
+// Enhanced Upload Area Component with Provider Selection
 const UploadArea: React.FC<{
-    onUpload: (file: File) => void;
+    onUpload: (file: File, provider: CloudProvider) => void;
     uploadProgress: UploadProgress;
     isUploading: boolean;
 }> = ({ onUpload, uploadProgress, isUploading }) => {
+    const [showProviderModal, setShowProviderModal] = useState(false);
+    const [pendingFile, setPendingFile] = useState<File | null>(null);
+
+    const handleFileSelect = (file: File) => {
+        setPendingFile(file);
+        setShowProviderModal(true);
+    };
+
+    const handleProviderSelect = (provider: CloudProvider) => {
+        if (pendingFile) {
+            onUpload(pendingFile, provider);
+            setPendingFile(null);
+        }
+        setShowProviderModal(false);
+    };
+
     const uploadProps = {
         name: 'file',
         multiple: true,
         showUploadList: false,
         beforeUpload: (file: File) => {
-            onUpload(file);
+            handleFileSelect(file);
             return false;
         }
     };
@@ -169,30 +360,43 @@ const UploadArea: React.FC<{
                 style={{
                     backgroundColor: '#f8f9fa',
                     border: '2px dashed #dadce0',
-                    borderRadius: '8px',
-                    padding: '12px 4px',
+                    borderRadius: '12px',
+                    padding: '24px 16px',
                     transition: 'all 0.3s ease',
                     fontFamily: FONT_FAMILY
                 }}
             >
                 <div style={{ textAlign: 'center', fontFamily: FONT_FAMILY }}>
-                    <CloudUploadOutlined style={{
-                        fontSize: '32px',
-                        color: '#5f6368',
-                        marginBottom: '12px',
-                        display: 'block'
-                    }} />
                     <div style={{
-                        fontSize: '14px',
+                        width: '64px',
+                        height: '64px',
+                        backgroundColor: '#e8f0fe',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto 16px'
+                    }}>
+                        <CloudUploadOutlined style={{
+                            fontSize: '32px',
+                            color: PRIMARY_COLOR
+                        }} />
+                    </div>
+                    <div style={{
+                        fontSize: '18px',
                         color: '#202124',
-                        marginBottom: '6px',
-                        fontWeight: 500,
+                        marginBottom: '8px',
+                        fontWeight: 600,
                         fontFamily: FONT_FAMILY
                     }}>
                         Drag files here or click to upload
                     </div>
-                    <div style={{ fontSize: '12px', color: '#5f6368', fontFamily: FONT_FAMILY }}>
-                        Support for single or bulk upload
+                    <div style={{ fontSize: '14px', color: '#5f6368', marginBottom: '16px', fontFamily: FONT_FAMILY }}>
+                        You'll be able to choose your cloud provider next
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
+                        <Tag color="#4285f4" style={{ fontFamily: FONT_FAMILY }}>Google Drive</Tag>
+                        <Tag color="#0061ff" style={{ fontFamily: FONT_FAMILY }}>Dropbox</Tag>
                     </div>
                 </div>
             </Dragger>
@@ -201,27 +405,28 @@ const UploadArea: React.FC<{
                 <Card
                     size="small"
                     style={{
-                        marginTop: '12px',
-                        borderRadius: '8px',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                        marginTop: '16px',
+                        borderRadius: '12px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                        border: 'none',
                         fontFamily: FONT_FAMILY
                     }}
                     title={
                         <Space>
                             <CloudUploadOutlined style={{ color: PRIMARY_COLOR }} />
-                            <span style={{ fontSize: '13px', fontWeight: 500, fontFamily: FONT_FAMILY }}>Upload Progress</span>
+                            <span style={{ fontSize: '14px', fontWeight: 600, fontFamily: FONT_FAMILY }}>Upload Progress</span>
                         </Space>
                     }
                 >
                     {Object.entries(uploadProgress).map(([filename, progress]) => (
-                        <div key={filename} style={{ marginBottom: '8px', fontFamily: FONT_FAMILY }}>
+                        <div key={filename} style={{ marginBottom: '12px', fontFamily: FONT_FAMILY }}>
                             <div style={{
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center',
-                                marginBottom: '4px'
+                                marginBottom: '6px'
                             }}>
-                                <Text style={{ fontSize: '12px', fontWeight: 500, fontFamily: FONT_FAMILY }}>{filename}</Text>
+                                <Text style={{ fontSize: '13px', fontWeight: 500, fontFamily: FONT_FAMILY }}>{filename}</Text>
                                 <Space size="small">
                                     {progress.status === 'completed' && (
                                         <Badge status="success" />
@@ -229,7 +434,7 @@ const UploadArea: React.FC<{
                                     {progress.status === 'error' && (
                                         <Badge status="error" />
                                     )}
-                                    <Text style={{ fontSize: '11px', color: '#5f6368', fontFamily: FONT_FAMILY }}>
+                                    <Text style={{ fontSize: '12px', color: '#5f6368', fontFamily: FONT_FAMILY }}>
                                         {progress.progress}%
                                     </Text>
                                 </Space>
@@ -240,11 +445,23 @@ const UploadArea: React.FC<{
                                 strokeColor={PRIMARY_COLOR}
                                 size="small"
                                 showInfo={false}
+                                strokeLinecap="round"
                             />
                         </div>
                     ))}
                 </Card>
             )}
+
+            <ProviderSelectionModal
+                visible={showProviderModal}
+                onClose={() => {
+                    setShowProviderModal(false);
+                    setPendingFile(null);
+                }}
+                onSelect={handleProviderSelect}
+                title="Choose Upload Destination"
+                description="Select where you want to upload your file"
+            />
         </div>
     );
 };
@@ -272,24 +489,37 @@ const BulkActionsToolbar: React.FC<{
         return (
             <div style={{
                 position: 'fixed',
-                bottom: '20px',
+                bottom: '24px',
                 left: '50%',
                 transform: 'translateX(-50%)',
                 backgroundColor: '#fff',
-                padding: '8px 16px',
-                borderRadius: '24px',
-                boxShadow: '0 6px 20px rgba(0,0,0,0.15)',
+                padding: '12px 20px',
+                borderRadius: '32px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
                 border: '1px solid #e8eaed',
                 zIndex: 1000,
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px',
+                gap: '12px',
                 fontFamily: FONT_FAMILY
             }}>
-                <Text style={{ fontSize: '12px', fontWeight: 500, fontFamily: FONT_FAMILY }}>
-                    {selectedItems.length} selected
+                <div style={{
+                    width: '32px',
+                    height: '32px',
+                    backgroundColor: '#e8f0fe',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                }}>
+                    <Text style={{ fontSize: '14px', fontWeight: 600, color: PRIMARY_COLOR, fontFamily: FONT_FAMILY }}>
+                        {selectedItems.length}
+                    </Text>
+                </div>
+                <Text style={{ fontSize: '14px', fontWeight: 500, fontFamily: FONT_FAMILY }}>
+                    items selected
                 </Text>
-                <Divider type="vertical" />
+                <Divider type="vertical" style={{ height: '24px' }} />
                 <Space size="small">
                     <Tooltip title="Download">
                         <Button
@@ -297,6 +527,11 @@ const BulkActionsToolbar: React.FC<{
                             icon={<DownloadOutlined />}
                             onClick={onBulkDownload}
                             size="small"
+                            style={{
+                                borderRadius: '6px',
+                                color: '#5f6368',
+                                fontFamily: FONT_FAMILY
+                            }}
                         />
                     </Tooltip>
                     <Tooltip title="Move">
@@ -305,6 +540,11 @@ const BulkActionsToolbar: React.FC<{
                             icon={<FolderOpenOutlined />}
                             onClick={onBulkMove}
                             size="small"
+                            style={{
+                                borderRadius: '6px',
+                                color: '#5f6368',
+                                fontFamily: FONT_FAMILY
+                            }}
                         />
                     </Tooltip>
                     <Tooltip title="Copy">
@@ -313,6 +553,11 @@ const BulkActionsToolbar: React.FC<{
                             icon={<CopyOutlined />}
                             onClick={onBulkCopy}
                             size="small"
+                            style={{
+                                borderRadius: '6px',
+                                color: '#5f6368',
+                                fontFamily: FONT_FAMILY
+                            }}
                         />
                     </Tooltip>
                     <Tooltip title="Share">
@@ -321,6 +566,11 @@ const BulkActionsToolbar: React.FC<{
                             icon={<ShareAltOutlined />}
                             onClick={onBulkShare}
                             size="small"
+                            style={{
+                                borderRadius: '6px',
+                                color: '#5f6368',
+                                fontFamily: FONT_FAMILY
+                            }}
                         />
                     </Tooltip>
                     <Tooltip title="Delete">
@@ -330,22 +580,32 @@ const BulkActionsToolbar: React.FC<{
                             icon={<DeleteOutlined />}
                             onClick={onBulkDelete}
                             size="small"
+                            style={{
+                                borderRadius: '6px',
+                                fontFamily: FONT_FAMILY
+                            }}
                         />
                     </Tooltip>
-                    <Divider type="vertical" />
+                    <Divider type="vertical" style={{ height: '24px' }} />
                     <Button
                         type="text"
                         icon={<CloseOutlined />}
                         onClick={onClearSelection}
                         size="small"
+                        style={{
+                            borderRadius: '6px',
+                            color: '#5f6368',
+                            fontFamily: FONT_FAMILY
+                        }}
                     />
                 </Space>
             </div>
         );
     };
 
+// Enhanced Header Bar with Provider Filtering
 const HeaderBar: React.FC<{
-    breadcrumbs: Array<{ id: string; name: string }>;
+    breadcrumbs: Array<{ id: string; name: string; path?: string }>;
     onNavigate: (index: number) => void;
     searchQuery: string;
     onSearchChange: (value: string) => void;
@@ -368,6 +628,8 @@ const HeaderBar: React.FC<{
     onShowAnalytics: () => void;
     onShowActivity: () => void;
     onShowDuplicates: () => void;
+    selectedProviders: CloudProvider[];
+    onProvidersChange: (providers: CloudProvider[]) => void;
 }> = ({
     breadcrumbs,
     onNavigate,
@@ -391,42 +653,34 @@ const HeaderBar: React.FC<{
     storageInfo,
     onShowAnalytics,
     onShowActivity,
-    onShowDuplicates
+    onShowDuplicates,
+    selectedProviders,
+    onProvidersChange
 }) => {
         const [showSearch, setShowSearch] = useState(false);
 
         // Helper function to get provider icon with account-specific colors
-        const getProviderIcon = (provider: string, accountIndex: number) => {
+        const getProviderIconComponent = (provider: string, accountIndex: number) => {
             const color = getAccountColor(provider, accountIndex);
 
+            const iconStyle = {
+                width: '14px',
+                height: '14px',
+                borderRadius: '3px',
+                backgroundColor: color,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '7px',
+                color: 'white',
+                fontWeight: 'bold' as const,
+                fontFamily: FONT_FAMILY
+            };
+
             if (provider === 'google') {
-                return (
-                    <div style={{
-                        width: '14px',
-                        height: '14px',
-                        borderRadius: '3px',
-                        backgroundColor: color,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                    }}>
-                        <span style={{ color: 'white', fontSize: '7px', fontWeight: 'bold', fontFamily: FONT_FAMILY }}>G</span>
-                    </div>
-                );
-            } else if (provider === 'outlook') {
-                return (
-                    <div style={{
-                        width: '14px',
-                        height: '14px',
-                        borderRadius: '3px',
-                        backgroundColor: color,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                    }}>
-                        <span style={{ color: 'white', fontSize: '7px', fontWeight: 'bold', fontFamily: FONT_FAMILY }}>O</span>
-                    </div>
-                );
+                return <div style={iconStyle}>G</div>;
+            } else if (provider === 'dropbox') {
+                return <div style={iconStyle}>D</div>;
             }
             return <UserOutlined style={{ fontSize: '10px' }} />;
         };
@@ -483,7 +737,7 @@ const HeaderBar: React.FC<{
                                 <span style={{ fontSize: '12px', color: '#202124', fontWeight: 500, fontFamily: FONT_FAMILY }}>
                                     {account.displayName || 'Unknown'}
                                 </span>
-                                {getProviderIcon(account.provider, index)}
+                                {getProviderIconComponent(account.provider, index)}
                             </div>
                             <div style={{ fontSize: '10px', color: '#5f6368', fontFamily: FONT_FAMILY }}>
                                 {account.email}
@@ -492,6 +746,66 @@ const HeaderBar: React.FC<{
                     </div>
                 )
             }))
+        ];
+
+        const providerFilterOptions = [
+            {
+                value: 'all',
+                label: (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontFamily: FONT_FAMILY }}>
+                        <div style={{
+                            width: '20px',
+                            height: '20px',
+                            borderRadius: '4px',
+                            background: 'linear-gradient(45deg, #4285f4, #0061ff)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}>
+                            <span style={{ color: 'white', fontSize: '8px', fontWeight: 'bold', fontFamily: FONT_FAMILY }}>ALL</span>
+                        </div>
+                        <span style={{ fontWeight: 500, fontFamily: FONT_FAMILY }}>All Providers</span>
+                    </div>
+                )
+            },
+            {
+                value: 'google',
+                label: (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontFamily: FONT_FAMILY }}>
+                        <div style={{
+                            width: '20px',
+                            height: '20px',
+                            borderRadius: '4px',
+                            backgroundColor: '#4285f4',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}>
+                            <span style={{ color: 'white', fontSize: '10px', fontWeight: 'bold', fontFamily: FONT_FAMILY }}>G</span>
+                        </div>
+                        <span style={{ fontWeight: 500, fontFamily: FONT_FAMILY }}>Google Drive</span>
+                    </div>
+                )
+            },
+            {
+                value: 'dropbox',
+                label: (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontFamily: FONT_FAMILY }}>
+                        <div style={{
+                            width: '20px',
+                            height: '20px',
+                            borderRadius: '4px',
+                            backgroundColor: '#0061ff',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}>
+                            <span style={{ color: 'white', fontSize: '10px', fontWeight: 'bold', fontFamily: FONT_FAMILY }}>D</span>
+                        </div>
+                        <span style={{ fontWeight: 500, fontFamily: FONT_FAMILY }}>Dropbox</span>
+                    </div>
+                )
+            }
         ];
 
         const selectedAccountData = availableAccounts.find(acc => acc.email === selectedAccount);
@@ -529,149 +843,187 @@ const HeaderBar: React.FC<{
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        padding: '10px 20px',
-                        backgroundColor: '#f9fafa',
+                        padding: '16px 24px',
+                        borderBottom: '1px solid #e8eaed',
                         flexWrap: 'wrap',
-                        gap: '12px',
+                        gap: '16px',
                         fontFamily: FONT_FAMILY
                     }}
                 >
-                    {/* Breadcrumbs and Selection on Left */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {/* Left Section - Breadcrumbs and Selection */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <Checkbox
                                 checked={isAllSelected}
                                 onChange={onToggleSelectAll}
                                 disabled={loading}
+                                style={{ transform: 'scale(1.1)' }}
                             />
                             <Breadcrumb items={breadcrumbItems} />
                         </div>
                         {selectedItems.length > 0 && (
                             <Badge
                                 count={selectedItems.length}
-                                style={{ backgroundColor: PRIMARY_COLOR }}
+                                style={{
+                                    backgroundColor: PRIMARY_COLOR,
+                                    boxShadow: '0 2px 6px rgba(24, 144, 255, 0.3)'
+                                }}
                                 showZero={false}
                             />
                         )}
                     </div>
 
-                    {/* Search + Filters on Right */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {/* Search Section */}
+                    {/* Right Section - Search + Filters */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        {/* Enhanced Search Section */}
                         {!showSearch ? (
                             <Button
                                 icon={<SearchOutlined />}
-                                size="small"
+                                size="middle"
                                 style={{
-                                    borderColor: '#dadce0',
+                                    borderColor: '#e8eaed',
                                     color: '#5f6368',
                                     transition: 'all 0.3s ease',
+                                    borderRadius: '8px',
+                                    fontFamily: FONT_FAMILY
                                 }}
                                 onClick={() => setShowSearch(true)}
                             />
                         ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <Search
-                                    placeholder="Search in Drive"
+                                    placeholder="Search across all your cloud drives..."
                                     value={searchQuery}
                                     onChange={(e) => onSearchChange(e.target.value)}
                                     style={{
-                                        width: '280px',
+                                        width: '320px',
                                         transition: 'all 0.3s ease',
-                                        borderRadius: '16px',
+                                        borderRadius: '24px',
                                         fontFamily: FONT_FAMILY
                                     }}
-                                    size="small"
+                                    size="middle"
                                     allowClear
                                     autoFocus
                                 />
                                 <Button
                                     icon={<CloseOutlined />}
                                     onClick={() => setShowSearch(false)}
-                                    size="small"
+                                    size="middle"
                                     style={{
-                                        borderColor: '#dadce0',
+                                        borderColor: '#e8eaed',
                                         color: '#5f6368',
                                         borderRadius: '50%',
+                                        fontFamily: FONT_FAMILY
                                     }}
                                 />
                             </div>
                         )}
 
-                        {/* Filters */}
-                        <Space size="small">
-                            {/* Account Filter */}
-                            <Tooltip title="Filter by account">
+                        {/* Enhanced Filters */}
+                        <Space size="middle">
+                            {/* Provider Filter */}
+                            <Tooltip title="Filter by cloud provider">
                                 <Select
-                                    value={selectedAccount}
-                                    onChange={onAccountChange}
+                                    mode="multiple"
+                                    value={selectedProviders}
+                                    onChange={onProvidersChange}
                                     style={{
-                                        minWidth: 200,
-                                        borderRadius: '6px',
+                                        minWidth: 180,
+                                        borderRadius: '8px',
                                         fontFamily: FONT_FAMILY
                                     }}
-                                    size="small"
-                                    placeholder="All Accounts"
-                                    optionLabelProp="label"
-                                    // dropdownStyle={{
-                                    //     borderRadius: '8px',
-                                    //     boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
-                                    //     border: '1px solid #e8eaed',
-                                    //     padding: '2px 0'
-                                    // }}
-                                    suffixIcon={
-                                        selectedAccount && selectedAccountData ? (
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                                                {selectedAccountData.photoLink ? (
-                                                    <Avatar
-                                                        size={16}
-                                                        src={selectedAccountData.photoLink}
-                                                        style={{
-                                                            border: `2px solid ${getAccountColor(selectedAccountData.provider, selectedAccountIndex)}`
-                                                        }}
-                                                    />
-                                                ) : (
-                                                    <Avatar
-                                                        size={16}
-                                                        style={{
-                                                            backgroundColor: getAccountColor(selectedAccountData.provider, selectedAccountIndex),
-                                                            fontSize: '9px',
-                                                            fontFamily: FONT_FAMILY
-                                                        }}
-                                                    >
-                                                        {(selectedAccountData.displayName || selectedAccountData.email || 'U')[0].toUpperCase()}
-                                                    </Avatar>
-                                                )}
-                                                {getProviderIcon(selectedAccountData.provider, selectedAccountIndex)}
-                                            </div>
-                                        ) : (
-                                            <div style={{
-                                                width: '16px',
-                                                height: '16px',
-                                                borderRadius: '50%',
-                                                backgroundColor: '#e8f0fe',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center'
-                                            }}>
-                                                <UserOutlined style={{ color: PRIMARY_COLOR, fontSize: '9px' }} />
-                                            </div>
-                                        )
-                                    }
+                                    size="middle"
+                                    placeholder="All Providers"
+                                    maxTagCount={1}
+                                    maxTagTextLength={8}
+                                    allowClear
+                                    suffixIcon={<DatabaseOutlined style={{ color: PRIMARY_COLOR }} />}
                                 >
-                                    {accountFilterOptions.map(option => (
-                                        <Select.Option key={option.value || 'all'} value={option.value}>
+                                    {providerFilterOptions.map(option => (
+                                        <Select.Option key={option.value} value={option.value}>
                                             {option.label}
                                         </Select.Option>
                                     ))}
                                 </Select>
                             </Tooltip>
 
+                            {/* Account Filter */}
+                            <Tooltip title="Filter by account">
+                                <Select
+                                    value={selectedAccount ?? 'all'}
+                                    onChange={onAccountChange}
+                                    style={{
+                                        minWidth: 220,
+                                        borderRadius: '8px',
+                                        fontFamily: FONT_FAMILY
+                                    }}
+                                    size="middle"
+                                    placeholder="All Accounts"
+                                    optionLabelProp="label"
+                                    allowClear
+                                    suffixIcon={
+                                        selectedAccount && selectedAccountData ? (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                {selectedAccountData.photoLink ? (
+                                                    <Avatar
+                                                        size={18}
+                                                        src={selectedAccountData.photoLink}
+                                                        style={{
+                                                            border: `2px solid ${getAccountColor(
+                                                                selectedAccountData.provider,
+                                                                selectedAccountIndex
+                                                            )}`
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <Avatar
+                                                        size={18}
+                                                        style={{
+                                                            backgroundColor: getAccountColor(
+                                                                selectedAccountData.provider,
+                                                                selectedAccountIndex
+                                                            ),
+                                                            fontSize: '10px',
+                                                            fontFamily: FONT_FAMILY
+                                                        }}
+                                                    >
+                                                        {(selectedAccountData.displayName ||
+                                                            selectedAccountData.email ||
+                                                            'U')[0].toUpperCase()}
+                                                    </Avatar>
+                                                )}
+                                                {getProviderIconComponent(
+                                                    selectedAccountData.provider,
+                                                    selectedAccountIndex
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <UserOutlined style={{ color: PRIMARY_COLOR }} />
+                                        )
+                                    }
+                                >
+                                    {accountFilterOptions.map(option => (
+                                        <Select.Option
+                                            key={option.value ?? 'all'}
+                                            value={option.value ?? 'all'}
+                                            label={option.label}
+                                        >
+                                            {option.label}
+                                        </Select.Option>
+                                    ))}
+                                </Select>
+                            </Tooltip>
+
+                            {/* Sort Controls */}
                             <Select
                                 value={sortBy}
                                 onChange={onSortByChange}
-                                style={{ width: 100, fontFamily: FONT_FAMILY }}
-                                size="small"
+                                style={{
+                                    width: 120,
+                                    borderRadius: '8px',
+                                    fontFamily: FONT_FAMILY
+                                }}
+                                size="middle"
                             >
                                 <Select.Option value="modifiedTime">Modified</Select.Option>
                                 <Select.Option value="name">Name</Select.Option>
@@ -686,11 +1038,12 @@ const HeaderBar: React.FC<{
                                             : <SortDescendingOutlined />
                                     }
                                     onClick={onSortOrderChange}
-                                    size="small"
+                                    size="middle"
                                     style={{
-                                        borderColor: '#dadce0',
+                                        borderColor: '#e8eaed',
                                         color: '#5f6368',
-                                        borderRadius: '4px',
+                                        borderRadius: '8px',
+                                        fontFamily: FONT_FAMILY
                                     }}
                                 />
                             </Tooltip>
@@ -703,11 +1056,12 @@ const HeaderBar: React.FC<{
                                             : <AppstoreOutlined />
                                     }
                                     onClick={onViewModeChange}
-                                    size="small"
+                                    size="middle"
                                     style={{
-                                        borderColor: '#dadce0',
+                                        borderColor: '#e8eaed',
                                         color: '#5f6368',
-                                        borderRadius: '4px',
+                                        borderRadius: '8px',
+                                        fontFamily: FONT_FAMILY
                                     }}
                                 />
                             </Tooltip>
@@ -717,14 +1071,16 @@ const HeaderBar: React.FC<{
                                     icon={<ReloadOutlined spin={loading} />}
                                     onClick={onRefresh}
                                     disabled={loading}
-                                    size="small"
+                                    size="middle"
                                     style={{
-                                        borderColor: '#dadce0',
+                                        borderColor: '#e8eaed',
                                         color: '#5f6368',
-                                        borderRadius: '4px',
+                                        borderRadius: '8px',
+                                        fontFamily: FONT_FAMILY
                                     }}
                                 />
                             </Tooltip>
+
                             {extraIcon}
                         </Space>
                     </div>
@@ -736,7 +1092,7 @@ const HeaderBar: React.FC<{
 // Enhanced Folders Section Component
 const FoldersSection: React.FC<{
     folders: DriveFolder[];
-    onFolderClick: (folderId: string, folderName: string) => void;
+    onFolderClick: (folderId: string, folderName: string, folderPath?: string) => void;
     onFileAction: (action: string, item: DriveFolder | DriveFile) => void;
     viewMode: 'grid' | 'list';
     selectedItems: string[];
@@ -810,26 +1166,26 @@ const FoldersSection: React.FC<{
     };
 
     const getFolderAccentColor = (folder: DriveFolder) => {
-        if (!folder.source_email) return PRIMARY_COLOR;
+        if (!folder.source_email && !folder.provider) return PRIMARY_COLOR;
 
         const accountIndex = availableAccounts.findIndex(acc => acc.email === folder.source_email);
-        const provider = getFileSource(folder);
+        const provider = folder.provider || getFileSource(folder);
         return getAccountColor(provider, accountIndex >= 0 ? accountIndex : 0);
     };
 
     if (folders.length === 0) return null;
 
     return (
-        <div style={{ padding: '16px', fontFamily: FONT_FAMILY }}>
+        <div style={{ padding: '20px 24px', fontFamily: FONT_FAMILY }}>
             <div style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                marginBottom: '12px'
+                marginBottom: '16px'
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <FolderOutlined style={{ color: PRIMARY_COLOR, fontSize: '14px' }} />
-                    <Text style={{ fontSize: '14px', fontWeight: 500, color: '#202124', fontFamily: FONT_FAMILY }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <FolderOutlined style={{ color: PRIMARY_COLOR, fontSize: '16px' }} />
+                    <Text style={{ fontSize: '16px', fontWeight: 600, color: '#202124', fontFamily: FONT_FAMILY }}>
                         Folders
                     </Text>
                     <Badge
@@ -845,8 +1201,9 @@ const FoldersSection: React.FC<{
                         onClick={() => setShowAll(!showAll)}
                         style={{
                             color: PRIMARY_COLOR,
-                            fontSize: '12px',
-                            height: '24px',
+                            fontSize: '13px',
+                            height: '28px',
+                            borderRadius: '6px',
                             fontFamily: FONT_FAMILY
                         }}
                     >
@@ -856,51 +1213,54 @@ const FoldersSection: React.FC<{
             </div>
 
             {viewMode === 'grid' ? (
-                <Row gutter={[8, 8]}>
+                <Row gutter={[12, 12]}>
                     {displayFolders.map((folder) => {
                         const accentColor = getFolderAccentColor(folder);
                         return (
                             <Col xs={12} sm={8} md={6} lg={4} xl={3} key={folder.id}>
                                 <div
                                     style={{
-                                        padding: '8px',
-                                        borderRadius: '6px',
+                                        padding: '12px',
+                                        borderRadius: '12px',
                                         cursor: 'pointer',
-                                        transition: 'all 0.2s ease',
+                                        transition: 'all 0.3s ease',
                                         backgroundColor: '#fff',
-                                        border: `1px solid ${accentColor}20`,
+                                        border: `2px solid ${accentColor}15`,
                                         position: 'relative',
                                         fontFamily: FONT_FAMILY
                                     }}
                                     onMouseEnter={(e) => {
-                                        e.currentTarget.style.backgroundColor = '#f8f9fa';
-                                        e.currentTarget.style.borderColor = accentColor + '40';
-                                        e.currentTarget.style.boxShadow = `0 2px 6px ${accentColor}20`;
+                                        e.currentTarget.style.backgroundColor = accentColor + '08';
+                                        e.currentTarget.style.borderColor = accentColor + '30';
+                                        e.currentTarget.style.boxShadow = `0 4px 12px ${accentColor}25`;
+                                        e.currentTarget.style.transform = 'translateY(-2px)';
                                     }}
                                     onMouseLeave={(e) => {
                                         e.currentTarget.style.backgroundColor = '#fff';
-                                        e.currentTarget.style.borderColor = accentColor + '20';
+                                        e.currentTarget.style.borderColor = accentColor + '15';
                                         e.currentTarget.style.boxShadow = 'none';
+                                        e.currentTarget.style.transform = 'translateY(0)';
                                     }}
                                 >
-                                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '6px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
                                         <Checkbox
                                             checked={selectedItems.includes(folder.id)}
                                             onChange={(e) => onItemSelect(folder.id, e.target.checked)}
                                             onClick={(e) => e.stopPropagation()}
-                                            style={{ marginRight: '6px' }}
+                                            style={{ marginRight: '8px' }}
                                         />
                                         <FolderOutlined
                                             style={{
-                                                fontSize: '18px',
+                                                fontSize: '20px',
                                                 color: accentColor,
-                                                marginRight: '6px'
+                                                marginRight: '8px',
+                                                cursor: 'pointer'
                                             }}
-                                            onClick={() => onFolderClick(folder.id, folder.name)}
+                                            onClick={() => onFolderClick(folder.id, folder.name, folder.path)}
                                         />
                                         <Text
                                             style={{
-                                                fontSize: '12px',
+                                                fontSize: '14px',
                                                 color: '#202124',
                                                 flex: 1,
                                                 overflow: 'hidden',
@@ -910,7 +1270,7 @@ const FoldersSection: React.FC<{
                                                 cursor: 'pointer',
                                                 fontFamily: FONT_FAMILY
                                             }}
-                                            onClick={() => onFolderClick(folder.id, folder.name)}
+                                            onClick={() => onFolderClick(folder.id, folder.name, folder.path)}
                                         >
                                             {folder.name}
                                         </Text>
@@ -925,40 +1285,41 @@ const FoldersSection: React.FC<{
                                                 style={{
                                                     color: accentColor,
                                                     position: 'absolute',
-                                                    top: '6px',
-                                                    right: '6px'
+                                                    top: '8px',
+                                                    right: '8px',
+                                                    borderRadius: '6px'
                                                 }}
                                                 onClick={(e) => e.stopPropagation()}
                                             />
                                         </Dropdown>
                                     </div>
-                                    <Text style={{ fontSize: '10px', color: '#5f6368', fontFamily: FONT_FAMILY }}>
-                                        Modified {formatDate(folder.modifiedTime)}
-                                    </Text>
-                                    {folder.shared && (
-                                        <div style={{ marginTop: '3px' }}>
-                                            <Tag color="blue" style={{ fontSize: '8px', fontFamily: FONT_FAMILY }}>
-                                                <TeamOutlined style={{ marginRight: '2px' }} />
-                                                Shared
-                                            </Tag>
+                                    <div style={{ marginLeft: '28px' }}>
+                                        <Text style={{ fontSize: '11px', color: '#5f6368', fontFamily: FONT_FAMILY }}>
+                                            Modified {formatDate(folder.modifiedTime)}
+                                        </Text>
+                                        <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            {folder.shared && (
+                                                <Tag color="blue" style={{ fontSize: '9px', fontFamily: FONT_FAMILY }}>
+                                                    <TeamOutlined style={{ marginRight: '2px' }} />
+                                                    Shared
+                                                </Tag>
+                                            )}
+                                            {(folder.source_email || folder.provider) && (
+                                                <Tag
+                                                    style={{
+                                                        fontSize: '9px',
+                                                        backgroundColor: accentColor + '15',
+                                                        borderColor: accentColor + '40',
+                                                        color: accentColor,
+                                                        fontFamily: FONT_FAMILY
+                                                    }}
+                                                >
+                                                    {folder.provider === 'google' || getFileSource(folder) === 'google' ? 'Google' :
+                                                        folder.provider === 'dropbox' || getFileSource(folder) === 'dropbox' ? 'Dropbox' : 'OneDrive'}
+                                                </Tag>
+                                            )}
                                         </div>
-                                    )}
-                                    {folder.source_email && (
-                                        <div style={{ marginTop: '3px' }}>
-                                            <Tag
-                                                color={getFileSource(folder) === 'google' ? 'green' : 'blue'}
-                                                style={{
-                                                    fontSize: '8px',
-                                                    backgroundColor: accentColor + '15',
-                                                    borderColor: accentColor + '40',
-                                                    color: accentColor,
-                                                    fontFamily: FONT_FAMILY
-                                                }}
-                                            >
-                                                {getFileSource(folder) === 'google' ? 'Google' : 'Outlook'}
-                                            </Tag>
-                                        </div>
-                                    )}
+                                    </div>
                                 </div>
                             </Col>
                         );
@@ -974,56 +1335,57 @@ const FoldersSection: React.FC<{
                                 style={{
                                     display: 'flex',
                                     alignItems: 'center',
-                                    padding: '8px 12px',
-                                    borderRadius: '6px',
+                                    padding: '12px 16px',
+                                    borderRadius: '8px',
                                     cursor: 'pointer',
-                                    transition: 'all 0.2s ease',
+                                    transition: 'all 0.3s ease',
                                     marginBottom: '4px',
-                                    borderLeft: `3px solid ${accentColor}`,
+                                    borderLeft: `4px solid ${accentColor}`,
+                                    backgroundColor: '#fff',
                                     fontFamily: FONT_FAMILY
                                 }}
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor = accentColor + '10';
+                                    e.currentTarget.style.backgroundColor = accentColor + '08';
                                 }}
                                 onMouseLeave={(e) => {
-                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                    e.currentTarget.style.backgroundColor = '#fff';
                                 }}
                             >
                                 <Checkbox
                                     checked={selectedItems.includes(folder.id)}
                                     onChange={(e) => onItemSelect(folder.id, e.target.checked)}
-                                    style={{ marginRight: '8px' }}
+                                    style={{ marginRight: '12px' }}
                                     onClick={(e) => e.stopPropagation()}
                                 />
                                 <FolderOutlined
                                     style={{
-                                        fontSize: '16px',
+                                        fontSize: '18px',
                                         color: accentColor,
-                                        marginRight: '12px'
+                                        marginRight: '16px',
+                                        cursor: 'pointer'
                                     }}
-                                    onClick={() => onFolderClick(folder.id, folder.name)}
+                                    onClick={() => onFolderClick(folder.id, folder.name, folder.path)}
                                 />
                                 <div
                                     style={{ flex: 1, minWidth: 0, cursor: 'pointer', fontFamily: FONT_FAMILY }}
-                                    onClick={() => onFolderClick(folder.id, folder.name)}
+                                    onClick={() => onFolderClick(folder.id, folder.name, folder.path)}
                                 >
-                                    <Text style={{ fontSize: '13px', color: '#202124', fontWeight: 500, fontFamily: FONT_FAMILY }}>
+                                    <Text style={{ fontSize: '14px', color: '#202124', fontWeight: 500, fontFamily: FONT_FAMILY }}>
                                         {folder.name}
                                     </Text>
-                                    <div style={{ marginTop: '1px' }}>
-                                        <Text style={{ fontSize: '11px', color: '#5f6368', fontFamily: FONT_FAMILY }}>
+                                    <div style={{ marginTop: '2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Text style={{ fontSize: '12px', color: '#5f6368', fontFamily: FONT_FAMILY }}>
                                             Modified {formatDate(folder.modifiedTime)}
                                         </Text>
                                         {folder.shared && (
-                                            <Tag color="blue" style={{ marginLeft: '6px', fontSize: '10px', fontFamily: FONT_FAMILY }}>
+                                            <Tag color="blue" style={{ fontSize: '10px', fontFamily: FONT_FAMILY }}>
                                                 <TeamOutlined style={{ marginRight: '2px' }} />
                                                 Shared
                                             </Tag>
                                         )}
-                                        {folder.source_email && (
+                                        {(folder.source_email || folder.provider) && (
                                             <Tag
                                                 style={{
-                                                    marginLeft: '6px',
                                                     fontSize: '10px',
                                                     backgroundColor: accentColor + '15',
                                                     borderColor: accentColor + '40',
@@ -1031,7 +1393,8 @@ const FoldersSection: React.FC<{
                                                     fontFamily: FONT_FAMILY
                                                 }}
                                             >
-                                                {getFileSource(folder) === 'google' ? 'Google' : 'Outlook'}
+                                                {folder.provider === 'google' || getFileSource(folder) === 'google' ? 'Google' :
+                                                    folder.provider === 'dropbox' || getFileSource(folder) === 'dropbox' ? 'Dropbox' : 'OneDrive'}
                                             </Tag>
                                         )}
                                     </div>
@@ -1044,7 +1407,7 @@ const FoldersSection: React.FC<{
                                         type="text"
                                         size="small"
                                         icon={<MoreOutlined />}
-                                        style={{ color: '#5f6368' }}
+                                        style={{ color: '#5f6368', borderRadius: '6px' }}
                                         onClick={(e) => e.stopPropagation()}
                                     />
                                 </Dropdown>
@@ -1057,7 +1420,8 @@ const FoldersSection: React.FC<{
     );
 };
 
-const getFileIcon = (mimeType: string) => {
+const getFileIcon = (mimeType?: string) => {
+    if (!mimeType) return <FileTextOutlined />;
     if (mimeType.includes('image')) return <PictureOutlined />;
     if (mimeType.includes('video')) return <PlayCircleOutlined />;
     if (mimeType.includes('pdf')) return <FilePdfOutlined />;
@@ -1068,7 +1432,8 @@ const getFileIcon = (mimeType: string) => {
     return <FileTextOutlined />;
 };
 
-const getFileIconColor = (mimeType: string) => {
+const getFileIconColor = (mimeType?: string) => {
+    if (!mimeType) return '#5f6368';
     if (mimeType.includes('image')) return '#34a853';
     if (mimeType.includes('video')) return '#ea4335';
     if (mimeType.includes('pdf')) return '#ea4335';
@@ -1086,7 +1451,7 @@ const formatFileSize = (bytes?: number) => {
     return Math.round((bytes / Math.pow(1024, i)) * 100) / 100 + ' ' + sizes[i];
 };
 
-// Enhanced Files Section Component
+// Enhanced Files Section Component with unified data handling
 const FilesSection: React.FC<{
     files: DriveFile[];
     onFileAction: (action: string, file: DriveFile) => void;
@@ -1115,20 +1480,21 @@ const FilesSection: React.FC<{
     };
 
     const getFileAccentColor = (file: DriveFile) => {
-        if (!file.source_email) return PRIMARY_COLOR;
+        if (!file.source_email && !file.provider) return PRIMARY_COLOR;
 
         const accountIndex = availableAccounts.findIndex(acc => acc.email === file.source_email);
-        const provider = getFileSource(file);
+        const provider = file.provider || getFileSource(file);
         return getAccountColor(provider, accountIndex >= 0 ? accountIndex : 0);
     };
 
     const getMenuItems = (file: DriveFile) => [
-        {
+        // Only show 'view' option if webViewLink exists (mainly for Google Drive files)
+        ...(file.webViewLink ? [{
             key: 'view',
             label: 'Open',
             icon: <EyeOutlined />,
             onClick: () => onFileAction('view', file),
-        },
+        }] : []),
         {
             key: 'download',
             label: 'Download',
@@ -1153,6 +1519,7 @@ const FilesSection: React.FC<{
             icon: <FolderOpenOutlined />,
             onClick: () => onFileAction('move', file),
         },
+        // Only show star option for Google Drive files (Dropbox doesn't support starring)
         ...(file.starred !== undefined ? [{
             key: 'star',
             label: file.starred ? 'Remove star' : 'Add star',
@@ -1196,7 +1563,7 @@ const FilesSection: React.FC<{
             {
                 title: '',
                 key: 'select',
-                width: 40,
+                width: 50,
                 render: (_: any, record: DriveFile) => (
                     <Checkbox
                         checked={selectedItems.includes(record.id)}
@@ -1214,44 +1581,45 @@ const FilesSection: React.FC<{
                     return (
                         <div
                             style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontFamily: FONT_FAMILY }}
-                            onClick={() => onFileAction('view', record)}
+                            onClick={() => record.webViewLink ? onFileAction('view', record) : onFileAction('download', record)}
                         >
                             <div
                                 style={{
-                                    marginRight: '8px',
+                                    marginRight: '12px',
                                     color: getFileIconColor(record.mimeType),
-                                    fontSize: '14px',
+                                    fontSize: '16px',
                                 }}
                             >
                                 {getFileIcon(record.mimeType)}
                             </div>
                             <div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <Text style={{ fontSize: '12px', color: '#202124', fontWeight: 500, fontFamily: FONT_FAMILY }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Text style={{ fontSize: '14px', color: '#202124', fontWeight: 500, fontFamily: FONT_FAMILY }}>
                                         {text}
                                     </Text>
                                     {record.starred && (
-                                        <StarFilled style={{ color: '#fbbc04', fontSize: '10px' }} />
+                                        <StarFilled style={{ color: '#fbbc04', fontSize: '12px' }} />
                                     )}
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '1px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
                                     {record.shared && (
-                                        <Tag color="blue" style={{ fontSize: '9px', fontFamily: FONT_FAMILY }}>
+                                        <Tag color="blue" style={{ fontSize: '10px', fontFamily: FONT_FAMILY }}>
                                             <TeamOutlined style={{ marginRight: '2px' }} />
                                             Shared
                                         </Tag>
                                     )}
-                                    {record.source_email && (
+                                    {(record.source_email || record.provider) && (
                                         <Tag
                                             style={{
-                                                fontSize: '9px',
+                                                fontSize: '10px',
                                                 backgroundColor: accentColor + '15',
                                                 borderColor: accentColor + '40',
                                                 color: accentColor,
                                                 fontFamily: FONT_FAMILY
                                             }}
                                         >
-                                            {getFileSource(record) === 'google' ? 'Google' : 'Outlook'}
+                                            {record.provider === 'google' || getFileSource(record) === 'google' ? 'Google' :
+                                                record.provider === 'dropbox' || getFileSource(record) === 'dropbox' ? 'Dropbox' : 'OneDrive'}
                                         </Tag>
                                     )}
                                 </div>
@@ -1264,18 +1632,18 @@ const FilesSection: React.FC<{
                 title: 'Owner',
                 dataIndex: 'owners',
                 key: 'owners',
-                width: 140,
+                width: 160,
                 render: (owners: DriveFile['owners']) => (
                     <div style={{ display: 'flex', alignItems: 'center', fontFamily: FONT_FAMILY }}>
-                        {owners[0]?.photoLink ? (
-                            <Avatar size="small" src={owners[0].photoLink} style={{ marginRight: '6px' }} />
+                        {owners && owners[0]?.photoLink ? (
+                            <Avatar size="small" src={owners[0].photoLink} style={{ marginRight: '8px' }} />
                         ) : (
-                            <Avatar size="small" style={{ marginRight: '6px', backgroundColor: PRIMARY_COLOR, fontFamily: FONT_FAMILY }}>
-                                {(owners[0]?.displayName || 'U')[0]}
+                            <Avatar size="small" style={{ marginRight: '8px', backgroundColor: PRIMARY_COLOR, fontFamily: FONT_FAMILY }}>
+                                {(owners && owners[0]?.displayName || 'U')[0]}
                             </Avatar>
                         )}
-                        <Text style={{ fontSize: '11px', color: '#5f6368', fontFamily: FONT_FAMILY }}>
-                            {owners[0]?.displayName || 'Unknown'}
+                        <Text style={{ fontSize: '12px', color: '#5f6368', fontFamily: FONT_FAMILY }}>
+                            {owners && owners[0]?.displayName || 'Unknown'}
                         </Text>
                     </div>
                 ),
@@ -1284,37 +1652,37 @@ const FilesSection: React.FC<{
                 title: 'Last modified',
                 dataIndex: 'modifiedTime',
                 key: 'modifiedTime',
-                width: 120,
+                width: 140,
                 render: (text: string) => (
-                    <Text style={{ fontSize: '11px', color: '#5f6368', fontFamily: FONT_FAMILY }}>{formatDate(text)}</Text>
+                    <Text style={{ fontSize: '12px', color: '#5f6368', fontFamily: FONT_FAMILY }}>{formatDate(text)}</Text>
                 ),
             },
             {
                 title: 'File size',
                 dataIndex: 'size',
                 key: 'size',
-                width: 80,
+                width: 100,
                 render: (size?: number) => (
-                    <Text style={{ fontSize: '11px', color: '#5f6368', fontFamily: FONT_FAMILY }}>{formatFileSize(size)}</Text>
+                    <Text style={{ fontSize: '12px', color: '#5f6368', fontFamily: FONT_FAMILY }}>{formatFileSize(size)}</Text>
                 ),
             },
             {
                 title: '',
                 key: 'actions',
-                width: 50,
+                width: 60,
                 render: (_: any, record: DriveFile) => (
                     <Dropdown menu={{ items: getMenuItems(record) }} trigger={['click']}>
-                        <Button type="text" icon={<MoreOutlined />} style={{ color: '#5f6368' }} />
+                        <Button type="text" icon={<MoreOutlined />} style={{ color: '#5f6368', borderRadius: '6px' }} />
                     </Dropdown>
                 ),
             },
         ];
 
         return (
-            <div style={{ padding: '0 16px 16px', fontFamily: FONT_FAMILY }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
-                    <FileTextOutlined style={{ color: PRIMARY_COLOR, fontSize: '14px' }} />
-                    <Text style={{ fontSize: '14px', fontWeight: 500, color: '#202124', fontFamily: FONT_FAMILY }}>Files</Text>
+            <div style={{ padding: '0 24px 24px', fontFamily: FONT_FAMILY }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                    <FileTextOutlined style={{ color: PRIMARY_COLOR, fontSize: '16px' }} />
+                    <Text style={{ fontSize: '16px', fontWeight: 600, color: '#202124', fontFamily: FONT_FAMILY }}>Files</Text>
                     <Badge count={files.length} style={{ backgroundColor: '#e8f0fe', color: PRIMARY_COLOR }} />
                 </div>
                 <Table
@@ -1325,9 +1693,10 @@ const FilesSection: React.FC<{
                     size="small"
                     style={{
                         backgroundColor: '#fff',
-                        borderRadius: '6px',
+                        borderRadius: '12px',
                         overflow: 'hidden',
-                        fontFamily: FONT_FAMILY
+                        fontFamily: FONT_FAMILY,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
                     }}
                     className="custom-table"
                 />
@@ -1335,10 +1704,10 @@ const FilesSection: React.FC<{
                     <div
                         style={{
                             textAlign: 'center',
-                            marginTop: '16px',
-                            padding: '12px',
+                            marginTop: '20px',
+                            padding: '16px',
                             backgroundColor: '#f8f9fa',
-                            borderRadius: '6px',
+                            borderRadius: '12px',
                         }}
                     >
                         <Pagination
@@ -1359,13 +1728,13 @@ const FilesSection: React.FC<{
 
     // ------------------ GRID VIEW -------------------
     return (
-        <div style={{ padding: '16px', fontFamily: FONT_FAMILY }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
-                <FileTextOutlined style={{ color: PRIMARY_COLOR, fontSize: '14px' }} />
-                <Text style={{ fontSize: '14px', fontWeight: 500, color: '#202124', fontFamily: FONT_FAMILY }}>Files</Text>
+        <div style={{ padding: '20px 24px', fontFamily: FONT_FAMILY }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                <FileTextOutlined style={{ color: PRIMARY_COLOR, fontSize: '16px' }} />
+                <Text style={{ fontSize: '16px', fontWeight: 600, color: '#202124', fontFamily: FONT_FAMILY }}>Files</Text>
                 <Badge count={files.length} style={{ backgroundColor: '#e8f0fe', color: PRIMARY_COLOR }} />
             </div>
-            <Row gutter={[8, 8]}>
+            <Row gutter={[12, 12]}>
                 {displayFiles.map((file) => {
                     const accentColor = getFileAccentColor(file);
                     return (
@@ -1373,40 +1742,41 @@ const FilesSection: React.FC<{
                             <div
                                 style={{
                                     padding: '0',
-                                    borderRadius: '6px',
+                                    borderRadius: '12px',
                                     cursor: 'pointer',
-                                    transition: 'all 0.2s ease',
+                                    transition: 'all 0.3s ease',
                                     backgroundColor: '#fff',
-                                    border: `1px solid ${accentColor}20`,
+                                    border: `2px solid ${accentColor}15`,
                                     overflow: 'hidden',
                                     position: 'relative',
-                                    fontFamily: FONT_FAMILY
+                                    fontFamily: FONT_FAMILY,
+                                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
                                 }}
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.boxShadow = `0 3px 10px ${accentColor}25`;
-                                    e.currentTarget.style.transform = 'translateY(-1px)';
-                                    e.currentTarget.style.borderColor = accentColor + '40';
+                                    e.currentTarget.style.boxShadow = `0 6px 20px ${accentColor}25`;
+                                    e.currentTarget.style.transform = 'translateY(-4px)';
+                                    e.currentTarget.style.borderColor = accentColor + '30';
                                 }}
                                 onMouseLeave={(e) => {
-                                    e.currentTarget.style.boxShadow = 'none';
+                                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)';
                                     e.currentTarget.style.transform = 'translateY(0)';
-                                    e.currentTarget.style.borderColor = accentColor + '20';
+                                    e.currentTarget.style.borderColor = accentColor + '15';
                                 }}
                             >
                                 <div
                                     style={{
-                                        height: '100px',
+                                        height: '120px',
                                         backgroundColor: '#f8f9fa',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                         backgroundImage: file.thumbnailLink
-                                            ? `url(${trimGooglePhotoUrl(file.thumbnailLink)})`
+                                            ? `url(${file.thumbnailLink})`
                                             : 'none',
                                         backgroundSize: 'cover',
                                         backgroundPosition: 'center',
                                         position: 'relative',
-                                        borderBottom: `2px solid ${accentColor}15`
+                                        borderBottom: `3px solid ${accentColor}20`
                                     }}
                                 >
                                     <Checkbox
@@ -1414,24 +1784,24 @@ const FilesSection: React.FC<{
                                         onChange={(e) => onItemSelect(file.id, e.target.checked)}
                                         style={{
                                             position: 'absolute',
-                                            top: '6px',
-                                            left: '6px',
-                                            backgroundColor: 'rgba(255,255,255,0.9)',
-                                            borderRadius: '3px',
-                                            padding: '1px'
+                                            top: '8px',
+                                            left: '8px',
+                                            backgroundColor: 'rgba(255,255,255,0.95)',
+                                            borderRadius: '4px',
+                                            padding: '2px'
                                         }}
                                         onClick={(e) => e.stopPropagation()}
                                     />
                                     {!file.thumbnailLink && (
-                                        <div style={{ fontSize: '28px', color: getFileIconColor(file.mimeType) }}>
+                                        <div style={{ fontSize: '32px', color: getFileIconColor(file.mimeType) }}>
                                             {getFileIcon(file.mimeType)}
                                         </div>
                                     )}
                                     <div
                                         style={{
                                             position: 'absolute',
-                                            top: '6px',
-                                            right: '6px',
+                                            top: '8px',
+                                            right: '8px',
                                         }}
                                     >
                                         <Dropdown menu={{ items: getMenuItems(file) }} trigger={['click']}>
@@ -1442,68 +1812,80 @@ const FilesSection: React.FC<{
                                                 style={{
                                                     border: 'none',
                                                     color: accentColor,
-                                                    backgroundColor: 'rgba(255,255,255,0.9)',
+                                                    backgroundColor: 'rgba(255,255,255,0.95)',
+                                                    borderRadius: '6px'
                                                 }}
                                                 onClick={(e) => e.stopPropagation()}
                                             />
                                         </Dropdown>
                                     </div>
                                 </div>
-                                <div style={{ padding: '8px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginBottom: '3px' }}>
+                                <div style={{ padding: '12px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
                                         <Text
                                             style={{
-                                                fontSize: '12px',
+                                                fontSize: '13px',
                                                 color: '#202124',
                                                 overflow: 'hidden',
                                                 textOverflow: 'ellipsis',
                                                 whiteSpace: 'nowrap',
                                                 fontWeight: 500,
                                                 flex: 1,
+                                                cursor: 'pointer',
                                                 fontFamily: FONT_FAMILY
                                             }}
-                                            onClick={() => onFileAction('view', file)}
+                                            onClick={() => file.webViewLink ? onFileAction('view', file) : onFileAction('download', file)}
                                         >
                                             {file.name}
                                         </Text>
                                         {file.starred && (
-                                            <StarFilled style={{ color: '#fbbc04', fontSize: '10px' }} />
+                                            <StarFilled style={{ color: '#fbbc04', fontSize: '11px' }} />
                                         )}
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '3px' }}>
-                                        {file.owners[0]?.photoLink ? (
-                                            <Avatar size={14} src={file.owners[0].photoLink} style={{ marginRight: '4px' }} />
+                                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
+                                        {file.owners && file.owners[0]?.photoLink ? (
+                                            <Avatar
+                                                size={16}
+                                                src={file.owners[0].photoLink}
+                                                style={{ marginRight: '6px' }}
+                                            />
                                         ) : (
                                             <Avatar
-                                                size={14}
+                                                size={16}
                                                 style={{
-                                                    marginRight: '4px',
+                                                    marginRight: '6px',
                                                     backgroundColor: accentColor,
-                                                    fontSize: '8px',
+                                                    fontSize: '9px',
                                                     fontFamily: FONT_FAMILY
                                                 }}
                                             >
-                                                {(file.owners[0]?.displayName || 'U')[0]}
+                                                {(file.owners && file.owners[0]?.displayName?.[0] || 'U')}
                                             </Avatar>
                                         )}
-                                        <Text style={{ fontSize: '10px', color: '#5f6368', fontFamily: FONT_FAMILY }}>
+                                        <Text
+                                            style={{
+                                                fontSize: '11px',
+                                                color: '#5f6368',
+                                                fontFamily: FONT_FAMILY
+                                            }}
+                                        >
                                             {formatDate(file.modifiedTime)}
                                         </Text>
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <Text style={{ fontSize: '10px', color: '#5f6368', fontFamily: FONT_FAMILY }}>
+                                        <Text style={{ fontSize: '11px', color: '#5f6368', fontFamily: FONT_FAMILY }}>
                                             {formatFileSize(file.size)}
                                         </Text>
-                                        <Space size={3}>
+                                        <Space size={4}>
                                             {file.shared && (
                                                 <Tooltip title="Shared">
-                                                    <TeamOutlined style={{ color: accentColor, fontSize: '10px' }} />
+                                                    <TeamOutlined style={{ color: accentColor, fontSize: '11px' }} />
                                                 </Tooltip>
                                             )}
-                                            {file.source_email && (
+                                            {(file.source_email || file.provider) && (
                                                 <Tag
                                                     style={{
-                                                        fontSize: '7px',
+                                                        fontSize: '8px',
                                                         margin: 0,
                                                         backgroundColor: accentColor + '15',
                                                         borderColor: accentColor + '40',
@@ -1511,7 +1893,8 @@ const FilesSection: React.FC<{
                                                         fontFamily: FONT_FAMILY
                                                     }}
                                                 >
-                                                    {getFileSource(file) === 'google' ? 'G' : 'O'}
+                                                    {file.provider === 'google' || getFileSource(file) === 'google' ? 'G' :
+                                                        file.provider === 'dropbox' || getFileSource(file) === 'dropbox' ? 'D' : 'O'}
                                                 </Tag>
                                             )}
                                         </Space>
@@ -1526,10 +1909,10 @@ const FilesSection: React.FC<{
                 <div
                     style={{
                         textAlign: 'center',
-                        marginTop: '16px',
-                        padding: '12px',
+                        marginTop: '20px',
+                        padding: '16px',
                         backgroundColor: '#f8f9fa',
-                        borderRadius: '6px',
+                        borderRadius: '12px',
                     }}
                 >
                     <Pagination
@@ -1548,8 +1931,8 @@ const FilesSection: React.FC<{
     );
 };
 
-// Main Google Drive Manager Component
-const GoogleDriveManager: React.FC = () => {
+// Main Files Manager Component
+const FilesManager: React.FC = () => {
     const [files, setFiles] = useState<DriveFile[]>([]);
     const [folders, setFolders] = useState<DriveFolder[]>([]);
     const [loading, setLoading] = useState(true);
@@ -1558,21 +1941,28 @@ const GoogleDriveManager: React.FC = () => {
     const [sortBy, setSortBy] = useState<'name' | 'modifiedTime' | 'size'>('modifiedTime');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
     const [currentFolder, setCurrentFolder] = useState<string>('root');
-    const [breadcrumbs, setBreadcrumbs] = useState<Array<{ id: string; name: string }>>([
-        { id: 'root', name: 'My Drive' }
+    const [currentFolderPath, setCurrentFolderPath] = useState<string>('');
+    const [breadcrumbs, setBreadcrumbs] = useState<Array<{ id: string; name: string; path?: string }>>([
+        { id: 'root', name: 'My Drive', path: '' }
     ]);
     const [uploadProgress, setUploadProgress] = useState<UploadProgress>({});
     const [isUploading, setIsUploading] = useState(false);
     const [showCreateFolder, setShowCreateFolder] = useState(false);
     const [showShareModal, setShowShareModal] = useState(false);
     const [shareFileId, setShareFileId] = useState<string>('');
+    const [shareFilePath, setShareFilePath] = useState<string>('');
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(16);
     const [showUploadArea, setShowUploadArea] = useState(true);
     const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
     const [availableAccounts, setAvailableAccounts] = useState<AccountFilter[]>([]);
+    const [selectedProviders, setSelectedProviders] = useState<CloudProvider[]>(['all']);
 
-    // New state for enhanced features
+    // Provider Selection States
+    const [showProviderSelectionModal, setShowProviderSelectionModal] = useState(false);
+    const [providerSelectionType, setProviderSelectionType] = useState<'upload' | 'folder'>('upload');
+
+    // Enhanced features state
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
     const [storageInfo, setStorageInfo] = useState<StorageInfo | null>(null);
     const [showAnalytics, setShowAnalytics] = useState(false);
@@ -1595,7 +1985,11 @@ const GoogleDriveManager: React.FC = () => {
     const [folderTreeData, setFolderTreeData] = useState<any[]>([]);
 
     const handleToggleUpload = () => setShowUploadArea(true);
-    const handleAddFolder = () => setShowCreateFolder(true);
+    const handleAddFolder = () => {
+        setProviderSelectionType('folder');
+        setShowProviderSelectionModal(true);
+    };
+
     const [form] = Form.useForm();
     const [shareForm] = Form.useForm();
     const [renameForm] = Form.useForm();
@@ -1605,14 +1999,14 @@ const GoogleDriveManager: React.FC = () => {
     const [bulkMoveForm] = Form.useForm();
     const [bulkCopyForm] = Form.useForm();
 
-    // Extract unique accounts from files and folders - Updated to include both Google and Outlook
+    // Extract unique accounts from files and folders
     const extractAvailableAccounts = useCallback((files: DriveFile[], folders: DriveFolder[]) => {
         const accountsMap = new Map<string, AccountFilter>();
 
         // Extract from files
         files.forEach(file => {
             if (file.source_email) {
-                const provider = file.source_email.includes('gmail') || file.source_email.includes('google') ? 'google' : 'outlook';
+                const provider = file.provider || getFileSource(file);
                 accountsMap.set(file.source_email, {
                     email: file.source_email,
                     displayName: file.account_name || file.source_email.split('@')[0],
@@ -1625,7 +2019,7 @@ const GoogleDriveManager: React.FC = () => {
         // Extract from folders
         folders.forEach(folder => {
             if (folder.source_email) {
-                const provider = folder.source_email.includes('gmail') || folder.source_email.includes('google') ? 'google' : 'outlook';
+                const provider = folder.provider || getFileSource(folder);
                 accountsMap.set(folder.source_email, {
                     email: folder.source_email,
                     displayName: folder.account_name || folder.source_email.split('@')[0],
@@ -1649,7 +2043,7 @@ const GoogleDriveManager: React.FC = () => {
                 value: 'root',
                 icon: <HomeOutlined />,
                 children: folders
-                    .filter(folder => folder.id !== currentItemId) // Exclude current item
+                    .filter(folder => folder.id !== currentItemId)
                     .map(folder => ({
                         title: folder.name,
                         key: folder.id,
@@ -1664,25 +2058,27 @@ const GoogleDriveManager: React.FC = () => {
         try {
             setLoading(true);
             const response = await listDriveFiles({
-                folderId: currentFolder,
+                folderId: currentFolder === 'root' ? undefined : currentFolder,
+                folderPath: currentFolderPath,
                 sortBy,
                 sortOrder,
                 pageSize: 100,
+                providers: selectedProviders.length === 0 ? ['all'] : selectedProviders
             });
 
             if (response?.data) {
-                const fetchedFiles = response.data.payload.files || [];
-                const fetchedFolders = response.data.payload.folders || [];
+                const rawFiles = response.data.payload.files || [];
+                const rawFolders = response.data.payload.folders || [];
 
-                setFiles(fetchedFiles);
-                setFolders(fetchedFolders);
+                setFiles(rawFiles);
+                setFolders(rawFolders);
 
                 // Extract available accounts
-                const accounts = extractAvailableAccounts(fetchedFiles, fetchedFolders);
+                const accounts = extractAvailableAccounts(rawFiles, rawFolders);
                 setAvailableAccounts(accounts);
 
                 // Build folder tree for modals
-                const tree = buildFolderTree(fetchedFolders);
+                const tree = buildFolderTree(rawFolders);
                 setFolderTreeData(tree);
             }
         } catch (error: any) {
@@ -1695,7 +2091,7 @@ const GoogleDriveManager: React.FC = () => {
 
     const fetchStorageInfo = async () => {
         try {
-            const response = await getDriveStorage();
+            const response = await getDriveStorage(selectedProviders.length === 0 ? ['all'] : selectedProviders);
             if (response?.data) {
                 setStorageInfo(response.data.payload);
             }
@@ -1708,7 +2104,7 @@ const GoogleDriveManager: React.FC = () => {
         try {
             const response = await getActivityLog({ limit: 50 });
             if (response?.data) {
-                setActivityLogs(response.data.payload || []);
+                setActivityLogs(response.data.payload.activities || []);
             }
         } catch (error: any) {
             console.error('Error fetching activity log:', error);
@@ -1717,9 +2113,19 @@ const GoogleDriveManager: React.FC = () => {
 
     const fetchDuplicates = async () => {
         try {
-            const response = await findDuplicateFiles({ folderId: currentFolder });
-            if (response?.data) {
-                setDuplicateFiles(response.data.payload || []);
+            const response = await findDuplicateFiles({
+                folderId: currentFolder === 'root' ? undefined : currentFolder,
+                folderPath: currentFolderPath,
+                providers: selectedProviders.length === 0 ? ['all'] : selectedProviders
+            });
+            if (response?.data?.results) {
+                const allDuplicates: DuplicateFile[] = [];
+                response.data.results.forEach((result: any) => {
+                    if (result.payload?.duplicates) {
+                        allDuplicates.push(...result.payload.duplicates);
+                    }
+                });
+                setDuplicateFiles(allDuplicates);
             }
         } catch (error: any) {
             console.error('Error finding duplicates:', error);
@@ -1729,18 +2135,21 @@ const GoogleDriveManager: React.FC = () => {
 
     const fetchStorageAnalytics = async () => {
         try {
-            const response = await getStorageAnalytics();
-            if (response?.data) {
-                setStorageAnalytics(response.data.payload);
+            const response = await getStorageAnalytics(selectedProviders.length === 0 ? ['all'] : selectedProviders);
+            if (response?.data?.results) {
+                setStorageAnalytics(response.data.results);
             }
         } catch (error: any) {
             console.error('Error fetching storage analytics:', error);
         }
     };
 
-    const fetchFileInfo = async (fileId: string) => {
+    const fetchFileInfo = async (fileId: string, filePath?: string) => {
         try {
-            const response = await getDriveFileInfo({ fileId });
+            const response = await getDriveFileInfo({
+                fileId: filePath ? undefined : fileId,
+                filePath: filePath
+            });
             if (response?.data) {
                 setFileInfo(response.data.payload);
             }
@@ -1752,21 +2161,21 @@ const GoogleDriveManager: React.FC = () => {
 
     useEffect(() => {
         fetchFiles();
-    }, [currentFolder, sortBy, sortOrder]);
+    }, [currentFolder, currentFolderPath, sortBy, sortOrder, selectedProviders]);
 
     useEffect(() => {
         fetchStorageInfo();
-    }, []);
+    }, [selectedProviders]);
 
-    const logUserActivity = async (action: string, fileName: string, fileId?: string, details?: string) => {
+    const logUserActivity = async (action: string, fileName: string, fileId?: string, filePath?: string, details?: string) => {
         try {
-            await logActivity({ action, fileName, fileId, details });
+            await logActivity({ action, fileName, fileId, filePath, details });
         } catch (error) {
             console.error('Error logging activity:', error);
         }
     };
 
-    const handleFileUpload = async (file: File) => {
+    const handleFileUpload = async (file: File, provider: CloudProvider) => {
         setIsUploading(true);
         setUploadProgress(prev => ({
             ...prev,
@@ -1774,18 +2183,27 @@ const GoogleDriveManager: React.FC = () => {
         }));
 
         try {
-            await uploadDriveFile({
+            const uploadParams: any = {
                 file,
-                parentId: currentFolder === 'root' ? undefined : currentFolder
-            });
+                provider
+            };
+
+            // Set appropriate parent based on provider
+            if (provider === 'google') {
+                uploadParams.parentId = currentFolder === 'root' ? undefined : currentFolder;
+            } else if (provider === 'dropbox') {
+                uploadParams.folderPath = currentFolderPath;
+            }
+
+            await uploadDriveFile(uploadParams);
 
             setUploadProgress(prev => ({
                 ...prev,
                 [file.name]: { progress: 100, status: 'completed' }
             }));
 
-            message.success(`${file.name} uploaded successfully`);
-            await logUserActivity('upload', file.name, undefined, `Uploaded to ${breadcrumbs[breadcrumbs.length - 1].name}`);
+            message.success(`${file.name} uploaded successfully to ${getProviderDisplayName(provider)}`);
+            await logUserActivity('upload', file.name, undefined, currentFolderPath, `Uploaded to ${getProviderDisplayName(provider)} in ${breadcrumbs[breadcrumbs.length - 1].name}`);
             fetchFiles();
         } catch (error: any) {
             console.error('Upload error:', error);
@@ -1793,7 +2211,7 @@ const GoogleDriveManager: React.FC = () => {
                 ...prev,
                 [file.name]: { progress: 0, status: 'error' }
             }));
-            message.error(`Failed to upload ${file.name}`);
+            message.error(`Failed to upload ${file.name} to ${getProviderDisplayName(provider)}`);
         } finally {
             setIsUploading(false);
             setTimeout(() => {
@@ -1806,23 +2224,38 @@ const GoogleDriveManager: React.FC = () => {
         }
     };
 
+    const handleProviderSelection = async (provider: CloudProvider) => {
+        setShowProviderSelectionModal(false);
+
+        if (providerSelectionType === 'folder') {
+            setShowCreateFolder(true);
+            // Store selected provider for folder creation
+            form.setFieldsValue({ provider });
+        }
+    };
+
     const handleFileAction = async (action: string, item: DriveFile | DriveFolder) => {
-        const fileSource = getFileSource(item);
+        const fileSource = item.provider || getFileSource(item);
 
         switch (action) {
             case 'view':
                 if ('webViewLink' in item && item.webViewLink) {
                     window.open(item.webViewLink, '_blank');
-                    await logUserActivity('view', item.name, item.id);
+                    await logUserActivity('view', item.name, item.id, item.path);
                 }
                 break;
             case 'download':
                 if ('mimeType' in item) {
                     try {
-                        const response = await downloadDriveFile({
-                            fileId: item.id,
-                            provider: fileSource
-                        });
+                        const downloadParams: any = { provider: fileSource };
+
+                        if (fileSource === 'google') {
+                            downloadParams.fileId = item.id;
+                        } else if (fileSource === 'dropbox') {
+                            downloadParams.filePath = item.path || item.id;
+                        }
+
+                        const response = await downloadDriveFile(downloadParams);
                         const blob = new Blob([response.data]);
                         const url = window.URL.createObjectURL(blob);
                         const a = document.createElement('a');
@@ -1833,7 +2266,7 @@ const GoogleDriveManager: React.FC = () => {
                         window.URL.revokeObjectURL(url);
                         document.body.removeChild(a);
                         message.success(`${item.name} downloaded successfully`);
-                        await logUserActivity('download', item.name, item.id);
+                        await logUserActivity('download', item.name, item.id, item.path);
                     } catch (error: any) {
                         console.error('Download error:', error);
                         message.error(`Failed to download ${item.name}`);
@@ -1855,11 +2288,11 @@ const GoogleDriveManager: React.FC = () => {
                 setShowMoveModal(true);
                 break;
             case 'star':
-                if ('starred' in item) {
+                if ('starred' in item && item.starred !== undefined && fileSource === 'google') {
                     try {
                         await starDriveFile({ fileId: item.id, starred: !item.starred });
                         message.success(`${item.starred ? 'Removed star from' : 'Added star to'} ${item.name}`);
-                        await logUserActivity(item.starred ? 'unstar' : 'star', item.name, item.id);
+                        await logUserActivity(item.starred ? 'unstar' : 'star', item.name, item.id, item.path);
                         fetchFiles();
                     } catch (error: any) {
                         console.error('Star error:', error);
@@ -1868,22 +2301,33 @@ const GoogleDriveManager: React.FC = () => {
                 }
                 break;
             case 'share':
-                setShareFileId(item.id);
+                if (fileSource === 'google') {
+                    setShareFileId(item.id);
+                    setShareFilePath('');
+                } else if (fileSource === 'dropbox') {
+                    setShareFileId('');
+                    setShareFilePath(item.path || item.id);
+                }
                 setShowShareModal(true);
                 break;
             case 'info':
                 setCurrentActionItem(item);
-                await fetchFileInfo(item.id);
+                await fetchFileInfo(item.id, item.path);
                 setShowFileInfoModal(true);
                 break;
             case 'delete':
                 try {
-                    await deleteDriveFile({
-                        fileId: item.id,
-                        provider: fileSource
-                    });
+                    const deleteParams: any = { provider: fileSource };
+
+                    if (fileSource === 'google') {
+                        deleteParams.fileId = item.id;
+                    } else if (fileSource === 'dropbox') {
+                        deleteParams.filePath = item.path || item.id;
+                    }
+
+                    await deleteDriveFile(deleteParams);
                     message.success(`${item.name} deleted successfully`);
-                    await logUserActivity('delete', item.name, item.id);
+                    await logUserActivity('delete', item.name, item.id, item.path);
                     fetchFiles();
                 } catch (error: any) {
                     console.error('Delete error:', error);
@@ -1895,15 +2339,24 @@ const GoogleDriveManager: React.FC = () => {
 
     const handleCreateFolder = async (values: any) => {
         try {
-            await createDriveFolder({
+            const provider = values.provider || 'google';
+            const createParams: any = {
                 name: values.folderName,
-                parentId: currentFolder === 'root' ? undefined : currentFolder
-            });
+                provider
+            };
+
+            if (provider === 'google') {
+                createParams.parentId = currentFolder === 'root' ? undefined : currentFolder;
+            } else if (provider === 'dropbox') {
+                createParams.parentPath = currentFolderPath;
+            }
+
+            await createDriveFolder(createParams);
 
             setShowCreateFolder(false);
             form.resetFields();
-            message.success(`Folder "${values.folderName}" created successfully`);
-            await logUserActivity('create_folder', values.folderName, undefined, `Created in ${breadcrumbs[breadcrumbs.length - 1].name}`);
+            message.success(`Folder "${values.folderName}" created successfully in ${getProviderDisplayName(provider)}`);
+            await logUserActivity('create_folder', values.folderName, undefined, currentFolderPath, `Created in ${getProviderDisplayName(provider)} - ${breadcrumbs[breadcrumbs.length - 1].name}`);
             fetchFiles();
         } catch (error: any) {
             console.error('Create folder error:', error);
@@ -1913,23 +2366,32 @@ const GoogleDriveManager: React.FC = () => {
 
     const handleShareFile = async (values: any) => {
         try {
-            const sharedItem = [...files, ...folders].find(item => item.id === shareFileId);
-            const fileSource = sharedItem ? getFileSource(sharedItem) : 'google';
+            const sharedItem = [...files, ...folders].find(item => item.id === shareFileId || item.path === shareFilePath);
+            const fileSource = sharedItem ? (sharedItem.provider || getFileSource(sharedItem)) : 'google';
 
-            await shareDriveFile({
-                fileId: shareFileId,
+            const shareParams: any = {
                 email: values.email,
-                role: values.role || 'reader',
                 provider: fileSource
-            });
+            };
+
+            if (fileSource === 'google') {
+                shareParams.fileId = shareFileId;
+                shareParams.role = values.role || 'reader';
+            } else if (fileSource === 'dropbox') {
+                shareParams.filePath = shareFilePath;
+                shareParams.accessLevel = values.accessLevel || 'viewer';
+            }
+
+            await shareDriveFile(shareParams);
 
             setShowShareModal(false);
             setShareFileId('');
+            setShareFilePath('');
             shareForm.resetFields();
             message.success('File shared successfully');
 
             if (sharedItem) {
-                await logUserActivity('share', sharedItem.name, shareFileId, `Shared with ${values.email}`);
+                await logUserActivity('share', sharedItem.name, shareFileId || undefined, shareFilePath, `Shared with ${values.email}`);
             }
         } catch (error: any) {
             console.error('Share error:', error);
@@ -1941,18 +2403,25 @@ const GoogleDriveManager: React.FC = () => {
         if (!currentActionItem) return;
 
         try {
-            const fileSource = getFileSource(currentActionItem);
-            await renameDriveFile({
-                fileId: currentActionItem.id,
+            const fileSource = currentActionItem.provider || getFileSource(currentActionItem);
+            const renameParams: any = {
                 newName: values.newName,
                 provider: fileSource
-            });
+            };
+
+            if (fileSource === 'google') {
+                renameParams.fileId = currentActionItem.id;
+            } else if (fileSource === 'dropbox') {
+                renameParams.filePath = currentActionItem.path || currentActionItem.id;
+            }
+
+            await renameDriveFile(renameParams);
 
             setShowRenameModal(false);
             setCurrentActionItem(null);
             renameForm.resetFields();
             message.success(`Renamed to "${values.newName}" successfully`);
-            await logUserActivity('rename', values.newName, currentActionItem.id, `From "${currentActionItem.name}"`);
+            await logUserActivity('rename', values.newName, currentActionItem.id, currentActionItem.path, `From "${currentActionItem.name}"`);
             fetchFiles();
         } catch (error: any) {
             console.error('Rename error:', error);
@@ -1964,19 +2433,27 @@ const GoogleDriveManager: React.FC = () => {
         if (!currentActionItem) return;
 
         try {
-            const fileSource = getFileSource(currentActionItem);
-            await copyDriveFile({
-                fileId: currentActionItem.id,
-                parentId: values.targetFolder === 'root' ? undefined : values.targetFolder,
+            const fileSource = currentActionItem.provider || getFileSource(currentActionItem);
+            const copyParams: any = {
                 name: values.newName,
                 provider: fileSource
-            });
+            };
+
+            if (fileSource === 'google') {
+                copyParams.fileId = currentActionItem.id;
+                copyParams.parentId = values.targetFolder === 'root' ? undefined : values.targetFolder;
+            } else if (fileSource === 'dropbox') {
+                copyParams.filePath = currentActionItem.path || currentActionItem.id;
+                copyParams.targetPath = values.targetFolder === 'root' ? '' : values.targetFolder;
+            }
+
+            await copyDriveFile(copyParams);
 
             setShowCopyModal(false);
             setCurrentActionItem(null);
             copyForm.resetFields();
             message.success(`${currentActionItem.name} copied successfully`);
-            await logUserActivity('copy', currentActionItem.name, currentActionItem.id);
+            await logUserActivity('copy', currentActionItem.name, currentActionItem.id, currentActionItem.path);
             fetchFiles();
         } catch (error: any) {
             console.error('Copy error:', error);
@@ -1988,18 +2465,24 @@ const GoogleDriveManager: React.FC = () => {
         if (!currentActionItem) return;
 
         try {
-            const fileSource = getFileSource(currentActionItem);
-            await moveDriveFile({
-                fileId: currentActionItem.id,
-                targetFolderId: values.targetFolder === 'root' ? 'root' : values.targetFolder,
-                provider: fileSource
-            });
+            const fileSource = currentActionItem.provider || getFileSource(currentActionItem);
+            const moveParams: any = { provider: fileSource };
+
+            if (fileSource === 'google') {
+                moveParams.fileId = currentActionItem.id;
+                moveParams.targetFolderId = values.targetFolder === 'root' ? 'root' : values.targetFolder;
+            } else if (fileSource === 'dropbox') {
+                moveParams.filePath = currentActionItem.path || currentActionItem.id;
+                moveParams.targetFolderPath = values.targetFolder === 'root' ? '' : values.targetFolder;
+            }
+
+            await moveDriveFile(moveParams);
 
             setShowMoveModal(false);
             setCurrentActionItem(null);
             moveForm.resetFields();
             message.success(`${currentActionItem.name} moved successfully`);
-            await logUserActivity('move', currentActionItem.name, currentActionItem.id);
+            await logUserActivity('move', currentActionItem.name, currentActionItem.id, currentActionItem.path);
             fetchFiles();
         } catch (error: any) {
             console.error('Move error:', error);
@@ -2010,7 +2493,35 @@ const GoogleDriveManager: React.FC = () => {
     // Bulk Operations
     const handleBulkDownload = async () => {
         try {
-            const response = await bulkDownloadFiles({ fileIds: selectedItems });
+            // Separate items by provider
+            const googleItems = selectedItems.filter(id => {
+                const item = [...files, ...folders].find(f => f.id === id);
+                return item && (item.provider === 'google' || getFileSource(item) === 'google');
+            });
+
+            const dropboxItems = selectedItems.filter(id => {
+                const item = [...files, ...folders].find(f => f.id === id);
+                return item && (item.provider === 'dropbox' || getFileSource(item) === 'dropbox');
+            }).map(id => {
+                const item = [...files, ...folders].find(f => f.id === id);
+                return item?.path || id;
+            });
+
+            let response;
+            if (googleItems.length > 0) {
+                response = await bulkDownloadFiles({
+                    fileIds: googleItems,
+                    providers: ['google']
+                });
+            } else if (dropboxItems.length > 0) {
+                response = await bulkDownloadFiles({
+                    filePaths: dropboxItems,
+                    providers: ['dropbox']
+                });
+            } else {
+                throw new Error('No supported items selected');
+            }
+
             const blob = new Blob([response.data]);
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -2021,7 +2532,7 @@ const GoogleDriveManager: React.FC = () => {
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
             message.success(`${selectedItems.length} files downloaded successfully`);
-            await logUserActivity('bulk_download', `${selectedItems.length} files`, undefined);
+            await logUserActivity('bulk_download', `${selectedItems.length} files`, undefined, undefined);
             setSelectedItems([]);
         } catch (error: any) {
             console.error('Bulk download error:', error);
@@ -2031,9 +2542,32 @@ const GoogleDriveManager: React.FC = () => {
 
     const handleBulkDelete = async () => {
         try {
-            await bulkDeleteFiles({ fileIds: selectedItems });
+            // Separate items by provider
+            const googleItems = selectedItems.filter(id => {
+                const item = [...files, ...folders].find(f => f.id === id);
+                return item && (item.provider === 'google' || getFileSource(item) === 'google');
+            });
+
+            const dropboxItems = selectedItems.filter(id => {
+                const item = [...files, ...folders].find(f => f.id === id);
+                return item && (item.provider === 'dropbox' || getFileSource(item) === 'dropbox');
+            }).map(id => {
+                const item = [...files, ...folders].find(f => f.id === id);
+                return item?.path || id;
+            });
+
+            const providers: CloudProvider[] = [];
+            if (googleItems.length > 0) providers.push('google');
+            if (dropboxItems.length > 0) providers.push('dropbox');
+
+            await bulkDeleteFiles({
+                fileIds: googleItems.length > 0 ? googleItems : undefined,
+                filePaths: dropboxItems.length > 0 ? dropboxItems : undefined,
+                providers
+            });
+
             message.success(`${selectedItems.length} items deleted successfully`);
-            await logUserActivity('bulk_delete', `${selectedItems.length} items`, undefined);
+            await logUserActivity('bulk_delete', `${selectedItems.length} items`, undefined, undefined);
             setSelectedItems([]);
             fetchFiles();
         } catch (error: any) {
@@ -2054,79 +2588,24 @@ const GoogleDriveManager: React.FC = () => {
         setShowBulkShareModal(true);
     };
 
-    // New bulk operation handlers
-    const handleBulkMoveSubmit = async (values: any) => {
-        try {
-            await bulkMoveFiles({
-                fileIds: selectedItems,
-                targetFolderId: values.targetFolder === 'root' ? 'root' : values.targetFolder
-            });
-
-            setShowBulkMoveModal(false);
-            bulkMoveForm.resetFields();
-            message.success(`${selectedItems.length} items moved successfully`);
-            await logUserActivity('bulk_move', `${selectedItems.length} items`, undefined);
-            setSelectedItems([]);
-            fetchFiles();
-        } catch (error: any) {
-            console.error('Bulk move error:', error);
-            message.error('Failed to move items');
-        }
-    };
-
-    const handleBulkCopySubmit = async (values: any) => {
-        try {
-            await bulkCopyFiles({
-                fileIds: selectedItems,
-                targetFolderId: values.targetFolder === 'root' ? 'root' : values.targetFolder
-            });
-
-            setShowBulkCopyModal(false);
-            bulkCopyForm.resetFields();
-            message.success(`${selectedItems.length} items copied successfully`);
-            await logUserActivity('bulk_copy', `${selectedItems.length} items`, undefined);
-            setSelectedItems([]);
-            fetchFiles();
-        } catch (error: any) {
-            console.error('Bulk copy error:', error);
-            message.error('Failed to copy items');
-        }
-    };
-
-    const handleBulkShareSubmit = async (values: any) => {
-        try {
-            await bulkShareFiles({
-                fileIds: selectedItems,
-                email: values.email,
-                role: values.role || 'reader'
-            });
-
-            setShowBulkShareModal(false);
-            bulkShareForm.resetFields();
-            message.success(`${selectedItems.length} items shared successfully`);
-            await logUserActivity('bulk_share', `${selectedItems.length} items`, undefined, `Shared with ${values.email}`);
-            setSelectedItems([]);
-        } catch (error: any) {
-            console.error('Bulk share error:', error);
-            message.error('Failed to share items');
-        }
-    };
-
-    const navigateToFolder = (folderId: string, folderName: string) => {
+    const navigateToFolder = (folderId: string, folderName: string, folderPath?: string) => {
         setCurrentFolder(folderId);
+        setCurrentFolderPath(folderPath || '');
         setCurrentPage(1);
         setSelectedItems([]);
         if (folderId === 'root') {
-            setBreadcrumbs([{ id: 'root', name: 'My Drive' }]);
+            setBreadcrumbs([{ id: 'root', name: 'My Drive', path: '' }]);
         } else {
-            setBreadcrumbs(prev => [...prev, { id: folderId, name: folderName }]);
+            setBreadcrumbs(prev => [...prev, { id: folderId, name: folderName, path: folderPath }]);
         }
     };
 
     const navigateToBreadcrumb = (index: number) => {
         const newBreadcrumbs = breadcrumbs.slice(0, index + 1);
         setBreadcrumbs(newBreadcrumbs);
-        setCurrentFolder(newBreadcrumbs[newBreadcrumbs.length - 1].id);
+        const targetCrumb = newBreadcrumbs[newBreadcrumbs.length - 1];
+        setCurrentFolder(targetCrumb.id);
+        setCurrentFolderPath(targetCrumb.path || '');
         setCurrentPage(1);
         setSelectedItems([]);
     };
@@ -2190,52 +2669,70 @@ const GoogleDriveManager: React.FC = () => {
     const handleToggleUploads = () => setShowUploadArea(prev => !prev);
 
     return (
-        <Layout style={{ minHeight: '100vh', backgroundColor: '#f9fafa', marginTop: 50, marginLeft: 60, fontFamily: FONT_FAMILY }}>
-            <Content style={{ backgroundColor: '#f9fafa', fontFamily: FONT_FAMILY }}>
-                {/* Header */}
+        <Layout style={{ minHeight: '100vh', backgroundColor: '#f8f9fa', marginTop: 50, marginLeft: 60, fontFamily: FONT_FAMILY }}>
+            <Content style={{ fontFamily: FONT_FAMILY }}>
+                {/* Enhanced Header */}
                 <div style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '12px 16px',
-                    borderBottom: `1px solid ${PRIMARY_COLOR}`,
-                    backgroundColor: '#f9fafa',
+                    padding: '16px 24px',
+                    borderBottom: `2px solid ${PRIMARY_COLOR}15`,
                     fontFamily: FONT_FAMILY
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center' }}>
                         <div style={{
-                            width: '36px',
-                            height: '36px',
-                            backgroundColor: '#e8f0fe',
-                            borderRadius: '6px',
+                            width: '48px',
+                            height: '48px',
+                            background: `linear-gradient(135deg, ${PRIMARY_COLOR}, #40a9ff)`,
+                            borderRadius: '12px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            marginRight: '10px'
+                            marginRight: '16px',
+                            boxShadow: `0 4px 12px ${PRIMARY_COLOR}30`
                         }}>
-                            <CloudUploadOutlined style={{
+                            <CloudOutlined style={{
                                 fontSize: '18px',
-                                color: PRIMARY_COLOR
+                                color: '#fff'
                             }} />
                         </div>
-                        <Title level={4} style={{ margin: 0, color: '#202124', fontSize: '20px', fontFamily: FONT_FAMILY }}>
-                            Files
-                        </Title>
+                        <div>
+                            <Title level={3} style={{ margin: 0, color: '#202124', fontSize: '24px', fontWeight: 500, fontFamily: FONT_FAMILY }}>
+                                Files
+                            </Title>
+                            <Text style={{ fontSize: '14px', color: '#5f6368', fontFamily: FONT_FAMILY }}>
+                                Manage files across Google Drive and Dropbox
+                            </Text>
+                        </div>
                     </div>
-                    <Dropdown
-                        menu={{ items, onClick }}
-                        trigger={['click']}
-                        placement="bottomRight"
-                    >
-                        <Tooltip title="Quick actions">
-                            <CloudUploadOutlined
-                                style={{ fontSize: 18, color: '#1890ff', cursor: 'pointer' }}
-                            />
-                        </Tooltip>
-                    </Dropdown>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <Dropdown
+                            menu={{ items, onClick }}
+                            trigger={['click']}
+                            placement="bottomRight"
+                        >
+                            <Tooltip title="Quick actions">
+                                <Button
+                                    type="primary"
+                                    icon={<PlusOutlined />}
+                                    style={{
+                                        backgroundColor: PRIMARY_COLOR,
+                                        borderColor: PRIMARY_COLOR,
+                                        borderRadius: '8px',
+                                        height: '40px',
+                                        boxShadow: `0 4px 12px ${PRIMARY_COLOR}30`,
+                                        fontFamily: FONT_FAMILY
+                                    }}
+                                >
+                                    New
+                                </Button>
+                            </Tooltip>
+                        </Dropdown>
+                    </div>
                 </div>
 
-                {/* Search and Filters */}
+                {/* Enhanced Search and Filters */}
                 <HeaderBar
                     searchQuery={searchQuery}
                     onSearchChange={setSearchQuery}
@@ -2268,25 +2765,28 @@ const GoogleDriveManager: React.FC = () => {
                         fetchDuplicates();
                         setShowDuplicates(true);
                     }}
+                    selectedProviders={selectedProviders}
+                    onProvidersChange={setSelectedProviders}
                     extraIcon={
                         <Button
                             type="text"
-                            size="small"
+                            size="middle"
                             icon={showUploadArea ? <UpOutlined /> : <DownOutlined />}
                             onClick={handleToggleUploads}
                             style={{
                                 color: PRIMARY_COLOR,
-                                fontSize: '12px',
-                                height: '24px',
+                                fontSize: '14px',
+                                height: '32px',
+                                borderRadius: '8px',
                                 fontFamily: FONT_FAMILY
                             }}
                         />
                     }
                 />
 
-                {/* Upload Area */}
+                {/* Enhanced Upload Area */}
                 {showUploadArea && (
-                    <div style={{ padding: '16px' }}>
+                    <div style={{ padding: '24px' }}>
                         <UploadArea
                             onUpload={handleFileUpload}
                             uploadProgress={uploadProgress}
@@ -2308,10 +2808,17 @@ const GoogleDriveManager: React.FC = () => {
 
                 {/* Content */}
                 {loading ? (
-                    <DocklyLoader />
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        minHeight: '400px'
+                    }}>
+                        <Spin size="large" />
+                    </div>
                 ) : (
                     <>
-                        {/* Folders Section */}
+                        {/* Enhanced Folders Section */}
                         <FoldersSection
                             folders={filteredFolders}
                             onFolderClick={navigateToFolder}
@@ -2322,7 +2829,7 @@ const GoogleDriveManager: React.FC = () => {
                             availableAccounts={availableAccounts}
                         />
 
-                        {/* Files Section */}
+                        {/* Enhanced Files Section */}
                         <FilesSection
                             files={filteredFiles}
                             onFileAction={handleFileAction}
@@ -2338,23 +2845,36 @@ const GoogleDriveManager: React.FC = () => {
                             availableAccounts={availableAccounts}
                         />
 
-                        {/* Empty State */}
+                        {/* Enhanced Empty State */}
                         {filteredFiles.length === 0 && filteredFolders.length === 0 && (
                             <div style={{
                                 textAlign: 'center',
-                                padding: '60px 20px',
+                                padding: '80px 20px',
                                 color: '#5f6368',
                                 fontFamily: FONT_FAMILY
                             }}>
                                 <Empty
-                                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                    image={
+                                        <div style={{
+                                            width: '120px',
+                                            height: '120px',
+                                            margin: '0 auto 24px',
+                                            backgroundColor: '#f8f9fa',
+                                            borderRadius: '50%',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center'
+                                        }}>
+                                            <CloudOutlined style={{ fontSize: '48px', color: '#e8eaed' }} />
+                                        </div>
+                                    }
                                     description={
                                         <div>
-                                            <Text style={{ fontSize: '16px', color: '#5f6368', display: 'block', marginBottom: '6px', fontFamily: FONT_FAMILY }}>
-                                                {searchQuery || selectedAccount ? 'No files found' : 'Your Drive is empty'}
+                                            <Text style={{ fontSize: '18px', color: '#5f6368', display: 'block', marginBottom: '8px', fontFamily: FONT_FAMILY }}>
+                                                {searchQuery || selectedAccount ? 'No files found' : 'Your cloud drives are empty'}
                                             </Text>
-                                            <Text style={{ fontSize: '12px', color: '#9aa0a6', fontFamily: FONT_FAMILY }}>
-                                                {searchQuery || selectedAccount ? 'Try different search terms or account filter' : 'Upload files to get started'}
+                                            <Text style={{ fontSize: '14px', color: '#9aa0a6', fontFamily: FONT_FAMILY }}>
+                                                {searchQuery || selectedAccount ? 'Try different search terms or account filter' : 'Upload files to get started with your cloud storage'}
                                             </Text>
                                         </div>
                                     }
@@ -2364,13 +2884,38 @@ const GoogleDriveManager: React.FC = () => {
                     </>
                 )}
 
-                {/* All existing modals remain the same, just keeping the structure */}
-                {/* Create Folder Modal */}
+                {/* Provider Selection Modal */}
+                <ProviderSelectionModal
+                    visible={showProviderSelectionModal}
+                    onClose={() => setShowProviderSelectionModal(false)}
+                    onSelect={handleProviderSelection}
+                    title={providerSelectionType === 'upload' ? 'Choose Upload Destination' : 'Choose Provider for New Folder'}
+                    description={providerSelectionType === 'upload' ? 'Select where you want to upload your file' : 'Select where you want to create the folder'}
+                />
+
+                {/* Enhanced Create Folder Modal */}
                 <Modal
                     title={
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: FONT_FAMILY }}>
-                            <FolderOutlined style={{ color: PRIMARY_COLOR }} />
-                            <span style={{ fontSize: '14px', fontWeight: 500, fontFamily: FONT_FAMILY }}>New folder</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontFamily: FONT_FAMILY }}>
+                            <div style={{
+                                width: '32px',
+                                height: '32px',
+                                backgroundColor: '#e8f0fe',
+                                borderRadius: '8px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}>
+                                <FolderOutlined style={{ color: PRIMARY_COLOR, fontSize: '16px' }} />
+                            </div>
+                            <div>
+                                <span style={{ fontSize: '18px', fontWeight: 600, color: '#202124', fontFamily: FONT_FAMILY }}>
+                                    New folder
+                                </span>
+                                <div style={{ fontSize: '12px', color: '#5f6368', marginTop: '2px', fontFamily: FONT_FAMILY }}>
+                                    Create a new folder in your selected cloud provider
+                                </div>
+                            </div>
                         </div>
                     }
                     open={showCreateFolder}
@@ -2379,48 +2924,94 @@ const GoogleDriveManager: React.FC = () => {
                         form.resetFields();
                     }}
                     footer={null}
-                    width={350}
-                    style={{ borderRadius: '6px', fontFamily: FONT_FAMILY }}
+                    width={420}
+                    style={{ borderRadius: '12px', fontFamily: FONT_FAMILY }}
                 >
                     <Form
                         form={form}
                         onFinish={handleCreateFolder}
                         layout="vertical"
-                        style={{ marginTop: '16px', fontFamily: FONT_FAMILY }}
+                        style={{ marginTop: '20px', fontFamily: FONT_FAMILY }}
                     >
                         <Form.Item
                             name="folderName"
-                            label={<span style={{ fontFamily: FONT_FAMILY }}>Folder name</span>}
+                            label={<span style={{ fontFamily: FONT_FAMILY, fontWeight: 500 }}>Folder name</span>}
                             rules={[{ required: true, message: 'Please enter a folder name' }]}
                         >
                             <Input
                                 placeholder="Untitled folder"
-                                style={{ borderRadius: '4px', fontFamily: FONT_FAMILY }}
+                                style={{ borderRadius: '8px', fontFamily: FONT_FAMILY }}
                                 autoFocus
+                                size="large"
                             />
                         </Form.Item>
-                        <Form.Item style={{ marginBottom: 0, textAlign: 'right', marginTop: '16px' }}>
-                            <Space>
+                        <Form.Item
+                            name="provider"
+                            label={<span style={{ fontFamily: FONT_FAMILY, fontWeight: 500 }}>Cloud Provider</span>}
+                            initialValue="google"
+                            rules={[{ required: true, message: 'Please select a provider' }]}
+                        >
+                            <Select size="large" style={{ borderRadius: '8px', fontFamily: FONT_FAMILY }}>
+                                <Select.Option value="google">
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <div style={{
+                                            width: '16px',
+                                            height: '16px',
+                                            backgroundColor: '#4285f4',
+                                            borderRadius: '3px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            color: 'white',
+                                            fontSize: '9px',
+                                            fontWeight: 'bold'
+                                        }}>G</div>
+                                        Google Drive
+                                    </div>
+                                </Select.Option>
+                                <Select.Option value="dropbox">
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <div style={{
+                                            width: '16px',
+                                            height: '16px',
+                                            backgroundColor: '#0061ff',
+                                            borderRadius: '3px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            color: 'white',
+                                            fontSize: '9px',
+                                            fontWeight: 'bold'
+                                        }}>D</div>
+                                        Dropbox
+                                    </div>
+                                </Select.Option>
+                            </Select>
+                        </Form.Item>
+                        <Form.Item style={{ marginBottom: 0, textAlign: 'right', marginTop: '24px' }}>
+                            <Space size="middle">
                                 <Button
+                                    size="large"
                                     onClick={() => {
                                         setShowCreateFolder(false);
                                         form.resetFields();
                                     }}
-                                    style={{ borderRadius: '4px', fontFamily: FONT_FAMILY }}
+                                    style={{ borderRadius: '8px', fontFamily: FONT_FAMILY }}
                                 >
                                     Cancel
                                 </Button>
                                 <Button
                                     type="primary"
+                                    size="large"
                                     htmlType="submit"
                                     style={{
                                         backgroundColor: PRIMARY_COLOR,
                                         borderColor: PRIMARY_COLOR,
-                                        borderRadius: '4px',
+                                        borderRadius: '8px',
                                         fontFamily: FONT_FAMILY
                                     }}
                                 >
-                                    Create
+                                    Create Folder
                                 </Button>
                             </Space>
                         </Form.Item>
@@ -2439,6 +3030,7 @@ const GoogleDriveManager: React.FC = () => {
                     onCancel={() => {
                         setShowShareModal(false);
                         setShareFileId('');
+                        setShareFilePath('');
                         shareForm.resetFields();
                     }}
                     footer={null}
@@ -2481,6 +3073,7 @@ const GoogleDriveManager: React.FC = () => {
                                     onClick={() => {
                                         setShowShareModal(false);
                                         setShareFileId('');
+                                        setShareFilePath('');
                                         shareForm.resetFields();
                                     }}
                                     style={{ borderRadius: '4px', fontFamily: FONT_FAMILY }}
@@ -2865,7 +3458,7 @@ const GoogleDriveManager: React.FC = () => {
                 >
                     <Form
                         form={bulkShareForm}
-                        onFinish={handleBulkShareSubmit}
+                        // onFinish={handleBulkShareSubmit}
                         layout="vertical"
                         style={{ fontFamily: FONT_FAMILY }}
                     >
@@ -3016,7 +3609,7 @@ const GoogleDriveManager: React.FC = () => {
                 >
                     <Form
                         form={bulkMoveForm}
-                        onFinish={handleBulkMoveSubmit}
+                        // onFinish={handleBulkMoveSubmit}
                         layout="vertical"
                         style={{ fontFamily: FONT_FAMILY }}
                     >
@@ -3140,7 +3733,7 @@ const GoogleDriveManager: React.FC = () => {
                 >
                     <Form
                         form={bulkCopyForm}
-                        onFinish={handleBulkCopySubmit}
+                        // onFinish={handleBulkCopySubmit}
                         layout="vertical"
                         style={{ fontFamily: FONT_FAMILY }}
                     >
@@ -3356,7 +3949,7 @@ const GoogleDriveManager: React.FC = () => {
                                     <Text style={{ fontFamily: FONT_FAMILY }}>{new Date(currentActionItem.modifiedTime).toLocaleString()}</Text>
                                 </Descriptions.Item>
 
-                                {'createdTime' in currentActionItem && (
+                                {'createdTime' in currentActionItem && currentActionItem.createdTime && (
                                     <Descriptions.Item
                                         label={
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontFamily: FONT_FAMILY }}>
@@ -3369,7 +3962,7 @@ const GoogleDriveManager: React.FC = () => {
                                     </Descriptions.Item>
                                 )}
 
-                                {'owners' in currentActionItem && currentActionItem.owners && (
+                                {'owners' in currentActionItem && currentActionItem.owners && currentActionItem.owners.length > 0 && (
                                     <Descriptions.Item
                                         label={
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontFamily: FONT_FAMILY }}>
@@ -3455,7 +4048,7 @@ const GoogleDriveManager: React.FC = () => {
                             {/* Quick Actions */}
                             <div style={{ marginTop: '16px', textAlign: 'center' }}>
                                 <Space size="middle">
-                                    {'webViewLink' in currentActionItem && (
+                                    {'webViewLink' in currentActionItem && currentActionItem.webViewLink && (
                                         <Button
                                             type="primary"
                                             icon={<EyeOutlined />}
@@ -3750,4 +4343,4 @@ const GoogleDriveManager: React.FC = () => {
     );
 };
 
-export default GoogleDriveManager;
+export default FilesManager;

@@ -5,6 +5,7 @@ from . import family_api
 
 family_api.add_resource(InviteFamily, "/family/invite")
 family_api.add_resource(AddFamilyMembers, "/add/family-member")
+family_api.add_resource(AddFamilyMemberWithoutInvite, "/add/family_without_invite")
 # family_api.add_resource(AddContacts, "/add/contacts")
 # family_api.add_resource(AddSchoolChurch, "/add/school_church")
 family_api.add_resource(AddFamilyGuidelines, "/add/family-guidelines")

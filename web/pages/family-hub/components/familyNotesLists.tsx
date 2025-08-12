@@ -1,4 +1,3 @@
-
 "use client";
 import {
     EditOutlined,
@@ -7,8 +6,13 @@ import {
     RightOutlined,
     PushpinOutlined,
     PushpinFilled,
+    MoreOutlined,
+    DeleteOutlined,
+    ShareAltOutlined,
+    TagOutlined,
+    MailOutlined,
 } from "@ant-design/icons";
-import { Button, Input, message, Modal, Select, Typography } from "antd";
+import { Button, Input, message, Modal, Select, Typography, Form, Dropdown, Menu, Popconfirm, Checkbox } from "antd";
 import { useState, useEffect } from "react";
 import {
     getAllNotes,
@@ -17,17 +21,24 @@ import {
     addNoteCategory,
     getNoteCategories,
     updateNoteCategory,
+    deleteNote,
+    shareNote,
+    getUsersFamilyMembers,
 } from "../../../services/family";
 import { useRouter } from "next/navigation";
 import { useCurrentUser } from "../../../app/userContext";
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
+const { TextArea } = Input;
 
 interface Note {
     title: string;
     description: string;
     created_at?: string;
+    updated_at?: string;
     id?: number;
+    hub?: string;
+    hubs?: string[];
 }
 
 interface Category {
@@ -93,7 +104,7 @@ const suggestedCategories = [
 const categoryColorMap: Record<string, string> = {
     "Important Notes": "#ef4444",
     "House Rules & Routines": "#10b981",
-    "Shopping Lists": "#3b82f6",
+    "Shopping Lists": "#2563eb",
     "Birthday & Gift Ideas": "#ec4899",
     "Meal Ideas & Recipes": "#8b5cf6",
 };
@@ -196,6 +207,28 @@ const getCurrentHub = (): string => {
     return "family";
 };
 
+const getHubDisplayName = (hub: string): string => {
+    const hubNames: Record<string, string> = {
+        family: "Family",
+        finance: "Finance",
+        planner: "Planner",
+        health: "Health",
+        home: "Home",
+    };
+    return hubNames[hub] || hub.charAt(0).toUpperCase() + hub.slice(1);
+};
+
+const getHubColor = (hub: string): string => {
+    const hubColors: Record<string, string> = {
+        family: "#eb2f96",
+        finance: "#13c2c2",
+        planner: "#9254de",
+        health: "#f5222d",
+        home: "#fa8c16",
+    };
+    return hubColors[hub] || "#6b7280";
+};
+
 const NotesLists: React.FC<NotesListsProps> = ({
     currentHub,
     showAllHubs = false,
@@ -219,8 +252,18 @@ const NotesLists: React.FC<NotesListsProps> = ({
         useState<string>("");
     const [customCategoryName, setCustomCategoryName] = useState<string>("");
 
+    // New state for menu actions
+    const [shareModalVisible, setShareModalVisible] = useState(false);
+    const [shareForm] = Form.useForm();
+    const [currentShareNote, setCurrentShareNote] = useState<Note | null>(null);
+    const [tagModalVisible, setTagModalVisible] = useState(false);
+    const [currentTagItem, setCurrentTagItem] = useState<any>(null);
+    const [familyMembers, setFamilyMembers] = useState([]);
+    const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+
     useEffect(() => {
         fetchCategoriesAndNotes();
+        fetchFamilyMembers();
     }, [activeHub, showAllHubs]);
 
     useEffect(() => {
@@ -302,6 +345,8 @@ const NotesLists: React.FC<NotesListsProps> = ({
                     title: note.title,
                     description: note.description,
                     created_at: note.created_at,
+                    updated_at: note.updated_at,
+                    hub: note.hub || activeHub.toUpperCase(),
                 };
 
                 // Add hub info for utility page display
@@ -329,6 +374,17 @@ const NotesLists: React.FC<NotesListsProps> = ({
             message.error("Failed to load data");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchFamilyMembers = async () => {
+        try {
+            const res = await getUsersFamilyMembers({});
+            if (res.status) {
+                setFamilyMembers(res.payload.members || []);
+            }
+        } catch (error) {
+            console.error("Failed to fetch family members:", error);
         }
     };
 
@@ -366,6 +422,181 @@ const NotesLists: React.FC<NotesListsProps> = ({
         setShowNoteForm(true);
     };
 
+    // Add double-click handler for direct editing
+    const handleNoteDoubleClick = (note: Note, idx: number) => {
+        if (!showAllHubs) {
+            handleEditNote(note, idx);
+        }
+    };
+
+    const handleDeleteNote = async (noteId: number) => {
+        try {
+            setLoading(true);
+            const res = await deleteNote({ id: noteId });
+
+            if (res?.data?.status === 1) {
+                message.success("Note deleted successfully");
+                await fetchCategoriesAndNotes();
+            } else {
+                message.error("Failed to delete note");
+            }
+        } catch (err) {
+            console.error("Error deleting note:", err);
+            message.error("Failed to delete note");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleShareNote = (note: Note, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setCurrentShareNote(note);
+        setShareModalVisible(true);
+        shareForm.resetFields();
+    };
+
+    const handleShareSubmit = async () => {
+        try {
+            const values = await shareForm.validateFields();
+
+            if (!currentShareNote) {
+                message.error("No note selected for sharing");
+                return;
+            }
+
+            setLoading(true);
+
+            const res = await shareNote({
+                email: values.email,
+                note: {
+                    title: currentShareNote.title,
+                    description: currentShareNote.description,
+                    hub: currentShareNote.hub || activeHub.toUpperCase(),
+                    created_at: currentShareNote.created_at,
+                },
+            });
+
+            if (res?.data?.status === 1) {
+                message.success("Note shared successfully!");
+            } else {
+                message.error("Failed to share note");
+            }
+
+            setShareModalVisible(false);
+            shareForm.resetFields();
+            setCurrentShareNote(null);
+        } catch (err) {
+            console.error("Error sharing note:", err);
+            message.error("Failed to share note");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleTagSubmit = async () => {
+        if (!currentTagItem || selectedMemberIds.length === 0) {
+            message.warning("Please select members to tag.");
+            return;
+        }
+
+        const taggedMembers = familyMembers.filter((m: any) =>
+            selectedMemberIds.includes(m.id)
+        );
+
+        const emails = taggedMembers
+            .map((m: any) => m.email)
+            .filter((email: string) => !!email);
+
+        try {
+            setLoading(true);
+            for (const email of emails) {
+                await shareNote({
+                    email,
+                    note: {
+                        title: currentTagItem.title,
+                        description: currentTagItem.description,
+                        hub: currentTagItem.hub || activeHub.toUpperCase(),
+                        created_at: currentTagItem.created_at,
+                    },
+                });
+            }
+            message.success("Note tagged successfully!");
+            setTagModalVisible(false);
+            setCurrentTagItem(null);
+            setSelectedMemberIds([]);
+        } catch (err) {
+            console.error("Tag failed:", err);
+            message.error("Failed to tag note.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const getNoteActionMenu = (note: Note) => {
+        return (
+            <Menu>
+                <Menu.Item
+                    key="edit"
+                    icon={<EditOutlined />}
+                    onClick={(e) => {
+                        e.domEvent.stopPropagation();
+                        const categoryIndex = categories.findIndex(cat =>
+                            cat.items.some(item => item.id === note.id)
+                        );
+                        const noteIndex = categories[categoryIndex]?.items.findIndex(item => item.id === note.id);
+                        if (categoryIndex !== -1 && noteIndex !== -1) {
+                            setActiveCategoryIndex(categoryIndex);
+                            handleEditNote(note, noteIndex);
+                        }
+                    }}
+                >
+                    Edit
+                </Menu.Item>
+                <Menu.Item
+                    key="share"
+                    icon={<ShareAltOutlined />}
+                    onClick={(e) => {
+                        e.domEvent.stopPropagation();
+                        handleShareNote(note, e.domEvent as any);
+                    }}
+                >
+                    Share
+                </Menu.Item>
+                <Menu.Item
+                    key="tag"
+                    icon={<TagOutlined />}
+                    onClick={(e: any) => {
+                        e.domEvent?.stopPropagation();
+                        setCurrentTagItem(note);
+                        setTagModalVisible(true);
+                        setSelectedMemberIds([]);
+                    }}
+                >
+                    Tag
+                </Menu.Item>
+                <Menu.Item
+                    key="delete"
+                    icon={<DeleteOutlined />}
+                    danger
+                    onClick={(e) => {
+                        e.domEvent.stopPropagation();
+                    }}
+                >
+                    <Popconfirm
+                        title="Delete Note"
+                        description="Are you sure you want to delete this note?"
+                        onConfirm={() => handleDeleteNote(note.id!)}
+                        okText="Yes"
+                        cancelText="No"
+                        okButtonProps={{ danger: true }}
+                    >
+                        Delete
+                    </Popconfirm>
+                </Menu.Item>
+            </Menu>
+        );
+    };
+
     const handleSaveNote = async () => {
         if (activeCategoryIndex === null) return;
         const categoryTitle = categories[activeCategoryIndex].title;
@@ -375,6 +606,11 @@ const NotesLists: React.FC<NotesListsProps> = ({
 
         if (!newNote.title.trim() || !newNote.description.trim()) {
             message.error("Please fill in all fields");
+            return;
+        }
+
+        if (newNote.description.length > 200) {
+            message.error("Description must be 200 characters or less");
             return;
         }
 
@@ -404,7 +640,7 @@ const NotesLists: React.FC<NotesListsProps> = ({
                     await fetchCategoriesAndNotes();
                 }
             } else {
-                // Adding new note
+                // Adding new note - only add to current hub
                 const user_id = localStorage.getItem("userId") || "";
 
                 const res = await addNote({
@@ -412,14 +648,14 @@ const NotesLists: React.FC<NotesListsProps> = ({
                     description: newNote.description,
                     category_id: category_id as number,
                     user_id,
-                    hub: activeHub.toUpperCase(),
+                    hub: activeHub.toUpperCase(), // Only add to the current hub
                 });
 
                 if (res.data.status === 1) {
                     message.success(
                         showAllHubs
                             ? "Note added"
-                            : `Note added to ${getHubDisplayName(activeHub)}`
+                            : `Note added to ${getHubDisplayName(activeHub)} 📝`
                     );
                     await fetchCategoriesAndNotes();
                 }
@@ -506,18 +742,6 @@ const NotesLists: React.FC<NotesListsProps> = ({
         // Example: navigate('/notes/all-categories') or window.location.href = '/notes/categories'
         console.log("../../../app/[username]/notes/page.tsx");
         router.push(`/${username}/notes`);
-    };
-
-    // Get hub display name
-    const getHubDisplayName = (hub: string): string => {
-        const hubNames: Record<string, string> = {
-            family: "Family",
-            finance: "Finance",
-            planner: "Planner",
-            health: "Health",
-            home: "Home",
-        };
-        return hubNames[hub] || hub.charAt(0).toUpperCase() + hub.slice(1);
     };
 
     return (
@@ -653,7 +877,7 @@ const NotesLists: React.FC<NotesListsProps> = ({
                                         height: 20,
                                         minWidth: 20,
                                         padding: 0,
-                                        color: category.pinned ? "#3b82f6" : "#9ca3af",
+                                        color: category.pinned ? "#2563eb" : "#9ca3af",
                                         fontSize: 11,
                                     }}
                                 />
@@ -698,7 +922,7 @@ const NotesLists: React.FC<NotesListsProps> = ({
                                 style={{
                                     fontWeight: 500,
                                     fontSize: 14,
-                                    color: "#3b82f6",
+                                    color: "#2563eb",
                                     fontFamily:
                                         "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
                                 }}
@@ -720,7 +944,7 @@ const NotesLists: React.FC<NotesListsProps> = ({
                         width: 28,
                         height: 28,
                         borderRadius: 6,
-                        backgroundColor: "#3b82f6",
+                        backgroundColor: "#2563eb",
                         color: "white",
                         boxShadow: "0 2px 4px rgba(59, 130, 246, 0.3)",
                         border: "none",
@@ -884,7 +1108,7 @@ const NotesLists: React.FC<NotesListsProps> = ({
                 </div>
             </Modal>
 
-            {/* Notes Modal - Hub-aware */}
+            {/* Notes Modal - Hub-aware with Menu Actions */}
             <Modal
                 open={modalOpen}
                 onCancel={() => setModalOpen(false)}
@@ -951,7 +1175,7 @@ const NotesLists: React.FC<NotesListsProps> = ({
                                     width: 28,
                                     height: 28,
                                     borderRadius: 6,
-                                    backgroundColor: "#3b82f6",
+                                    backgroundColor: "#2563eb",
                                     color: "white",
                                     boxShadow: "0 2px 4px rgba(59, 130, 246, 0.3)",
                                     border: "none",
@@ -977,11 +1201,11 @@ const NotesLists: React.FC<NotesListsProps> = ({
                                     }}
                                     onClick={() => setShowNoteForm(true)}
                                 >
-                                    <PlusOutlined style={{ fontSize: 16, color: "#3b82f6" }} />
+                                    <PlusOutlined style={{ fontSize: 16, color: "#2563eb" }} />
                                     <div
                                         style={{
                                             marginTop: 6,
-                                            color: "#3b82f6",
+                                            color: "#2563eb",
                                             fontSize: 13,
                                             fontFamily:
                                                 "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
@@ -1003,20 +1227,22 @@ const NotesLists: React.FC<NotesListsProps> = ({
                                             backgroundColor: "#fafbfc",
                                             display: "flex",
                                             justifyContent: "space-between",
-                                            alignItems: "center",
+                                            alignItems: "flex-start",
                                             fontFamily:
                                                 "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
                                         }}
+                                        onDoubleClick={() => handleNoteDoubleClick(note, idx)}
                                     >
                                         <div
                                             style={{
                                                 display: "flex",
                                                 alignItems: "flex-start",
                                                 gap: 6,
+                                                flex: 1,
                                             }}
                                         >
                                             <div style={{ marginTop: 2, fontSize: 12 }}>📍</div>
-                                            <div>
+                                            <div style={{ flex: 1 }}>
                                                 <div
                                                     style={{
                                                         fontSize: "13px",
@@ -1035,11 +1261,12 @@ const NotesLists: React.FC<NotesListsProps> = ({
                                                         <span
                                                             style={{
                                                                 fontSize: 10,
-                                                                color: "#6b7280",
+                                                                color: "white",
                                                                 marginLeft: 6,
-                                                                backgroundColor: "#f3f4f6",
-                                                                padding: "1px 4px",
-                                                                borderRadius: 3,
+                                                                backgroundColor: getHubColor((note as any).hub.toLowerCase()),
+                                                                padding: "2px 6px",
+                                                                borderRadius: 4,
+                                                                fontWeight: 500,
                                                                 fontFamily:
                                                                     "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
                                                             }}
@@ -1056,65 +1283,141 @@ const NotesLists: React.FC<NotesListsProps> = ({
                                                         style={{
                                                             fontSize: 10,
                                                             color: "#9ca3af",
+                                                            marginTop: 4,
                                                             fontFamily:
                                                                 "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
                                                         }}
                                                     >
-                                                        {new Date(note.created_at).toLocaleString()}
+                                                        {note.updated_at
+                                                            ? `Updated: ${new Date(note.updated_at).toLocaleString()}`
+                                                            : `Created: ${new Date(note.created_at).toLocaleString()}`
+                                                        }
                                                     </div>
                                                 )}
                                             </div>
                                         </div>
-                                        {!showAllHubs && (
+
+                                        {/* Add menu actions dropdown */}
+                                        <Dropdown
+                                            overlay={getNoteActionMenu(note)}
+                                            trigger={["click"]}
+                                            placement="bottomRight"
+                                        >
                                             <Button
-                                                icon={<EditOutlined />}
+                                                type="text"
+                                                icon={<MoreOutlined />}
                                                 size="small"
-                                                onClick={() => handleEditNote(note, idx)}
+                                                onClick={(e) => e.stopPropagation()}
                                                 style={{
                                                     width: 24,
                                                     height: 24,
-                                                    fontSize: 11,
+                                                    minWidth: 24,
+                                                    padding: 0,
+                                                    color: "#6b7280",
+                                                    fontSize: 12,
                                                 }}
                                             />
-                                        )}
+                                        </Dropdown>
                                     </div>
                                 ))
                             )}
                         </div>
 
                         {showNoteForm && !showAllHubs && (
-                            <div style={{ marginTop: 16 }}>
-                                <Input
-                                    placeholder="Note Title"
-                                    value={newNote.title}
-                                    onChange={(e) =>
-                                        setNewNote({ ...newNote, title: e.target.value })
-                                    }
-                                    style={{ marginBottom: 8 }}
-                                    size="middle"
-                                />
-                                <Input
-                                    placeholder="Note Description"
-                                    value={newNote.description}
-                                    onChange={(e) =>
-                                        setNewNote({ ...newNote, description: e.target.value })
-                                    }
-                                    style={{ marginBottom: 16 }}
-                                    size="middle"
-                                />
+                            <div style={{ marginTop: 16, padding: "16px 0 0 0" }}>
+                                <div style={{ marginBottom: 16 }}>
+                                    <Text style={{
+                                        fontSize: 16,
+                                        fontWeight: 600,
+                                        color: "#1f2937",
+                                        display: "block",
+                                        marginBottom: 16
+                                    }}>
+                                        {editingNoteIndex !== null
+                                            ? `Edit Note in ${categories[activeCategoryIndex].title}`
+                                            : `Add New Note to ${categories[activeCategoryIndex].title}`
+                                        }
+                                    </Text>
+                                </div>
+
+                                <div style={{ marginBottom: 16 }}>
+                                    <Text style={{
+                                        display: "block",
+                                        marginBottom: 8,
+                                        fontSize: 14,
+                                        fontWeight: 500,
+                                        color: "#374151"
+                                    }}>
+                                        <span style={{ color: "#ef4444", marginRight: 4 }}>*</span>
+                                        Title
+                                    </Text>
+                                    <Input
+                                        placeholder="Enter note title"
+                                        value={newNote.title}
+                                        onChange={(e) =>
+                                            setNewNote({ ...newNote, title: e.target.value })
+                                        }
+                                        size="large"
+                                        style={{
+                                            borderRadius: 8,
+                                            border: "1px solid #d1d5db",
+                                            fontSize: 14
+                                        }}
+                                    />
+                                </div>
+
+                                <div style={{ marginBottom: 16 }}>
+                                    <Text style={{
+                                        display: "block",
+                                        marginBottom: 8,
+                                        fontSize: 14,
+                                        fontWeight: 500,
+                                        color: "#374151"
+                                    }}>
+                                        <span style={{ color: "#ef4444", marginRight: 4 }}>*</span>
+                                        Description
+                                    </Text>
+                                    <TextArea
+                                        placeholder="Enter note description"
+                                        value={newNote.description}
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+                                            if (value.length <= 200) {
+                                                setNewNote({ ...newNote, description: value });
+                                            }
+                                        }}
+                                        autoSize={{ minRows: 3, maxRows: 6 }}
+                                        maxLength={200}
+                                        showCount={{
+                                            formatter: ({ count, maxLength }) => `${count} / ${maxLength}`
+                                        }}
+                                        style={{
+                                            borderRadius: 8,
+                                            border: "1px solid #d1d5db",
+                                            fontSize: 14,
+                                            resize: "none"
+                                        }}
+                                    />
+                                </div>
                             </div>
                         )}
+
                         <div style={{ marginTop: 16, textAlign: "right" }}>
                             <Button
-                                onClick={() => setModalOpen(false)}
+                                onClick={() => {
+                                    setModalOpen(false);
+                                    setShowNoteForm(false);
+                                    setEditingNoteIndex(null);
+                                    setNewNote({ title: "", description: "" });
+                                }}
                                 style={{
-                                    marginRight: 6,
+                                    marginRight: 8,
                                     fontSize: 13,
                                     fontFamily:
                                         "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
                                 }}
                             >
-                                Cancel
+                                Close
                             </Button>
                             {showNoteForm && !showAllHubs && (
                                 <Button
@@ -1134,9 +1437,155 @@ const NotesLists: React.FC<NotesListsProps> = ({
                     </div>
                 )}
             </Modal>
+
+            {/* Share Note Modal */}
+            <Modal
+                title={
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <ShareAltOutlined style={{ color: "#4f46e5" }} />
+                        <span>Share Note</span>
+                    </div>
+                }
+                open={shareModalVisible}
+                onCancel={() => {
+                    setShareModalVisible(false);
+                    shareForm.resetFields();
+                    setCurrentShareNote(null);
+                }}
+                onOk={handleShareSubmit}
+                centered
+                width={450}
+                okText="Share via Email"
+                confirmLoading={loading}
+                destroyOnClose
+            >
+                {currentShareNote && (
+                    <div style={{ marginBottom: 16 }}>
+                        <div
+                            style={{
+                                padding: 12,
+                                backgroundColor: "#f8fafc",
+                                borderRadius: 8,
+                                border: "1px solid #e2e8f0",
+                            }}
+                        >
+                            <div
+                                style={{
+                                    fontWeight: 600,
+                                    marginBottom: 6,
+                                    color: "#1e293b",
+                                    fontSize: 13,
+                                }}
+                            >
+                                {currentShareNote.title}
+                            </div>
+                            <div
+                                style={{
+                                    color: "#64748b",
+                                    marginBottom: 6,
+                                    lineHeight: 1.4,
+                                    fontSize: 12,
+                                }}
+                            >
+                                {currentShareNote.description}
+                            </div>
+                            <div
+                                style={{
+                                    fontSize: 10,
+                                    color: "#9ca3af",
+                                }}
+                            >
+                                Hub: {getHubDisplayName(activeHub)} • Created: {new Date(currentShareNote.created_at || "").toLocaleDateString()}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                <Form form={shareForm} layout="vertical">
+                    <Form.Item
+                        name="email"
+                        label="Email Address"
+                        rules={[
+                            { required: true, message: "Please enter an email address" },
+                            { type: "email", message: "Please enter a valid email address" },
+                        ]}
+                    >
+                        <Input
+                            placeholder="Enter recipient's email address"
+                            prefix={<MailOutlined style={{ color: "#9ca3af" }} />}
+                        />
+                    </Form.Item>
+                </Form>
+
+                <div style={{ fontSize: 11, color: "#64748b", marginTop: 12 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 3 }}>
+                        <span>📧</span>
+                        <span>This will open your default email client with the note content</span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <span>✉</span>
+                        <span>You can edit the email before sending</span>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Tag Modal */}
+            <Modal
+                title="Tag Item"
+                open={tagModalVisible}
+                onCancel={() => {
+                    setTagModalVisible(false);
+                    setCurrentTagItem(null);
+                    setSelectedMemberIds([]);
+                }}
+                onOk={handleTagSubmit}
+                okText="Tag"
+                centered
+                confirmLoading={loading}
+            >
+                {currentTagItem && (
+                    <div style={{ marginBottom: 16 }}>
+                        <div
+                            style={{
+                                padding: 10,
+                                backgroundColor: "#f8fafc",
+                                borderRadius: 6,
+                                border: "1px solid #e2e8f0",
+                            }}
+                        >
+                            <div style={{ fontWeight: 600, fontSize: 13 }}>
+                                {currentTagItem?.title || "Untitled"}
+                            </div>
+                            <div style={{ fontSize: 11, color: "#64748b" }}>
+                                {currentTagItem?.description}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                <div>
+                    <label style={{ display: "block", marginBottom: 6, fontSize: 13 }}>
+                        Tag to Family Members:
+                    </label>
+                    <Select
+                        mode="multiple"
+                        style={{ width: "100%" }}
+                        placeholder="Select members"
+                        value={selectedMemberIds}
+                        onChange={setSelectedMemberIds}
+                    >
+                        {familyMembers
+                            .filter((m: any) => m.relationship !== "me")
+                            .map((member: any) => (
+                                <Select.Option key={member.id} value={member.id}>
+                                    {member.name} ({member.relationship})
+                                </Select.Option>
+                            ))}
+                    </Select>
+                </div>
+            </Modal>
         </>
     );
 };
 
 export default NotesLists;
-

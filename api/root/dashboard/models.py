@@ -1,5 +1,6 @@
 from flask import request
 from flask_restful import Resource
+from root.common import Status
 from root.files.models import DriveBaseResource
 from root.utilis import ensure_drive_folder_structure
 from root.db.dbHelper import DBHelper
@@ -146,7 +147,7 @@ class GetConnectedAccounts(Resource):
         accounts = DBHelper.find_all(
             table_name="connected_accounts",
             select_fields=["provider", "email", "user_object"],
-            filters={"user_id": uid},
+            filters={"user_id": uid, "is_active": Status.ACTIVE.value},
         )
         connectedAccounts = []
         for account in accounts:

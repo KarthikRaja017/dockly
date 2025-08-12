@@ -1,5 +1,28 @@
 # Update routes to include all the new Outlook endpoints
 
+from .dropbox import (
+    AdvancedDropboxSearch,
+    BulkCopyDropboxFiles,
+    BulkDeleteDropboxFiles,
+    BulkDownloadDropboxFiles,
+    BulkMoveDropboxFiles,
+    BulkShareDropboxFiles,
+    CopyDropboxFile,
+    CreateDropboxFolder,
+    DeleteDropboxFile,
+    DownloadDropboxFile,
+    FindDuplicateDropboxFiles,
+    GetDropboxActivityLog,
+    GetDropboxFileInfo,
+    GetDropboxStorage,
+    GetDropboxStorageAnalytics,
+    ListDropboxFiles,
+    LogDropboxActivity,
+    MoveDropboxFile,
+    RenameDropboxFile,
+    ShareDropboxFile,
+    UploadDropboxFile,
+)
 from .outlook import (
     CreateOutlookFolder,
     DeleteOutlookFile,
@@ -70,6 +93,40 @@ google_drive_api.add_resource(GetStorageAnalytics, "/analytics/storage")
 google_drive_api.add_resource(GetActivityLog, "/activity")
 google_drive_api.add_resource(LogActivity, "/activity/log")
 
+
+google_drive_api.add_resource(ListDropboxFiles, "/dropbox/files")
+google_drive_api.add_resource(UploadDropboxFile, "/dropbox/upload")
+google_drive_api.add_resource(DownloadDropboxFile, "/dropbox/download")
+google_drive_api.add_resource(DeleteDropboxFile, "/dropbox/delete")
+google_drive_api.add_resource(CreateDropboxFolder, "/dropbox/folder/create")
+google_drive_api.add_resource(ShareDropboxFile, "/dropbox/share")
+google_drive_api.add_resource(GetDropboxFileInfo, "/dropbox/file/<path:file_path>")
+google_drive_api.add_resource(GetDropboxStorage, "/dropbox/storage")
+
+# Bulk Operations
+google_drive_api.add_resource(BulkDownloadDropboxFiles, "/dropbox/bulk/download")
+google_drive_api.add_resource(BulkDeleteDropboxFiles, "/dropbox/bulk/delete")
+google_drive_api.add_resource(BulkMoveDropboxFiles, "/dropbox/bulk/move")
+google_drive_api.add_resource(BulkCopyDropboxFiles, "/dropbox/bulk/copy")
+google_drive_api.add_resource(BulkShareDropboxFiles, "/dropbox/bulk/share")
+
+# File Operations
+google_drive_api.add_resource(RenameDropboxFile, "/dropbox/rename")
+google_drive_api.add_resource(CopyDropboxFile, "/dropbox/copy")
+google_drive_api.add_resource(MoveDropboxFile, "/dropbox/move")
+
+# Advanced Search
+google_drive_api.add_resource(AdvancedDropboxSearch, "/dropbox/search/advanced")
+
+# Duplicate Detection
+google_drive_api.add_resource(FindDuplicateDropboxFiles, "/dropbox/duplicates/find")
+
+# Storage Analytics
+google_drive_api.add_resource(GetDropboxStorageAnalytics, "/dropbox/analytics/storage")
+
+# Activity Tracking
+google_drive_api.add_resource(GetDropboxActivityLog, "/dropbox/activity")
+google_drive_api.add_resource(LogDropboxActivity, "/dropbox/activity/log")
 # google_drive_api.add_resource(ListOutlookFiles, "/outlook/files")
 # google_drive_api.add_resource(UploadOutlookFile, "/outlook/upload")
 # google_drive_api.add_resource(DownloadOutlookFile, "/outlook/download")

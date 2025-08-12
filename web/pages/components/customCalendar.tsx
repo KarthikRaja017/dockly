@@ -300,6 +300,8 @@ const CustomCalendar: React.FC<CalendarProps> = ({
     const [scrollDirection, setScrollDirection] = useState<'up' | 'down' | null>(null);
     const [isScrolling, setIsScrolling] = useState(false);
     const [scrollIndicatorVisible, setScrollIndicatorVisible] = useState(false);
+    // New state for full day toggle
+    const [showFullDay, setShowFullDay] = useState(false);
 
     useEffect(() => {
         if (data?.events) {
@@ -1391,7 +1393,8 @@ const CustomCalendar: React.FC<CalendarProps> = ({
 
     const renderWeekView = () => {
         const weekDays = getWeekDays(currentDate ?? new Date());
-        const hours = Array.from({ length: 24 }, (_, i) => i);
+        // Updated hours array based on showFullDay toggle
+        const hours = showFullDay ? Array.from({ length: 12 }, (_, i) => i) : Array.from({ length: 14 }, (_, i) => i + 7);
         const allDayEventsForWeek = finalData.events.filter(event => {
             if (!event.is_all_day) return false;
             const eventStart = new Date(event.start_date || event.date);
@@ -1411,6 +1414,84 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
                 }}
             >
+                {/* Full Day Toggle - Added above week header */}
+                <div
+                    style={{
+                        display: "flex",
+                        justifyContent: "flex-end",
+                        alignItems: "center",
+                        padding: "8px 12px",
+                        background: `linear-gradient(135deg, ${COLORS.surface}, ${COLORS.surfaceSecondary})`,
+                        borderBottom: `1px solid ${COLORS.borderLight}`,
+                        height: "40px",
+                        flexShrink: 0
+                    }}
+                >
+                    <div
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            fontSize: "12px",
+                            fontWeight: "600",
+                            color: COLORS.text
+                        }}
+                    >
+                        <span>Show Full Day</span>
+                        <label
+                            style={{
+                                position: "relative",
+                                display: "inline-block",
+                                width: "44px",
+                                height: "24px",
+                                cursor: "pointer"
+                            }}
+                        >
+                            <input
+                                type="checkbox"
+                                checked={showFullDay}
+                                onChange={(e) => setShowFullDay(e.target.checked)}
+                                style={{
+                                    opacity: 0,
+                                    width: 0,
+                                    height: 0
+                                }}
+                            />
+                            <span
+                                style={{
+                                    position: "absolute",
+                                    cursor: "pointer",
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    bottom: 0,
+                                    backgroundColor: showFullDay ? COLORS.accent : COLORS.border,
+                                    transition: "0.3s",
+                                    borderRadius: "24px",
+                                }}
+                            >
+                                <span
+                                    style={{
+                                        position: "absolute",
+                                        content: '""',
+                                        height: "18px",
+                                        width: "18px",
+                                        left: showFullDay ? "23px" : "3px",
+                                        bottom: "3px",
+                                        backgroundColor: "white",
+                                        transition: "0.3s",
+                                        borderRadius: "50%",
+                                        boxShadow: `0 2px 4px ${COLORS.shadowMedium}`
+                                    }}
+                                />
+                            </span>
+                        </label>
+                        <span style={{ fontSize: "10px", color: COLORS.textSecondary }}>
+                            {showFullDay ? "(12AM - 12PM)" : "(7AM - 8PM)"}
+                        </span>
+                    </div>
+                </div>
+
                 {/* Week Header - Fixed height, not scrollable */}
                 <div
                     style={{
@@ -1643,7 +1724,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                 <div
                     style={{
                         flex: 1,
-                        height: "calc(100% - 130px)",
+                        height: "calc(100% - 180px)", // Adjusted for additional toggle bar
                         position: "relative",
                         overflow: "hidden"
                     }}
@@ -1662,7 +1743,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                             style={{
                                 display: "grid",
                                 gridTemplateColumns: "60px repeat(7, 1fr)",
-                                minHeight: `${24 * 50}px`,
+                                minHeight: `${hours.length * 50}px`,
                             }}
                         >
                             {/* Time Labels */}
@@ -1689,7 +1770,10 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                             fontWeight: "500"
                                         }}
                                     >
-                                        {hour === 0 ? '' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`}
+                                        {showFullDay
+                                            ? (hour === 0 ? '' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`)
+                                            : (hour === 7 ? '' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`)
+                                        }
                                     </div>
                                 ))}
                             </div>
@@ -1730,7 +1814,8 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                                         cursor: isPastSlot ? "not-allowed" : "pointer",
                                                         position: "relative",
                                                         transition: "background-color 0.2s ease",
-                                                        backgroundColor: hour >= 9 && hour <= 17 ? COLORS.surface : COLORS.surfaceSecondary,
+                                                        backgroundColor: (showFullDay ? (hour >= 9 && hour <= 17) : (hour >= 9 && hour <= 17))
+                                                            ? COLORS.surface : COLORS.surfaceSecondary,
                                                     }}
                                                     onMouseEnter={(e) => {
                                                         if (!isPastSlot) {
@@ -1738,7 +1823,8 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                                         }
                                                     }}
                                                     onMouseLeave={(e) => {
-                                                        e.currentTarget.style.backgroundColor = hour >= 9 && hour <= 17 ? COLORS.surface : COLORS.surfaceSecondary;
+                                                        e.currentTarget.style.backgroundColor = (showFullDay ? (hour >= 9 && hour <= 17) : (hour >= 9 && hour <= 17))
+                                                            ? COLORS.surface : COLORS.surfaceSecondary;
                                                     }}
                                                 />
                                             );
@@ -1750,8 +1836,21 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                                             const endMinutes = event.endTime ? parseTimeToMinutes(event.endTime) : startMinutes + 60;
                                             const duration = endMinutes - startMinutes;
 
-                                            const topPosition = (startMinutes / 60) * 50;
+                                            // Adjust position calculation based on showFullDay toggle
+                                            const startHour = Math.floor(startMinutes / 60);
+                                            const adjustedStartMinutes = showFullDay
+                                                ? startMinutes
+                                                : Math.max(0, startMinutes - (7 * 60)); // Subtract 7 hours (7AM offset)
+
+                                            const topPosition = (adjustedStartMinutes / 60) * 50;
                                             const eventHeight = Math.max((duration / 60) * 50 - 2, 20);
+
+                                            // Only show events within the visible time range
+                                            const isEventVisible = showFullDay
+                                                ? (startHour >= 0 && startHour < 12)  // 12AM to 12PM
+                                                : (startHour >= 7 && startHour < 21); // 7AM to 8PM
+
+                                            if (!isEventVisible) return null;
 
                                             return (
                                                 <div
@@ -3073,7 +3172,7 @@ const CustomCalendar: React.FC<CalendarProps> = ({
                     height: "auto",
                     flexShrink: 0
                 }}>
-                    <AccountLegend />
+                    {/* <AccountLegend /> */}
                 </div>
             </div>
 

@@ -3,67 +3,58 @@ import { api } from './apiConfig';
 export interface DriveFile {
   id: string;
   name: string;
-  mimeType: string;
+  mimeType?: string;
   size?: number;
   modifiedTime: string;
   createdTime: string;
   thumbnailLink?: string;
-  webViewLink: string;
+  webViewLink?: string;
   webContentLink?: string;
-  owners: Array<{
+  owners?: Array<{
     displayName: string;
     emailAddress: string;
     photoLink?: string;
   }>;
   shared: boolean;
-  starred: boolean;
+  starred?: boolean;
   trashed: boolean;
   parents?: string[];
-  version?: number;
-  description?: string;
-  tags?: string[];
-  lastViewedByMeTime?: string;
   source_email?: string;
   account_name?: string;
+  provider?: 'google' | 'outlook' | 'dropbox';
+  // Dropbox specific fields
+  path?: string;
+  path_lower?: string;
+  server_modified?: string;
+  client_modified?: string;
+  content_hash?: string;
+  is_downloadable?: boolean;
 }
 
 export interface DriveFolder {
   id: string;
   name: string;
   modifiedTime: string;
+  createdTime: string;
   shared: boolean;
   parents?: string[];
-  description?: string;
-  tags?: string[];
   source_email?: string;
   account_name?: string;
+  provider?: 'google' | 'outlook' | 'dropbox';
   owners?: Array<{
     displayName: string;
     emailAddress: string;
     photoLink?: string;
   }>;
-}
-
-export interface BulkOperationResult {
-  success: boolean;
-  processedItems: number;
-  errors: Array<{
-    itemId: string;
-    itemName: string;
-    error: string;
-  }>;
-}
-
-export interface DuplicateFile {
-  name: string;
-  files: DriveFile[];
-  totalSize: number;
+  // Dropbox specific fields
+  path?: string;
+  path_lower?: string;
 }
 
 export interface StorageInfo {
   used: number;
   limit: number;
-  usedByType: {
+  usedByType?: {
     [mimeType: string]: number;
   };
 }
@@ -73,31 +64,27 @@ export interface ActivityLog {
   action: string;
   fileName: string;
   fileId?: string;
+  filePath?: string;
   timestamp: string;
   details?: string;
 }
 
+export interface DuplicateFile {
+  name: string;
+  files: DriveFile[];
+  totalSize: number;
+  count: number;
+}
+
+export type CloudProvider = 'google' | 'outlook' | 'dropbox' | 'all';
+
 // Account colors for visual differentiation
 export const ACCOUNT_COLORS = {
-  google: [
-    '#4285f4', // Primary Google Blue
-    '#34a853', // Google Green
-    '#ea4335', // Google Red
-    '#fbbc04', // Google Yellow
-    '#9c27b0', // Purple
-    '#ff5722', // Deep Orange
-  ],
-  outlook: [
-    '#0078d4', // Primary Outlook Blue
-    '#00bcf2', // Light Blue
-    '#8764b8', // Purple
-    '#00b7c3', // Teal
-    '#038387', // Dark Teal
-    '#486991', // Steel Blue
-  ],
+  google: ['#4285f4', '#34a853', '#ea4335', '#fbbc04', '#9c27b0', '#ff5722'],
+  outlook: ['#0078d4', '#00bcf2', '#8764b8', '#00b7c3', '#038387', '#486991'],
+  dropbox: ['#0061ff', '#1976d2', '#2196f3', '#03a9f4', '#0288d1', '#0277bd'],
 };
 
-// Get account color based on provider and index
 export const getAccountColor = (provider: string, index: number): string => {
   const colors =
     ACCOUNT_COLORS[provider as keyof typeof ACCOUNT_COLORS] ||
@@ -105,64 +92,148 @@ export const getAccountColor = (provider: string, index: number): string => {
   return colors[index % colors.length];
 };
 
-// Helper function to determine file source from ID or email
 export const getFileSource = (
   file: DriveFile | DriveFolder
-): 'google' | 'outlook' => {
+): 'google' | 'outlook' | 'dropbox' => {
+  if (file.provider) {
+    return file.provider;
+  }
   if (file.source_email) {
-    return file.source_email.includes('outlook') ||
+    if (
+      file.source_email.includes('outlook') ||
       file.source_email.includes('hotmail') ||
       file.source_email.includes('live') ||
       file.source_email.includes('msn')
-      ? 'outlook'
-      : 'google';
+    ) {
+      return 'outlook';
+    }
+    if (file.source_email.includes('dropbox')) {
+      return 'dropbox';
+    }
+    return 'google';
   }
-  return 'google'; // Default fallback
+  return 'google';
 };
 
-// Combined file operations that work with both Google Drive and Outlook
+// Provider display utilities
+export const PROVIDER_LABELS = {
+  google: 'Google Drive',
+  outlook: 'OneDrive',
+  dropbox: 'Dropbox',
+  all: 'All Providers',
+};
+
+export const PROVIDER_ICONS = {
+  google: 'G',
+  outlook: 'O',
+  dropbox: 'D',
+  all: 'ALL',
+};
+
+export const getProviderDisplayName = (provider: CloudProvider): string => {
+  return PROVIDER_LABELS[provider] || 'Unknown';
+};
+
+export const getProviderIcon = (provider: CloudProvider): string => {
+  return PROVIDER_ICONS[provider] || '?';
+};
+
+// Multi-provider file listing
 export async function listDriveFiles(params: {
   folderId?: string;
+  folderPath?: string;
   sortBy?: string;
   sortOrder?: string;
   pageSize?: number;
+  providers?: CloudProvider[];
 }) {
   try {
-    // Fetch from both Google Drive and Outlook
-    const [googleResponse, outlookResponse] = await Promise.allSettled([
-      api.post('/drive/files', params),
-      api.post('/drive/outlook/files', params),
-    ]);
+    const providers = params.providers || ['all'];
+    const actualProviders = providers.includes('all')
+      ? ['google', 'dropbox']
+      : providers.filter((p) => p !== 'all');
 
-    const googleData =
-      googleResponse.status === 'fulfilled'
-        ? googleResponse.value?.data?.payload
-        : null;
-    const outlookData =
-      outlookResponse.status === 'fulfilled'
-        ? outlookResponse.value?.data?.payload
-        : null;
+    const requests = actualProviders.map(async (provider) => {
+      try {
+        let endpoint = '';
+        let requestData: any = {
+          sortBy: params.sortBy,
+          sortOrder: params.sortOrder,
+          pageSize: params.pageSize,
+        };
 
-    // Merge results
-    const mergedFiles = [
-      ...(googleData?.files || []),
-      ...(outlookData?.files || []),
-    ];
+        switch (provider) {
+          case 'google':
+            endpoint = '/drive/files';
+            requestData.folderId = params.folderId;
+            break;
+          case 'dropbox':
+            endpoint = '/drive/dropbox/files';
+            requestData.folderPath = params.folderPath || '';
+            break;
+          default:
+            return {
+              data: {
+                payload: {
+                  files: [],
+                  folders: [],
+                  connected_accounts: [],
+                  errors: [],
+                },
+              },
+            };
+        }
 
-    const mergedFolders = [
-      ...(googleData?.folders || []),
-      ...(outlookData?.folders || []),
-    ];
+        const response = await api.post(endpoint, requestData);
+        return {
+          ...response,
+          provider: provider,
+        };
+      } catch (error) {
+        console.error(`Error fetching ${provider} files:`, error);
+        return {
+          data: {
+            payload: {
+              files: [],
+              folders: [],
+              connected_accounts: [],
+              errors: [{ error: `Failed to fetch ${provider} files` }],
+            },
+          },
+          provider: provider,
+        };
+      }
+    });
 
-    const mergedAccounts = [
-      ...(googleData?.connected_accounts || []),
-      ...(outlookData?.connected_accounts || []),
-    ];
+    const responses = await Promise.allSettled(requests);
 
-    const mergedErrors = [
-      ...(googleData?.errors || []),
-      ...(outlookData?.errors || []),
-    ];
+    const mergedFiles: DriveFile[] = [];
+    const mergedFolders: DriveFolder[] = [];
+    const mergedAccounts: any[] = [];
+    const mergedErrors: any[] = [];
+
+    responses.forEach((response) => {
+      if (response.status === 'fulfilled' && response.value?.data?.payload) {
+        const data = response.value.data.payload;
+        const provider = response.value.provider;
+
+        const filesWithProvider = (data.files || []).map((file: DriveFile) => ({
+          ...file,
+          provider: provider,
+        }));
+        const foldersWithProvider = (data.folders || []).map(
+          (folder: DriveFolder) => ({
+            ...folder,
+            provider: provider,
+          })
+        );
+
+        mergedFiles.push(...filesWithProvider);
+        mergedFolders.push(...foldersWithProvider);
+        mergedAccounts.push(...(data.connected_accounts || []));
+        mergedErrors.push(...(data.errors || []));
+      }
+    });
 
     return {
       data: {
@@ -192,17 +263,35 @@ export async function listDriveFiles(params: {
 export async function uploadDriveFile(params: {
   file: File;
   parentId?: string;
-  provider?: 'google' | 'outlook';
+  folderPath?: string;
+  provider: CloudProvider;
 }) {
-  const formData = new FormData();
-  formData.append('file', params.file);
-  if (params.parentId) {
-    formData.append('parentId', params.parentId);
+  if (params.provider === 'all') {
+    throw new Error(
+      'Cannot upload to all providers simultaneously. Please select a specific provider.'
+    );
   }
 
-  // Determine which service to use based on provider or default to Google
-  const endpoint =
-    params.provider === 'outlook' ? '/drive/outlook/upload' : '/drive/upload';
+  const formData = new FormData();
+  formData.append('file', params.file);
+
+  let endpoint = '';
+  switch (params.provider) {
+    case 'google':
+      endpoint = '/drive/upload';
+      if (params.parentId) {
+        formData.append('parentId', params.parentId);
+      }
+      break;
+    case 'dropbox':
+      endpoint = '/drive/dropbox/upload';
+      if (params.folderPath) {
+        formData.append('folderPath', params.folderPath);
+      }
+      break;
+    default:
+      throw new Error(`Unsupported provider: ${params.provider}`);
+  }
 
   return api.post(endpoint, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
@@ -210,284 +299,724 @@ export async function uploadDriveFile(params: {
 }
 
 export async function downloadDriveFile(params: {
-  fileId: string;
-  provider?: 'google' | 'outlook';
+  fileId?: string;
+  filePath?: string;
+  provider: CloudProvider;
 }) {
-  // Try the specified provider first, then fallback
-  if (params.provider === 'outlook') {
-    try {
-      return await api.post('/drive/outlook/download', params, {
-        responseType: 'blob',
-      });
-    } catch (error) {
-      // Fallback to Google Drive
-      return await api.post('/drive/download', params, {
-        responseType: 'blob',
-      });
-    }
-  } else {
-    try {
-      return await api.post('/drive/download', params, {
-        responseType: 'blob',
-      });
-    } catch (error) {
-      // Fallback to Outlook
-      return await api.post('/drive/outlook/download', params, {
-        responseType: 'blob',
-      });
-    }
+  if (params.provider === 'all') {
+    throw new Error(
+      'Cannot download from all providers. Please specify a provider.'
+    );
   }
+
+  let endpoint = '';
+  let requestData: any = {};
+
+  switch (params.provider) {
+    case 'google':
+      endpoint = '/drive/download';
+      requestData.fileId = params.fileId;
+      break;
+    case 'dropbox':
+      endpoint = '/drive/dropbox/download';
+      requestData.filePath = params.filePath;
+      break;
+    default:
+      throw new Error(`Unsupported provider: ${params.provider}`);
+  }
+
+  return api.post(endpoint, requestData, {
+    responseType: 'blob',
+  });
 }
 
 export async function deleteDriveFile(params: {
-  fileId: string;
-  provider?: 'google' | 'outlook';
+  fileId?: string;
+  filePath?: string;
+  provider: CloudProvider;
 }) {
-  // Try the specified provider first, then fallback
-  if (params.provider === 'outlook') {
-    try {
-      return await api.delete('/drive/outlook/delete', { data: params });
-    } catch (error) {
-      return await api.delete('/drive/delete', { data: params });
-    }
-  } else {
-    try {
-      return await api.delete('/drive/delete', { data: params });
-    } catch (error) {
-      return await api.delete('/drive/outlook/delete', { data: params });
-    }
+  if (params.provider === 'all') {
+    throw new Error(
+      'Cannot delete from all providers. Please specify a provider.'
+    );
   }
+
+  let endpoint = '';
+  let requestData: any = {};
+
+  switch (params.provider) {
+    case 'google':
+      endpoint = '/drive/delete';
+      requestData.fileId = params.fileId;
+      break;
+    case 'dropbox':
+      endpoint = '/drive/dropbox/delete';
+      requestData.filePath = params.filePath;
+      break;
+    default:
+      throw new Error(`Unsupported provider: ${params.provider}`);
+  }
+
+  return api.delete(endpoint, { data: requestData });
 }
 
 export async function createDriveFolder(params: {
   name: string;
   parentId?: string;
-  provider?: 'google' | 'outlook';
+  parentPath?: string;
+  provider: CloudProvider;
 }) {
-  // Use specified provider or default to Google
-  const endpoint =
-    params.provider === 'outlook'
-      ? '/drive/outlook/folder/create'
-      : '/drive/folder/create';
-  return api.post(endpoint, params);
+  if (params.provider === 'all') {
+    throw new Error(
+      'Cannot create folder in all providers simultaneously. Please select a specific provider.'
+    );
+  }
+
+  let endpoint = '';
+  let requestData: any = { name: params.name };
+
+  switch (params.provider) {
+    case 'google':
+      endpoint = '/drive/folder/create';
+      requestData.parentId = params.parentId;
+      break;
+    case 'dropbox':
+      endpoint = '/drive/dropbox/folder/create';
+      requestData.parentPath = params.parentPath || '';
+      break;
+    default:
+      throw new Error(`Unsupported provider: ${params.provider}`);
+  }
+
+  return api.post(endpoint, requestData);
 }
 
 export async function shareDriveFile(params: {
-  fileId: string;
+  fileId?: string;
+  filePath?: string;
   email: string;
   role?: string;
-  provider?: 'google' | 'outlook';
+  accessLevel?: string;
+  provider: CloudProvider;
 }) {
-  // Try the specified provider first, then fallback
-  if (params.provider === 'outlook') {
-    try {
-      return await api.post('/drive/outlook/share', params);
-    } catch (error) {
-      return await api.post('/drive/share', params);
-    }
-  } else {
-    try {
-      return await api.post('/drive/share', params);
-    } catch (error) {
-      return await api.post('/drive/outlook/share', params);
-    }
+  if (params.provider === 'all') {
+    throw new Error(
+      'Cannot share from all providers. Please specify a provider.'
+    );
   }
+
+  let endpoint = '';
+  let requestData: any = {
+    email: params.email,
+    role: params.role || 'reader',
+  };
+
+  switch (params.provider) {
+    case 'google':
+      endpoint = '/drive/share';
+      requestData.fileId = params.fileId;
+      break;
+    case 'dropbox':
+      endpoint = '/drive/dropbox/share';
+      requestData.filePath = params.filePath;
+      requestData.accessLevel = params.accessLevel || 'viewer';
+      break;
+    default:
+      throw new Error(`Unsupported provider: ${params.provider}`);
+  }
+
+  return api.post(endpoint, requestData);
 }
 
 export async function getDriveFileInfo(params: {
-  fileId: string;
-  provider?: 'google' | 'outlook';
+  fileId?: string;
+  filePath?: string;
+  provider?: CloudProvider;
 }) {
-  // Try the specified provider first, then fallback
-  if (params.provider === 'outlook') {
-    try {
-      return await api.get(`/drive/outlook/file/${params.fileId}`);
-    } catch (error) {
-      return await api.get(`/drive/file/${params.fileId}`);
-    }
-  } else {
-    try {
-      return await api.get(`/drive/file/${params.fileId}`);
-    } catch (error) {
-      return await api.get(`/drive/outlook/file/${params.fileId}`);
+  // Try to determine provider from the file identifier
+  let provider = params.provider;
+  if (!provider) {
+    if (params.fileId && !params.fileId.startsWith('/')) {
+      provider = 'google';
+    } else if (params.filePath && params.filePath.startsWith('/')) {
+      provider = 'dropbox';
+    } else {
+      provider = 'google'; // default fallback
     }
   }
+
+  let endpoint = '';
+  let identifier = '';
+
+  switch (provider) {
+    case 'google':
+      endpoint = '/drive/file';
+      identifier = params.fileId || '';
+      break;
+    case 'dropbox':
+      endpoint = '/drive/dropbox/file';
+      identifier = encodeURIComponent(params.filePath || '');
+      break;
+    default:
+      throw new Error(`Unsupported provider: ${provider}`);
+  }
+
+  return api.get(`${endpoint}/${identifier}`);
 }
 
-export async function getDriveStorage() {
+export async function getDriveStorage(providers?: CloudProvider[]) {
   try {
-    const [googleResponse, outlookResponse] = await Promise.allSettled([
-      api.get('/drive/storage'),
-      api.get('/drive/outlook/storage'),
-    ]);
+    const providersToQuery = providers || ['all'];
+    const actualProviders = providersToQuery.includes('all')
+      ? ['google', 'dropbox']
+      : providersToQuery.filter((p) => p !== 'all');
 
-    const googleData =
-      googleResponse.status === 'fulfilled'
-        ? googleResponse.value?.data?.payload
-        : null;
-    const outlookData =
-      outlookResponse.status === 'fulfilled'
-        ? outlookResponse.value?.data?.payload
-        : null;
+    const requests = actualProviders.map(async (provider) => {
+      try {
+        let endpoint = '';
+        switch (provider) {
+          case 'google':
+            endpoint = '/drive/storage';
+            break;
+          case 'dropbox':
+            endpoint = '/drive/dropbox/storage';
+            break;
+          default:
+            return null;
+        }
+
+        const response = await api.get(endpoint);
+        return {
+          ...response,
+          provider: provider,
+        };
+      } catch (error) {
+        console.error(`Error fetching ${provider} storage:`, error);
+        return null;
+      }
+    });
+
+    const responses = await Promise.allSettled(requests);
+
+    const storageData: any = {};
+    let totalUsed = 0;
+    let totalLimit = 0;
+
+    responses.forEach((response) => {
+      if (response.status === 'fulfilled' && response.value?.data?.payload) {
+        const data = response.value.data.payload;
+        const provider = response.value.provider;
+
+        storageData[provider] = data;
+
+        if (data.total_storage) {
+          totalUsed += data.total_storage.used || 0;
+          totalLimit += data.total_storage.limit || 0;
+        }
+      }
+    });
 
     return {
       data: {
         payload: {
-          google: googleData,
-          outlook: outlookData,
+          ...storageData,
           combined: {
-            used:
-              (googleData?.total_storage?.used || 0) +
-              (outlookData?.total_storage?.used || 0),
-            limit:
-              (googleData?.total_storage?.limit || 0) +
-              (outlookData?.total_storage?.limit || 0),
+            used: totalUsed,
+            limit: totalLimit,
           },
         },
       },
     };
   } catch (error) {
-    return api.get('/drive/storage');
+    console.error('Error fetching storage info:', error);
+    return {
+      data: {
+        payload: {
+          combined: { used: 0, limit: 0 },
+        },
+      },
+    };
   }
-}
-
-// Bulk operations
-export async function bulkDownloadFiles(params: { fileIds: string[] }) {
-  return api.post('/drive/bulk/download', params, { responseType: 'blob' });
-}
-
-export async function bulkDeleteFiles(params: { fileIds: string[] }) {
-  return api.post('/drive/bulk/delete', params);
-}
-
-export async function bulkMoveFiles(params: {
-  fileIds: string[];
-  targetFolderId: string;
-}) {
-  return api.post('/drive/bulk/move', params);
-}
-
-export async function bulkCopyFiles(params: {
-  fileIds: string[];
-  targetFolderId: string;
-}) {
-  return api.post('/drive/bulk/copy', params);
-}
-
-export async function bulkShareFiles(params: {
-  fileIds: string[];
-  email: string;
-  role: string;
-}) {
-  return api.post('/drive/bulk/share', params);
 }
 
 // File operations
 export async function renameDriveFile(params: {
-  fileId: string;
+  fileId?: string;
+  filePath?: string;
   newName: string;
-  provider?: 'google' | 'outlook';
+  provider: CloudProvider;
 }) {
-  if (params.provider === 'outlook') {
-    try {
-      return await api.post('/drive/outlook/rename', params);
-    } catch (error) {
-      return await api.post('/drive/rename', params);
-    }
-  } else {
-    try {
-      return await api.post('/drive/rename', params);
-    } catch (error) {
-      return await api.post('/drive/outlook/rename', params);
-    }
+  if (params.provider === 'all') {
+    throw new Error(
+      'Cannot rename in all providers. Please specify a provider.'
+    );
   }
+
+  let endpoint = '';
+  let requestData: any = { newName: params.newName };
+
+  switch (params.provider) {
+    case 'google':
+      endpoint = '/drive/rename';
+      requestData.fileId = params.fileId;
+      break;
+    case 'dropbox':
+      endpoint = '/drive/dropbox/rename';
+      requestData.filePath = params.filePath;
+      break;
+    default:
+      throw new Error(`Unsupported provider: ${params.provider}`);
+  }
+
+  return api.post(endpoint, requestData);
 }
 
 export async function copyDriveFile(params: {
-  fileId: string;
+  fileId?: string;
+  filePath?: string;
   parentId?: string;
+  targetPath?: string;
   name?: string;
-  provider?: 'google' | 'outlook';
+  provider: CloudProvider;
 }) {
-  if (params.provider === 'outlook') {
-    try {
-      return await api.post('/drive/outlook/copy', params);
-    } catch (error) {
-      return await api.post('/drive/copy', params);
-    }
-  } else {
-    try {
-      return await api.post('/drive/copy', params);
-    } catch (error) {
-      return await api.post('/drive/outlook/copy', params);
-    }
+  if (params.provider === 'all') {
+    throw new Error('Cannot copy in all providers. Please specify a provider.');
   }
+
+  let endpoint = '';
+  let requestData: any = { name: params.name };
+
+  switch (params.provider) {
+    case 'google':
+      endpoint = '/drive/copy';
+      requestData.fileId = params.fileId;
+      requestData.parentId = params.parentId;
+      break;
+    case 'dropbox':
+      endpoint = '/drive/dropbox/copy';
+      requestData.filePath = params.filePath;
+      requestData.targetPath = params.targetPath;
+      break;
+    default:
+      throw new Error(`Unsupported provider: ${params.provider}`);
+  }
+
+  return api.post(endpoint, requestData);
 }
 
 export async function moveDriveFile(params: {
-  fileId: string;
-  targetFolderId: string;
-  provider?: 'google' | 'outlook';
+  fileId?: string;
+  filePath?: string;
+  targetFolderId?: string;
+  targetFolderPath?: string;
+  provider: CloudProvider;
 }) {
-  if (params.provider === 'outlook') {
-    try {
-      return await api.post('/drive/outlook/move', params);
-    } catch (error) {
-      return await api.post('/drive/move', params);
-    }
-  } else {
-    try {
-      return await api.post('/drive/move', params);
-    } catch (error) {
-      return await api.post('/drive/outlook/move', params);
-    }
+  if (params.provider === 'all') {
+    throw new Error('Cannot move in all providers. Please specify a provider.');
   }
+
+  let endpoint = '';
+  let requestData: any = {};
+
+  switch (params.provider) {
+    case 'google':
+      endpoint = '/drive/move';
+      requestData.fileId = params.fileId;
+      requestData.targetFolderId = params.targetFolderId;
+      break;
+    case 'dropbox':
+      endpoint = '/drive/dropbox/move';
+      requestData.filePath = params.filePath;
+      requestData.targetFolderPath = params.targetFolderPath;
+      break;
+    default:
+      throw new Error(`Unsupported provider: ${params.provider}`);
+  }
+
+  return api.post(endpoint, requestData);
 }
 
 export async function starDriveFile(params: {
   fileId: string;
   starred: boolean;
 }) {
+  // Starring is only available for Google Drive
   return api.post('/drive/star', params);
 }
 
-// Advanced search
+// Bulk operations
+export async function bulkDownloadFiles(params: {
+  fileIds?: string[];
+  filePaths?: string[];
+  providers: CloudProvider[];
+}) {
+  const actualProviders = params.providers.includes('all')
+    ? ['google', 'dropbox']
+    : params.providers.filter((p) => p !== 'all');
+
+  // Try each provider
+  for (const provider of actualProviders) {
+    try {
+      let endpoint = '';
+      let requestData: any = {};
+
+      switch (provider) {
+        case 'google':
+          endpoint = '/drive/bulk/download';
+          requestData.fileIds = params.fileIds || [];
+          break;
+        case 'dropbox':
+          endpoint = '/drive/dropbox/bulk/download';
+          requestData.filePaths = params.filePaths || [];
+          break;
+        default:
+          continue;
+      }
+
+      return await api.post(endpoint, requestData, {
+        responseType: 'blob',
+      });
+    } catch (error) {
+      console.log(`Bulk download failed for ${provider}`);
+    }
+  }
+
+  throw new Error('Bulk download failed for all providers');
+}
+
+export async function bulkDeleteFiles(params: {
+  fileIds?: string[];
+  filePaths?: string[];
+  providers: CloudProvider[];
+}) {
+  const actualProviders = params.providers.includes('all')
+    ? ['google', 'dropbox']
+    : params.providers.filter((p) => p !== 'all');
+
+  const results: any[] = [];
+
+  for (const provider of actualProviders) {
+    try {
+      let endpoint = '';
+      let requestData: any = {};
+
+      switch (provider) {
+        case 'google':
+          endpoint = '/drive/bulk/delete';
+          requestData.fileIds = params.fileIds || [];
+          break;
+        case 'dropbox':
+          endpoint = '/drive/dropbox/bulk/delete';
+          requestData.filePaths = params.filePaths || [];
+          break;
+        default:
+          continue;
+      }
+
+      const response = await api.post(endpoint, requestData);
+      results.push({ provider, ...response.data });
+    } catch (error) {
+      console.log(`Bulk delete failed for ${provider}`);
+      results.push({ provider, error: `Bulk delete failed for ${provider}` });
+    }
+  }
+
+  return { data: { results } };
+}
+
+export async function bulkMoveFiles(params: {
+  fileIds?: string[];
+  filePaths?: string[];
+  targetFolderId?: string;
+  targetFolderPath?: string;
+  providers: CloudProvider[];
+}) {
+  const actualProviders = params.providers.includes('all')
+    ? ['google', 'dropbox']
+    : params.providers.filter((p) => p !== 'all');
+
+  const results: any[] = [];
+
+  for (const provider of actualProviders) {
+    try {
+      let endpoint = '';
+      let requestData: any = {};
+
+      switch (provider) {
+        case 'google':
+          endpoint = '/drive/bulk/move';
+          requestData.fileIds = params.fileIds || [];
+          requestData.targetFolderId = params.targetFolderId;
+          break;
+        case 'dropbox':
+          endpoint = '/drive/dropbox/bulk/move';
+          requestData.filePaths = params.filePaths || [];
+          requestData.targetFolderPath = params.targetFolderPath;
+          break;
+        default:
+          continue;
+      }
+
+      const response = await api.post(endpoint, requestData);
+      results.push({ provider, ...response.data });
+    } catch (error) {
+      console.log(`Bulk move failed for ${provider}`);
+      results.push({ provider, error: `Bulk move failed for ${provider}` });
+    }
+  }
+
+  return { data: { results } };
+}
+
+export async function bulkCopyFiles(params: {
+  fileIds?: string[];
+  filePaths?: string[];
+  targetFolderId?: string;
+  targetFolderPath?: string;
+  providers: CloudProvider[];
+}) {
+  const actualProviders = params.providers.includes('all')
+    ? ['google', 'dropbox']
+    : params.providers.filter((p) => p !== 'all');
+
+  const results: any[] = [];
+
+  for (const provider of actualProviders) {
+    try {
+      let endpoint = '';
+      let requestData: any = {};
+
+      switch (provider) {
+        case 'google':
+          endpoint = '/drive/bulk/copy';
+          requestData.fileIds = params.fileIds || [];
+          requestData.targetFolderId = params.targetFolderId;
+          break;
+        case 'dropbox':
+          endpoint = '/drive/dropbox/bulk/copy';
+          requestData.filePaths = params.filePaths || [];
+          requestData.targetFolderPath = params.targetFolderPath;
+          break;
+        default:
+          continue;
+      }
+
+      const response = await api.post(endpoint, requestData);
+      results.push({ provider, ...response.data });
+    } catch (error) {
+      console.log(`Bulk copy failed for ${provider}`);
+      results.push({ provider, error: `Bulk copy failed for ${provider}` });
+    }
+  }
+
+  return { data: { results } };
+}
+
+export async function bulkShareFiles(params: {
+  fileIds?: string[];
+  filePaths?: string[];
+  email: string;
+  role?: string;
+  accessLevel?: string;
+  providers: CloudProvider[];
+}) {
+  const actualProviders = params.providers.includes('all')
+    ? ['google', 'dropbox']
+    : params.providers.filter((p) => p !== 'all');
+
+  const results: any[] = [];
+
+  for (const provider of actualProviders) {
+    try {
+      let endpoint = '';
+      let requestData: any = { email: params.email };
+
+      switch (provider) {
+        case 'google':
+          endpoint = '/drive/bulk/share';
+          requestData.fileIds = params.fileIds || [];
+          requestData.role = params.role || 'reader';
+          break;
+        case 'dropbox':
+          endpoint = '/drive/dropbox/bulk/share';
+          requestData.filePaths = params.filePaths || [];
+          requestData.accessLevel = params.accessLevel || 'viewer';
+          break;
+        default:
+          continue;
+      }
+
+      const response = await api.post(endpoint, requestData);
+      results.push({ provider, ...response.data });
+    } catch (error) {
+      console.log(`Bulk share failed for ${provider}`);
+      results.push({ provider, error: `Bulk share failed for ${provider}` });
+    }
+  }
+
+  return { data: { results } };
+}
+
+// Advanced features
 export async function advancedSearch(params: {
   query?: string;
-  mimeType?: string;
-  modifiedTimeRange?: { start: string; end: string };
-  sizeRange?: { min: number; max: number };
-  starred?: boolean;
-  shared?: boolean;
-  ownedByMe?: boolean;
-  parentId?: string;
+  fileExtensions?: string[];
+  maxResults?: number;
+  folderPath?: string;
+  providers?: CloudProvider[];
 }) {
-  return api.post('/drive/search/advanced', params);
+  const actualProviders = (params.providers || ['all']).includes('all')
+    ? ['google', 'dropbox']
+    : (params.providers || []).filter((p) => p !== 'all');
+
+  const results: any[] = [];
+
+  for (const provider of actualProviders) {
+    try {
+      let endpoint = '';
+
+      switch (provider) {
+        case 'google':
+          endpoint = '/drive/search/advanced';
+          break;
+        case 'dropbox':
+          endpoint = '/drive/dropbox/search/advanced';
+          break;
+        default:
+          continue;
+      }
+
+      const response = await api.post(endpoint, params);
+      results.push({ provider, ...response.data });
+    } catch (error) {
+      console.log(`Advanced search failed for ${provider}`);
+    }
+  }
+
+  return { data: { results } };
 }
 
-// Duplicate detection
-export async function findDuplicateFiles(params: { folderId?: string }) {
-  return api.post('/drive/duplicates/find', params);
+export async function findDuplicateFiles(params: {
+  folderId?: string;
+  folderPath?: string;
+  providers?: CloudProvider[];
+}) {
+  const actualProviders = (params.providers || ['all']).includes('all')
+    ? ['google', 'dropbox']
+    : (params.providers || []).filter((p) => p !== 'all');
+
+  const results: any[] = [];
+
+  for (const provider of actualProviders) {
+    try {
+      let endpoint = '';
+      let requestData: any = {};
+
+      switch (provider) {
+        case 'google':
+          endpoint = '/drive/duplicates/find';
+          requestData.folderId = params.folderId;
+          break;
+        case 'dropbox':
+          endpoint = '/drive/dropbox/duplicates/find';
+          requestData.folderPath = params.folderPath;
+          break;
+        default:
+          continue;
+      }
+
+      const response = await api.post(endpoint, requestData);
+      results.push({ provider, ...response.data });
+    } catch (error) {
+      console.log(`Duplicate search failed for ${provider}`);
+    }
+  }
+
+  return { data: { results } };
 }
 
-// Storage analytics
-export async function getStorageAnalytics() {
-  return api.get('/drive/analytics/storage');
+export async function getStorageAnalytics(providers?: CloudProvider[]) {
+  const actualProviders = (providers || ['all']).includes('all')
+    ? ['google', 'dropbox']
+    : (providers || []).filter((p) => p !== 'all');
+
+  const results: any[] = [];
+
+  for (const provider of actualProviders) {
+    try {
+      let endpoint = '';
+
+      switch (provider) {
+        case 'google':
+          endpoint = '/drive/analytics/storage';
+          break;
+        case 'dropbox':
+          endpoint = '/drive/dropbox/analytics/storage';
+          break;
+        default:
+          continue;
+      }
+
+      const response = await api.get(endpoint);
+      results.push({ provider, ...response.data });
+    } catch (error) {
+      console.log(`Storage analytics failed for ${provider}`);
+    }
+  }
+
+  return { data: { results } };
 }
 
-// Activity tracking
 export async function getActivityLog(params: {
   limit?: number;
   offset?: number;
 }) {
-  return api.get('/drive/activity', { params });
+  // Combine activity from all providers
+  const requests = [
+    api.get('/drive/activity', { params }).catch(() => null),
+    api.get('/drive/dropbox/activity', { params }).catch(() => null),
+  ];
+
+  const responses = await Promise.allSettled(requests);
+  const activities: ActivityLog[] = [];
+
+  responses.forEach((response) => {
+    if (
+      response.status === 'fulfilled' &&
+      response.value?.data?.payload?.activities
+    ) {
+      activities.push(...response.value.data.payload.activities);
+    }
+  });
+
+  // Sort by timestamp
+  activities.sort(
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  );
+
+  return {
+    data: {
+      payload: {
+        activities: activities.slice(0, params.limit || 50),
+        total: activities.length,
+      },
+    },
+  };
 }
 
 export async function logActivity(params: {
   action: string;
   fileId?: string;
+  filePath?: string;
   fileName: string;
   details?: string;
 }) {
-  return api.post('/drive/activity/log', params);
+  // Log to both systems
+  const requests = [
+    api.post('/drive/activity/log', params).catch(() => null),
+    api.post('/drive/dropbox/activity/log', params).catch(() => null),
+  ];
+
+  await Promise.allSettled(requests);
+  return { data: { status: 'success' } };
 }

@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Button, Card, Avatar, Typography, Space } from 'antd';
-import { Apple, Mail, Chrome, Check, UserPlus, User } from 'lucide-react';
+import { Modal, Button, Card, Avatar, Typography, Space, Badge, Tooltip } from 'antd';
+import { Apple, Mail, Chrome, Check, UserPlus, User, Folder, Plus, X } from 'lucide-react';
 import { CatppuccinFolderConnection } from './icons';
 import { ACTIVE_BG_COLOR, PRIMARY_COLOR } from '../../app/comman';
 import { API_URL } from '../../services/apiConfig';
 import { useCurrentUser } from '../../app/userContext';
 import { getUserConnectedAccounts } from '../../services/dashboard';
-// import { trimGooglePhotoUrl } from './CustomHeader';
 import { useGlobalLoading } from '../../app/loadingContext';
 import { trimGooglePhotoUrl } from './header';
 
@@ -27,7 +26,12 @@ type ConnectedAccount = {
 };
 
 const FolderConnectionModal: React.FC<FolderConnectionModalProps> = ({ isModalVisible, setIsModalVisible }) => {
-    const [connections, setConnections] = useState({ apple: false, outlook: false, google: false });
+    const [connections, setConnections] = useState({
+        apple: false,
+        outlook: false,
+        google: false,
+        dropbox: false
+    });
     const { loading, setLoading } = useGlobalLoading();
     const [connectedAccounts, setConnectedAccounts] = useState<ConnectedAccount[]>([]);
     const currentUser = useCurrentUser();
@@ -42,7 +46,7 @@ const FolderConnectionModal: React.FC<FolderConnectionModalProps> = ({ isModalVi
         const { status, payload } = response.data;
 
         if (status) {
-            const connected = { apple: false, outlook: false, google: false };
+            const connected = { apple: false, outlook: false, google: false, dropbox: false };
             payload.connectedAccounts.forEach((acc: ConnectedAccount) => {
                 if (acc.provider in connected) {
                     connected[acc.provider as keyof typeof connected] = true;
@@ -62,175 +66,184 @@ const FolderConnectionModal: React.FC<FolderConnectionModalProps> = ({ isModalVi
         else if (service === "outlook") {
             window.location.href = `${API_URL}/add-microsoftAccount?username=${currentUser?.user_name}&userId=${currentUser?.uid}`;
         }
+        else if (service === "dropbox") {
+            window.location.href = `${API_URL}/add-dropbox?username=${currentUser?.user_name}&userId=${currentUser?.uid}`;
+        }
     };
 
-    const renderGoogleAccounts = () => {
-        const googleAccounts = connectedAccounts.filter(acc => acc.provider === 'google');
-        if (!googleAccounts.length) return null;
+    const handleDisconnectAccount = async (accountId: string, provider: string) => {
+        // Add disconnect logic here
+        console.log('Disconnecting account:', accountId, provider);
+    };
+
+    const renderConnectedAccounts = (provider: string) => {
+        const accounts = connectedAccounts.filter(acc => acc.provider === provider);
+        if (!accounts.length) return null;
 
         return (
             <div style={{
-                marginTop: 16,
-                paddingLeft: 64,
-                background: `${PRIMARY_COLOR}05`,
-                borderRadius: 8,
-                padding: '12px 16px',
+                marginTop: 12,
+                background: `linear-gradient(135deg, ${PRIMARY_COLOR}08 0%, ${PRIMARY_COLOR}03 100%)`,
+                borderRadius: 12,
+                padding: '16px',
                 border: `1px solid ${PRIMARY_COLOR}15`
             }}>
-                {googleAccounts.map((acc, idx) => {
-                    let userData = null;
-                    try {
-                        userData = acc.user_object ? JSON.parse(acc.user_object) : null;
-                    } catch (_) { }
-                    const trimmedUrl = trimGooglePhotoUrl(userData?.picture);
-
-                    return (
-                        <div key={idx} style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            marginBottom: idx === googleAccounts.length - 1 ? 0 : 12,
-                            padding: '8px',
-                            borderRadius: 6,
-                            background: 'white',
-                            boxShadow: `0 2px 4px ${PRIMARY_COLOR}10`,
-                            transition: 'all 0.3s ease'
-                        }}>
-                            <Avatar
-                                size={32}
-                                src={trimmedUrl}
-                                icon={!userData?.picture && <User size={16} />}
-                                style={{
-                                    marginRight: 12,
-                                    border: `2px solid ${PRIMARY_COLOR}20`
-                                }}
-                            />
-                            <Text style={{ fontFamily: FONT_FAMILY, fontWeight: 500 }}>
-                                {userData?.email || acc.email}
-                            </Text>
-                        </div>
-                    );
-                })}
-                <Button
-                    type="dashed"
-                    icon={<UserPlus size={16} />}
-                    onClick={() => handleConnect('google')}
-                    size="small"
-                    style={{
-                        marginTop: 12,
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: 12
+                }}>
+                    <Text style={{
                         fontFamily: FONT_FAMILY,
-                        borderColor: PRIMARY_COLOR,
-                        color: PRIMARY_COLOR,
-                        transition: 'all 0.3s ease'
-                    }}
-                >
-                    Add another account
-                </Button>
-            </div>
-        );
-    };
+                        fontWeight: 600,
+                        color: '#2c3e50',
+                        fontSize: '13px'
+                    }}>
+                        Connected Accounts ({accounts.length})
+                    </Text>
+                    <Button
+                        type="text"
+                        size="small"
+                        icon={<Plus size={14} />}
+                        onClick={() => handleConnect(provider)}
+                        style={{
+                            fontFamily: FONT_FAMILY,
+                            color: PRIMARY_COLOR,
+                            fontSize: '12px',
+                            height: '24px',
+                            padding: '0 8px'
+                        }}
+                    >
+                        Add
+                    </Button>
+                </div>
 
-    const renderOutlookAccounts = () => {
-        const outlookAccounts = connectedAccounts.filter(acc => acc.provider === 'outlook');
-        if (!outlookAccounts.length) return null;
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {accounts.map((acc, idx) => {
+                        let userData = null;
+                        try {
+                            userData = acc.user_object ? JSON.parse(acc.user_object) : null;
+                        } catch (_) { }
 
-        return (
-            <div style={{
-                marginTop: 16,
-                paddingLeft: 64,
-                background: `${PRIMARY_COLOR}05`,
-                borderRadius: 8,
-                padding: '12px 16px',
-                border: `1px solid ${PRIMARY_COLOR}15`
-            }}>
-                {outlookAccounts.map((acc, idx) => {
-                    let userData = null;
-                    try {
-                        userData = acc.user_object ? JSON.parse(acc.user_object) : null;
-                    } catch (_) { }
+                        const picture = provider === 'google'
+                            ? trimGooglePhotoUrl(userData?.picture)
+                            : userData?.picture;
 
-                    const picture = userData?.picture || null;
-
-                    return (
-                        <div key={idx} style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            marginBottom: idx === outlookAccounts.length - 1 ? 0 : 12,
-                            padding: '8px',
-                            borderRadius: 6,
-                            background: 'white',
-                            boxShadow: `0 2px 4px ${PRIMARY_COLOR}10`,
-                            transition: 'all 0.3s ease'
-                        }}>
-                            <Avatar
-                                size={32}
-                                src={picture}
-                                icon={!picture && <User size={16} />}
-                                style={{
-                                    marginRight: 12,
-                                    border: `2px solid ${PRIMARY_COLOR}20`
-                                }}
-                            />
-                            <Text style={{ fontFamily: FONT_FAMILY, fontWeight: 500 }}>
-                                {userData?.email || acc.email}
-                            </Text>
-                        </div>
-                    );
-                })}
-                <Button
-                    type="dashed"
-                    icon={<UserPlus size={16} />}
-                    onClick={() => handleConnect('outlook')}
-                    size="small"
-                    style={{
-                        marginTop: 12,
-                        fontFamily: FONT_FAMILY,
-                        borderColor: PRIMARY_COLOR,
-                        color: PRIMARY_COLOR,
-                        transition: 'all 0.3s ease'
-                    }}
-                >
-                    Add another account
-                </Button>
+                        return (
+                            <div key={idx} style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                background: 'white',
+                                borderRadius: 8,
+                                padding: '8px 12px',
+                                boxShadow: `0 2px 8px ${PRIMARY_COLOR}10`,
+                                border: `1px solid ${PRIMARY_COLOR}10`,
+                                minWidth: '200px',
+                                position: 'relative'
+                            }}>
+                                <Avatar
+                                    size={28}
+                                    src={picture}
+                                    icon={!picture && <User size={14} />}
+                                    style={{
+                                        marginRight: 10,
+                                        border: `1.5px solid ${PRIMARY_COLOR}20`
+                                    }}
+                                />
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <Text style={{
+                                        fontFamily: FONT_FAMILY,
+                                        fontWeight: 500,
+                                        fontSize: '13px',
+                                        color: '#2c3e50',
+                                        display: 'block',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap'
+                                    }}>
+                                        {userData?.email || acc.email}
+                                    </Text>
+                                    <Text style={{
+                                        fontFamily: FONT_FAMILY,
+                                        fontSize: '11px',
+                                        color: '#52c41a'
+                                    }}>
+                                        Active
+                                    </Text>
+                                </div>
+                                <Tooltip title="Disconnect">
+                                    <Button
+                                        type="text"
+                                        size="small"
+                                        icon={<X size={12} />}
+                                        onClick={() => handleDisconnectAccount(acc.id, provider)}
+                                        style={{
+                                            width: 20,
+                                            height: 20,
+                                            padding: 0,
+                                            color: '#999',
+                                            marginLeft: 8
+                                        }}
+                                    />
+                                </Tooltip>
+                            </div>
+                        );
+                    })}
+                </div>
             </div>
         );
     };
 
     const connectionData = [
         {
-            key: 'apple',
-            name: 'Apple iCloud',
-            icon: <Apple size={24} style={{ color: '#000' }} />,
-            color: '#000',
-            bgColor: `${PRIMARY_COLOR}08`,
+            key: 'google',
+            name: 'Google',
+            description: 'Files, Calendar & Photos',
+            icon: <Chrome size={20} style={{ color: '#4285f4' }} />,
+            color: '#4285f4',
+            bgColor: '#4285f408',
+        },
+        {
+            key: 'dropbox',
+            name: 'Dropbox',
+            description: 'Cloud Storage & Files',
+            icon: <Folder size={20} style={{ color: '#0061FF' }} />,
+            color: '#0061FF',
+            bgColor: '#0061FF08',
         },
         {
             key: 'outlook',
-            name: 'Microsoft Outlook',
-            icon: <Mail size={24} style={{ color: '#0078d4' }} />,
+            name: 'Microsoft 365',
+            description: 'Email, Calendar & OneDrive',
+            icon: <Mail size={20} style={{ color: '#0078d4' }} />,
             color: '#0078d4',
-            bgColor: `${PRIMARY_COLOR}08`,
+            bgColor: '#0078d408',
         },
         {
-            key: 'google',
-            name: 'Google Drive',
-            icon: <Chrome size={24} style={{ color: '#4285f4' }} />,
-            color: '#4285f4',
-            bgColor: `${PRIMARY_COLOR}08`,
+            key: 'apple',
+            name: 'Apple iCloud',
+            description: 'Photos, Files & Calendar',
+            icon: <Apple size={20} style={{ color: '#000' }} />,
+            color: '#000',
+            bgColor: '#00000008',
         },
     ];
+
+    const connectedCount = Object.values(connections).filter(Boolean).length;
 
     return (
         <Modal
             open={isModalVisible}
             onCancel={() => setIsModalVisible(false)}
             footer={null}
-            width={600}
+            width={650}
             centered
             closeIcon={
                 <div style={{
-                    fontSize: '20px',
-                    color: '#999',
-                    transition: 'all 0.3s ease',
+                    fontSize: '18px',
+                    color: '#666',
+                    transition: 'all 0.2s ease',
                     fontFamily: FONT_FAMILY
                 }}>
                     ×
@@ -239,183 +252,200 @@ const FolderConnectionModal: React.FC<FolderConnectionModalProps> = ({ isModalVi
             styles={{
                 body: {
                     padding: 0,
-                    background: `linear-gradient(135deg, ${PRIMARY_COLOR}05 0%, ${PRIMARY_COLOR}02 100%)`,
+                    background: 'white',
                     borderRadius: '16px',
                     overflow: 'hidden',
-                    maxHeight: '85vh',
+                    maxHeight: '90vh',
                     display: 'flex',
                     flexDirection: 'column',
                     fontFamily: FONT_FAMILY
                 }
             }}
         >
-            {/* Enhanced Header */}
-            <div
-                style={{
-                    padding: '8px 12px',
-                    background: `linear-gradient(135deg, ${PRIMARY_COLOR} 0%, ${PRIMARY_COLOR}dd 100%)`,
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 10,
-                    borderBottom: `1px solid ${PRIMARY_COLOR}20`,
-                }}
-            >
-                <div style={{ textAlign: 'center' }}>
-                    <div
-                        style={{
-                            width: '42px',
-                            height: '42px',
-                            borderRadius: '20px',
-                            background: 'white',
-                            margin: '0 auto 10px',
-                            display: 'flex',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            boxShadow: `0 8px 24px ${PRIMARY_COLOR}30`,
-                            transition: 'all 0.3s ease',
-                        }}
-                    >
+            {/* Compact Header */}
+            <div style={{
+                padding: '24px 32px 20px',
+                background: `linear-gradient(135deg, ${PRIMARY_COLOR} 0%, ${PRIMARY_COLOR}dd 100%)`,
+                position: 'sticky',
+                top: 0,
+                zIndex: 10,
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <div style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '12px',
+                        background: 'white',
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        boxShadow: `0 4px 16px ${PRIMARY_COLOR}30`,
+                    }}>
                         <CatppuccinFolderConnection />
                     </div>
-                    <Title
-                        level={3}
-                        style={{
-                            margin: 0,
-                            color: 'white',
+                    <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <Title level={4} style={{
+                                margin: 0,
+                                color: 'white',
+                                fontFamily: FONT_FAMILY,
+                                fontWeight: 600
+                            }}>
+                                Account Connections
+                            </Title>
+                            <Badge
+                                count={connectedCount}
+                                style={{
+                                    backgroundColor: 'rgba(255,255,255,0.2)',
+                                    color: 'white',
+                                    border: '1px solid rgba(255,255,255,0.3)'
+                                }}
+                            />
+                        </div>
+                        <Text style={{
+                            color: 'rgba(255,255,255,0.9)',
+                            fontSize: '14px',
                             fontFamily: FONT_FAMILY,
-                            fontWeight: 400,
-                            textShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                        }}
-                    >
-                        Connect Your Accounts
-                    </Title>
-                    <Text style={{
-                        color: 'rgba(255,255,255,0.9)',
-                        fontSize: '15px',
-                        fontFamily: FONT_FAMILY,
-                        fontWeight: 200
-                    }}>
-                        Link your accounts to sync your <strong>Files, Calendar and Health</strong>
-                    </Text>
+                            fontWeight: 300
+                        }}>
+                            Sync your files, calendars, and health data securely
+                        </Text>
+                    </div>
                 </div>
             </div>
 
-            {/* Enhanced Scrollable Body */}
-            <div
-                style={{
-                    padding: '18px 22px',
-                    overflowY: 'auto',
-                    flexGrow: 1,
-                }}
-            >
-                <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            {/* Compact Body */}
+            <div style={{
+                padding: '24px 32px',
+                overflowY: 'auto',
+                flexGrow: 1,
+            }}>
+                <Space direction="vertical" style={{ width: '100%' }}>
                     {connectionData.map((service) => {
                         const key = service.key as keyof typeof connections;
+                        const isConnected = connections[key];
+                        const accountCount = connectedAccounts.filter(acc => acc.provider === service.key).length;
+
                         return (
                             <Card
                                 key={service.key}
                                 style={{
-                                    borderRadius: '16px',
-                                    boxShadow: `0 4px 16px ${PRIMARY_COLOR}15`,
-                                    cursor: 'pointer',
-                                    border: `1px solid ${PRIMARY_COLOR}10`,
+                                    borderRadius: '12px',
+                                    boxShadow: isConnected
+                                        ? `0 2px 12px ${service.color}15`
+                                        : `0 2px 8px ${PRIMARY_COLOR}08`,
+                                    border: isConnected
+                                        ? `1px solid ${service.color}20`
+                                        : `1px solid ${PRIMARY_COLOR}10`,
                                     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                     background: 'white',
                                     fontFamily: FONT_FAMILY
                                 }}
-                                bodyStyle={{ padding: '24px' }}
+                                bodyStyle={{ padding: '20px' }}
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.transform = 'translateY(-2px)';
-                                    e.currentTarget.style.boxShadow = `0 8px 24px ${PRIMARY_COLOR}25`;
+                                    e.currentTarget.style.transform = 'translateY(-1px)';
+                                    e.currentTarget.style.boxShadow = isConnected
+                                        ? `0 4px 16px ${service.color}25`
+                                        : `0 4px 12px ${PRIMARY_COLOR}15`;
                                 }}
                                 onMouseLeave={(e) => {
                                     e.currentTarget.style.transform = 'translateY(0)';
-                                    e.currentTarget.style.boxShadow = `0 4px 16px ${PRIMARY_COLOR}15`;
+                                    e.currentTarget.style.boxShadow = isConnected
+                                        ? `0 2px 12px ${service.color}15`
+                                        : `0 2px 8px ${PRIMARY_COLOR}08`;
                                 }}
                             >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1 }}>
                                         <Avatar
-                                            size={46}
+                                            size={40}
                                             style={{
                                                 backgroundColor: service.bgColor,
-                                                border: `2px solid ${PRIMARY_COLOR}20`,
-                                                boxShadow: `0 4px 12px ${PRIMARY_COLOR}20`
+                                                border: `2px solid ${service.color}15`,
                                             }}
                                         >
                                             {service.icon}
                                         </Avatar>
-                                        <div>
-                                            <Title
-                                                level={5}
-                                                style={{
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                                                <Title level={5} style={{
                                                     margin: 0,
-                                                    marginBottom: 2,
                                                     fontFamily: FONT_FAMILY,
-                                                    fontWeight: 400,
-                                                    color: '#2c3e50'
-                                                }}
-                                            >
-                                                {service.name}
-                                            </Title>
-                                            <Text
-                                                type={connections[key] ? 'success' : 'secondary'}
-                                                style={{
-                                                    fontFamily: FONT_FAMILY,
-                                                    fontWeight: 200,
-                                                    fontSize: '14px'
-                                                }}
-                                            >
-                                                {connections[key] ? '✓ Connected' : 'Not Connected'}
+                                                    fontWeight: 600,
+                                                    color: '#2c3e50',
+                                                    fontSize: '15px'
+                                                }}>
+                                                    {service.name}
+                                                </Title>
+                                                {isConnected && (
+                                                    <Badge
+                                                        count={accountCount}
+                                                        size="small"
+                                                        style={{
+                                                            backgroundColor: service.color,
+                                                            fontSize: '10px'
+                                                        }}
+                                                    />
+                                                )}
+                                            </div>
+                                            <Text style={{
+                                                fontFamily: FONT_FAMILY,
+                                                fontSize: '13px',
+                                                color: '#666',
+                                                display: 'block',
+                                                marginBottom: 4
+                                            }}>
+                                                {service.description}
+                                            </Text>
+                                            <Text style={{
+                                                fontFamily: FONT_FAMILY,
+                                                fontSize: '12px',
+                                                color: isConnected ? service.color : '#999',
+                                                fontWeight: 500
+                                            }}>
+                                                {isConnected ? '✓ Connected' : 'Not Connected'}
                                             </Text>
                                         </div>
                                     </div>
 
                                     <Button
-                                        type={connections[key] ? 'default' : 'primary'}
+                                        type={isConnected ? 'default' : 'primary'}
                                         onClick={() => handleConnect(service.key)}
-                                        icon={connections[key] ? <Check size={16} style={{ color: '#52c41a' }} /> : null}
+                                        icon={isConnected ? <Check size={14} /> : <Plus size={14} />}
                                         loading={loading}
+                                        size="middle"
                                         style={{
-                                            borderRadius: 10,
-                                            height: 40,
-                                            paddingLeft: 20,
-                                            paddingRight: 20,
+                                            borderRadius: 8,
                                             fontFamily: FONT_FAMILY,
                                             fontWeight: 500,
-                                            background: connections[key]
-                                                ? 'white'
+                                            fontSize: '13px',
+                                            background: isConnected
+                                                ? 'transparent'
                                                 : `linear-gradient(135deg, ${PRIMARY_COLOR} 0%, ${PRIMARY_COLOR}dd 100%)`,
-                                            color: connections[key] ? '#333' : '#fff',
-                                            border: connections[key] ? `1px solid ${PRIMARY_COLOR}30` : 'none',
-                                            boxShadow: connections[key]
-                                                ? `0 2px 8px ${PRIMARY_COLOR}15`
-                                                : `0 4px 12px ${PRIMARY_COLOR}30`,
-                                            transition: 'all 0.3s ease'
+                                            color: isConnected ? service.color : '#fff',
+                                            border: isConnected ? `1px solid ${service.color}30` : 'none',
+                                            minWidth: '90px'
                                         }}
                                     >
-                                        {connections[key] ? 'Connected' : 'Connect'}
+                                        {isConnected ? 'Manage' : 'Connect'}
                                     </Button>
                                 </div>
-                                {service.key === 'outlook' && connections.outlook && renderOutlookAccounts()}
-                                {service.key === 'google' && connections.google && renderGoogleAccounts()}
+                                {isConnected && renderConnectedAccounts(service.key)}
                             </Card>
                         );
                     })}
                 </Space>
             </div>
 
-            {/* Enhanced Bottom Info */}
-            <div
-                style={{
-                    padding: '20px 32px',
-                    borderTop: `1px solid ${PRIMARY_COLOR}15`,
-                    textAlign: 'center',
-                    background: `${PRIMARY_COLOR}03`,
-                }}
-            >
+            {/* Footer */}
+            <div style={{
+                padding: '16px 32px',
+                borderTop: `1px solid ${PRIMARY_COLOR}10`,
+                textAlign: 'center',
+                background: `${PRIMARY_COLOR}02`,
+            }}>
                 <Text style={{
-                    fontSize: 13,
+                    fontSize: 12,
                     color: '#666',
                     fontFamily: FONT_FAMILY,
                     fontWeight: 400

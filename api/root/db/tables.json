@@ -570,6 +570,7 @@
         "FOREIGN KEY (uid) REFERENCES users(uid) ON DELETE CASCADE"
       ]
     },
+
     {
       "table_name": "weekly_todos",
       "columns": [
@@ -585,7 +586,9 @@
         "outlook_calendar_id VARCHAR(255)",
         "synced_to_outlook BOOLEAN DEFAULT FALSE",
         "completed BOOLEAN DEFAULT FALSE",
-        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        "tagged_ids TEXT[]",
+        "is_active INT DEFAULT 1"
       ]
     },
     {
@@ -604,7 +607,8 @@
         "google_calendar_id VARCHAR(255)",
         "status INT",
         "tagged_ids TEXT[]",
-        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        "is_active INT DEFAULT 1"
       ]
     },
 

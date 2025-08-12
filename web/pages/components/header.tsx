@@ -355,6 +355,54 @@ const CustomHeader: React.FC<{
                 DOCKLY
               </Text>
             </div>
+            //       <svg
+            //         width="60"
+            //         height="60"
+            //         viewBox="0 0 180 180"
+            //         xmlns="http://www.w3.org/2000/svg"
+            //       >
+            //         <defs>
+            //           {/* <!-- Gradient for the main circle --> */}
+            //           <linearGradient id="mainCircleGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            //             <stop offset="0%" stop-color="#667eea" />
+            //             <stop offset="100%" stop-color="#764ba2" />
+            //           </linearGradient>
+
+            //           <style>
+            //             {`
+            //   .orbit-group {
+            //     animation: orbitRotate 14s linear infinite; /* Slower speed */
+            //     transform-origin: 90px 90px;
+            //   }
+            //   @keyframes orbitRotate {
+            //     from { transform: rotate(0deg); }
+            //     to { transform: rotate(360deg); }
+            //   }
+            // `}
+            //           </style>
+            //         </defs>
+
+            //         {/* <!-- Main center circle --> */}
+            //         <circle cx="90" cy="90" r="20" fill="url(#mainCircleGradient)" />
+
+            //         {/* <!-- Static outermost circle --> */}
+            //         <circle cx="90" cy="90" r="80" fill="none" stroke="#7c3aed" stroke-width="1" opacity="0.2" />
+
+            //         {/* <!-- Rotating orbit group --> */}
+            //         <g className="orbit-group">
+            //           {/* <!-- Orbit path --> */}
+            //           <circle cx="90" cy="90" r="50" fill="none" stroke="#7c3aed" strokeWidth="1" opacity="0.4" />
+
+            //           {/* <!-- 6 evenly spaced circles --> */}
+            //           <circle cx="90" cy="40" r="5" fill="#667eea" />
+            //           <circle cx="133.301" cy="63.349" r="5" fill="#7c3aed" />
+            //           <circle cx="133.301" cy="116.651" r="5" fill="#8b5cf6" />
+            //           <circle cx="90" cy="140" r="5" fill="#764ba2" />
+            //           <circle cx="46.699" cy="116.651" r="5" fill="#7c3aed" />
+            //           <circle cx="46.699" cy="63.349" r="5" fill="#8b5cf6" />
+            //         </g>
+            //       </svg>
+
           )}
         </div>
 

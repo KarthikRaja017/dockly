@@ -28,6 +28,7 @@ import FamilyMembersCard from './components/FamilyMembersCard';
 import FamilyTasks from './components/FamilyTask';
 import TodaysSchedule from './components/TodaysSchedule';
 import WeekHighlights from './components/WeekHighlights';
+import BookmarkHub from '../components/bookmarks';
 const { Header, Sider, Content } = Layout;
 const { Title } = Typography;
 
@@ -295,12 +296,13 @@ const FamilyHubPage: React.FC = () => {
                             <div
                                 style={{
                                     display: 'grid',
-                                    gridTemplateColumns: '1fr 400px',
+                                    gridTemplateColumns: '1.2fr 1fr 1fr',
                                     gap: '8px',
                                     marginBottom: '8px',
                                 }}
                             >
                                 <FamilyTasks familyMembers={familyMembers.filter(m => m.type === 'family')} />
+                                <BookmarkHub />
                                 <NotesLists currentHub="family" />
                             </div>
 

@@ -171,7 +171,7 @@ export async function updateTask(params: any) {
 }
 
 export async function deleteWeeklyGoal(params: any) {
-  return api.post('/planner/delete/weekly-goals', params);
+  return api.post('/delete/weekly-goals', params);
 }
 
 export async function shareGoal(params: {
@@ -203,5 +203,5 @@ export async function shareTodo(params: {
 }
 
 export async function deleteWeeklyTodo(params: any) {
-  return api.post('/planner/delete/weekly-todos', params);
+  return api.post('/delete/weekly-todos', params);
 }

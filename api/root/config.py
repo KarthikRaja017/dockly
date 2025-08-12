@@ -11,6 +11,9 @@ load_dotenv()  # Load variables from .env file
 POSTGRES_URI = os.getenv("POSTGRES_URI")
 
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
+DROPBOX_CLIENT_ID = os.getenv("DROPBOX_CLIENT_ID")
+DROPBOX_CLIENT_SECRET = os.getenv("DROPBOX_CLIENT_SECRET")
+DROPBOX_REDIRECT_URI = os.getenv("DROPBOX_REDIRECT_URI")
 CLIENT_ID = os.getenv("CLIENT_ID")
 SMTP_SERVER = os.getenv("SMTP_SERVER")
 SMTP_PORT = int(os.getenv("SMTP_PORT"))

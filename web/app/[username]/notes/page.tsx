@@ -195,6 +195,17 @@ const getCategoryColors = (categoryTitle: string) => {
     return categoryColors; // Return same colors for all categories
 };
 
+// Format date to MM/DD/YYYY
+const formatDate = (dateString?: string): string => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+        month: "2-digit",
+        day: "2-digit",
+        year: "numeric",
+    });
+};
+
 const IntegratedNotes = () => {
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
@@ -516,10 +527,28 @@ const IntegratedNotes = () => {
     const handleDeleteNote = async (noteId: number) => {
         try {
             setLoading(true);
+
+            // Find the note to get hub information for display purposes
+            const noteToDelete = categories
+                .flatMap((cat) => cat.items)
+                .find((note) => note.id === noteId);
+
+            if (!noteToDelete) {
+                message.error("Note not found");
+                return;
+            }
+
+            // Since the backend deletes by note ID and sets is_active: false,
+            // one API call is sufficient to remove the note from all hubs
             const res = await deleteNote({ id: noteId });
 
-            if (res.data.status === 1) {
-                message.success("Note deleted successfully");
+            if (res?.data?.status === 1) {
+                const hubNames = (noteToDelete.hubs || [noteToDelete.hub || "NONE"])
+                    .map((hub) => getHubDisplayName(hub))
+                    .join(", ");
+                message.success(
+                    `Note deleted from all hubs (${hubNames}) successfully`
+                );
                 await fetchCategoriesAndNotes();
             } else {
                 message.error("Failed to delete note");
@@ -615,7 +644,7 @@ const IntegratedNotes = () => {
                 >
                     <Popconfirm
                         title="Delete Note"
-                        description="Are you sure you want to delete this note?"
+                        description="Are you sure you want to delete this note from all hubs?"
                         onConfirm={() => handleDeleteNote(note.id!)}
                         okText="Yes"
                         cancelText="No"
@@ -848,55 +877,70 @@ const IntegratedNotes = () => {
                         gap: 16,
                     }}
                 >
-                    <div style={{ flex: 1, minWidth: 300 }}>
-                        <Title
-                            level={2}
+                    <div
+                        style={{
+                            flex: 1,
+                            minWidth: 300,
+                            display: "flex",
+                            alignItems: "center",
+                        }}
+                    >
+                        {/* Icon box */}
+                        <div
                             style={{
-                                margin: 0,
-                                color: "#1a1a1a",
-                                fontSize: 28,
-                                fontFamily: FONT_FAMILY,
-                                fontWeight: 600,
+                                width: 44,
+                                height: 44,
+                                backgroundColor: "#2563eb",
+                                borderRadius: 12,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: 20,
+                                color: "#fff",
+                                marginRight: 12,
+                                flexShrink: 0,
                             }}
                         >
-                            <div
+                            <FileTextOutlined />
+                        </div>
+
+                        {/* Text column */}
+                        <div style={{ display: "flex", flexDirection: "column" }}>
+                            <div style={{ display: "flex", alignItems: "center" }}>
+                                <Title
+                                    level={4}
+                                    style={{
+                                        margin: 0,
+                                        color: "#1a1a1a",
+                                        fontSize: 26,
+                                        fontFamily: FONT_FAMILY,
+                                        fontWeight: 600,
+                                    }}
+                                >
+                                    Notes & Lists
+                                </Title>
+                                {/* {totalNotes > 0 && (
+                  <Badge
+                    count={totalNotes}
+                    style={{
+                      backgroundColor: "#2563eb",
+                      marginLeft: 8,
+                      fontSize: 14,
+                    }}
+                  />
+                )} */}
+                            </div>
+                            <Text
                                 style={{
-                                    width: 44,
-                                    height: 44,
-                                    backgroundColor: "#2563eb",
-                                    borderRadius: 12,
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    marginRight: 12,
-                                    fontSize: 18,
+                                    color: "#64748b",
+                                    fontSize: 14,
+                                    fontFamily: FONT_FAMILY,
+                                    marginTop: 2,
                                 }}
                             >
-                                📝
-                            </div>
-                            Notes & Lists
-                            {totalNotes > 0 && (
-                                <Badge
-                                    count={totalNotes}
-                                    style={{
-                                        backgroundColor: "#2563eb",
-                                        marginLeft: 8,
-                                        fontSize: 11,
-                                    }}
-                                />
-                            )}
-                        </Title>
-                        <Text
-                            style={{
-                                color: "#6b7280",
-                                fontSize: 14,
-                                fontFamily: FONT_FAMILY,
-                                display: "block",
-                                marginTop: 4,
-                            }}
-                        >
-                            Organize your life efficiently
-                        </Text>
+                                Organize your life efficiently
+                            </Text>
+                        </div>
                     </div>
                 </div>
 
@@ -1306,7 +1350,7 @@ const IntegratedNotes = () => {
                                                                         </Dropdown>
                                                                     </div>
 
-                                                                    {/* Hub badges at the bottom */}
+                                                                    {/* Hub badges */}
                                                                     <div
                                                                         style={{
                                                                             display: "flex",
@@ -1364,6 +1408,37 @@ const IntegratedNotes = () => {
                                                                             </span>
                                                                         )}
                                                                     </div>
+
+                                                                    {/* Individual note timestamp */}
+                                                                    <div
+                                                                        style={{
+                                                                            display: "flex",
+                                                                            alignItems: "center",
+                                                                            gap: 3,
+                                                                            marginTop: 6,
+                                                                            justifyContent: "flex-start",
+                                                                        }}
+                                                                    >
+                                                                        <CalendarOutlined
+                                                                            style={{
+                                                                                fontSize: 8,
+                                                                                color: "#9ca3af",
+                                                                            }}
+                                                                        />
+                                                                        <span
+                                                                            style={{
+                                                                                fontSize: 8,
+                                                                                color: "#9ca3af",
+                                                                                fontFamily: FONT_FAMILY,
+                                                                            }}
+                                                                        >
+                                                                            {note.updated_at
+                                                                                ? `Updated: ${new Date(note.updated_at).toLocaleString()}`
+                                                                                : `Created: ${new Date(note.created_at ?? "").toLocaleString()}`
+                                                                            }
+
+                                                                        </span>
+                                                                    </div>
                                                                 </>
                                                             )}
                                                         </div>
@@ -1408,12 +1483,9 @@ const IntegratedNotes = () => {
                                                         );
                                                         return (
                                                             <span>
-                                                                Updated:{" "}
-                                                                {new Date(
-                                                                    latestNote.updated_at ||
-                                                                    latestNote.created_at ||
-                                                                    0
-                                                                ).toLocaleDateString()}
+                                                                {latestNote.updated_at
+                                                                    ? `Updated: ${new Date(latestNote.updated_at).toLocaleString()}`
+                                                                    : `Created: ${new Date(latestNote.created_at ?? "").toLocaleString()}`}
                                                             </span>
                                                         );
                                                     })()
@@ -1745,10 +1817,7 @@ const IntegratedNotes = () => {
                                             fontFamily: FONT_FAMILY,
                                         }}
                                     >
-                                        Created:{" "}
-                                        {new Date(
-                                            currentShareNote.created_at || Date.now()
-                                        ).toLocaleDateString()}
+                                        Created: {formatDate(currentShareNote.created_at)}
                                     </span>
                                 </div>
                             </div>

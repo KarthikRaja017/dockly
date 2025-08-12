@@ -20,12 +20,12 @@ interface ApiCategory {
 }
 
 const hubOptions = [
-    { label: "🌟 All Hubs", value: "ALL" },
-    { label: "👥 Family", value: "FAMILY" },
-    { label: "💰 Finance", value: "FINANCE" },
-    { label: "📅 Planner", value: "PLANNER" },
-    { label: "❤ Health", value: "HEALTH" },
-    { label: "🏠 Home", value: "HOME" },
+    { label: " Family", value: "FAMILY" },
+    { label: " Finance", value: "FINANCE" },
+    { label: " Planner", value: "PLANNER" },
+    { label: " Health", value: "HEALTH" },
+    { label: " Home", value: "HOME" },
+    { label: " None (Utilities)", value: "NONE" },
 ];
 
 const defaultCategories: ApiCategory[] = [
@@ -39,12 +39,12 @@ const defaultCategories: ApiCategory[] = [
 
 const getHubDisplayName = (hub: string): string => {
     const hubNames: Record<string, string> = {
-        ALL: "All Hubs",
         FAMILY: "Family",
         FINANCE: "Finance",
         PLANNER: "Planner",
         HEALTH: "Health",
         HOME: "Home",
+        NONE: "Utilities",
     };
     return hubNames[hub] || hub;
 };
@@ -53,13 +53,14 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({ visible, onCancel, onSucces
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
     const [categories, setCategories] = useState<ApiCategory[]>([]);
+    const [selectedHubs, setSelectedHubs] = useState<string[]>([]);
 
     useEffect(() => {
         if (visible) {
             fetchCategories();
-            form.setFieldsValue({ hub: "FAMILY" }); // Set default hub
+            setSelectedHubs([]); // Reset selected hubs
         }
-    }, [visible, form]);
+    }, [visible]);
 
     const fetchCategories = async () => {
         try {
@@ -99,13 +100,16 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({ visible, onCancel, onSucces
                 return;
             }
 
+            if (selectedHubs.length === 0) {
+                message.error("Please select at least one hub or choose 'None' for utilities");
+                return;
+            }
+
             setLoading(true);
             const user_id = localStorage.getItem("userId") || "";
 
-            // Handle "ALL" hubs option
-            if (values.hub === "ALL") {
-                const allHubs = ["FAMILY", "FINANCE", "PLANNER", "HEALTH", "HOME"];
-                const addNotePromises = allHubs.map(hub =>
+            try {
+                const addNotePromises = selectedHubs.map(hub =>
                     addNote({
                         title: values.title,
                         description: values.description,
@@ -115,44 +119,26 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({ visible, onCancel, onSucces
                     })
                 );
 
-                try {
-                    const responses = await Promise.all(addNotePromises);
-                    const successCount = responses.filter(res => res.data.status === 1).length;
-                    const failureCount = allHubs.length - successCount;
+                const responses = await Promise.all(addNotePromises);
+                const successCount = responses.filter(res => res.data.status === 1).length;
+                const failureCount = selectedHubs.length - successCount;
 
-                    if (successCount === allHubs.length) {
-                        message.success(`Note added to all ${allHubs.length} hubs successfully! 🌟`);
-                    } else if (successCount > 0) {
-                        message.warning(`Note added to ${successCount} hubs, but failed for ${failureCount} hubs. Please check and try again.`);
-                    } else {
-                        message.error("Failed to add note to any hub");
-                        return;
-                    }
-
-                    handleClose();
-                    onSuccess?.();
-
-                } catch (err) {
-                    console.error("Error adding note to all hubs:", err);
-                    message.error("Failed to add note to all hubs");
-                }
-            } else {
-                // Handle single hub
-                const res = await addNote({
-                    title: values.title,
-                    description: values.description,
-                    category_id: values.category_id,
-                    user_id,
-                    hub: values.hub,
-                });
-
-                if (res.data.status === 1) {
-                    message.success(`Note added to ${getHubDisplayName(values.hub)} successfully`);
-                    handleClose();
-                    onSuccess?.();
+                if (successCount === selectedHubs.length) {
+                    const hubNames = selectedHubs.map(hub => getHubDisplayName(hub)).join(", ");
+                    message.success(`Note added to ${hubNames} successfully! 📝`);
+                } else if (successCount > 0) {
+                    message.warning(`Note added to ${successCount} hubs, but failed for ${failureCount} hubs. Please check and try again.`);
                 } else {
-                    message.error("Failed to add note");
+                    message.error("Failed to add note to any hub");
+                    return;
                 }
+
+                handleClose();
+                onSuccess?.();
+
+            } catch (err) {
+                console.error("Error adding note:", err);
+                message.error("Failed to add note");
             }
         } catch (err) {
             console.error("Error adding note:", err);
@@ -164,6 +150,7 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({ visible, onCancel, onSucces
 
     const handleClose = () => {
         form.resetFields();
+        setSelectedHubs([]);
         onCancel();
     };
 
@@ -239,31 +226,37 @@ const AddNoteModal: React.FC<AddNoteModalProps> = ({ visible, onCancel, onSucces
                 </Form.Item>
 
                 <Form.Item
-                    name="hub"
-                    label={
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <span>Hub</span>
-                            <span
-                                style={{
-                                    //   backgroundColor: "#722ed1",
-                                    color: "white",
-                                    padding: "2px 6px",
-                                    borderRadius: 8,
-                                    fontSize: 10,
-                                    fontWeight: "bold"
-                                }}
-                            >
-                                {/* Choose 'All Hubs' to save across all hubs! 🌟 */}
-                            </span>
-                        </div>
-                    }
-                    rules={[{ required: true, message: "Please select a hub" }]}
+                    label="Select Hubs"
+                    rules={[
+                        { required: true, message: "Please select at least one hub" },
+                    ]}
                 >
                     <Select
-                        placeholder="Select which hub this note belongs to"
+                        mode="multiple"
+                        placeholder="Choose hubs for this note"
+                        value={selectedHubs}
+                        onChange={setSelectedHubs}
                         options={hubOptions}
                         size="large"
+                        showSearch
+                        filterOption={(input, option) =>
+                            (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+                        }
                     />
+                    <div
+                        style={{
+                            fontSize: 12,
+                            color: "#6b7280",
+                            marginTop: 8,
+                            fontFamily: "inherit",
+                            padding: "8px 12px",
+                            backgroundColor: "#f8fafc",
+                            borderRadius: 6,
+                            border: "1px solid #e2e8f0",
+                        }}
+                    >
+                        💡 <strong>Multi-Hub Support:</strong> Select multiple hubs to add this note across all selected hubs simultaneously!
+                    </div>
                 </Form.Item>
             </Form>
         </Modal>

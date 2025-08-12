@@ -203,7 +203,7 @@ const WeekHighlights: React.FC<WeekHighlightsProps> = ({ familyMembers = [] }) =
             </div>
 
             {/* Highlights List */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflow: 'auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minHeight: '300px', maxHeight: '300px', overflow: 'auto' }}>
                 {filteredHighlights.map((item, index) => (
                     <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '15px' }}>
                         <div

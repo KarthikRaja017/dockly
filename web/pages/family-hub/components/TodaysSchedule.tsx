@@ -178,7 +178,7 @@ const TodaysSchedule: React.FC<Props> = ({ familyMembers = [] }) => {
             </div>
 
             {/* Schedule List */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflow: 'auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minHeight: '300px', maxHeight: '300px', overflow: 'auto' }}>
                 {filteredSchedule.length === 0 ? (
                     <Text type="secondary" style={{ fontSize: '12px' }}>
                         No events scheduled for today.
@@ -189,12 +189,13 @@ const TodaysSchedule: React.FC<Props> = ({ familyMembers = [] }) => {
                             <div style={{ minWidth: '50px', textAlign: 'left' }}>
                                 <Text style={{ fontSize: '12px', fontWeight: 500 }}>{item.time}</Text>
                             </div>
-                            <Avatar size={28} style={{ backgroundColor: item.avatarColor }}>
-                                {item.avatar}
-                            </Avatar>
+
                             <div style={{ flex: 1 }}>
                                 <Text strong style={{ fontSize: '13px', display: 'block' }}>{item.title}</Text>
-                                <Text style={{ fontSize: '11px', color: '#6b7280', fontStyle: 'italic' }}>{item.subtitle}</Text>
+                                <Avatar size={16} style={{ backgroundColor: item.avatarColor, fontSize: '8px' }}>
+                                    {item.avatar}
+                                </Avatar>
+                                <Text style={{ fontSize: '11px', color: '#6b7280', fontFamily: FONT_FAMILY, marginLeft: '4px' }}>{item.subtitle}</Text>
                                 {item.location && item.location.trim() !== '—' && (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                         <span style={{ fontSize: '10px' }}>📍</span>

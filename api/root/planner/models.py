@@ -422,42 +422,8 @@ class GetPlannerDataComprehensive(Resource):
             # Fetch all data for all users in one go
             query_results = DBHelper.find_multi_users(
                 {
-                    "weekly_goals": {
-                        "filters": {"status": Status.ACTIVE.value},
-                        "select_fields": [
-                            "id",
-                            "user_id",
-                            "goal",
-                            "date",
-                            "time",
-                            "priority",
-                            "goal_status",
-                            "status",
-                            "google_calendar_id",
-                            "outlook_calendar_id",
-                            "synced_to_google",
-                            "synced_to_outlook",
-                        ],
-                    },
-                    "weekly_todos": {
-                        "filters": {},
-                        "select_fields": [
-                            "id",
-                            "user_id",
-                            "text",
-                            "date",
-                            "time",
-                            "completed",
-                            "priority",
-                            "goal_id",
-                            "google_calendar_id",
-                            "outlook_calendar_id",
-                            "synced_to_google",
-                            "synced_to_outlook",
-                        ],
-                    },
                     "events": {
-                        "filters": {"is_active": 1},
+                        "filters": {"is_active": Status.ACTIVE.value},
                         "select_fields": [
                             "id",
                             "user_id",
@@ -483,6 +449,53 @@ class GetPlannerDataComprehensive(Resource):
                 },
                 all_user_ids,
             )
+            # Fetch weekly goals with tagged_ids logic
+            weekly_goals = DBHelper.find_with_or_and_array_match(
+                table_name="weekly_goals",
+                select_fields=[
+                    "id",
+                    "user_id",
+                    "goal",
+                    "date",
+                    "time",
+                    "priority",
+                    "goal_status",
+                    "status",
+                    "google_calendar_id",
+                    "outlook_calendar_id",
+                    "synced_to_google",
+                    "synced_to_outlook",
+                ],
+                uid=uid,
+                array_field="tagged_ids",
+                filters={"is_active": Status.ACTIVE.value},
+            )
+
+            # Fetch weekly todos with tagged_ids logic
+            weekly_todos = DBHelper.find_with_or_and_array_match(
+                table_name="weekly_todos",
+                select_fields=[
+                    "id",
+                    "user_id",
+                    "text",
+                    "date",
+                    "time",
+                    "completed",
+                    "priority",
+                    "goal_id",
+                    "google_calendar_id",
+                    "outlook_calendar_id",
+                    "synced_to_google",
+                    "synced_to_outlook",
+                ],
+                uid=uid,
+                array_field="tagged_ids",
+                filters={"is_active": Status.ACTIVE.value},  # add filters if needed
+            )
+
+            # Put into query_results format for later logic
+            query_results["weekly_goals"] = weekly_goals
+            query_results["weekly_todos"] = weekly_todos
 
             # Get user details for all family members
             user_details = self._get_users_details(all_user_ids)
@@ -1741,13 +1754,17 @@ class AddSmartNote(Resource):
     @auth_required(isOptional=True)
     def post(self, uid, user):
         inputData = request.get_json(silent=True)
-        full_text = inputData.get("note", "")
+        full_text = inputData.get("note", "").strip()
         members = inputData.get("members", "")
         uid = inputData.get("userId", "")
         frontend_timing = inputData.get("timing")
         source = inputData.get("source", "planner")
         email = inputData.get("email", "")
 
+        if not uid:
+            return {"status": 0, "message": "Missing userId"}, 400
+
+        # Extract datetime
         if frontend_timing:
             try:
                 parsed_datetime = datetime.fromisoformat(frontend_timing)
@@ -1757,18 +1774,94 @@ class AddSmartNote(Resource):
         else:
             parsed_datetime = extract_datetime(full_text)
 
-            if members and not email:
-                try:
-                    # You may adjust this query according to your DB structure
-                    family_member = DBHelper.find_one(
-                        "family_members", filters={"user_id": uid, "name": members}
-                    )
-                    if family_member and family_member.get("email"):
-                        email = family_member["email"]
-                except Exception as e:
-                    print(f"Failed to resolve email for {members}:", e)
+        # If no email provided, try to resolve from family_members
+        if members and not email:
+            try:
+                family_member = DBHelper.find_one(
+                    "family_members", filters={"user_id": uid, "name": members}
+                )
+                if family_member and family_member.get("email"):
+                    email = family_member["email"]
+            except Exception as e:
+                print(f"Failed to resolve email for {members}:", e)
 
-        if uid:
+        # Detect Goal or Task by prefix
+        if full_text.lower().startswith("g "):
+            # It's a Goal
+            goal_text = full_text[2:].strip()
+            goal_date = parsed_datetime.strftime("%Y-%m-%d")
+            goal_time = parsed_datetime.strftime("%I:%M %p")
+
+            google_event_id = None
+            try:
+                # Create Google Calendar event and get event ID
+                google_event_id = create_calendar_event(
+                    uid,
+                    goal_text,
+                    parsed_datetime,
+                    parsed_datetime + timedelta(hours=1),
+                )
+            except Exception as e:
+                print("Failed to create Google Calendar event for goal:", e)
+
+            try:
+                DBHelper.insert(
+                    "weekly_goals",
+                    id=uniqueId(digit=15, isNum=True),
+                    user_id=uid,
+                    goal=goal_text,
+                    date=goal_date,
+                    time=goal_time,
+                    priority=Priority.LOW.value,
+                    goal_status=GoalStatus.YET_TO_START.value,
+                    status=Status.ACTIVE.value,
+                    google_calendar_id=google_event_id,
+                    outlook_calendar_id=None,
+                    synced_to_google=bool(google_event_id),
+                    synced_to_outlook=False,
+                )
+            except Exception as e:
+                print("Failed to add goal:", e)
+
+        elif full_text.lower().startswith("t "):
+            # It's a Task
+            todo_text = full_text[2:].strip()
+            todo_date = parsed_datetime.strftime("%Y-%m-%d")
+            todo_time = parsed_datetime.strftime("%I:%M %p")
+
+            google_event_id = None
+            try:
+                # Create Google Calendar event and get event ID
+                google_event_id = create_calendar_event(
+                    uid,
+                    todo_text,
+                    parsed_datetime,
+                    parsed_datetime + timedelta(hours=1),
+                )
+            except Exception as e:
+                print("Failed to create Google Calendar event for todo:", e)
+
+            try:
+                DBHelper.insert(
+                    "weekly_todos",
+                    id=uniqueId(digit=15, isNum=True),
+                    user_id=uid,
+                    text=todo_text,
+                    date=todo_date,
+                    time=todo_time,
+                    priority="medium",
+                    completed=False,
+                    goal_id=None,
+                    google_calendar_id=google_event_id,
+                    outlook_calendar_id=None,
+                    synced_to_google=bool(google_event_id),
+                    synced_to_outlook=False,
+                )
+            except Exception as e:
+                print("Failed to add todo:", e)
+
+        else:
+            # Normal Smart Note flow
             DBHelper.insert(
                 "smartnotes",
                 user_id=uid,
@@ -1777,6 +1870,7 @@ class AddSmartNote(Resource):
                 members=members,
                 source=source,
             )
+
             try:
                 create_calendar_event(
                     user_id=uid,
@@ -1785,6 +1879,7 @@ class AddSmartNote(Resource):
                 )
             except Exception as e:
                 print("Failed to create calendar event:", e)
+
             if email:
                 try:
                     send_mention_email(
@@ -1797,7 +1892,7 @@ class AddSmartNote(Resource):
 
         return {
             "status": 1,
-            "message": "Smart Note Added Successfully",
+            "message": "Entry Added Successfully",
             "payload": {
                 "parsedTiming": parsed_datetime.isoformat(),
             },
@@ -2032,6 +2127,70 @@ class DeletePlannerNotes(Resource):
             return {"status": 0, "message": "Failed to delete note", "error": str(e)}
 
 
+def add_calendar_guests(user_id, calendar_event_id, guest_emails):
+    """
+    Adds new guests to an existing Google Calendar event.
+
+    user_id: ID of the goal creator (the owner of the event)
+    calendar_event_id: google_calendar_id stored in your DB
+    guest_emails: list of email addresses to add as guests
+    """
+    if not guest_emails:
+        return None
+
+    # 1. Get creator's connected account credentials
+    user_cred = DBHelper.find_one(
+        "connected_accounts",
+        filters={"user_id": user_id},
+        select_fields=["access_token", "refresh_token", "email"],
+    )
+    if not user_cred:
+        raise Exception("No connected Google account found.")
+
+    creds = Credentials(
+        token=user_cred["access_token"],
+        refresh_token=user_cred["refresh_token"],
+        token_uri=uri,
+        client_id=CLIENT_ID,
+        client_secret=CLIENT_SECRET,
+        scopes=SCOPE.split(),
+    )
+
+    service = build("calendar", "v3", credentials=creds)
+
+    # 2. Fetch the existing event
+    event = (
+        service.events().get(calendarId="primary", eventId=calendar_event_id).execute()
+    )
+
+    # 3. Merge current attendees with new guests (avoid duplicates)
+    existing_attendees = event.get("attendees", [])
+    for email in guest_emails:
+        if not any(att.get("email") == email for att in existing_attendees):
+            existing_attendees.append({"email": email})
+
+    event["attendees"] = existing_attendees
+
+    # Keep guest permissions consistent
+    event["guestsCanModify"] = True
+    event["guestsCanInviteOthers"] = True
+    event["guestsCanSeeOtherGuests"] = True
+
+    # 4. Update the event with sendUpdates='all'
+    updated_event = (
+        service.events()
+        .update(
+            calendarId="primary",
+            eventId=calendar_event_id,
+            body=event,
+            sendUpdates="all",
+        )
+        .execute()
+    )
+
+    return updated_event.get("id")
+
+
 class ShareGoal(Resource):
     @auth_required(isOptional=True)
     def post(self, uid, user):
@@ -2143,6 +2302,17 @@ class ShareGoal(Resource):
                 filters={"id": goal.get("id")},
                 updates={"tagged_ids": pg_array_str},
             )
+
+            # ✅ Add tagged members as Google Calendar guests
+            if goal_record.get("google_calendar_id"):
+                try:
+                    add_calendar_guests(
+                        user_id=uid,  # goal creator
+                        calendar_event_id=goal_record["google_calendar_id"],
+                        guest_emails=tagged_members,  # list of emails
+                    )
+                except Exception as e:
+                    print(f"⚠ Failed to add calendar guests: {str(e)}")
 
         if failures:
             return {
@@ -2279,16 +2449,29 @@ class ShareTodo(Resource):
         email_sender = EmailSender()
         failures = []
         notifications_created = []
+        resolved_tagged_ids = []
 
+        # ✅ Resolve tagged_ids for DB update
+        for member_email in tagged_members:
+            family_member = DBHelper.find_one(
+                "family_members",
+                filters={"email": member_email},
+                select_fields=["fm_user_id"],
+            )
+            if family_member and family_member["fm_user_id"]:
+                resolved_tagged_ids.append(family_member["fm_user_id"])
+
+        # Send emails
         for email in emails:
             success, message = email_sender.send_todo_email(email, todo)
             if not success:
                 failures.append((email, message))
 
-        for member_identifier in tagged_members:
+        # Send notifications
+        for member_email in tagged_members:
             family_member = DBHelper.find_one(
                 "family_members",
-                filters={"user_id": uid, "email": member_identifier},
+                filters={"email": member_email},
                 select_fields=["id", "name", "email", "fm_user_id"],
             )
 
@@ -2332,6 +2515,37 @@ class ShareTodo(Resource):
             )
             notifications_created.append(notif_id)
 
+        # 🔁 Update tagged_ids in the weekly_todos table
+        if resolved_tagged_ids:
+            todo_record = DBHelper.find_one(
+                "weekly_todos", filters={"id": todo.get("id")}
+            )
+            if not todo_record:
+                return {
+                    "status": 0,
+                    "message": "Todo not found. Cannot tag members.",
+                }, 404
+
+            existing_ids = todo_record.get("tagged_ids") or []
+            combined_ids = list(set(existing_ids + resolved_tagged_ids))
+            pg_array_str = "{" + ",".join(f'"{str(i)}"' for i in combined_ids) + "}"
+
+            DBHelper.update_one(
+                table_name="weekly_todos",
+                filters={"id": todo.get("id")},
+                updates={"tagged_ids": pg_array_str},
+            )
+            # ✅ Add tagged members as Google Calendar guests
+            if todo_record.get("google_calendar_id"):
+                try:
+                    add_calendar_guests(
+                        user_id=uid,  # goal creator
+                        calendar_event_id=todo_record["google_calendar_id"],
+                        guest_emails=tagged_members,  # list of emails
+                    )
+                except Exception as e:
+                    print(f"⚠ Failed to add calendar guests: {str(e)}")
+
         if failures:
             return {
                 "status": 0,
@@ -2342,7 +2556,10 @@ class ShareTodo(Resource):
         return {
             "status": 1,
             "message": f"Todo shared via email. {len(notifications_created)} notification(s) created.",
-            "payload": {"notifications_created": notifications_created},
+            "payload": {
+                "notifications_created": notifications_created,
+                "tagged_ids": resolved_tagged_ids,  # ✅ return tagged_ids in payload
+            },
         }
 
 

@@ -38,6 +38,7 @@ import { jwtDecode } from 'jwt-decode';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Spin, Card, Typography } from 'antd';
 import { CheckCircle, XCircle } from 'lucide-react';
+import DocklyLoader from '../../../../utils/docklyLoader';
 
 const { Title, Text } = Typography;
 
@@ -121,7 +122,8 @@ const OAuthCallback = () => {
           </>
         ) : (
           <>
-            <Spin size="large" style={{ marginBottom: '16px' }} />
+            {/* <Spin size="large" style={{ marginBottom: '16px' }} /> */}
+            <DocklyLoader />
             <Title level={3} style={{ marginBottom: '8px' }}>
               Completing Authentication
             </Title>

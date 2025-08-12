@@ -32,6 +32,7 @@ import {
     Popover,
     Menu,
     Dropdown,
+    Popconfirm,
 } from "antd";
 import {
     CalendarOutlined,
@@ -91,6 +92,7 @@ import {
     shareGoal,
     shareTodo,
     getWeeklyGoals,
+    getWeeklyTodos
 } from "../../services/planner";
 import { showNotification } from "../../utils/notification";
 import { useCurrentUser } from "../../app/userContext";
@@ -101,6 +103,7 @@ import FamilyTasksComponent from "../components/familyTasksProjects";
 import NotesLists from "../family-hub/components/familyNotesLists";
 import DocklyLoader from "../../utils/docklyLoader";
 import { getUsersFamilyMembers } from "../../services/family";
+import BookmarkHub from "../components/bookmarks";
 
 const { Title, Text } = Typography;
 
@@ -1281,6 +1284,7 @@ const PlannerTitle: React.FC<{
                     }}
                 >
                     <Calendar size={22} />
+
                 </div>
                 <div>
                     <h1
@@ -1497,7 +1501,6 @@ const Planner = () => {
     const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
     const [currentTagItem, setCurrentTagItem] = useState<any>(null);
     const [tagModalVisible, setTagModalVisible] = useState(false);
-
     // Advanced Features State
     const [habits, setHabits] = useState<HabitTracker[]>([
         {
@@ -1550,6 +1553,13 @@ const Planner = () => {
     const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(
         null
     );
+    useEffect(() => {
+        if (view === "Day") {
+            setExpandedSection("habits");
+        } else {
+            setExpandedSection("goals");
+        }
+    }, [view]);
 
     // Helper functions
     const getPriorityColor = (priority: string) => {
@@ -1669,9 +1679,15 @@ const Planner = () => {
         console.log("Deleting goal with ID:", goalId);
         setLoading(true);
         try {
-            await deleteWeeklyGoal({ id: goalId });
-            message.success("Goal deleted successfully");
-            fetchAllPlannerData();
+            const response = await deleteWeeklyGoal({ id: goalId });
+            const { status, message: msg } = response.data;
+
+            if (status) {
+                message.success("Goal deleted successfully");
+                await fetchAllPlannerData();
+            } else {
+                message.error(msg || "Failed to delete goal");
+            }
         } catch (error) {
             console.error("Delete goal error:", error);
             message.error("Failed to delete goal");
@@ -1681,6 +1697,7 @@ const Planner = () => {
     };
 
     const handleDeleteTodo = async (todoId: string) => {
+        // console.log("🚀 ~ handleDeleteTodo ~ todoId:", todoId);
         setLoading(true);
         try {
             const response = await deleteWeeklyTodo({ id: todoId });
@@ -1699,6 +1716,7 @@ const Planner = () => {
             setLoading(false);
         }
     };
+
 
     // Share Functions
     const handleShareGoal = async (goal: any, email: string) => {
@@ -2303,7 +2321,8 @@ const Planner = () => {
         fetchAllPlannerData();
         fetchProjects();
         fetchMembers();
-        fetchWeeklyGoals();
+        // fetchWeeklyGoals();
+        // fetchWeeklyTodo();
     }, []);
 
     // Cleanup timer on unmount
@@ -2328,20 +2347,35 @@ const Planner = () => {
         }
     };
 
-    const fetchWeeklyGoals = async () => {
-        try {
-            const res = await getWeeklyGoals({});
-            if (res.data.status === 1) {
-                return res.data.payload; // This is the array of goals
-            } else {
-                console.error('Failed to fetch weekly goals:', res.data.message);
-                return [];
-            }
-        } catch (err) {
-            console.error('Error fetching weekly goals:', err);
-            return [];
-        }
-    };
+    // const fetchWeeklyGoals = async () => {
+    //     try {
+    //         const res = await getWeeklyGoals({});
+    //         if (res.data.status === 1) {
+    //             return res.data.payload; // This is the array of goals
+    //         } else {
+    //             console.error('Failed to fetch weekly goals:', res.data.message);
+    //             return [];
+    //         }
+    //     } catch (err) {
+    //         console.error('Error fetching weekly goals:', err);
+    //         return [];
+    //     }
+    // };
+
+    // const fetchWeeklyTodo = async () => {
+    //     try {
+    //         const res = await getWeeklyTodos({});
+    //         if (res.data.status === 1) {
+    //             return res.data.payload; // This is the array of goals
+    //         } else {
+    //             console.error('Failed to fetch tasks:', res.data.message);
+    //             return [];
+    //         }
+    //     } catch (err) {
+    //         console.error('Error fetching tasks:', err);
+    //         return [];
+    //     }
+    // };
 
     const handleTagGoal = async (goal: any, emails: string[]) => {
         setLoading(true);
@@ -2355,7 +2389,7 @@ const Planner = () => {
                     time: goal.time,
                     completed: goal.completed,
                 },
-                tagged_members: emails
+                tagged_members: emails,
             });
             message.success("Goal tagged successfully!");
         } catch (err) {
@@ -2372,6 +2406,7 @@ const Planner = () => {
                 email: emails,  // ✅ Array
                 tagged_members: emails,  // ✅ For notifications
                 todo: {
+                    id: task.id,
                     title: task.text,
                     date: task.date,
                     time: task.time,
@@ -2488,7 +2523,7 @@ const Planner = () => {
     const filteredGoalsData2 = getFilteredGoals();
     const filteredTodosData2 = getFilteredTodos();
     const filteredCalendarEvents = getFilteredCalendarEvents();
-
+    const maxItems = view === "Day" ? 2 : 3;
     return (
         <div
             style={{
@@ -2512,7 +2547,7 @@ const Planner = () => {
                     onConnectAccount={handleConnectAccount}
                 />
 
-                <Row
+                {/* <Row
                     gutter={[SPACING.lg, SPACING.lg]}
                     style={{ marginBottom: SPACING.lg }}
                 >
@@ -2563,10 +2598,10 @@ const Planner = () => {
                             color={COLORS.secondary}
                         />
                     </Col>
-                </Row>
+                </Row> */}
                 <Row
                     gutter={[SPACING.sm, SPACING.sm]}
-                    style={{ marginBottom: SPACING.lg }}
+                    style={{ marginBottom: SPACING.sm }}
                 >
                     <Col span={17}>
                         <div
@@ -2582,7 +2617,7 @@ const Planner = () => {
                                 data={{ events: filteredCalendarEvents, meals: [] }}
                                 personColors={personColors}
                                 source="planner"
-                                allowMentions={false}
+                                allowMentions={true}
                                 fetchEvents={fetchAllPlannerData}
                                 view={view}
                                 onViewChange={setView}
@@ -2591,13 +2626,14 @@ const Planner = () => {
                                 onToggleTodo={handleToggleTodo}
                                 onAddGoal={() => setIsGoalModalVisible(true)}
                                 onAddTodo={() => setIsTodoModalVisible(true)}
-                                enabledHashmentions={false}
+                                enabledHashmentions={true}
                                 currentDate={currentDate}
                                 onDateChange={handleMainCalendarDateChange}
                                 setCurrentDate={setCurrentDate}
                                 setBackup={setBackup}
                                 backup={backup}
                                 connectedAccounts={connectedAccounts || []}
+                                familyMembers={familyMembers}
                             />
                         </div>
                     </Col>
@@ -2626,120 +2662,120 @@ const Planner = () => {
                                     view={view}
                                 />
                             </div>
-
-                            <div
-                                style={{
-                                    background: COLORS.surface,
-                                    borderRadius: "14px",
-                                    border: `1px solid ${COLORS.borderLight}`,
-                                    boxShadow: `0 4px 16px ${COLORS.shadowLight}`,
-                                    overflow: "hidden",
-                                }}
-                            >
+                            {view === "Day" && (
                                 <div
                                     style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "space-between",
-                                        padding: SPACING.lg,
-                                        borderBottom: `1px solid ${COLORS.borderLight}`,
-                                        cursor: "pointer",
-                                        background: COLORS.surfaceElevated,
+                                        background: COLORS.surface,
+                                        borderRadius: "14px",
+                                        border: `1px solid ${COLORS.borderLight}`,
+                                        boxShadow: `0 4px 16px ${COLORS.shadowLight}`,
+                                        overflow: "hidden",
                                     }}
-                                    onClick={() =>
-                                        expandedSection === "habits"
-                                            ? setExpandedSection(null)
-                                            : setExpandedSection("habits")
-                                    }
                                 >
                                     <div
                                         style={{
                                             display: "flex",
                                             alignItems: "center",
-                                            gap: SPACING.md,
+                                            justifyContent: "space-between",
+                                            padding: SPACING.lg,
+                                            borderBottom: `1px solid ${COLORS.borderLight}`,
+                                            cursor: "pointer",
+                                            background: COLORS.surfaceElevated,
                                         }}
+                                        onClick={() =>
+                                            expandedSection === "habits"
+                                                ? setExpandedSection(null)
+                                                : setExpandedSection("habits")
+                                        }
                                     >
                                         <div
                                             style={{
-                                                width: "32px",
-                                                height: "32px",
-                                                background: `linear-gradient(135deg, ${COLORS.habit}, ${COLORS.habit}dd)`,
-                                                borderRadius: "8px",
                                                 display: "flex",
                                                 alignItems: "center",
-                                                justifyContent: "center",
-                                                boxShadow: `0 2px 8px ${COLORS.habit}20`,
-                                                fontSize: "18px",
+                                                gap: SPACING.md,
                                             }}
                                         >
-                                            <FireOutlined style={{ color: "white" }} />
+                                            <div
+                                                style={{
+                                                    width: "32px",
+                                                    height: "32px",
+                                                    background: `linear-gradient(135deg, ${COLORS.habit}, ${COLORS.habit}dd)`,
+                                                    borderRadius: "8px",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                    boxShadow: `0 2px 8px ${COLORS.habit}20`,
+                                                    fontSize: "18px",
+                                                }}
+                                            >
+                                                <FireOutlined style={{ color: "white" }} />
+                                            </div>
+                                            <Text
+                                                strong
+                                                style={{
+                                                    fontSize: "14px",
+                                                    color: COLORS.text,
+                                                    fontFamily: FONT_FAMILY,
+                                                }}
+                                            >
+                                                Daily Habits
+                                            </Text>
                                         </div>
-                                        <Text
-                                            strong
+                                        <div
                                             style={{
-                                                fontSize: "14px",
-                                                color: COLORS.text,
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: SPACING.xs,
+                                            }}
+                                        >
+                                            <Button
+                                                type="primary"
+                                                size="small"
+                                                icon={<PlusOutlined />}
+                                                style={{
+                                                    backgroundColor: COLORS.accent,
+                                                    borderColor: COLORS.accent,
+                                                    borderRadius: "6px",
+                                                    width: "28px",
+                                                    height: "28px",
+                                                    padding: 0,
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                }}
+                                            />
+                                            <span
+                                                style={{
+                                                    fontSize: "12px",
+                                                    color: COLORS.textSecondary,
+                                                    transform:
+                                                        expandedSection === "habits"
+                                                            ? "rotate(180deg)"
+                                                            : "rotate(0deg)",
+                                                    transition: "transform 0.2s ease",
+                                                }}
+                                            >
+                                                ▼
+                                            </span>
+                                        </div>
+                                    </div>
+                                    {expandedSection === "habits" && (
+                                        <div
+                                            style={{
+                                                padding: SPACING.lg,
+                                                maxHeight: "147px",
+                                                overflowY: "auto",
                                                 fontFamily: FONT_FAMILY,
                                             }}
                                         >
-                                            Daily Habits
-                                        </Text>
-                                    </div>
-                                    <div
-                                        style={{
-                                            display: "flex",
-                                            alignItems: "center",
-                                            gap: SPACING.xs,
-                                        }}
-                                    >
-                                        <Button
-                                            type="primary"
-                                            size="small"
-                                            icon={<PlusOutlined />}
-                                            style={{
-                                                backgroundColor: COLORS.accent,
-                                                borderColor: COLORS.accent,
-                                                borderRadius: "6px",
-                                                width: "28px",
-                                                height: "28px",
-                                                padding: 0,
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "center",
-                                            }}
-                                        />
-                                        <span
-                                            style={{
-                                                fontSize: "12px",
-                                                color: COLORS.textSecondary,
-                                                transform:
-                                                    expandedSection === "habits"
-                                                        ? "rotate(180deg)"
-                                                        : "rotate(0deg)",
-                                                transition: "transform 0.2s ease",
-                                            }}
-                                        >
-                                            ▼
-                                        </span>
-                                    </div>
+                                            <HabitTracker
+                                                habits={habits}
+                                                onToggleHabit={handleToggleHabit}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
-                                {expandedSection === "habits" && (
-                                    <div
-                                        style={{
-                                            padding: SPACING.lg,
-                                            maxHeight: "320px",
-                                            overflowY: "auto",
-                                            fontFamily: FONT_FAMILY,
-                                        }}
-                                    >
-                                        <HabitTracker
-                                            habits={habits}
-                                            onToggleHabit={handleToggleHabit}
-                                        />
-                                    </div>
-                                )}
-                            </div>
-
+                            )}
                             <div
                                 style={{
                                     background: COLORS.surface,
@@ -2861,7 +2897,7 @@ const Planner = () => {
                                     <div
                                         style={{
                                             padding: SPACING.lg,
-                                            maxHeight: "300px",
+                                            maxHeight: view === "Day" ? "147px" : "223px",
                                             overflowY: "auto",
                                             fontFamily: FONT_FAMILY,
                                         }}
@@ -2869,7 +2905,7 @@ const Planner = () => {
                                         {[
                                             ...filteredGoalsData2,
                                             ...Array(
-                                                Math.max(3, filteredGoalsData2.length + 1) -
+                                                Math.max(maxItems, filteredGoalsData2.length + 1) -
                                                 filteredGoalsData2.length
                                             ).fill({}),
                                         ].map((goal, index) => (
@@ -2891,7 +2927,7 @@ const Planner = () => {
                                                 <div
                                                     style={{
                                                         width: "22px",
-                                                        height: "22px",
+                                                        height: "20px",
                                                         backgroundColor: goal?.id
                                                             ? COLORS.success
                                                             : COLORS.borderMedium,
@@ -2978,24 +3014,22 @@ const Planner = () => {
                                                                                 },
                                                                                 {
                                                                                     key: "delete",
-                                                                                    label: "Delete",
-                                                                                    icon: <DeleteOutlined />,
-                                                                                    onClick: () => {
-                                                                                        console.log(
-                                                                                            "Clicked delete for",
-                                                                                            goal.id
-                                                                                        );
-                                                                                        Modal.confirm({
-                                                                                            title: "Delete Goal",
-                                                                                            content:
-                                                                                                "Are you sure you want to delete this goal?",
-                                                                                            okText: "Delete",
-                                                                                            okType: "danger",
-                                                                                            cancelText: "Cancel",
-                                                                                            onOk: () =>
-                                                                                                handleDeleteGoal(goal.id),
-                                                                                        });
-                                                                                    },
+                                                                                    label: (
+                                                                                        <Popconfirm
+                                                                                            title="Delete Goal"
+                                                                                            description="Are you sure you want to delete this goal?"
+                                                                                            okText="Delete"
+                                                                                            okType="danger"
+                                                                                            cancelText="Cancel"
+                                                                                            onConfirm={() =>
+                                                                                                handleDeleteGoal(goal.id)
+                                                                                            }
+                                                                                        >
+                                                                                            <span style={{ color: "red" }}>
+                                                                                                <DeleteOutlined /> Delete
+                                                                                            </span>
+                                                                                        </Popconfirm>
+                                                                                    ),
                                                                                     danger: true,
                                                                                 },
                                                                             ],
@@ -3177,7 +3211,7 @@ const Planner = () => {
                                     <div
                                         style={{
                                             padding: SPACING.lg,
-                                            maxHeight: "300px",
+                                            maxHeight: view === "Day" ? "147px" : "223px",
                                             overflowY: "auto",
                                             fontFamily: FONT_FAMILY,
                                         }}
@@ -3296,20 +3330,22 @@ const Planner = () => {
                                                                                 },
                                                                                 {
                                                                                     key: "delete",
-                                                                                    label: "Delete",
-                                                                                    icon: <DeleteOutlined />,
-                                                                                    onClick: () => {
-                                                                                        Modal.confirm({
-                                                                                            title: "Delete Task",
-                                                                                            content:
-                                                                                                "Are you sure you want to delete this task?",
-                                                                                            okText: "Delete",
-                                                                                            okType: "danger",
-                                                                                            cancelText: "Cancel",
-                                                                                            onOk: () =>
-                                                                                                handleDeleteTodo(todo.id),
-                                                                                        });
-                                                                                    },
+                                                                                    label: (
+                                                                                        <Popconfirm
+                                                                                            title="Delete Task"
+                                                                                            description="Are you sure you want to delete this task?"
+                                                                                            okText="Delete"
+                                                                                            okType="danger"
+                                                                                            cancelText="Cancel"
+                                                                                            onConfirm={() =>
+                                                                                                handleDeleteTodo(todo.id)
+                                                                                            }
+                                                                                        >
+                                                                                            <span style={{ color: "red" }}>
+                                                                                                <DeleteOutlined /> Delete
+                                                                                            </span>
+                                                                                        </Popconfirm>
+                                                                                    ),
                                                                                     danger: true,
                                                                                 },
                                                                             ],
@@ -3359,8 +3395,8 @@ const Planner = () => {
                         </div>
                     </Col>
                 </Row>
-                <Row gutter={[SPACING.xs, SPACING.xs]}>
-                    <Col span={17}>
+                <Row gutter={[SPACING.xs, SPACING.xs]} >
+                    <Col span={10}>
                         <FamilyTasksComponent
                             title="Projects"
                             projects={filteredProjects}
@@ -3373,6 +3409,9 @@ const Planner = () => {
                             showVisibilityToggle={true}
                             showAssigneeField={false}
                         />
+                    </Col>
+                    <Col span={7}>
+                        <BookmarkHub />
                     </Col>
                     <Col span={7}>
                         <NotesLists currentHub="planner" />
