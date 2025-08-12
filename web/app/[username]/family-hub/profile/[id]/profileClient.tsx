@@ -123,7 +123,7 @@ const ProfileClient: React.FC<ProfileClientProps> = ({ memberId }) => {
 
     const handleDownload = async (item: any) => {
         try {
-            const response = await downloadDriveFile({ fileId: item.id });
+            const response = await downloadDriveFile({ fileId: item.id, provider: 'all' });
             const blob = new Blob([response.data]);
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
