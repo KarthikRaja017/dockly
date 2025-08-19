@@ -67,7 +67,7 @@ export const DocklyLogo = () => {
   );
 };
 
-export const PRIMARY_COLOR = "#0033FF";
+export const PRIMARY_COLOR = "#6366F1";
 export const ACTIVE_BG_COLOR = "#92D3F5";
 export const ACTIVE_TEXT_COLOR = PRIMARY_COLOR;
 export const DEFAULT_TEXT_COLOR = "#343434";

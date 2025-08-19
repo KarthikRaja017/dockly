@@ -330,7 +330,7 @@ const CustomHeader: React.FC<{
 
           {hidden && (
             <div style={{ display: "flex", alignItems: "center" }}>
-              <img
+              {/* <img
                 src="/dockly-logo.png"
                 alt="Dockly Logo"
                 className="logo-spin"
@@ -340,11 +340,21 @@ const CustomHeader: React.FC<{
                   marginTop: "-35px",
                   marginBottom: "-35px",
                 }}
-              />
+              /> */}
+              <div style={{ marginLeft: '-20px', }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="35px" height="35px" viewBox="0 0 128 128" aria-hidden="true">
+                  <g fill="#6366F1">
+                    <rect x="34" y="28" width="60" height="16" rx="8" />
+                    <rect x="26" y="56" width="76" height="16" rx="8" />
+                    <rect x="18" y="84" width="92" height="16" rx="8" />
+                  </g>
+                </svg>
+              </div>
               <Text
                 style={{
                   color: PRIMARY_COLOR,
-                  marginLeft: '-45px',
+                  // marginLeft: '-45px',
+                  marginTop: '-5px',
                   fontSize: '17px',
                   fontWeight: 700,
                   letterSpacing: '0.3px',

@@ -117,27 +117,44 @@ const DocklyLogin = () => {
             caretColor: "transparent",
           }}
         >
+          {/* <img
+            src="/dockly-logo.png"
+            alt="Logo"
+            className="rotating-logo"
+            style={{
+              width: "650px",
+              transition: "width 0.3s ease-in-out",
+            }}
+          /> */}
           <div
             style={{
-              width: 120,
-              height: 120,
-              borderRadius: 10,
+              width: 160,
+              height: 160, // make it square for circle
+              borderRadius: "50%", // ensures circle container if you want CSS circle
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               marginBottom: 0,
+              backgroundColor: "#EEF2FF" // optional background
             }}
           >
-            <img
-              src="/dockly-logo.png"
-              alt="Logo"
-              className="rotating-logo"
-              style={{
-                width: "650px",
-                transition: "width 0.3s ease-in-out",
-              }}
-            />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="100%"
+              height="100%"
+              viewBox="0 0 128 128"
+              aria-hidden="true"
+            >
+              <circle cx="64" cy="64" r="64" fill="#E0E7FF" />
+
+              <g fill="#6366F1">
+                <rect x="34" y="28" width="60" height="16" rx="8" />
+                <rect x="26" y="56" width="76" height="16" rx="8" />
+                <rect x="18" y="84" width="92" height="16" rx="8" />
+              </g>
+            </svg>
           </div>
+
           <Title level={3} style={{ marginBottom: 0 }}>Welcome to Dockly</Title>
           <p>Enter your Dockly URL to get started</p>
 
@@ -198,6 +215,27 @@ const DocklyLogin = () => {
       ) : (
         <SignUpDockly />
       )}
+      <style jsx>{`
+        @keyframes rotate {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+        
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateX(-20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+      `}</style>
     </>
   );
 };

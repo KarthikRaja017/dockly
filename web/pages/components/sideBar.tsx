@@ -163,23 +163,32 @@ const Sidebar = forwardRef<HTMLDivElement, { collapsed: boolean }>(({ collapsed 
               marginLeft: collapsed ? -38 : 0,
             }}
           /> */}
-          <img
+          {/* <img
             src={"/dockly-logo.png"}
             alt="Dockly Logo"
-            className={"logo-collapsed"}
+            // className={"logo-collapsed"}
             style={{
-              width: 148,
+              width: 58,
               transition: "all 0.3s ease-in-out",
-              marginLeft: collapsed ? "-8px" : "-98px",
+              marginLeft: collapsed ? "-8px" : "-50px",
             }}
             draggable="false"
-          />
+          /> */}
+          <div style={{ marginLeft: collapsed ? "-8px" : "-50px", marginTop: 15 }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="40px" height="40px" viewBox="0 0 128 128" aria-hidden="true">
+              <g fill="#6366F1">
+                <rect x="34" y="28" width="60" height="16" rx="8" />
+                <rect x="26" y="56" width="76" height="16" rx="8" />
+                <rect x="18" y="84" width="92" height="16" rx="8" />
+              </g>
+            </svg>
+          </div>
           {!collapsed && (
             <Text
               style={{
                 color: PRIMARY_COLOR,
-                marginLeft: '-50px',
-                marginTop: 25,
+                // marginLeft: '-50px',
+                marginTop: 20,
                 fontSize: '18px',
                 fontWeight: 700,
                 letterSpacing: '0.5px',

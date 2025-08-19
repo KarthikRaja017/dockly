@@ -71,6 +71,7 @@
         "city INT",
         "postal_code VARCHAR",
         "created_at TIMESTAMP",
+        "is_active INT ",
         "updated_at TIMESTAMP"
       ]
     },
@@ -105,21 +106,6 @@
       ]
     },
     {
-      "table_name": "mortgages",
-      "columns": [
-        "id VARCHAR(255) PRIMARY KEY",
-        "user_id VARCHAR(255) REFERENCES users(uid) ON DELETE CASCADE",
-        "name VARCHAR(255) NOT NULL",
-        "meta VARCHAR(255) NOT NULL",
-        "amount NUMERIC NOT NULL",
-        "interest_rate NUMERIC NOT NULL",
-        "term INTEGER NOT NULL",
-        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
-        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
-        "is_active INT DEFAULT 1"
-      ]
-    },
-    {
       "table_name": "financial_connections",
       "columns": [
         "id SERIAL PRIMARY KEY",
@@ -127,26 +113,10 @@
         "institution_id TEXT",
         "institution_name TEXT",
         "institution_logo TEXT",
-        "status TEXT",
+        "is_active INT",
+        "updated_at TIMESTAMP",
         "externally_managed BOOLEAN",
         "created_at TIMESTAMP"
-      ]
-    },
-    {
-      "table_name": "financial_accounts",
-      "columns": [
-        "id VARCHAR PRIMARY KEY",
-        "connection_id INT REFERENCES financial_connections(id)",
-        "name TEXT",
-        "provider TEXT",
-        "currency_code TEXT",
-        "verified BOOLEAN",
-        "transacted_first DATE",
-        "transacted_last DATE",
-        "balance_current NUMERIC",
-        "balance_available NUMERIC",
-        "balance_source TEXT",
-        "balance_at TIMESTAMP"
       ]
     },
     {
@@ -158,11 +128,9 @@
         "user_id VARCHAR REFERENCES users(uid)",
         "fm_user_id VARCHAR",
         "email VARCHAR(255)",
-        "access_code VARCHAR",
         "family_group_id VARCHAR",
-        "method VARCHAR",
-        "shared_items VARCHAR",
-        "permissions VARCHAR",
+        "is_active INT",
+        "updated_at TIMESTAMP",
         "created_at TIMESTAMP"
       ]
     },
@@ -207,53 +175,6 @@
       ]
     },
     {
-      "table_name": "emergency_contacts",
-      "columns": [
-        "id SERIAL PRIMARY KEY",
-        "name VARCHAR",
-        "role VARCHAR",
-        "phone VARCHAR",
-        "added_by VARCHAR REFERENCES users(uid)",
-        "added_time TIMESTAMP",
-        "edited_time TIMESTAMP",
-        "edited_by VARCHAR REFERENCES users(uid)",
-        "user_id VARCHAR REFERENCES users(uid)"
-      ]
-    },
-    {
-      "table_name": "guidelines",
-      "columns": [
-        "id SERIAL PRIMARY KEY",
-        "user_id VARCHAR REFERENCES users(uid)",
-        "added_by VARCHAR REFERENCES users(uid)",
-        "added_time TIMESTAMP",
-        "edited_by VARCHAR REFERENCES users(uid)",
-        "updated_at TIMESTAMP",
-        "text TEXT"
-      ]
-    },
-    {
-      "table_name": "home_maintainance",
-      "columns": [
-        "id SERIAL PRIMARY KEY",
-        "user_id VARCHAR REFERENCES users(uid)",
-        "name VARCHAR(255)",
-        "date DATE"
-      ]
-    },
-    {
-      "table_name": "sticky_notes",
-      "columns": [
-        "id SERIAL PRIMARY KEY",
-        "description TEXT",
-        "reminder_date DATE",
-        "status INT",
-        "user_id VARCHAR REFERENCES users(uid)",
-        "title VARCHAR(255)"
-      ]
-    },
-
-    {
       "table_name": "hubs",
       "columns": [
         "hid SERIAL PRIMARY KEY",
@@ -288,62 +209,15 @@
       ]
     },
     {
-      "table_name": "subsription",
+      "table_name": "subscription",
       "columns": [
-        "sid SERIAL PRIMARY KEY",
+        "id SERIAL PRIMARY KEY",
         "name VARCHAR",
         "title VARCHAR",
         "price VARCHAR",
         "is_active INT",
         "updated_at TIMESTAMP",
         "created_at TIMESTAMP"
-      ]
-    },
-    {
-      "table_name": "shared_tasks",
-      "columns": [
-        "id SERIAL PRIMARY KEY",
-        "task TEXT",
-        "assigned_to VARCHAR REFERENCES users(uid)",
-        "due_date DATE",
-        "due_time VARCHAR",
-        "completed BOOLEAN",
-        "added_by VARCHAR REFERENCES users(uid)",
-        "added_time TIMESTAMP",
-        "edited_by VARCHAR REFERENCES users(uid)",
-        "updated_at TIMESTAMP",
-        "user_id VARCHAR REFERENCES users(uid)"
-      ]
-    },
-    {
-      "table_name": "meal_plans",
-      "columns": [
-        "id SERIAL PRIMARY KEY",
-        "day VARCHAR",
-        "meal TEXT",
-        "time VARCHAR",
-        "completed BOOLEAN",
-        "added_by VARCHAR REFERENCES users(uid)",
-        "added_time TIMESTAMP",
-        "edited_by VARCHAR REFERENCES users(uid)",
-        "updated_at TIMESTAMP",
-        "user_id VARCHAR REFERENCES users(uid)"
-      ]
-    },
-    {
-      "table_name": "schedules",
-      "columns": [
-        "id SERIAL PRIMARY KEY",
-        "name VARCHAR",
-        "type VARCHAR",
-        "date DATE",
-        "time VARCHAR",
-        "place VARCHAR",
-        "added_by VARCHAR REFERENCES users(uid)",
-        "added_time TIMESTAMP",
-        "edited_by VARCHAR REFERENCES users(uid)",
-        "updated_at TIMESTAMP",
-        "user_id VARCHAR REFERENCES users(uid)"
       ]
     },
     {
@@ -653,19 +527,6 @@
         "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
       ]
     },
-
-    {
-      "table_name": "weekly-focus",
-      "columns": [
-        "id VARCHAR(255) PRIMARY KEY",
-        "user_id VARCHAR(255) REFERENCES users(uid) ON DELETE CASCADE",
-        "focus VARCHAR(255) NOT NULL",
-        "is_active INT DEFAULT 1",
-        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
-        "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
-      ]
-    },
-
     {
       "table_name": "home_maintenance",
       "columns": [
