@@ -1,59 +1,76 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi_jwt_auth import AuthJWT
+
 from app.core.config import settings
-from app.core import security, db
+from app.core.database import postgres  # postgres = PostgreSQL()
+
+# Import routers (converted from Blueprints)
+from app.routes import (
+    users,
+    db,
+    bookmarks,
+    general,
+    google,
+    dropbox,
+    microsoft,
+    settings_route,
+    family,
+    notes,
+    dashboard,
+    planner,
+    notifications,
+    home,
+    files,
+)
 
 
 def create_app() -> FastAPI:
     app = FastAPI(title="My FastAPI App")
 
-    # CORS
+    # Enable CORS
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[settings.WEB_URL],  # or ["*"]
+        allow_origins=[settings.WEB_URL],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
 
-    # Import and include all routers
-    from app.routes import (
-        users,
-        db as db_routes,
-        bookmarks,
-        general,
-        google,
-        dropbox,
-        microsoft,
-        family,
-        settings as settings_routes,
-        notes,
-        dashboard,
-        planner,
-        notifications,
-        home,
-        files,
-    )
+    # JWT Config
+    @AuthJWT.load_config
+    def get_config():
+        return settings  # settings contains `authjwt_secret_key`
 
-    app.include_router(users.router, prefix="/users", tags=["users"])
-    app.include_router(db_routes.router, prefix="/db", tags=["db"])
-    app.include_router(bookmarks.router, prefix="/bookmarks", tags=["bookmarks"])
-    app.include_router(general.router, prefix="/general", tags=["general"])
-    app.include_router(google.router, prefix="/google", tags=["google"])
-    app.include_router(dropbox.router, prefix="/dropbox", tags=["dropbox"])
-    app.include_router(microsoft.router, prefix="/microsoft", tags=["microsoft"])
-    app.include_router(family.router, prefix="/family", tags=["family"])
-    app.include_router(settings_routes.router, prefix="/settings", tags=["settings"])
-    app.include_router(notes.router, prefix="/notes", tags=["notes"])
-    app.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
-    app.include_router(planner.router, prefix="/planner", tags=["planner"])
-    app.include_router(
-        notifications.router, prefix="/notifications", tags=["notifications"]
-    )
-    app.include_router(home.router, prefix="/home", tags=["home"])
-    app.include_router(files.router, prefix="/files", tags=["files"])
+    # ✅ Initialize Postgres when app starts
+    @app.on_event("startup")
+    def startup_event():
+        postgres.init_app()
+
+    # ✅ Close Postgres pool when app shuts down
+    @app.on_event("shutdown")
+    def shutdown_event():
+        postgres.close_all_connections()
+
+    # ✅ Register routers
+    app.include_router(users.router, prefix="/server/api")
+    app.include_router(db.router, prefix="/server/api")
+    app.include_router(bookmarks.router, prefix="/server/api")
+    app.include_router(general.router, prefix="/server/api")
+    app.include_router(google.router, prefix="/server/api")
+    app.include_router(dropbox.router, prefix="/server/api")
+    app.include_router(microsoft.router, prefix="/server/api")
+    app.include_router(settings_route.router, prefix="/server/api")
+    app.include_router(family.router, prefix="/server/api")
+    app.include_router(notes.router, prefix="/server/api")
+    app.include_router(dashboard.router, prefix="/server/api")
+    app.include_router(planner.router, prefix="/server/api")
+    app.include_router(notifications.router, prefix="/server/api")
+    app.include_router(home.router, prefix="/server/api")
+    app.include_router(files.router, prefix="/server/api")
 
     return app
 
 
+# ✅ Global app instance
 app = create_app()
