@@ -3,7 +3,8 @@ import React, { useEffect, useState } from "react";
 import { Avatar, Button, Input, Form, Upload, Space, Card, DatePicker } from "antd";
 import { EditOutlined, UploadOutlined, SaveOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
-import Header from "../../../pages/components/header";
+// import Header from "../../../pages/components/header";
+// import Header from "../../../pages/components/header"
 import { AxiosResponse } from "axios";
 import { getUserProfile, userAddProfile } from "../../../services/user";
 import DocklyLoader from "../../../utils/docklyLoader";

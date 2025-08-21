@@ -1,10 +1,10 @@
 import axios from 'axios';
 
 // export const API_URL = 'http://localhost:5000/server/api';
-// export const API_URL = 'https://dockly.onrender.com/server/api'; //DEPLOYMENT
+export const API_URL = 'https://dockly.onrender.com/server/api'; //DEPLOYMENT
 // export const API_URL = 'https://dockly-deployment.onrender.com/server/api'; //DEPLOYMENT
 
-export const API_URL = 'http://127.0.0.1:5000/server/api'; //DEPLOYMENT
+// export const API_URL = 'http://127.0.0.1:5000/server/api'; //DEPLOYMENT
 // export const API_URL =
 //   process.env.REACT_APP_API_URL || 'https://dockly.onrender.com//server/api';
 

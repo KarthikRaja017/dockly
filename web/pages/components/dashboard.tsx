@@ -1,771 +1,821 @@
-// "use client";
-// import React, { useState, useEffect, useRef } from "react";
-// import {
-//   List,
-//   Button,
-//   Typography,
-//   Avatar,
-//   Divider,
-//   Layout,
-//   Carousel,
-//   Tooltip,
-//   Space,
-//   Collapse,
-//   Row,
-//   Col,
-//   Card,
-//   Modal,
-// } from "antd";
-// import {
-//   CheckCircleTwoTone,
-//   InfoCircleOutlined,
-//   HourglassOutlined,
-//   CheckCircleOutlined,
-//   UserAddOutlined,
-//   CloudUploadOutlined,
-//   AppstoreOutlined,
-//   FileProtectOutlined,
-//   NotificationOutlined,
-//   CaretRightOutlined,
-// } from "@ant-design/icons";
-// import { motion } from "framer-motion";
-// import UpcomingAndTodoList from "../dashboard/upcomingAndTodoList";
-// import CalendarEventWidget from "../dashboard/calendar";
-// // import { getUserGetStarted } from "../../services/user";
-// import { getCalendarEvents } from "../../services/google";
-// import { useCurrentUser } from "../../app/userContext";
-// import { useRouter } from "next/navigation";
-// import { useGlobalLoading } from "../../app/loadingContext";
-
-// const { Title, Text, Paragraph } = Typography;
-// const { Content } = Layout;
-
-// const rawSteps = [
-//   { key: "profileCompleted", title: "Complete your profile", description: "Add personal details and preferences" },
-//   { key: "accountsCompleted", title: "Connect your first account", description: "Link your bank, email, or service" },
-//   { key: "boardCreated", title: "Create your first board", description: "Organize accounts by category" },
-//   { key: "documentUploaded", title: "Upload a document", description: "Store important files securely" },
-//   { key: "notificationsSetup", title: "Set up notifications", description: "Stay on top of bills and dates" },
-// ];
-
-// const iconSet = [
-//   <UserAddOutlined style={{ fontSize: 22, color: "#91caff" }} />,
-//   <CloudUploadOutlined style={{ fontSize: 22, color: "#ffe58f" }} />,
-//   <AppstoreOutlined style={{ fontSize: 22, color: "#b7eb8f" }} />,
-//   <FileProtectOutlined style={{ fontSize: 22, color: "#ffd6e7" }} />,
-//   <NotificationOutlined style={{ fontSize: 22, color: "#d3adf7" }} />,
-// ];
-
-// const DashboardPage = () => {
-//   const [completedSteps, setCompletedSteps] = useState(0);
-//   const [incompleteKeys, setIncompleteKeys] = useState<string[]>([]);
-//   const username = typeof window !== "undefined" ? localStorage.getItem("username") : "";
-//   const [events, setEvents] = useState<any[]>([]);
-//   const { loading, setLoading } = useGlobalLoading();
-//   const [accountModal, setAccountModal] = useState<boolean>(false);
-//   const [accounts, setAccounts] = useState<string[]>([]);
-//   const [accountColor, setAccountColor] = useState<Record<string, string>>({});
-
-//   const currentUser = useCurrentUser();
-
-//   const fetchDashboardData = async () => {
-//     setLoading(true);
-
-//     try {
-//       // 1. Fetch user get started steps
-//       // const getStartedRes = await getUserGetStarted({});
-//       // if (getStartedRes.data.status) {
-//       //   const backend = getStartedRes.data.payload.steps || [];
-//       //   setIncompleteKeys(backend);
-//       //   setCompletedSteps(rawSteps.length - backend.length);
-//       // }
-
-//       // 2. Fetch Google Calendar events
-//       const calendarRes = await getCalendarEvents({
-//         userId: currentUser?.userId,
-//       });
-
-//       const rawEvents = calendarRes.data.payload.events;
-//       const gmailConnected = calendarRes.data.payload.connected_accounts;
-//       const colors = calendarRes.data.payload.account_colors || {};
-
-//       if (gmailConnected && gmailConnected.length > 0) {
-//         setAccounts(gmailConnected);
-//       }
-
-//       if (colors && Object.keys(colors).length > 0) {
-//         setAccountColor(colors);
-//       }
-
-//       const parsedEvents = rawEvents
-//         .filter((event: any) => event?.start && event?.end)
-//         .map((event: any) => ({
-//           id: event.id,
-//           title: event.summary || "(No Title)",
-//           start: new Date(event.start.dateTime || event.start.date),
-//           end: new Date(event.end.dateTime || event.end.date),
-//           allDay: !event.start.dateTime,
-//           extendedProps: {
-//             status: "confirmed",
-//           },
-//           source_email: event.source_email || "",
-//         }));
-
-//       setEvents(parsedEvents);
-
-//     } catch (error) {
-//       console.error("Failed to fetch dashboard data", error);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   useEffect(() => {
-//     fetchDashboardData();
-//   }, []);
-
-//   const handleNextStep = () => {
-//     const idx = completedSteps;
-//     const key = rawSteps[idx]?.key;
-//     localStorage.setItem("docklySetup", JSON.stringify({ ...incompleteKeys, [key]: true }));
-//     if (incompleteKeys?.[0] === "accountsCompleted") {
-//       setAccountModal(true);
-//     }
-//     incompleteKeys?.[0] === "profileCompleted" && (window.location.href = `/${username}/profile/setup`);
-//     incompleteKeys?.[0] === "notificationsSetup" && (window.location.href = `/${username}/settings`);
-//     // setCompletedSteps((p) => p + 1);
-//   };
-//   const nextStepKey = incompleteKeys?.[0];
-//   const totalSteps = rawSteps.length;
-//   const steps = rawSteps.map((s, i) => {
-//     const isCompleted = !incompleteKeys.includes(s.key);
-//     const isActive = s.key === nextStepKey;
-//     return {
-//       ...s,
-//       isCompleted,
-//       isActive,
-//       icon: isCompleted ? (
-//         <CheckCircleTwoTone twoToneColor="#52c41a" style={{ fontSize: 24 }} />
-//       ) : (
-//         <Avatar size={40} style={{ background: "#fff", border: "1px solid #d9d9d9" }}>
-//           {iconSet[i]}
-//         </Avatar>
-//       ),
-//       action: isActive ? (
-//         <Button type="primary" size="small" onClick={handleNextStep} style={{ borderRadius: 6, padding: 15 }}>
-//           Start
-//         </Button>
-//       ) : null,
-//     };
-//   });
-
-//   return (
-//     <Content style={{ background: "#f9f9f9", margin: "80px 15px 0 50px" }}>
-//       <WelComeCard totalSteps={totalSteps} completedSteps={completedSteps} steps={steps} />
-//       {/* <QuickOptions /> */}
-//       <div style={{ display: "flex", gap: 20, marginTop: 20 }}>
-//         <UpcomingAndTodoList googleEvents={events} accountColor={accountColor} />
-//         <CalendarEventWidget events={events} accountColor={accountColor} />
-//       </div>
-//       <AccountModal visible={accountModal} onCancel={() => setAccountModal(false)} username={username} />
-//     </Content>
-//   );
-// };
-
-// export default DashboardPage;
-
-// const AccountModal = ({ visible, onCancel, username }: any) => {
-//   const router = useRouter()
-//   return (
-//     <Modal
-//       open={visible}
-//       onCancel={onCancel}
-//       footer={null}
-//       centered
-//       width={750}
-//       style={{
-//         borderRadius: 12,
-//         backgroundImage: 'url("https://www.transparenttextures.com/patterns/cubes.png")',
-//         backgroundSize: "cover",
-//         padding: 0,
-//       }}
-//       bodyStyle={{
-//         padding: 40,
-//         background: "rgba(255, 255, 255, 0.95)",
-//         borderRadius: 12,
-//       }}
-//     >
-//       <div style={{ textAlign: "center", marginBottom: 32 }}>
-//         <Title level={3} style={{ color: "#333", marginBottom: 4 }}>
-//           Manage Your Accounts
-//         </Title>
-//         <Text style={{ fontSize: 16, color: "#666" }}>
-//           Choose the account type you want to manage
-//         </Text>
-//       </div>
-
-//       <Row gutter={24} justify="center">
-//         <Col span={12}>
-//           <Card
-//             hoverable
-//             onClick={() => router.push(`/${username}/finance`)}
-//             style={{
-//               borderRadius: 12,
-//               background: "#f9f9f9",
-//               textAlign: "center",
-//               padding: 24,
-//               border: "1px solid #eaeaea",
-//               transition: "all 0.3s",
-//             }}
-//           >
-//             <div style={{ marginBottom: 16 }}>
-//               <img
-//                 src="https://cdn-icons-png.flaticon.com/512/3721/3721710.png"
-//                 alt="Bank"
-//                 style={{ width: 64, height: 64 }}
-//               />
-//             </div>
-//             <Title level={4} style={{ color: "#2c3e50", marginBottom: 8 }}>
-//               Bank Account
-//             </Title>
-//             <Text style={{ color: "#555" }}>
-//               Add or update your bank account information
-//             </Text>
-//           </Card>
-//         </Col>
-
-//         <Col span={12}>
-//           <Card
-//             hoverable
-//             onClick={() => router.push(`/${username}/calendar`)}
-//             style={{
-//               borderRadius: 12,
-//               background: "#f9f9f9",
-//               textAlign: "center",
-//               padding: 24,
-//               border: "1px solid #eaeaea",
-//               transition: "all 0.3s",
-//             }}
-//           >
-//             <div style={{ marginBottom: 16 }}>
-//               <img
-//                 src="https://cdn-icons-png.flaticon.com/512/561/561127.png"
-//                 alt="Email"
-//                 style={{ width: 64, height: 64 }}
-//               />
-//             </div>
-//             <Title level={4} style={{ color: "#2c3e50", marginBottom: 8 }}>
-//               Email Account
-//             </Title>
-//             <Text style={{ color: "#555" }}>
-//               Manage your email and other details
-//             </Text>
-//           </Card>
-//         </Col>
-//       </Row>
-//     </Modal>
-//   );
-// };
-
-// /** Animated Progress Bar Component **/
-// const AnimatedProgress = ({ completedSteps, totalSteps }: { completedSteps: number; totalSteps: number }) => {
-//   const [shown, setShown] = useState(0);
-//   const percent = Math.round((completedSteps / totalSteps) * 100);
-
-//   useEffect(() => {
-//     setShown(0);
-//     const timeout = setTimeout(() => setShown(percent), 300);
-//     return () => clearTimeout(timeout);
-//   }, [percent]);
-
-//   const icon = (percent === 100 ? <CheckCircleOutlined style={{ color: "#52c41a", fontSize: 20 }} /> :
-//     percent > 50 ? <HourglassOutlined style={{ color: "#faad14", fontSize: 20 }} /> :
-//       <InfoCircleOutlined style={{ color: "#ff4d4f", fontSize: 20 }} />);
-
-//   return (
-//     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-//       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
-//         <Space style={{ marginBottom: 16, justifyContent: "space-between", width: "100%" }}>
-//           <div style={{ display: 'flex', gap: 2 }}>
-//             {icon}
-//             <Text style={{ fontSize: 16, fontWeight: 600, marginLeft: 10 }}>{`Getting Started: ${completedSteps}/${totalSteps}`}</Text>
-//           </div>
-//           <Tooltip title="Progress percentage">
-//             <Text style={{ fontSize: 16, color: "#1677ff", fontWeight: 600 }}>{`${percent}%`}</Text>
-//           </Tooltip>
-//         </Space>
-//       </motion.div>
-
-//       <div style={{ position: "relative", background: "#f0f2f5", borderRadius: 10, height: 14 }}>
-//         <motion.div layout initial={{ width: 0 }} animate={{ width: `${shown}%` }} transition={{ duration: 1.2, ease: "easeInOut" }}
-//           style={{
-//             background: "linear-gradient(90deg, #bae7ff, #1677ff)",
-//             height: "100%",
-//             borderRadius: 10
-//           }}
-//         />
-//       </div>
-//       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
-//         <Text type="secondary" style={{ fontSize: 13 }}>Started</Text>
-//         <Text type="secondary" style={{ fontSize: 13 }}>Complete</Text>
-//       </div>
-//     </motion.div>
-//   );
-// };
-
-// const QuickOptions = () => {
-//   return (
-//     <div
-//       style={{
-//         marginTop: 90,
-//         borderRadius: "16px",
-//       }}
-//     >
-//       <Carousel autoplay style={{ width: "100%", borderRadius: "16px" }}>
-//         {cardData.map((card, index) => (
-//           <motion.div
-//             key={index}
-//             initial={{ opacity: 0, x: -100 }}
-//             animate={{ opacity: 1, x: 0 }}
-//             transition={{ duration: 0.8 }}
-//             style={{
-//               display: "flex",
-//               justifyContent: "center",
-//               alignItems: "center",
-//               width: "100%",
-//             }}
-//           >
-//             <div
-//               style={{
-//                 width: "100%",
-//                 maxWidth: "4000px",
-//                 height: " 270px",
-//                 display: "flex",
-//                 borderRadius: "16px",
-//                 boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
-//                 padding: "32px",
-//                 background: card.background,
-//                 justifyContent: "space-between",
-//               }}
-//             >
-//               <div style={{ maxWidth: "50%", paddingRight: "24px" }}>
-//                 <Title level={4} style={{ color: 'black', marginBottom: 8 }}>
-//                   {card.title}
-//                 </Title>
-//                 <Title level={2} style={{ marginBottom: 8 }}>
-//                   {card.subtitle}
-//                 </Title>
-//                 <Paragraph style={{ fontSize: "16px", marginBottom: 24 }}>
-//                   {card.description}
-//                 </Paragraph>
-//                 <Button
-//                   type="primary"
-//                   size="large"
-//                   style={{
-//                     backgroundColor: card.buttonColor,
-//                     borderColor: card.buttonColor,
-//                     borderRadius: 8,
-//                     color: card.title === "Take Smart Notes" ? "#000" : "#fff",
-//                   }}
-//                   onClick={() => {
-//                     if (card.title === "Stay Connected") {
-//                       // window.location.href = `/${username}/accounts`;
-//                     } else if (card.title === "Take Smart Notes") {
-//                       window.location.href = "/notes";
-//                     } else if (card.title === "Drag & Drop Ease") {
-//                       window.location.href = "/drag-drop";
-//                     } else if (card.title === "Bookmark Smarter") {
-//                       window.location.href = "/bookmarks";
-//                     }
-//                   }
-//                   }
-//                 >
-//                   {card.button}
-//                 </Button>
-//               </div>
-//               <div>
-//                 <img
-//                   src={card.image}
-//                   alt={card.title}
-//                   style={{
-//                     width: "300px",
-//                     height: "auto",
-//                     objectFit: "contain",
-//                   }}
-//                 />
-//               </div>
-//             </div>
-//           </motion.div>
-//         ))}
-//       </Carousel>
-//     </div>
-//   )
-// }
-
-
-// const cardData = [
-//   {
-//     title: "Stay Connected",
-//     subtitle: "Connect with Us.",
-//     description:
-//       "Effortlessly sync and manage your calendar, meetings, and drive all in one place.",
-//     button: "Connect Now",
-//     image: "/connect.png",
-//     background: "#7d7ef0", // lighter than #4244e6
-//     buttonColor: "#4244e6",
-//   },
-//   {
-//     title: "Take Smart Notes",
-//     subtitle: "Never Miss a Thought.",
-//     description:
-//       "Quickly jot down important ideas, meeting points, and reminders for easy access.",
-//     button: "Open Notes",
-//     image: "/notes.png",
-//     background: "#f1ffe4", // lighter than #e8ffaed1
-//     buttonColor: "#e8ffaed1",
-//   },
-//   {
-//     title: "Drag & Drop Ease",
-//     subtitle: "Organize with Simplicity.",
-//     description:
-//       "Use intuitive drag-and-drop tools to manage your files and layouts like a pro.",
-//     button: "Start Organizing",
-//     image: "/drag.png",
-//     background: "#ff9ea6", // lighter than #fe4e5b
-//     buttonColor: "#fe4e5b",
-//   },
-//   {
-//     title: "Bookmark Smarter",
-//     subtitle: "Save What Matters.",
-//     description:
-//       "Easily bookmark key resources and revisit important pages with one click.",
-//     button: "View Bookmarks",
-//     image: "/book.png",
-//     background: "#ff9d8e", // lighter than #ff735c
-//     buttonColor: "#ff735c",
-//   },
-// ];
-
-
-
-// const WelComeCard = (props: any) => {
-//   const { completedSteps, totalSteps, steps } = props
-//   return (
-//     <div style={{ background: "#fff", borderRadius: 12, padding: 24, boxShadow: "0 4px 12px rgba(0,0,0,0.05)" }}>
-//       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-//         <div>
-//           <Title level={4} style={{ margin: 0 }}>Welcome to Dockly!</Title>
-//           <Text>Let's get your account set up. Follow these steps to start.</Text>
-//         </div>
-//         <div style={{ background: "#e6f0ff", borderRadius: "50%", padding: 10 }}>
-//           <Avatar size={84} src="/dash.jpg" />
-//         </div>
-//       </div>
-//       <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-//         <AnimatedProgress completedSteps={completedSteps} totalSteps={totalSteps} />
-//       </motion.div>
-//       {completedSteps === totalSteps ? (
-//         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }}
-//           style={{ textAlign: "center", padding: 20, background: "#f6ffed", borderRadius: 12, boxShadow: "0 4px 10px rgba(0,0,0,0.05)" }}>
-//           <CheckCircleTwoTone twoToneColor="#52c41a" style={{ fontSize: 48 }} />
-//           <p style={{ marginTop: 12, color: "#389e0d", fontWeight: 600 }}>You're all set! Everything looks perfect 🎉</p>
-//         </motion.div>
-//       ) : (
-//         <div style={{ marginTop: 20 }}>
-//           {steps.map((item: any, idx: any) => (
-//             <React.Fragment key={idx}>
-//               <motion.div
-//                 initial={{ opacity: 0, x: -30 }}
-//                 animate={{ opacity: 1, x: 0 }}
-//                 transition={{ duration: 0.4, delay: idx * 0.1 }}
-//                 style={{
-//                   display: "flex",
-//                   alignItems: "center",
-//                   background: item.isActive ? "#e6f7ff" : "#fff",
-//                   padding: item.isActive ? 20 : 5,
-//                   borderRadius: 10,
-//                   marginBottom: 12,
-//                   boxShadow: item.isActive ? "0 2px 8px rgba(0,0,0,0.1)" : "none",
-//                   borderLeft: `7px solid ${item.isActive ? "#1890ff" : "transparent"}`,
-//                   border: item.isActive ? "1px solid #1677ff" : 0,
-//                 }}
-//               >
-//                 <div style={{ marginRight: 16, marginLeft: item.isActive ? 4 : 0 }}>{item.icon}</div>
-//                 <div style={{ flexGrow: 1 }}>
-//                   <Title level={5} style={{ margin: 0 }}>{item.title}</Title>
-//                   <Text type="secondary">{item.description}</Text>
-//                 </div>
-//                 {item.action && <div>{item.action}</div>}
-//               </motion.div>
-//               <Divider style={{ margin: 0 }} />
-//             </React.Fragment>
-//           ))}
-//         </div>
-//       )}
-//       {/* <Collapse
-//           accordion={false}
-//           defaultActiveKey={[nextStepKey]}               // Open next step by default
-//           expandIcon={({ isActive }) => (
-//             <CaretRightOutlined rotate={isActive ? 90 : 0} />
-//           )}
-//           style={{ marginTop: 20 }}
-//         >
-//           {steps.map((item, idx) => (
-//             <Collapse.Panel
-//               key={item.key}
-//               header={
-//                 <div style={{ display: "flex", alignItems: "center" }}>
-//                   <div style={{ marginRight: 12 }}>{item.icon}</div>
-//                   <div style={{ flexGrow: 1 }}>
-//                     <Title level={5} style={{ margin: 0 }}>
-//                       {item.title}
-//                     </Title>
-//                   </div>
-//                   {item.action}
-//                 </div>
-//               }
-//               style={{
-//                 background: item.isActive ? "#e6f7ff" : "#fff",
-//                 borderRadius: 8,
-//                 border: item.isActive ? "1px solid #1890ff" : undefined,
-//                 marginBottom: 8,
-//                 boxShadow: item.isActive ? "0 2px 8px rgba(0,0,0,0.1)" : undefined,
-//               }}
-//             >
-//               <motion.div
-//                 initial={{ opacity: 0, y: -5 }}
-//                 animate={{ opacity: 1, y: 0 }}
-//                 transition={{ duration: 0.3 }}
-//                 style={{ padding: "8px 0" }}
-//               >
-//                 <Text type="secondary">{item.description}</Text>
-//               </motion.div>
-//             </Collapse.Panel>
-//           ))}
-//         </Collapse> */}
-//     </div>
-//   )
-// }
-
-
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import {
-  List,
-  Button,
-  Typography,
-  Avatar,
-  Divider,
   Layout,
-  Carousel,
-  Tooltip,
-  Space,
-  Collapse,
+  Menu,
+  Card,
+  Checkbox,
+  Input,
+  Button,
+  Avatar,
+  Badge,
+  Progress,
+  Typography,
   Row,
   Col,
-  Card,
+  List,
+  Tag,
+  Divider,
+  Upload,
+  message,
+  Space,
+  Tooltip,
+  Dropdown,
+  Calendar,
+  Statistic,
   Modal,
+  Form,
+  Select,
+  DatePicker,
+  TimePicker,
 } from "antd";
 import {
-  CheckCircleTwoTone,
-  InfoCircleOutlined,
-  HourglassOutlined,
-  CheckCircleOutlined,
-  UserAddOutlined,
+  DashboardOutlined,
+  CalendarOutlined,
+  TeamOutlined,
+  DollarOutlined,
+  HomeOutlined,
+  HeartOutlined,
+  FileTextOutlined,
+  BookOutlined,
+  FolderOutlined,
+  LockOutlined,
+  BellOutlined,
+  SearchOutlined,
+  RobotOutlined,
+  ThunderboltOutlined,
   CloudUploadOutlined,
-  AppstoreOutlined,
-  FileProtectOutlined,
-  NotificationOutlined,
-  CaretRightOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  StarOutlined,
+  StarFilled,
+  PlusOutlined,
+  UserAddOutlined,
+  FolderAddOutlined,
+  GiftOutlined,
+  DownOutlined,
+  MenuOutlined,
+  CloseOutlined,
+  CheckOutlined,
+  ExclamationCircleOutlined,
+  FileOutlined,
+  CarOutlined,
+  IdcardOutlined,
+  BankOutlined,
+  BulbOutlined,
+  MedicineBoxOutlined,
+  EnterOutlined,
+  LineChartOutlined,
+  ReadOutlined,
+  HistoryOutlined,
+  TabletOutlined,
+  ClockCircleOutlined,
+  EnvironmentOutlined,
+  UserOutlined,
 } from "@ant-design/icons";
-import { motion } from "framer-motion";
-import UpcomingAndTodoList from "../dashboard/upcomingAndTodoList";
-import CalendarEventWidget from "../dashboard/calendar";
-import { getCalendarEvents } from "../../services/google";
-import { useCurrentUser } from "../../app/userContext";
+import type { MenuProps } from "antd";
+import WeatherWidget from "./WeatherWidget";
+import MarketsWidget from "./MarketsWidget";
+import TopNewsWidget from "./NewsWidget";
+import { addBookmark } from "../../services/bookmarks";
 import { useRouter } from "next/navigation";
+import FolderConnectionModal from "../components/connect";
+import dayjs from "dayjs";
+import { addEvent } from "../../services/google";
+import { showNotification } from "../../utils/notification";
+import { useCurrentUser } from "../../app/userContext";
 import { useGlobalLoading } from "../../app/loadingContext";
+import { uploadDocklyRootFile } from '../../services/home';
+import { capitalizeEachWord } from "../../app/comman";
+import AddNoteModal from "../../pages/dashboard/AddNoteModal";
+import { fetchSharedItemNotifications, getRecentActivities, markNotificationAsRead, respondToNotification } from '../../services/dashboard';
+import { getAllPlannerData } from "../../services/planner";
 import { QuilttButton, ConnectorSDKCallbackMetadata } from "@quiltt/react";
 import { PRIMARY_COLOR } from "../../app/comman";
 
+const { Option } = Select;
+const { Header, Sider, Content } = Layout;
 const { Title, Text, Paragraph } = Typography;
-const { Content } = Layout;
+const { Search } = Input;
+const { Dragger } = Upload;
+const { TextArea } = Input;
 
-const rawSteps = [
-  { key: "profileCompleted", title: "Complete your profile", description: "Add personal details and preferences" },
-  { key: "accountsCompleted", title: "Connect your first account", description: "Link your bank, email, or service" },
-  { key: "boardCreated", title: "Create your first board", description: "Organize accounts by category" },
-  { key: "documentUploaded", title: "Upload a document", description: "Store important files securely" },
-  { key: "notificationsSetup", title: "Set up notifications", description: "Stay on top of bills and dates" },
-];
+const FONT_FAMILY =
+  '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 
-const iconSet = [
-  <UserAddOutlined style={{ fontSize: 22, color: "#91caff" }} />,
-  <CloudUploadOutlined style={{ fontSize: 22, color: "#ffe58f" }} />,
-  <AppstoreOutlined style={{ fontSize: 22, color: "#b7eb8f" }} />,
-  <FileProtectOutlined style={{ fontSize: 22, color: "#ffd6e7" }} />,
-  <NotificationOutlined style={{ fontSize: 22, color: "#d3adf7" }} />,
-];
+const SPACING = {
+  xs: 3,
+  sm: 6,
+  md: 12,
+  lg: 18,
+  xl: 24,
+  xxl: 36,
+};
 
-const DashboardPage = () => {
-  const [completedSteps, setCompletedSteps] = useState(0);
-  const [incompleteKeys, setIncompleteKeys] = useState<string[]>([]);
-  const username = typeof window !== "undefined" ? localStorage.getItem("username") : "";
-  const [events, setEvents] = useState<any[]>([]);
-  const { loading, setLoading } = useGlobalLoading();
-  const [accountModal, setAccountModal] = useState<boolean>(false);
-  const [accounts, setAccounts] = useState<string[]>([]);
-  const [accountColor, setAccountColor] = useState<Record<string, string>>({});
+const COLORS = {
+  primary: "#1C1C1E",
+  secondary: "#48484A",
+  accent: "#1890FF",
+  success: "#52C41A",
+  warning: "#FAAD14",
+  error: "#FF4D4F",
+  background: "#FAFAFA",
+  surface: "#FFFFFF",
+  surfaceSecondary: "#F8F9FA",
+  border: "#E8E8E8",
+  borderLight: "#F0F0F0",
+  text: "#1C1C1E",
+  textSecondary: "#8C8C8C",
+  textTertiary: "#BFBFBF",
+  overlay: "rgba(0, 0, 0, 0.45)",
+  shadowLight: "rgba(0, 0, 0, 0.04)",
+  shadowMedium: "rgba(0, 0, 0, 0.08)",
+  shadowHeavy: "rgba(0, 0, 0, 0.12)",
+};
+
+const defaultPersonColors = {
+  John: { color: COLORS.accent, email: "john@example.com" },
+  Sarah: { color: COLORS.warning, email: "sarah@example.com" },
+  Emma: { color: COLORS.error, email: "emma@example.com" },
+  Liam: { color: COLORS.success, email: "liam@example.com" },
+  Family: { color: COLORS.secondary, email: "family@example.com" },
+};
+
+interface PersonData {
+  color: string;
+  email?: string;
+}
+
+interface PersonColors {
+  [key: string]: PersonData;
+}
+
+interface ConnectedAccount {
+  userName: string;
+  email: string;
+  displayName: string;
+  accountType: string;
+  provider: string;
+  color: string;
+}
+
+function App() {
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileMenuVisible, setMobileMenuVisible] = useState(false);
+  const [selectedKeys, setSelectedKeys] = useState(["dashboard"]);
+  const [completedTasks, setCompletedTasks] = useState<string[]>([]);
+  const [starredItems, setStarredItems] = useState<string[]>(["budget"]);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const [sharedNotifications, setSharedNotifications] = useState<any[]>([]);
+  const [aiMessages, setAiMessages] = useState([
+    { type: "ai", content: "Hi! How can I help you today?" },
+  ]);
+  const [addModalVisible, setAddModalVisible] = useState(false);
+  const [form] = Form.useForm();
+  const [modalMode, setModalMode] = useState("create");
+  const [isFolderModalVisible, setIsFolderModalVisible] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isAccountModalVisible, setIsAccountModalVisible] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [addNoteModalVisible, setAddNoteModalVisible] = useState(false);
+
+  const [eventForm] = Form.useForm();
+  const [isAllDay, setIsAllDay] = useState(false);
+  const [personColors] = useState<PersonColors>(defaultPersonColors);
+  const [isDragActive, setIsDragActive] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [connectedAccounts] = useState<ConnectedAccount[]>([]);
+  const [upcomingActivities, setUpcomingActivities] = useState<any[]>([]);
   const router = useRouter();
+  const user = useCurrentUser();
+  const username = user?.user_name;
+  const { loading, setLoading } = useGlobalLoading();
 
-  const currentUser = useCurrentUser();
+  const [aiInput, setAiInput] = useState("");
 
-  const fetchDashboardData = async () => {
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const getPersonNames = (): string[] => {
+    return Object.keys(personColors);
+  };
+
+  const getPersonData = (person: string): PersonData => {
+    return personColors[person] || { color: COLORS.accent, email: "" };
+  };
+
+  const getConnectedAccount = (userName: string): ConnectedAccount | null => {
+    return (
+      connectedAccounts.find((account) => account.userName === userName) || null
+    );
+  };
+
+  const handleEventSave = () => {
     setLoading(true);
 
-    try {
-      // Check if Quiltt session exists to mark "accountsCompleted" as done
-      const quilttSession = localStorage.getItem("quiltt.session");
-      const quilttAnonymousId = localStorage.getItem("quiltt.anonymousId");
-      const backendSteps = quilttSession && quilttAnonymousId ? [] : ["accountsCompleted"];
-      setIncompleteKeys(backendSteps);
-      setCompletedSteps(rawSteps.length - backendSteps.length);
+    eventForm
+      .validateFields()
+      .then(async (values) => {
+        const {
+          title,
+          date,
+          startTime,
+          endTime,
+          startDate,
+          endDate,
+          person,
+          location,
+          description,
+          invitee,
+        } = values;
 
-      // Fetch Google Calendar events
-      const calendarRes = await getCalendarEvents({
-        userId: currentUser?.userId,
+        const payload = isAllDay
+          ? {
+            is_all_day: true,
+            title,
+            start_date: startDate.format("YYYY-MM-DD"),
+            end_date: endDate.format("YYYY-MM-DD"),
+            location,
+            description,
+            person,
+            invitee,
+          }
+          : {
+            is_all_day: false,
+            title,
+            date: date.format("YYYY-MM-DD"),
+            start_time: startTime.format("h:mm A"),
+            end_time: endTime.format("h:mm A"),
+            location,
+            description,
+            person,
+            invitee,
+          };
+
+        try {
+          const res = await addEvent(payload);
+          const { status, message: responseMessage } = res.data;
+
+          if (status === 1) {
+            showNotification("Success", responseMessage, "success");
+          } else {
+            showNotification("Error", responseMessage, "error");
+          }
+
+          setIsModalVisible(false);
+          eventForm.resetFields();
+          setIsAllDay(false);
+        } catch (err) {
+          console.error("Save error:", err);
+          showNotification("Error", "Something went wrong.", "error");
+        }
+
+        setLoading(false);
+      })
+      .catch(() => {
+        setLoading(false);
       });
+  };
 
-      const rawEvents = calendarRes.data.payload.events;
-      const gmailConnected = calendarRes.data.payload.connected_accounts;
-      const colors = calendarRes.data.payload.account_colors || {};
+  const mockData = {
+    user: {
+      name: "John Smith",
+      email: "john.smith@example.com",
+      avatar: "JS",
+    },
+    weather: {
+      location: "Ashburn, VA",
+      temperature: 72,
+      condition: "Partly Cloudy",
+      high: 78,
+      low: 65,
+      rain: 20,
+    },
+    news: [
+      {
+        title: "Fed Announces Rate Decision",
+        time: "2 hours ago",
+        important: true,
+      },
+      {
+        title: "Tech Giants Report Earnings",
+        time: "5 hours ago",
+        important: false,
+      },
+    ],
+    markets: [
+      { name: "S&P 500", value: "5,487.03", change: "+0.85%", positive: true },
+      { name: "NASDAQ", value: "17,862.31", change: "+1.24%", positive: true },
+      { name: "DOW", value: "39,308.00", change: "-0.22%", positive: false },
+    ],
+    actions: [
+      {
+        id: "1",
+        text: "Update weak passwords",
+        detail: "3 accounts at risk",
+        icon: <ExclamationCircleOutlined />,
+        priority: "high",
+      },
+      {
+        id: "2",
+        text: "Pay mortgage",
+        detail: "Due today - $1,450.00",
+        icon: <DollarOutlined />,
+        priority: "high",
+      },
+      {
+        id: "3",
+        text: "Car insurance payment",
+        detail: "Due tomorrow - $132.50",
+        icon: <CarOutlined />,
+        priority: "medium",
+      },
+      {
+        id: "4",
+        text: "Renew passport",
+        detail: "Expires in 45 days",
+        icon: <IdcardOutlined />,
+        priority: "medium",
+      },
+      {
+        id: "7",
+        text: "Schedule checkup",
+        detail: "Annual physical due",
+        icon: <MedicineBoxOutlined />,
+        priority: "medium",
+      },
+    ],
+    upcomingActivities: [
+      { title: "Team Standup", time: "Today 9:00 AM", color: "#3b82f6" },
+      { title: "Internet Bill Due", time: "Jun 25 - $89.99", color: "#f59e0b" },
+    ],
+    recentActivity: [
+      {
+        id: "1",
+        name: "Tax Return 2024.pdf",
+        time: "2 hours ago",
+        type: "pdf",
+        starred: false,
+      },
+      {
+        id: "2",
+        name: "Monthly Budget.xlsx",
+        time: "5 hours ago",
+        type: "excel",
+        starred: true,
+      },
+    ],
+  };
 
-      if (gmailConnected && gmailConnected.length > 0) {
-        setAccounts(gmailConnected);
+  const menuItems: MenuProps["items"] = [
+    {
+      key: "command-center",
+      label: "COMMAND CENTER",
+      type: "group",
+    },
+    {
+      key: "dashboard",
+      icon: <DashboardOutlined />,
+      label: "Dashboard",
+    },
+    {
+      key: "planner",
+      icon: <CalendarOutlined />,
+      label: "Planner",
+    },
+    {
+      key: "hubs",
+      label: "HUBS",
+      type: "group",
+    },
+    {
+      key: "family",
+      icon: <TeamOutlined />,
+      label: "Family",
+    },
+    {
+      key: "finance",
+      icon: <DollarOutlined />,
+      label: "Finance",
+    },
+    {
+      key: "home",
+      icon: <HomeOutlined />,
+      label: "Home",
+    },
+    {
+      key: "health",
+      icon: <HeartOutlined />,
+      label: "Health",
+    },
+    {
+      key: "utilities",
+      label: "UTILITIES",
+      type: "group",
+    },
+    {
+      key: "notes",
+      icon: <FileTextOutlined />,
+      label: "Notes & Lists",
+    },
+    {
+      key: "bookmarks",
+      icon: <BookOutlined />,
+      label: "Bookmarks",
+    },
+    {
+      key: "files",
+      icon: <FolderOutlined />,
+      label: "Files",
+    },
+    {
+      key: "vault",
+      icon: <LockOutlined />,
+      label: "Vault",
+    },
+  ];
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      setLoadingNotifications(true);
+      try {
+        const response = await getRecentActivities({});
+        if (response?.data?.status === 1) {
+          setNotifications(response.data.payload.notifications || []);
+        }
+      } catch (err) {
+        message.error('Failed to load notifications');
       }
+      setLoadingNotifications(false);
+    };
 
-      if (colors && Object.keys(colors).length > 0) {
-        setAccountColor(colors);
+    fetchNotifications();
+  }, []);
+
+  useEffect(() => {
+    const loadNotifications = async () => {
+      try {
+        const res = await fetchSharedItemNotifications();
+        if (res.data.status) {
+          setSharedNotifications(res.data.payload.notifications || []);
+        }
+      } catch (err) {
+        console.error("Failed to load shared notifications", err);
       }
+    };
 
-      const parsedEvents = rawEvents
-        .filter((event: any) => event?.start && event?.end)
-        .map((event: any) => ({
-          id: event.id,
-          title: event.summary || "(No Title)",
-          start: new Date(event.start.dateTime || event.start.date),
-          end: new Date(event.end.dateTime || event.end.date),
-          allDay: !event.start.dateTime,
-          extendedProps: {
-            status: "confirmed",
-          },
-          source_email: event.source_email || "",
-        }));
+    loadNotifications();
+  }, []);
 
-      setEvents(parsedEvents);
-    } catch (error) {
-      console.error("Failed to fetch dashboard data", error);
-    } finally {
-      setLoading(false);
+  const handleDismissNotification = async (id: number) => {
+    try {
+      await markNotificationAsRead(id);
+      setSharedNotifications(prev => prev.filter(notif => notif.id !== id));
+    } catch (err) {
+      console.error("Failed to mark notification as read", err);
     }
   };
 
   useEffect(() => {
-    fetchDashboardData();
+    const fetchUpcomingActivities = async () => {
+      try {
+        const res = await getAllPlannerData({
+          show_dockly: false,
+          show_google: true,
+        });
+
+        const now = new Date();
+        const todayStr = now.toISOString().split("T")[0];
+
+        const normalizeEvents = (res.data?.payload?.events || []).map((e: any) => ({
+          summary: e.summary,
+          start: e.start,
+          provider: "calendar",
+        }));
+
+        let todayEvents: any[] = [];
+        let futureEvents: any[] = [];
+
+        normalizeEvents.forEach((event: any) => {
+          const startRaw = event.start?.dateTime || event.start?.date;
+          if (!startRaw) return;
+
+          const startDateStr = startRaw.split("T")[0];
+
+          if (startDateStr === todayStr) {
+            todayEvents.push(event);
+          } else if (new Date(startRaw) > now) {
+            futureEvents.push(event);
+          }
+        });
+
+        const sortByTime = (arr: any[]) =>
+          arr.sort(
+            (a, b) =>
+              new Date(a.start?.dateTime || a.start?.date).getTime() -
+              new Date(b.start?.dateTime || b.start?.date).getTime()
+          );
+
+        todayEvents = sortByTime(todayEvents);
+        futureEvents = sortByTime(futureEvents);
+
+        let upcoming: any[] = [...todayEvents];
+        if (upcoming.length < 2) {
+          upcoming = [...upcoming, ...futureEvents.slice(0, 2 - upcoming.length)];
+        }
+
+        const mappedUpcoming = upcoming.map((event) => ({
+          title: event.summary || "Untitled",
+          time: event.start?.dateTime
+            ? new Date(event.start.dateTime).toLocaleString([], {
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "numeric",
+              })
+            : event.start?.date
+            ? new Date(event.start.date).toLocaleDateString([], {
+                month: "short",
+                day: "numeric",
+              })
+            : "",
+          color: "#3b82f6",
+        }));
+
+        setUpcomingActivities(mappedUpcoming);
+      } catch (err) {
+        console.error("Error fetching upcoming activities", err);
+      }
+    };
+
+    fetchUpcomingActivities();
   }, []);
 
-  const handleNextStep = () => {
-    const idx = completedSteps;
-    const key = rawSteps[idx]?.key;
-    localStorage.setItem("docklySetup", JSON.stringify({ ...incompleteKeys, [key]: true }));
-    if (incompleteKeys?.[0] === "accountsCompleted") {
-      setAccountModal(true);
+  const toggleTask = (taskId: string) => {
+    setCompletedTasks((prev) =>
+      prev.includes(taskId)
+        ? prev.filter((id) => id !== taskId)
+        : [...prev, taskId]
+    );
+    if (!completedTasks.includes(taskId)) {
+      message.success("Task completed!");
     }
-    incompleteKeys?.[0] === "profileCompleted" && (window.location.href = `/${username}/profile/setup`);
-    incompleteKeys?.[0] === "notificationsSetup" && (window.location.href = `/${username}/settings`);
   };
 
-  const nextStepKey = incompleteKeys?.[0];
-  const totalSteps = rawSteps.length;
-  const steps = rawSteps.map((s, i) => {
-    const isCompleted = !incompleteKeys.includes(s.key);
-    const isActive = s.key === nextStepKey;
-    return {
-      ...s,
-      isCompleted,
-      isActive,
-      icon: isCompleted ? (
-        <CheckCircleTwoTone twoToneColor="#52c41a" style={{ fontSize: 24 }} />
-      ) : (
-        <Avatar size={40} style={{ background: "#fff", border: "1px solid #d9d9d9" }}>
-          {iconSet[i]}
-        </Avatar>
-      ),
-      action: isActive ? (
-        <Button type="primary" size="small" onClick={handleNextStep} style={{ borderRadius: 6, padding: 15 }}>
-          Start
-        </Button>
-      ) : null,
+  const toggleStar = (itemId: string) => {
+    setStarredItems((prev) =>
+      prev.includes(itemId)
+        ? prev.filter((id) => id !== itemId)
+        : [...prev, itemId]
+    );
+  };
+
+  const toggleFilter = (filter: string) => {
+    setActiveFilters((prev) =>
+      prev.includes(filter)
+        ? prev.filter((f) => f !== filter)
+        : [...prev, filter]
+    );
+  };
+
+  const sendAiMessage = () => {
+    if (!aiInput.trim()) return;
+
+    const newMessages = [
+      ...aiMessages,
+      { type: "user", content: aiInput },
+      {
+        type: "ai",
+        content: "I can help you with that! Let me analyze your data...",
+      },
+    ];
+    setAiMessages(newMessages);
+    setAiInput("");
+  };
+
+  const userMenuItems = [
+    { key: "profile", label: "Profile Settings" },
+    { key: "preferences", label: "Preferences" },
+    { key: "logout", label: "Sign Out" },
+  ];
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "high":
+        return "#ef4444";
+      case "medium":
+        return "#f59e0b";
+      case "low":
+        return "#10b981";
+      default:
+        return "#6b7280";
+    }
+  };
+
+  const formatDate = (date: Date) => {
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     };
-  });
-
-  return (
-    <Content style={{ background: "#f9f9f9", margin: "80px 15px 0 50px" }}>
-      <WelComeCard totalSteps={totalSteps} completedSteps={completedSteps} steps={steps} />
-      <div style={{ display: "flex", gap: 20, marginTop: 20 }}>
-        <UpcomingAndTodoList googleEvents={events} accountColor={accountColor} />
-        <CalendarEventWidget events={events} accountColor={accountColor} />
-      </div>
-      <AccountModal visible={accountModal} onCancel={() => setAccountModal(false)} username={username} setAccountModal={setAccountModal} />
-    </Content>
-  );
-};
-
-export default DashboardPage;
-
-const AccountModal = ({ visible, onCancel, username, setAccountModal }: any) => {
-  const router = useRouter();
-  const isBankConnected = !!localStorage.getItem("quiltt.session") && !!localStorage.getItem("quiltt.anonymousId");
-
-  const handleQuilttSuccess = (metadata: ConnectorSDKCallbackMetadata) => {
-    // Store Quiltt session data (assuming it's set by QuilttButton)
-    console.log("Quiltt connection successful:", metadata);
-    setAccountModal(false); // Close modal on successful connection
+    return date.toLocaleDateString("en-US", options);
   };
 
-  return (
-    <Modal
-      open={visible}
-      onCancel={onCancel}
-      footer={null}
-      centered
-      width={750}
-      style={{
-        borderRadius: 12,
-        backgroundImage: 'url("https://www.transparenttextures.com/patterns/cubes.png")',
-        backgroundSize: "cover",
-        padding: 0,
-      }}
-      bodyStyle={{
-        padding: 40,
-        background: "rgba(255, 255, 255, 0.95)",
-        borderRadius: 12,
-      }}
-    >
-      <div style={{ textAlign: "center", marginBottom: 32 }}>
-        <Title level={3} style={{ color: "#333", marginBottom: 4 }}>
-          Manage Your Accounts
-        </Title>
-        <Text style={{ fontSize: 16, color: "#666" }}>
-          Choose the account type you want to manage
-        </Text>
-      </div>
+  const sidebarStyle: React.CSSProperties = {
+    background: "#ffffff",
+    borderRight: "1px solid #e5e7eb",
+    height: "100vh",
+    position: "fixed",
+    left: 0,
+    top: 0,
+    zIndex: 1000,
+    transition: "all 0.3s ease",
+    transform: mobileMenuVisible ? "translateX(0)" : "translateX(-100%)",
+  };
 
-      <Row gutter={24} justify="center">
-        {!isBankConnected && (
-          <Col span={12}>
+  const contentStyle: React.CSSProperties = {
+    marginLeft: collapsed ? 80 : 260,
+    transition: "margin-left 0.3s ease",
+    minHeight: "100vh",
+    background: "#f9fafa",
+  };
+
+  const mobileOverlayStyle: React.CSSProperties = {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0, 0, 0, 0.5)",
+    zIndex: 999,
+    display: mobileMenuVisible ? "block" : "none",
+  };
+
+  const handleClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const uploads = Array.from(files).map(async (file) => {
+        try {
+          const res = await uploadDocklyRootFile(file);
+          if (res.status === 1) {
+            message.success(`Uploaded: ${file.name}`);
+          } else {
+            message.error(res.message || `Failed to upload: ${file.name}`);
+          }
+        } catch (err) {
+          console.error("Upload error:", err);
+          message.error(`Error uploading: ${file.name}`);
+        }
+      });
+      await Promise.all(uploads);
+      e.target.value = "";
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragActive(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragActive(false);
+  };
+
+  const handleOk = () => {
+    if (username) {
+      router.push(`/${username}/planner?view=Day`);
+    } else {
+      console.error("Username not found in localStorage");
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragActive(false);
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      const uploads = Array.from(files).map(async (file) => {
+        try {
+          const res = await uploadDocklyRootFile(file);
+          if (res.status === 1) {
+            message.success(`Uploaded: ${file.name}`);
+          } else {
+            message.error(res.message || `Failed to upload: ${file.name}`);
+          }
+        } catch (err) {
+          console.error("Upload error:", err);
+          message.error(`Error uploading: ${file.name}`);
+        }
+      });
+
+      await Promise.all(uploads);
+    }
+  };
+
+  const AccountModal = ({ visible, onCancel, username, setAccountModalVisible }: any) => {
+    const [isBankConnected, setIsBankConnected] = useState(false);
+
+  useEffect(() => {
+    try {
+      const session = localStorage.getItem("quiltt.session");
+      const anonymousId = localStorage.getItem("quiltt.anonymousId");
+      setIsBankConnected(!!session && !!anonymousId);
+    } catch (error) {
+      console.error("Error accessing localStorage:", error);
+      setIsBankConnected(false);
+    }
+  }, []);
+    const handleQuilttSuccess = (metadata: ConnectorSDKCallbackMetadata) => {
+      console.log("Quiltt connection successful:", metadata);
+      setAccountModalVisible(false);
+    };
+
+    return (
+      <Modal
+        open={visible}
+        onCancel={onCancel}
+        footer={null}
+        centered
+        width={750}
+        style={{
+          borderRadius: 12,
+          backgroundImage: 'url("https://www.transparenttextures.com/patterns/cubes.png")',
+          backgroundSize: "cover",
+          padding: 0,
+        }}
+        bodyStyle={{
+          padding: 40,
+          background: "rgba(255, 255, 255, 0.95)",
+          borderRadius: 12,
+        }}
+      >
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <Title level={3} style={{ color: "#333", marginBottom: 4 }}>
+            Manage Your Accounts
+          </Title>
+          <Text style={{ fontSize: 16, color: "#666" }}>
+            Choose the account type you want to manage
+          </Text>
+        </div>
+
+        <Row gutter={24} justify={isBankConnected ? "center" : "space-between"}>
+          {!isBankConnected && (
+            <Col span={12}>
+              <Card
+                hoverable
+                style={{
+                  borderRadius: 12,
+                  background: "#f9f9f9",
+                  textAlign: "center",
+                  padding: 24,
+                  border: "1px solid #eaeaea",
+                  transition: "all 0.3s",
+                }}
+              >
+                <div style={{ marginBottom: 16 }}>
+                  <img
+                    src="https://cdn-icons-png.flaticon.com/512/3721/3721710.png"
+                    alt="Bank"
+                    style={{ width: 64, height: 64 }}
+                  />
+                </div>
+                <Title level={4} style={{ color: "#2c3e50", marginBottom: 8 }}>
+                  Bank Account
+                </Title>
+                <Text style={{ color: "#555" }}>
+                  Add or update your bank account information
+                </Text>
+                <div style={{ marginTop: 20 }}>
+                  <QuilttButton
+                    connectorId="lc9h19r4no"
+                    onExitSuccess={handleQuilttSuccess}
+                    style={{
+                      borderRadius: 10,
+                      background: PRIMARY_COLOR,
+                      color: "#fff",
+                      padding: "20px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Connect Bank Account
+                  </QuilttButton>
+                </div>
+              </Card>
+            </Col>
+          )}
+          <Col span={isBankConnected ? 24 : 12}>
             <Card
               hoverable
+              onClick={() => router.push(`/${username}/calendar`)}
               style={{
                 borderRadius: 12,
                 background: "#f9f9f9",
@@ -777,300 +827,1138 @@ const AccountModal = ({ visible, onCancel, username, setAccountModal }: any) => 
             >
               <div style={{ marginBottom: 16 }}>
                 <img
-                  src="https://cdn-icons-png.flaticon.com/512/3721/3721710.png"
-                  alt="Bank"
+                  src="https://cdn-icons-png.flaticon.com/512/561/561127.png"
+                  alt="Email"
                   style={{ width: 64, height: 64 }}
                 />
               </div>
               <Title level={4} style={{ color: "#2c3e50", marginBottom: 8 }}>
-                Bank Account
+                Email Account
               </Title>
               <Text style={{ color: "#555" }}>
-                Add or update your bank account information
+                Manage your email and other details
               </Text>
-              <div style={{ marginTop: 20 }}>
-                <QuilttButton
-                  connectorId="lc9h19r4no"
-                  onExitSuccess={handleQuilttSuccess}
-                  style={{
-                    borderRadius: 10,
-                    background: PRIMARY_COLOR,
-                    color: "#fff",
-                    padding: "20px",
-                    cursor: "pointer",
-                  }}
-                >
-                  Connect Bank Account
-                </QuilttButton>
-              </div>
             </Card>
           </Col>
-        )}
-        <Col span={12}>
-          <Card
-            hoverable
-            onClick={() => router.push(`/${username}/calendar`)}
-            style={{
-              borderRadius: 12,
-              background: "#f9f9f9",
-              textAlign: "center",
-              padding: 24,
-              border: "1px solid #eaeaea",
-              transition: "all 0.3s",
-            }}
-          >
-            <div style={{ marginBottom: 16 }}>
-              <img
-                src="https://cdn-icons-png.flaticon.com/512/561/561127.png"
-                alt="Email"
-                style={{ width: 64, height: 64 }}
-              />
-            </div>
-            <Title level={4} style={{ color: "#2c3e50", marginBottom: 8 }}>
-              Email Account
-            </Title>
-            <Text style={{ color: "#555" }}>
-              Manage your email and other details
-            </Text>
-          </Card>
-        </Col>
-      </Row>
-    </Modal>
-  );
-};
+        </Row>
+      </Modal>
+    );
+  };
 
-/** Animated Progress Bar Component **/
-const AnimatedProgress = ({ completedSteps, totalSteps }: { completedSteps: number; totalSteps: number }) => {
-  const [shown, setShown] = useState(0);
-  const percent = Math.round((completedSteps / totalSteps) * 100);
-
-  useEffect(() => {
-    setShown(0);
-    const timeout = setTimeout(() => setShown(percent), 300);
-    return () => clearTimeout(timeout);
-  }, [percent]);
-
-  const icon = (percent === 100 ? <CheckCircleOutlined style={{ color: "#52c41a", fontSize: 20 }} /> :
-    percent > 50 ? <HourglassOutlined style={{ color: "#faad14", fontSize: 20 }} /> :
-      <InfoCircleOutlined style={{ color: "#ff4d4f", fontSize: 20 }} />);
-
-  return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
-        <Space style={{ marginBottom: 16, justifyContent: "space-between", width: "100%" }}>
-          <div style={{ display: 'flex', gap: 2 }}>
-            {icon}
-            <Text style={{ fontSize: 16, fontWeight: 600, marginLeft: 10 }}>{`Getting Started: ${completedSteps}/${totalSteps}`}</Text>
-          </div>
-          <Tooltip title="Progress percentage">
-            <Text style={{ fontSize: 16, color: "#1677ff", fontWeight: 600 }}>{`${percent}%`}</Text>
-          </Tooltip>
-        </Space>
-      </motion.div>
-
-      <div style={{ position: "relative", background: "#f0f2f5", borderRadius: 10, height: 14 }}>
-        <motion.div layout initial={{ width: 0 }} animate={{ width: `${shown}%` }} transition={{ duration: 1.2, ease: "easeInOut" }}
-          style={{
-            background: "linear-gradient(90deg, #bae7ff, #1677ff)",
-            height: "100%",
-            borderRadius: 10
-          }}
-        />
-      </div>
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
-        <Text type="secondary" style={{ fontSize: 13 }}>Started</Text>
-        <Text type="secondary" style={{ fontSize: 13 }}>Complete</Text>
-      </div>
-    </motion.div>
-  );
-};
-
-const QuickOptions = () => {
   return (
     <div
       style={{
-        marginTop: 90,
-        borderRadius: "16px",
+        minHeight: "100vh",
+        background: "#f9fafa",
+        marginTop: 50,
+        fontFamily: FONT_FAMILY,
       }}
     >
-      <Carousel autoplay style={{ width: "100%", borderRadius: "16px" }}>
-        {cardData.map((card, index) => (
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, x: -100 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8 }}
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              width: "100%",
-            }}
-          >
+      <div
+        style={mobileOverlayStyle}
+        onClick={() => setMobileMenuVisible(false)}
+      />
+
+      <Layout style={{ background: "#f9fafa" }}>
+        <Content style={{ padding: SPACING.lg, overflow: "auto" }}>
+          <div style={{ maxWidth: "1800px", margin: "0 50px" }}>
             <div
               style={{
-                width: "100%",
-                maxWidth: "4000px",
-                height: " 270px",
-                display: "flex",
-                borderRadius: "16px",
-                boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
-                padding: "32px",
-                background: card.background,
-                justifyContent: "space-between",
+                marginBottom: SPACING.lg,
+                animation: "fadeIn 0.6s ease-out",
               }}
             >
-              <div style={{ maxWidth: "50%", paddingRight: "24px" }}>
-                <Title level={4} style={{ color: 'black', marginBottom: 8 }}>
-                  {card.title}
-                </Title>
-                <Title level={2} style={{ marginBottom: 8 }}>
-                  {card.subtitle}
-                </Title>
-                <Paragraph style={{ fontSize: "16px", marginBottom: 24 }}>
-                  {card.description}
-                </Paragraph>
-                <Button
-                  type="primary"
-                  size="large"
-                  style={{
-                    backgroundColor: card.buttonColor,
-                    borderColor: card.buttonColor,
-                    borderRadius: 8,
-                    color: card.title === "Take Smart Notes" ? "#000" : "#fff",
-                  }}
-                  onClick={() => {
-                    if (card.title === "Stay Connected") {
-                      // window.location.href = `/${username}/accounts`;
-                    } else if (card.title === "Take Smart Notes") {
-                      window.location.href = "/notes";
-                    } else if (card.title === "Drag & Drop Ease") {
-                      window.location.href = "/drag-drop";
-                    } else if (card.title === "Bookmark Smarter") {
-                      window.location.href = "/bookmarks";
-                    }
-                  }
-                  }
-                >
-                  {card.button}
-                </Button>
-              </div>
-              <div>
-                <img
-                  src={card.image}
-                  alt={card.title}
-                  style={{
-                    width: "300px",
-                    height: "auto",
-                    objectFit: "contain",
-                  }}
-                />
-              </div>
-            </div>
-          </motion.div>
-        ))}
-      </Carousel>
-    </div>
-  )
-}
-
-const cardData = [
-  {
-    title: "Stay Connected",
-    subtitle: "Connect with Us.",
-    description:
-      "Effortlessly sync and manage your calendar, meetings, and drive all in one place.",
-    button: "Connect Now",
-    image: "/connect.png",
-    background: "#7d7ef0", // lighter than #4244e6
-    buttonColor: "#4244e6",
-  },
-  {
-    title: "Take Smart Notes",
-    subtitle: "Never Miss a Thought.",
-    description:
-      "Quickly jot down important ideas, meeting points, and reminders for easy access.",
-    button: "Open Notes",
-    image: "/notes.png",
-    background: "#f1ffe4", // lighter than #e8ffaed1
-    buttonColor: "#e8ffaed1",
-  },
-  {
-    title: "Drag & Drop Ease",
-    subtitle: "Organize with Simplicity.",
-    description:
-      "Use intuitive drag-and-drop tools to manage your files and layouts like a pro.",
-    button: "Start Organizing",
-    image: "/drag.png",
-    background: "#ff9ea6", // lighter than #fe4e5b
-    buttonColor: "#fe4e5b",
-  },
-  {
-    title: "Bookmark Smarter",
-    subtitle: "Save What Matters.",
-    description:
-      "Easily bookmark key resources and revisit important pages with one click.",
-    button: "View Bookmarks",
-    image: "/book.png",
-    background: "#ff9d8e", // lighter than #ff735c
-    buttonColor: "#ff735c",
-  },
-];
-
-const WelComeCard = (props: any) => {
-  const { completedSteps, totalSteps, steps } = props
-  return (
-    <div style={{ background: "#fff", borderRadius: 12, padding: 24, boxShadow: "0 4px 12px rgba(0,0,0,0.05)" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div>
-          <Title level={4} style={{ margin: 0 }}>Welcome to Dockly!</Title>
-          <Text>Let's get your account set up. Follow these steps to start.</Text>
-        </div>
-        <div style={{ background: "#e6f0ff", borderRadius: "50%", padding: 10 }}>
-          <Avatar size={84} src="/dash.jpg" />
-        </div>
-      </div>
-      <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-        <AnimatedProgress completedSteps={completedSteps} totalSteps={totalSteps} />
-      </motion.div>
-      {completedSteps === totalSteps ? (
-        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }}
-          style={{ textAlign: "center", padding: 20, background: "#f6ffed", borderRadius: 12, boxShadow: "0 4px 10px rgba(0,0,0,0.05)" }}>
-          <CheckCircleTwoTone twoToneColor="#52c41a" style={{ fontSize: 48 }} />
-          <p style={{ marginTop: 12, color: "#389e0d", fontWeight: 600 }}>You're all set! Everything looks perfect 🎉</p>
-        </motion.div>
-      ) : (
-        <div style={{ marginTop: 20 }}>
-          {steps.map((item: any, idx: any) => (
-            <React.Fragment key={idx}>
-              <motion.div
-                initial={{ opacity: 0, x: -30 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.4, delay: idx * 0.1 }}
+              <Title
+                level={2}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  background: item.isActive ? "#e6f7ff" : "#fff",
-                  padding: item.isActive ? 20 : 5,
-                  borderRadius: 10,
-                  marginBottom: 12,
-                  boxShadow: item.isActive ? "0 2px 8px rgba(0,0,0,0.1)" : "none",
-                  borderLeft: `7px solid ${item.isActive ? "#1890ff" : "transparent"}`,
-                  border: item.isActive ? "1px solid #1677ff" : 0,
+                  margin: 0,
+                  color: "#1f2937",
+                  fontSize: "24px",
+                  fontFamily: FONT_FAMILY,
+                  fontWeight: 600,
                 }}
               >
-                <div style={{ marginRight: 16, marginLeft: item.isActive ? 4 : 0 }}>{item.icon}</div>
-                <div style={{ flexGrow: 1 }}>
-                  <Title level={5} style={{ margin: 0 }}>{item.title}</Title>
-                  <Text type="secondary">{item.description}</Text>
+                Good morning, {capitalizeEachWord(username)}!
+              </Title>
+              <Text
+                style={{
+                  color: "#6b7280",
+                  fontSize: "14px",
+                  fontFamily: FONT_FAMILY,
+                }}
+              >
+                {formatDate(currentTime)}
+              </Text>
+            </div>
+
+            <div
+              className="widgets-container"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+                gap: SPACING.lg,
+                marginBottom: SPACING.sm,
+              }}
+            >
+              <WeatherWidget />
+              <TopNewsWidget />
+              <MarketsWidget />
+            </div>
+
+            <Card
+              title={
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: SPACING.sm,
+                  }}
+                >
+                  <DashboardOutlined
+                    style={{ color: "#3b82f6", fontSize: "16px" }}
+                  />
+                  <span
+                    style={{
+                      fontWeight: 600,
+                      fontSize: "16px",
+                      fontFamily: FONT_FAMILY,
+                    }}
+                  >
+                    Command Center
+                  </span>
                 </div>
-                {item.action && <div>{item.action}</div>}
-              </motion.div>
-              <Divider style={{ margin: 0 }} />
-            </React.Fragment>
-          ))}
-        </div>
-      )}
+              }
+              style={{ borderRadius: "12px", marginTop: SPACING.lg }}
+              styles={{
+                body: {
+                  padding: SPACING.lg,
+                }
+              }}
+            >
+              <Row gutter={[24, 24]}>
+                <Col xs={24} lg={8}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                    <Title level={5} style={{
+                      margin: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      color: '#4b5563',
+                      fontSize: '14px'
+                    }}>
+                      <TabletOutlined style={{ color: '#6b7280' }} />
+                      Actions & Notifications
+                    </Title>
+                    <Badge count={notifications.length + sharedNotifications.length} size="small" />
+                  </div>
+                  <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
+                    <List
+                      dataSource={[...notifications, ...sharedNotifications]}
+                      loading={loadingNotifications}
+                      locale={{ emptyText: 'No new notifications' }}
+                      renderItem={(item) => (
+                        <List.Item
+                          style={{
+                            padding: '8px',
+                            border: 'none',
+                            borderRadius: '8px',
+                            marginBottom: '4px',
+                            transition: 'background 0.2s ease',
+                            cursor: 'default'
+                          }}
+                        >
+                          <div style={{ flex: 1 }}>
+                            <Text style={{ fontWeight: 500, fontSize: '14px', color: '#1f2937' }}>
+                              {item.message}
+                            </Text>
+                            {item.taskType === 'family_request' && (
+                              <div style={{ marginTop: '8px', display: 'flex', gap: '10px' }}>
+                                <Button
+                                  type="primary"
+                                  size="small"
+                                  icon={<CheckOutlined />}
+                                  onClick={async () => {
+                                    try {
+                                      const res = await respondToNotification({ id: item.id, response: 'accepted' });
+                                      if (res?.data?.status === 1) {
+                                        message.success('Family invite accepted');
+                                        setNotifications(prev => prev.filter(n => n.id !== item.id));
+                                      }
+                                    } catch (err) {
+                                      message.error('Failed to respond to invite');
+                                    }
+                                  }}
+                                />
+                                <Button
+                                  danger
+                                  size="small"
+                                  icon={<CloseOutlined />}
+                                  onClick={() => {
+                                    setNotifications(prev => prev.filter(n => n.id !== item.id));
+                                  }}
+                                />
+                              </div>
+                            )}
+                            {item.taskType === 'tagged' && (
+                              <div style={{ marginTop: '8px' }}>
+                                <Button
+                                  danger
+                                  size="small"
+                                  icon={<CloseOutlined />}
+                                  onClick={() => handleDismissNotification(item.id)}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </List.Item>
+                      )}
+                    />
+                  </div>
+                </Col>
+                <Col xs={24} lg={8}>
+                  <div style={{ marginBottom: SPACING.xl }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        marginBottom: SPACING.md,
+                      }}
+                    >
+                      <Title
+                        level={5}
+                        style={{
+                          margin: 0,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: SPACING.sm,
+                          color: "#4b5563",
+                          fontSize: "13px",
+                          fontFamily: FONT_FAMILY,
+                          fontWeight: 600,
+                        }}
+                      >
+                        <CalendarOutlined
+                          style={{ color: "#6b7280", fontSize: "14px" }}
+                        />
+                        Upcoming Activities
+                      </Title>
+                      <Button
+                        type="link"
+                        size="small"
+                        onClick={handleOk}
+                        style={{
+                          padding: 0,
+                          fontSize: "11px",
+                          fontFamily: FONT_FAMILY,
+                        }}
+                      >
+                        View All →
+                      </Button>
+                    </div>
+                    <div style={{ maxHeight: "220px", overflowY: "auto" }}>
+                      <List
+                        dataSource={upcomingActivities}
+                        renderItem={(item) => (
+                          <List.Item
+                            style={{
+                              padding: SPACING.sm,
+                              border: "none",
+                              borderRadius: "8px",
+                              marginBottom: SPACING.xs,
+                              transition: "background 0.2s ease",
+                              cursor: "pointer",
+                            }}
+                            onMouseEnter={(e) =>
+                              (e.currentTarget.style.background = "#f9fafb")
+                            }
+                            onMouseLeave={(e) =>
+                              (e.currentTarget.style.background = "transparent")
+                            }
+                          >
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: SPACING.sm,
+                                width: "100%",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: "3px",
+                                  height: "24px",
+                                  background: item.color,
+                                  borderRadius: "2px",
+                                }}
+                              />
+                              <div style={{ flex: 1 }}>
+                                <Text
+                                  style={{
+                                    fontSize: "13px",
+                                    fontWeight: 500,
+                                    color: "#1f2937",
+                                    fontFamily: FONT_FAMILY,
+                                  }}
+                                >
+                                  {item.title}
+                                </Text>
+                                <br />
+                                <Text
+                                  style={{
+                                    fontSize: "11px",
+                                    color: "#6b7280",
+                                    fontFamily: FONT_FAMILY,
+                                  }}
+                                >
+                                  {item.time}
+                                </Text>
+                              </div>
+                            </div>
+                          </List.Item>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        marginBottom: SPACING.md,
+                      }}
+                    >
+                      <Title
+                        level={5}
+                        style={{
+                          margin: 0,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: SPACING.sm,
+                          color: "#4b5563",
+                          fontSize: "13px",
+                          fontFamily: FONT_FAMILY,
+                          fontWeight: 600,
+                        }}
+                      >
+                        <HistoryOutlined
+                          style={{ color: "#6b7280", fontSize: "14px" }}
+                        />
+                        Recent Activity
+                      </Title>
+                      <Button
+                        type="link"
+                        size="small"
+                        style={{
+                          padding: 0,
+                          fontSize: "11px",
+                          fontFamily: FONT_FAMILY,
+                        }}
+                      >
+                        See All →
+                      </Button>
+                    </div>
+                    <div style={{ maxHeight: "150px", overflowY: "auto" }}>
+                      <List
+                        dataSource={mockData.recentActivity}
+                        renderItem={(item) => (
+                          <List.Item
+                            style={{
+                              padding: SPACING.sm,
+                              border: "none",
+                              borderRadius: "8px",
+                              marginBottom: SPACING.xs,
+                              transition: "background 0.2s ease",
+                              cursor: "pointer",
+                            }}
+                            onMouseEnter={(e) =>
+                              (e.currentTarget.style.background = "#f9fafb")
+                            }
+                            onMouseLeave={(e) =>
+                              (e.currentTarget.style.background = "transparent")
+                            }
+                          >
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: SPACING.sm,
+                                width: "100%",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: "24px",
+                                  height: "24px",
+                                  background:
+                                    item.type === "pdf"
+                                      ? "#dbeafe"
+                                      : item.type === "excel"
+                                        ? "#dcfce7"
+                                        : "#e0e7ff",
+                                  borderRadius: "6px",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                }}
+                              >
+                                <FileOutlined
+                                  style={{
+                                    color:
+                                      item.type === "pdf"
+                                        ? "#3b82f6"
+                                        : item.type === "excel"
+                                          ? "#10b981"
+                                          : "#8b5cf6",
+                                    fontSize: "11px",
+                                  }}
+                                />
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <Text
+                                  style={{
+                                    fontSize: "12px",
+                                    fontWeight: 500,
+                                    color: "#1f2937",
+                                    fontFamily: FONT_FAMILY,
+                                  }}
+                                >
+                                  {item.name}
+                                </Text>
+                                <br />
+                                <Text
+                                  style={{
+                                    fontSize: "10px",
+                                    color: "#6b7280",
+                                    fontFamily: FONT_FAMILY,
+                                  }}
+                                >
+                                  {item.time}
+                                </Text>
+                              </div>
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={
+                                  starredItems.includes(item.id) ? (
+                                    <StarFilled style={{ color: "#f59e0b" }} />
+                                  ) : (
+                                    <StarOutlined />
+                                  )
+                                }
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleStar(item.id);
+                                }}
+                                style={{ padding: "2px" }}
+                              />
+                            </div>
+                          </List.Item>
+                        )}
+                      />
+                    </div>
+                  </div>
+                </Col>
+
+                <Col xs={24} lg={8}>
+                  <Space
+                    direction="vertical"
+                    size="middle"
+                    style={{ width: "100%" }}
+                  >
+                    <div>
+                      <Title
+                        level={5}
+                        style={{
+                          margin: `0 0 ${SPACING.sm}px 0`,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: SPACING.sm,
+                          color: "#4b5563",
+                          fontSize: "13px",
+                          fontFamily: FONT_FAMILY,
+                          fontWeight: 600,
+                        }}
+                      >
+                        <SearchOutlined
+                          style={{ color: "#6b7280", fontSize: "14px" }}
+                        />
+                        Search
+                      </Title>
+                      <Search
+                        placeholder="Search accounts, documents, notes..."
+                        style={{ marginBottom: SPACING.sm }}
+                        size="middle"
+                      />
+                      <Space wrap>
+                        {["Docs", "Accounts", "Notes"].map((filter) => (
+                          <Tag
+                            key={filter}
+                            color={
+                              activeFilters.includes(filter)
+                                ? "blue"
+                                : "default"
+                            }
+                            style={{
+                              cursor: "pointer",
+                              fontSize: "10px",
+                              padding: "1px 6px",
+                              borderRadius: "10px",
+                              fontFamily: FONT_FAMILY,
+                            }}
+                            onClick={() => toggleFilter(filter)}
+                          >
+                            <FileOutlined
+                              style={{ marginRight: "3px", fontSize: "10px" }}
+                            />
+                            {filter}
+                          </Tag>
+                        ))}
+                      </Space>
+                    </div>
+
+                    <div>
+                      <Title
+                        level={5}
+                        style={{
+                          margin: `0 0 ${SPACING.sm}px 0`,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: SPACING.sm,
+                          color: "#4b5563",
+                          fontSize: "13px",
+                          fontFamily: FONT_FAMILY,
+                          fontWeight: 600,
+                        }}
+                      >
+                        <ThunderboltOutlined
+                          style={{ color: "#6b7280", fontSize: "14px" }}
+                        />
+                        Quick Actions
+                      </Title>
+                      <Row
+                        gutter={[SPACING.sm, SPACING.sm]}
+                        style={{ marginBottom: SPACING.sm }}
+                      >
+                        <Col span={12}>
+                          <Button
+                            onClick={() => setIsModalVisible(true)}
+                            style={{
+                              width: "100%",
+                              height: "32px",
+                              background: "#eff6ff",
+                              color: "#39b5bcff",
+                              border: "1px solid #a3f8f8ff",
+                              fontSize: "12px",
+                              fontWeight: 500,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: SPACING.sm,
+                              fontFamily: FONT_FAMILY,
+                            }}
+                            icon={
+                              <CalendarOutlined style={{ fontSize: "12px" }} />
+                            }
+                          >
+                            Add Event
+                          </Button>
+                        </Col>
+                        <Col span={12}>
+                          <Button
+                            onClick={() => setAddNoteModalVisible(true)}
+                            style={{
+                              width: "100%",
+                              height: "32px",
+                              background: "#fffbeb",
+                              color: "#ca8a04",
+                              border: "1px solid #fde68a",
+                              fontSize: "12px",
+                              fontWeight: 500,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: SPACING.sm,
+                              fontFamily: FONT_FAMILY,
+                            }}
+                            icon={
+                              <FileTextOutlined style={{ fontSize: "12px" }} />
+                            }
+                          >
+                            Add Note
+                          </Button>
+                        </Col>
+                        <Col span={12}>
+                          <Button
+                            style={{
+                              width: "100%",
+                              height: "32px",
+                              background: "#faf5ff",
+                              color: "#9333ea",
+                              border: "1px solid #d8b4fe",
+                              fontSize: "12px",
+                              fontWeight: 500,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: 8,
+                              fontFamily: FONT_FAMILY,
+                            }}
+                            icon={<BookOutlined style={{ fontSize: "12px" }} />}
+                            onClick={() => {
+                              setModalMode("create");
+                              setAddModalVisible(true);
+                            }}
+                          >
+                            Bookmark
+                          </Button>
+                        </Col>
+                        <Col span={12}>
+                          <Button
+                            onClick={() => setIsAccountModalVisible(true)}
+                            style={{
+                              width: "100%",
+                              height: "32px",
+                              background: "#fef2f2",
+                              color: "#dc2626",
+                              border: "1px solid #fecaca",
+                              fontSize: "12px",
+                              fontWeight: 500,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: SPACING.sm,
+                              fontFamily: FONT_FAMILY,
+                            }}
+                            icon={
+                              <UserAddOutlined style={{ fontSize: "12px" }} />
+                            }
+                          >
+                            Account
+                          </Button>
+                        </Col>
+                      </Row>
+
+                      <div
+                        onClick={handleClick}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        style={{
+                          border: `2px dashed ${isDragActive ? "#3b82f6" : "#d1d5db"
+                            }`,
+                          borderRadius: "16px",
+                          padding: "24px",
+                          textAlign: "center",
+                          backgroundColor: isDragActive ? "#eff6ff" : "#f9fafb",
+                          cursor: "pointer",
+                          transition: "all 0.3s ease",
+                          opacity: 0,
+                          animation: "fadeInUp 0.4s ease-out 1s forwards",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            gap: "8px",
+                          }}
+                        >
+                          <Upload
+                            style={{
+                              color: isDragActive ? "#3b82f6" : "#9ca3af",
+                              transition: "color 0.3s ease",
+                            }}
+                          />
+                          <div>
+                            <p
+                              style={{
+                                fontSize: "14px",
+                                fontWeight: "500",
+                                color: isDragActive ? "#3b82f6" : "#6b7280",
+                                margin: "0 0 4px 0",
+                              }}
+                            >
+                              Drag & Drop Files
+                            </p>
+                            <p
+                              style={{
+                                fontSize: "12px",
+                                color: "#9ca3af",
+                                margin: 0,
+                              }}
+                            >
+                              or click to browse
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <input
+                        type="file"
+                        multiple
+                        ref={fileInputRef}
+                        onChange={handleFileSelect}
+                        style={{ display: "none" }}
+                      />
+                    </div>
+                  </Space>
+                </Col>
+              </Row>
+            </Card>
+          </div>
+        </Content>
+      </Layout>
+
+      <Modal
+        title={
+          <span style={{ fontFamily: "inherit" }}>
+            {modalMode === "create" ? "Add New Bookmark" : "Edit Bookmark"}
+          </span>
+        }
+        open={addModalVisible}
+        onCancel={() => setAddModalVisible(false)}
+        footer={null}
+        style={{ top: 20 }}
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={async (values) => {
+            try {
+              const payload = {
+                ...values,
+                tags: values.tags?.split(",").map((tag: string) => tag.trim()),
+                favicon: "",
+                is_favorite: false,
+                editing: false,
+              };
+              await addBookmark(payload);
+              message.success("Bookmark added successfully");
+              setAddModalVisible(false);
+              form.resetFields();
+              router.push("/bookmarks");
+            } catch (err) {
+              console.error(err);
+              message.error("Failed to add bookmark");
+            }
+          }}
+        >
+          <Form.Item
+            name="title"
+            label="Title"
+            rules={[{ required: true, message: "Enter title" }]}
+          >
+            <Input placeholder="Enter title" />
+          </Form.Item>
+          <Form.Item
+            name="url"
+            label="URL"
+            rules={[
+              { required: true, message: "Enter URL" },
+              {
+                validator: (_, value) => {
+                  if (!value) return Promise.reject(new Error("Enter URL"));
+                  const urlPattern = /^https?:\/\/([\w-]+\.)+[\w-]{2,}(\/.*)?$/;
+                  return urlPattern.test(value)
+                    ? Promise.resolve()
+                    : Promise.reject();
+                },
+              },
+            ]}
+          >
+            <Input
+              placeholder=" example.com"
+              onBlur={(e) => {
+                let value = e.target.value.trim();
+                if (value && !/^https?:\/\//i.test(value)) {
+                  form.setFieldsValue({
+                    url: `https://${value}`,
+                  });
+                }
+              }}
+            />
+          </Form.Item>
+          <Form.Item name="description" label="Description">
+            <Input.TextArea rows={3} placeholder="Brief description" />
+          </Form.Item>
+          <Form.Item
+            name="category"
+            label="Resource Type"
+            rules={[{ required: true, message: "Select category" }]}
+          >
+            <Select placeholder="Select type">
+              <Option value="Tech">Tech</Option>
+              <Option value="Design">Design</Option>
+              <Option value="News">News</Option>
+              <Option value="Social">Social</Option>
+              <Option value="Tools">Tools</Option>
+              <Option value="Education">Education</Option>
+              <Option value="Entertainment">Entertainment</Option>
+              <Option value="Others">Others</Option>
+            </Select>
+          </Form.Item>
+          <Form.Item name="tags" label="Labels">
+            <Input placeholder="e.g., react, frontend, tutorial" />
+          </Form.Item>
+          <Form.Item style={{ textAlign: "right" }}>
+            <Space>
+              <Button type="primary" htmlType="submit">
+                Add Bookmark
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title={
+          <Space style={{ fontFamily: FONT_FAMILY }}>
+            <PlusOutlined />
+            Create New Event
+          </Space>
+        }
+        open={isModalVisible}
+        onOk={handleEventSave}
+        onCancel={() => {
+          setIsModalVisible(false);
+          eventForm.resetFields();
+          setIsAllDay(false);
+        }}
+        okText="Create Event"
+        width={520}
+        okButtonProps={{
+          style: {
+            backgroundColor: COLORS.accent,
+            borderColor: COLORS.accent,
+            fontFamily: FONT_FAMILY,
+          },
+        }}
+        style={{ fontFamily: FONT_FAMILY }}
+      >
+        <Form
+          form={eventForm}
+          layout="vertical"
+          style={{ marginTop: 12, fontFamily: FONT_FAMILY }}
+          initialValues={{
+            person: getPersonNames()[0] || "Family",
+          }}
+        >
+          <Form.Item
+            name="title"
+            label="Event Title"
+            rules={[{ required: true, message: "Please enter event title" }]}
+          >
+            <Input
+              placeholder="Add a descriptive title"
+              style={{ fontFamily: FONT_FAMILY }}
+            />
+          </Form.Item>
+          {isAllDay ? (
+            <Row gutter={12}>
+              <Col span={12}>
+                <Form.Item
+                  name="startDate"
+                  label="Start Date"
+                  rules={[
+                    { required: true, message: "Please select start date" },
+                  ]}
+                >
+                  <DatePicker
+                    style={{ width: "100%", fontFamily: FONT_FAMILY }}
+                    disabledDate={(current) =>
+                      current && current < dayjs().startOf("day")
+                    }
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="endDate"
+                  label="End Date"
+                  rules={[
+                    { required: true, message: "Please select end date" },
+                  ]}
+                >
+                  <DatePicker
+                    style={{ width: "100%", fontFamily: FONT_FAMILY }}
+                    disabledDate={(current) =>
+                      current && current < dayjs().startOf("day")
+                    }
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+          ) : (
+            <Row gutter={8}>
+              <Col span={8}>
+                <Form.Item
+                  name="date"
+                  label="Date"
+                  rules={[{ required: true, message: "Please select date" }]}
+                >
+                  <DatePicker
+                    style={{ width: "100%", fontFamily: FONT_FAMILY }}
+                    disabledDate={(current) =>
+                      current && current < dayjs().startOf("day")
+                    }
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={8}>
+                <Form.Item
+                  name="startTime"
+                  label={
+                    <Space>
+                      <ClockCircleOutlined />
+                      Start Time
+                    </Space>
+                  }
+                  rules={[
+                    { required: true, message: "Please select start time" },
+                  ]}
+                >
+                  <TimePicker
+                    style={{ width: "100%", fontFamily: FONT_FAMILY }}
+                    format="hh:mm A"
+                    use12Hours
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={8}>
+                <Form.Item
+                  name="endTime"
+                  label={
+                    <Space>
+                      <ClockCircleOutlined />
+                      End Time
+                    </Space>
+                  }
+                  rules={[
+                    { required: true, message: "Please select end time" },
+                  ]}
+                >
+                  <TimePicker
+                    style={{ width: "100%", fontFamily: FONT_FAMILY }}
+                    format="hh:mm A"
+                    use12Hours
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+          )}
+          <Form.Item>
+            <Checkbox
+              checked={isAllDay}
+              onChange={(e) => setIsAllDay(e.target.checked)}
+              style={{ fontFamily: FONT_FAMILY }}
+            >
+              All day
+            </Checkbox>
+          </Form.Item>
+          <Row gutter={12}>
+            <Col span={12}>
+              <Form.Item
+                name="person"
+                label="Assigned to"
+                rules={[{ required: true, message: "Please select person" }]}
+              >
+                <Select
+                  placeholder="Select person"
+                  style={{ fontFamily: FONT_FAMILY }}
+                >
+                  {Object.keys(personColors).map((userName) => {
+                    const account =
+                      getConnectedAccount(userName) ||
+                      connectedAccounts.find(
+                        (acc) => acc.email === getPersonData(userName).email
+                      );
+                    return (
+                      <Option key={userName} value={userName}>
+                        <Space>
+                          <Avatar
+                            size="small"
+                            style={{
+                              backgroundColor: getPersonData(userName).color,
+                            }}
+                          >
+                            {(account?.displayName || userName)
+                              .charAt(0)
+                              .toUpperCase()}
+                          </Avatar>
+                          {account?.displayName || userName}
+                        </Space>
+                      </Option>
+                    );
+                  })}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="invitee" label="Invite">
+                <Input
+                  placeholder="Add email"
+                  style={{ fontFamily: FONT_FAMILY }}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Form.Item
+            name="location"
+            label={
+              <Space>
+                <EnvironmentOutlined />
+                Location
+              </Space>
+            }
+          >
+            <Input
+              placeholder="Add location or meeting link"
+              style={{ fontFamily: FONT_FAMILY }}
+            />
+          </Form.Item>
+          <Form.Item name="description" label="Description">
+            <TextArea
+              rows={3}
+              placeholder="Add notes, agenda, or additional details"
+              style={{ fontFamily: FONT_FAMILY }}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <FolderConnectionModal
+        isModalVisible={isFolderModalVisible}
+        setIsModalVisible={setIsFolderModalVisible}
+      />
+
+      <AddNoteModal
+        visible={addNoteModalVisible}
+        onCancel={() => setAddNoteModalVisible(false)}
+        onSuccess={() => {
+          console.log('Note added successfully from dashboard');
+        }}
+      />
+
+      <AccountModal
+        visible={isAccountModalVisible}
+        onCancel={() => setIsAccountModalVisible(false)}
+        username={username}
+        setAccountModalVisible={setIsAccountModalVisible}
+      />
+
+      <style>{`
+        * {
+          font-family: ${FONT_FAMILY};
+        }
+        
+        @keyframes fadeIn {
+          from { 
+            opacity: 0; 
+            transform: translateY(20px); 
+          }
+          to { 
+            opacity: 1; 
+            transform: translateY(0); 
+          }
+        }
+        
+        @keyframes fadeInUp {
+          0% {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .widgets-container {
+          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .widgets-container .widget-card {
+          height: 138px;
+          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          transform-origin: center;
+          overflow: hidden;
+        }
+        
+        .widgets-container:hover {
+          margin-bottom: 10px;
+        }
+        
+        .widgets-container:hover .widget-card {
+          height: 278px;
+          transform: translateY(-6px) scale(1.01);
+          box-shadow: 0 16px 32px rgba(14, 13, 13, 0.1), 0 6px 12px rgba(0,0,0,0.06);
+        }
+        
+        .ant-card {
+          animation: fadeIn 0.6s ease-out;
+        }
+        
+        .ant-card:nth-child(2) {
+          animation-delay: 0.1s;
+        }
+        
+        .ant-card:nth-child(3) {
+          animation-delay: 0.2s;
+        }
+        
+        .ant-badge-dot {
+          animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+          0% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.2); opacity: 0.7; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        
+        @media (max-width: 768px) {
+          .ant-layout-sider {
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+          }
+          
+          .ant-layout-sider.mobile-open {
+            transform: translateX(0);
+          }
+          
+          .widgets-container .widget-card {
+            height: 120px;
+          }
+          
+          .widgets-container:hover .widget-card {
+            height: 200px;
+          }
+        }
+        
+        ::-webkit-scrollbar {
+          width: 4px;
+          height: 4px;
+        }
+        
+        ::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 2px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+          background: #c1c1c1;
+          border-radius: 2px;
+        } 
+        
+        ::-webkit-scrollbar-thumb:hover {
+          background: #a8a8a8;
+        }
+      `}</style>
     </div>
-  )
+  );
 }
+
+export default App;
