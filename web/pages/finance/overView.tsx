@@ -228,7 +228,7 @@ const OverView = (props: any) => {
 
         {/* Graph */}
         <Col span={24}>
-          <Card style={graphCardStyle}>
+          {/* <Card style={graphCardStyle}>
             <Title level={4} style={{ textAlign: "center" }}>
               Income Vs. Expenses (Last 6 Months)
             </Title>
@@ -259,7 +259,7 @@ const OverView = (props: any) => {
                 />
               </LineChart>
             </ResponsiveContainer>
-          </Card>
+          </Card> */}
         </Col>
       </Row>
     </Card>

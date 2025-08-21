@@ -16,6 +16,6 @@ export async function getUserProfile(params: any) {
   return api.get('/user/get/profile', { params });
 }
 
-export async function getUserGetStarted(params: any) {
+export async function fetchDocklyUser(params: any) {
   return api.get('/user/get/started', { params });
 }

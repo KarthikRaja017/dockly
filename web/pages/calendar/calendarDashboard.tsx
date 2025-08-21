@@ -21,9 +21,10 @@ import { useCurrentUser } from "../../app/userContext";
 import { GoogleOutlined, MailOutlined, UserOutlined } from "@ant-design/icons";
 import "animate.css";
 import DocklyLoader from "../../utils/docklyLoader";
-import RenderCalendarCard from "../components/customCalendar";
 import UpcomingActivities from "../components/upcomingActivities";
-import { providerColors } from "./stepOne";
+// import CalendarPage, { sampleCalendarData } from "../components/customCalendar1";
+// import CustomCalendar from "../components/customCalendar1";
+import { useGlobalLoading } from "../../app/loadingContext";
 
 const getEventColor = (eventDate: Date) => {
   const now = new Date();
@@ -39,7 +40,7 @@ const CalendarDashboard = (props: any) => {
   const { handleConnectMore } = props;
   const [username, setUsername] = useState<string | null>(null);
   const [users, setUsers] = useState<any[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  const { setLoading } = useGlobalLoading();
   const [events, setEvents] = useState<any[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<string[]>([]);
   const [accounts, setAccounts] = useState<{ email: string; provider: string }[]>([]);
@@ -120,10 +121,6 @@ const CalendarDashboard = (props: any) => {
       color: "#60a5fa", // lighter blue
     },
   ];
-
-  if (loading) {
-    return <DocklyLoader />
-  }
 
   return (
     <div>
@@ -320,7 +317,7 @@ const CalendarDashboard = (props: any) => {
             boxShadow: "0 8px 24px rgba(0,0,0,0.05)",
             width: "350px",
           }}
-          bodyStyle={{ padding: 0 }}
+        // bodyStyle={{ padding: 0 }}
         >
           <div style={{ padding: 20 }}>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -377,11 +374,12 @@ const CalendarDashboard = (props: any) => {
 
       <div style={{ display: "flex", gap: "16px" }}>
         <div style={{ flex: 2 }}>
-          <RenderCalendarCard loading={loading} events={events} accountColor={accountColor} />
+          {/* <RenderCalendarCard loading={loading} events={events} accountColor={accountColor} /> */}
+          {/* <CustomCalendar data={sampleCalendarData} /> */}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           <ToDoListCard />
-          <UpcomingActivities googleEvents={events} accountColor={accountColor} />
+          <UpcomingActivities googleEvents={events} />
         </div>
       </div>
     </div>

@@ -10,12 +10,13 @@ import {
 } from '@ant-design/icons';
 import 'antd/dist/reset.css';
 import { useRouter } from 'next/navigation';
+import { useGlobalLoading } from '../../app/loadingContext';
 const { Title, Text, Paragraph } = Typography;
 
 const HealthApp: React.FC = () => {
   const router = useRouter();
   const [view, setView] = useState<'intro' | 'wizard' | 'board'>('intro');
-  const [loading, setLoading] = useState(false);
+  const { loading, setLoading } = useGlobalLoading();
   const [step, setStep] = useState(1);
   const [selectedApp, setSelectedApp] = useState<string | null>(null);
 

@@ -3,7 +3,7 @@ import { Avatar, Button, Card, Carousel, Col, Form, Input, Mentions, Modal, Popo
 import { InfoCircleOutlined, LeftOutlined, RightOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { addGoogleCalendarEvents } from "../../services/google";
-import { useRouter } from "next/navigation";
+import { useGlobalLoading } from "../../app/loadingContext";
 const { Title } = Typography;
 
 type Event = {
@@ -43,7 +43,7 @@ export const inputSuffix = (
 const MentionInputWithAvatar = () => {
     const [form] = Form.useForm();
     const [value, setValue] = useState("");
-    const [loading, setLoading] = useState(false);
+    const { loading, setLoading } = useGlobalLoading();
     const [visible, setVisible] = useState(false);
     const [mentioned, setMentioned] = useState<{ name: string }[]>([]);
 

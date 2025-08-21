@@ -1,5 +1,5 @@
 import React from "react";
-import RenderCalendarCard from "../components/customCalendar";
+// import RenderCalendarCard from "../components/customCalendar1";
 import EventCarousel from "../components/eventCarousel";
 import { Plus } from "lucide-react";
 import { motion } from "framer-motion";
@@ -24,7 +24,7 @@ const CalendarEventWidget: React.FC<CalendarEventWidgetProps> = ({ events, accou
         boxSizing: "border-box",
       }}
     >
-      <RenderCalendarCard height={600} isCalendarPage={false} events={events} accountColor={accountColor} />
+      {/* <RenderCalendarCard height={600} isCalendarPage={false} events={events} accountColor={accountColor} /> */}
       {/* <EventCarousel events={events} /> */}
     </div>
   );

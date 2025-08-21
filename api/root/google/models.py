@@ -2,13 +2,16 @@ import calendar
 from datetime import datetime, time, timedelta
 import json
 import re
+import traceback
 from flask import make_response, redirect, request, session
 from flask_jwt_extended import create_access_token
 from flask_restful import Resource
 import pytz
-from root.utilis import uniqueId
+from root.common import Status
+from root.family.models import send_invitation_email
+from root.utilis import create_calendar_event, uniqueId, update_calendar_event
 from root.db.dbHelper import DBHelper
-from root.config import API_URL, CLIENT_ID, CLIENT_SECRET, WEB_URL
+from root.config import API_URL, CLIENT_ID, CLIENT_SECRET, WEB_URL, uri, SCOPE
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from urllib.parse import quote
@@ -16,8 +19,6 @@ import dateparser
 from dateparser.search import search_dates
 from pytz import timezone, utc
 
-# MICROSOFT_CLIENT_ID = "98fa92ef-f5ba-4765-bd81-9ce209dda01b"
-# MICROSOFT_CLIENT_SECRET = "Kar8Q~CRDjWSLixLfJyi3gQglRhkKXcd~JIftcds"
 
 import requests
 
@@ -25,18 +26,7 @@ from root.auth.auth import auth_required
 
 
 REDIRECT_URI = f"{API_URL}/auth/callback/google"
-SCOPE = (
-    "email profile "
-    "https://www.googleapis.com/auth/calendar "
-    "https://www.googleapis.com/auth/drive "
-    "https://www.googleapis.com/auth/fitness.activity.read "
-    "https://www.googleapis.com/auth/fitness.body.read "
-    "https://www.googleapis.com/auth/fitness.location.read "
-    "https://www.googleapis.com/auth/fitness.sleep.read "
-    "https://www.googleapis.com/auth/userinfo.email "
-    "https://www.googleapis.com/auth/userinfo.profile"
-)
-uri = "https://oauth2.googleapis.com/token"
+
 
 # Define a list of distinct light pastel colors
 light_colors = [
@@ -58,8 +48,8 @@ class AddGoogleCalendar(Resource):
         username = request.args.get("username")
         uid = request.args.get("userId")
         session["username"] = username
-        session["uid"] = uid
-        stateData = json.dumps({"uid": uid, "username": username})
+        session["user_id"] = uid
+        stateData = json.dumps({"user_id": uid, "username": username})
         encoded_state = quote(stateData)
 
         auth_url = (
@@ -87,8 +77,8 @@ class GetCalendarEvents(Resource):
             "user_object",
         ]
         allCreds = DBHelper.find(
-            "google_tokens",  # Consider renaming to "oauth_tokens"
-            filters={"uid": uid},
+            "connected_accounts",
+            filters={"user_id": uid, "is_active": Status.ACTIVE.value},
             select_fields=selectFields,
         )
 
@@ -96,13 +86,17 @@ class GetCalendarEvents(Resource):
             return {
                 "status": 0,
                 "message": "No connected accounts found.",
-                "payload": {},
+                "payload": {
+                    "events": [],
+                    "connected_accounts": [],
+                },
             }
 
         merged_events = []
         connected_accounts = []
         account_colors = {}
         usersObjects = []
+        errors = []
 
         for i, credData in enumerate(allCreds):
             provider = credData.get("provider", "google").lower()
@@ -111,9 +105,17 @@ class GetCalendarEvents(Resource):
             email = credData.get("email")
             color = light_colors[i % len(light_colors)]
             userObject = credData.get("user_object")
-            usersObjects.append(userObject)
 
             try:
+                userObjectData = json.loads(userObject) if userObject else {}
+            except json.JSONDecodeError:
+                userObjectData = {}
+
+            usersObjects.append(userObjectData)
+
+            try:
+                events = []
+
                 if provider == "google":
                     creds = Credentials(
                         token=access_token,
@@ -131,7 +133,7 @@ class GetCalendarEvents(Resource):
                         .list(
                             calendarId="primary",
                             timeMin=datetime.utcnow().isoformat() + "Z",
-                            maxResults=20,
+                            maxResults=40,
                             singleEvents=True,
                             orderBy="startTime",
                         )
@@ -141,14 +143,15 @@ class GetCalendarEvents(Resource):
                     events = events_result.get("items", [])
 
                 elif provider == "microsoft":
+                    # Check if the token is a valid JWT (contains a dot)
                     if "." not in access_token:
                         access_token = refresh_microsoft_token(refresh_token)
                         if not access_token:
                             raise Exception("Unable to refresh Microsoft token.")
                         DBHelper.update_one(
-                            table_name="google_tokens",  # Rename to `oauth_tokens` ideally
+                            table_name="connected_accounts",
                             filters={
-                                "uid": uid,
+                                "user_id": uid,
                                 "email": email,
                                 "provider": "microsoft",
                             },
@@ -184,23 +187,14 @@ class GetCalendarEvents(Resource):
                             "start": ev["start"],
                             "end": ev["end"],
                             "location": ev.get("location", {}).get("displayName", ""),
-                            "source_email": email,
-                            "account_color": color,
                         }
                         for ev in raw_events
                     ]
 
                 else:
-                    continue  # Unknown provider
+                    continue  # Unknown provider, skip this account
 
-                # Use a compound key to handle same email across providers
-                account_key = f"{provider}:{email}"
-
-                connected_accounts.append({"provider": provider, "email": email})
-
-                account_colors[account_key] = color
-
-                # Tag each event with source info
+                # Mark event source
                 for ev in events:
                     ev["source_email"] = email
                     ev["provider"] = provider
@@ -208,20 +202,53 @@ class GetCalendarEvents(Resource):
 
                 merged_events.extend(events)
 
-            except Exception as e:
-                print(f"Error fetching events for {email}: {e}")
-                continue
+                # Add to connected accounts
+                connected_accounts.append(
+                    {
+                        "provider": provider,
+                        "email": email,
+                        "color": color,
+                        "userName": userObjectData.get("name", email.split("@")[0]),
+                        "displayName": userObjectData.get("name", email.split("@")[0]),
+                    }
+                )
 
+                account_colors[f"{provider}:{email}"] = color
+
+                print(f"[{provider.upper()}] {email}: {len(events)} events fetched")
+
+            except Exception as e:
+                print(f"Error fetching events for {email}: {str(e)}")
+                errors.append({"email": email, "provider": provider, "error": str(e)})
+
+                # Mark token as inactive if invalid
+                if (
+                    "invalid_grant" in str(e)
+                    or "401" in str(e)
+                    or "invalid_token" in str(e)
+                ):
+                    DBHelper.update_one(
+                        table_name="connected_accounts",
+                        filters={"user_id": uid, "email": email, "provider": provider},
+                        updates={"is_active": Status.REMOVED.value},
+                    )
+
+        # Sort merged events
         merged_events.sort(key=lambda e: e.get("start", {}).get("dateTime", ""))
 
         return {
             "status": 1,
-            "message": "Merged calendar events from all connected accounts.",
+            "message": (
+                "Merged calendar events from all connected accounts."
+                if merged_events
+                else "No events found."
+            ),
             "payload": {
                 "events": merged_events,
                 "connected_accounts": connected_accounts,
                 "account_colors": account_colors,
                 "usersObjects": usersObjects,
+                "errors": errors,
             },
         }
 
@@ -234,8 +261,6 @@ def refresh_microsoft_token(refresh_token):
     token_url = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
 
     data = {
-        "client_id": MICROSOFT_CLIENT_ID,
-        "client_secret": MICROSOFT_CLIENT_SECRET,
         "grant_type": "refresh_token",
         "refresh_token": refresh_token,
         "scope": "offline_access Calendars.Read",
@@ -260,7 +285,9 @@ class GoogleCallback(Resource):
 
         if state:
             stateData = json.loads(state)
-            uid = stateData.get("uid")
+            user_id = stateData.get("user_id")
+            if not user_id:
+                return {"error": "Invalid state"}, 400
             username = stateData.get("username")
 
         # Step 1: Exchange code for tokens
@@ -298,35 +325,51 @@ class GoogleCallback(Resource):
         if not email:
             return {"error": "Email not found"}, 400
 
-        # Step 3: Get or create user
-        userId = session.get("uid") or email  # fallback if uid not in session
-        user = users.get(userId)
-        if not user:
-            users[userId] = {
-                "id": userId,
-                "email": email,
-                "name": userInfo.get("name"),
-                "picture": userInfo.get("picture"),
-            }
-            user = users[userId]
+        # Step 3: Create or update user object
+        userId = session.get("user_id") or user_id
+        user = {
+            "id": userId,
+            "email": email,
+            "name": userInfo.get("name", email.split("@")[0]),
+            "picture": userInfo.get("picture"),
+        }
 
-        existingEmail = DBHelper.find_one(
-            "google_tokens",
+        # Check if account already exists
+        existingAccount = DBHelper.find_one(
+            "connected_accounts",
             filters={
-                "uid": uid,
+                "user_id": user_id,
                 "email": email,
                 "provider": "google",
             },
-            select_fields=["email"],
+            select_fields=["id"],
         )
 
-        if not existingEmail:
-            inserted_id = DBHelper.insert(
-                "google_tokens",
-                uid=uid,
+        if existingAccount:
+            # Update existing account
+            DBHelper.update_one(
+                table_name="connected_accounts",
+                filters={"id": existingAccount["id"]},
+                updates={
+                    "access_token": access_token,
+                    "refresh_token": refresh_token,
+                    "is_active": Status.ACTIVE.value,
+                    "expires_at": (
+                        datetime.utcnow() + timedelta(seconds=expires_in)
+                    ).isoformat(),
+                    "user_object": json.dumps(user),
+                },
+            )
+        else:
+            # Insert new account
+            DBHelper.insert(
+                "connected_accounts",
+                user_id=user_id,
                 email=email,
                 access_token=access_token,
+                provider="google",
                 refresh_token=refresh_token,
+                is_active=Status.ACTIVE.value,
                 expires_at=(
                     datetime.utcnow() + timedelta(seconds=expires_in)
                 ).isoformat(),
@@ -347,139 +390,6 @@ class GoogleCallback(Resource):
         return redirect(redirect_url)
 
 
-# class AddGoogleCalendarEvent(Resource):
-#     @auth_required(isOptional=True)
-#     def post(self, uid, user):
-#         inputData = request.get_json(silent=True)
-#         matched_users = inputData.get("matchedUsers", [])
-#         attendees = [
-#             {"email": user["email"]} for user in matched_users if "email" in user
-#         ]
-#         eventText = inputData.get("event", "")
-#         if not eventText:
-#             return {"status": 0, "message": "Event text is required.", "payload": {}}
-
-#         cleaned_text = re.sub(r"@\w+", "", eventText).strip()
-#         cleaned_text = re.sub(
-#             r"^(event\s+on|remind\s+me\s+to|schedule\s+for|set\s+reminder\s+for)\s+",
-#             "",
-#             cleaned_text,
-#             flags=re.IGNORECASE,
-#         )
-
-#         # parsed_time = dateparser.parse(
-#         #     cleaned_text,
-#         #     settings={
-#         #         "PREFER_DATES_FROM": "future",
-#         #         "TIMEZONE": "UTC",
-#         #         "RETURN_AS_TIMEZONE_AWARE": True,
-#         #     },
-#         # )
-#         # parsed_time = extract_datetime(cleaned_text)
-#         parsed_time = extract_datetime_us(cleaned_text)
-#         if not parsed_time:
-#             return {
-#                 "status": 0,
-#                 "message": "Could not detect time in the event text.",
-#                 "payload": {},
-#             }
-
-#         user_cred = DBHelper.find_one(
-#             "google_tokens",
-#             filters={"uid": uid},
-#             select_fields=["access_token", "refresh_token", "email"],
-#         )
-
-#         if not user_cred:
-#             return {
-#                 "status": 0,
-#                 "message": "No connected Google account found.",
-#                 "payload": {},
-#             }
-
-#         creds = Credentials(
-#             token=user_cred["access_token"],
-#             refresh_token=user_cred["refresh_token"],
-#             token_uri=uri,
-#             client_id=CLIENT_ID,
-#             client_secret=CLIENT_SECRET,
-#             scopes=SCOPE.split(),
-#         )
-
-#         service = build("calendar", "v3", credentials=creds)
-
-#         event = {
-#             "summary": f"Event: {eventText}",
-#             "start": {"dateTime": parsed_time, "timeZone": "UTC"},
-#             "end": {
-#                 "dateTime": (parsed_time),
-#                 "timeZone": "UTC",
-#             },
-#             "attendees": attendees,
-#             "guestsCanModify": True,
-#             "guestsCanInviteOthers": True,
-#             "guestsCanSeeOtherGuests": True,
-#         }
-
-#         created_event = (
-#             service.events().insert(calendarId="primary", body=event).execute()
-#         )
-
-#         return {
-#             "status": 1,
-#             "message": "Google Calendar event successfully added.",
-#             "payload": {"event_link": created_event.get("htmlLink")},
-#         }
-
-
-# class AddNotes(Resource):
-#     @auth_required(isOptional=True)
-#     def post(self, uid, user):
-#         inputData = request.get_json(silent=True)
-
-#         note_text = inputData.get("note", "").strip()
-#         mode = inputData.get("mode", "today")  # default to 'today'
-
-#         if not note_text:
-#             return {"status": 0, "message": "Note text is required.", "payload": {}}
-
-#         # parsed_time_str = extract_datetime(note_text)
-#         parsed_time_str = extract_datetime_us(note_text)
-
-#         if not parsed_time_str:
-#             return {
-#                 "status": 0,
-#                 "message": "No time detected in the note text.",
-#                 "payload": {},
-#             }
-
-#         parsed_time = datetime.fromisoformat(parsed_time_str)
-#         ist = pytz.timezone("Asia/Kolkata")
-#         parsed_time = parsed_time.astimezone(ist)
-
-#         note_dates = get_future_dates_from_mode(parsed_time, mode)
-#         nid = uniqueId(digit=5, isNum=True)
-#         inserted_notes = []
-#         for note_date in note_dates:
-#             full_dt = ist.localize(datetime.combine(note_date, parsed_time.time()))
-#             insert_data = {
-#                 "uid": uid,
-#                 "note": note_text,
-#                 "note_time": full_dt.isoformat(),
-#                 "status": 1,
-#                 "nid": nid,
-#             }
-#             DBHelper.insert("notes", **insert_data)
-#             inserted_notes.append(insert_data)
-
-#         return {
-#             "status": 1,
-#             "message": f"{len(inserted_notes)} note(s) added successfully.",
-#             "payload": inserted_notes,
-#         }
-
-
-### FOR US
 class AddNotes(Resource):
     @auth_required(isOptional=True)
     def post(self, uid, user):
@@ -532,6 +442,177 @@ class AddNotes(Resource):
         }
 
 
+class AddEvent(Resource):
+    @auth_required(isOptional=True)
+    def post(self, uid, user):
+        inputData = request.get_json(silent=True)
+        print("Received event inputData:", inputData)
+
+        title = inputData.get("title", "").strip()
+        is_all_day = inputData.get("is_all_day", False)
+        event_id = inputData.get("id", "").strip()
+
+        insert_data = {
+            "user_id": uid,
+            "title": title,
+            "location": inputData.get("location", "").strip(),
+            "description": inputData.get("description", "").strip(),
+            "is_active": 1,
+        }
+
+        try:
+            # ───── Parse dates ─────
+            if is_all_day:
+                start_date = inputData.get("start_date", "").strip()
+                end_date = inputData.get("end_date", "").strip()
+                if not (title and start_date and end_date):
+                    return {
+                        "status": 0,
+                        "message": "Missing required fields",
+                        "payload": {},
+                    }
+
+                insert_data.update(
+                    {
+                        "start_time": "12:00 AM",
+                        "end_time": "11:59 PM",
+                        "date": start_date,
+                        "end_date": end_date,
+                    }
+                )
+
+                start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+                end_dt = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+
+            else:
+                date = inputData.get("date", "").strip()
+                start_time = inputData.get("start_time", "").strip()
+                end_time = inputData.get("end_time", "").strip()
+                if not (title and date and start_time and end_time):
+                    return {
+                        "status": 0,
+                        "message": "Missing required fields",
+                        "payload": {},
+                    }
+
+                insert_data.update(
+                    {
+                        "start_time": start_time,
+                        "end_time": end_time,
+                        "date": date,
+                        "end_date": date,
+                    }
+                )
+
+                start_dt = datetime.strptime(
+                    f"{date} {start_time}", "%Y-%m-%d %I:%M %p"
+                )
+                end_dt = datetime.strptime(f"{date} {end_time}", "%Y-%m-%d %I:%M %p")
+
+            # ───── Handle update or new event ─────
+            if event_id:
+                existing_event = DBHelper.find_one(
+                    "events", filters={"calendar_event_id": event_id}
+                )
+
+                if existing_event:
+                    calendar_event_id = existing_event.get("calendar_event_id")
+
+                    if calendar_event_id:
+                        update_calendar_event(
+                            user_id=uid,
+                            calendar_event_id=calendar_event_id,
+                            title=title,
+                            start_dt=start_dt,
+                            end_dt=end_dt,
+                        )
+                        insert_data["calendar_event_id"] = calendar_event_id
+                    else:
+                        calendar_event_id = create_calendar_event(
+                            user_id=uid, title=title, start_dt=start_dt, end_dt=end_dt
+                        )
+                        insert_data["calendar_event_id"] = calendar_event_id
+
+                    DBHelper.update_one(
+                        "events",
+                        filters={"id": existing_event["id"]},
+                        updates=insert_data,
+                    )
+                    insert_data["id"] = event_id
+                    insert_data["end_date"] = insert_data.get(
+                        "end_date", existing_event.get("end_date")
+                    )
+                else:
+                    return {"status": 0, "message": "Event not found", "payload": {}}
+            else:
+                calendar_event_id = create_calendar_event(
+                    user_id=uid, title=title, start_dt=start_dt, end_dt=end_dt
+                )
+                insert_data["calendar_event_id"] = calendar_event_id
+                insert_data["id"] = uniqueId(digit=6)
+                DBHelper.insert("events", **insert_data)
+
+            # ───── Send Invite Email if applicable ─────
+            # ───── Send Invite Email if applicable ─────
+            invitee_email = inputData.get("invitee", "").strip()
+            if invitee_email:
+                invitee_name = invitee_email.split("@")[0]
+                sender_name = user.get("user_name", "A Dockly user")
+
+                location = insert_data.get("location", "")
+                description = insert_data.get("description", "")
+
+                # ✅ Build optional fields conditionally
+                location_html = (
+                    f"<p><strong>Location:</strong> {location}</p>" if location else ""
+                )
+                description_html = (
+                    f"<p><strong>Description:</strong><br>{description}</p>"
+                    if description
+                    else ""
+                )
+
+                email_subject = f"You were mentioned in an event - {title}"
+
+                email_html = f"""
+                <html>
+                <body style="font-family: sans-serif; padding: 20px;">
+                    <h2>You’ve been mentioned in an event</h2>
+                    <p><strong>{sender_name}</strong> has added you to the event:</p>
+                    <p style="font-size: 18px; color: #3b82f6;"><strong>{title}</strong></p>
+                    {location_html}
+                    {description_html}
+                    <br>
+                    <a href="{WEB_URL}/calendar" style="display: inline-block; margin-top: 16px; padding: 10px 20px; background-color: #3b82f6; color: white; text-decoration: none; border-radius: 4px;">
+                        View Event in Dockly
+                    </a>
+                </body>
+                </html>
+                """
+
+                send_invitation_email(
+                    invitee_email,
+                    invitee_name,
+                    email_html,
+                    invite_subject=email_subject,
+                )
+
+            return {
+                "status": 1,
+                "message": (
+                    "Event updated successfully."
+                    if event_id
+                    else "Event added successfully."
+                ),
+                "payload": insert_data,
+            }
+
+        except Exception as e:
+            print("Google Calendar Error:", str(e))
+            traceback.print_exc()
+            return {"status": 0, "message": "Something went wrong.", "payload": {}}
+
+
 class AddGoogleCalendarEvent(Resource):
     @auth_required(isOptional=True)
     def post(self, uid, user):
@@ -570,8 +651,8 @@ class AddGoogleCalendarEvent(Resource):
 
         # Fetch user Google credentials from DB
         user_cred = DBHelper.find_one(
-            "google_tokens",
-            filters={"uid": uid},
+            "connected_accounts",
+            filters={"user_id": uid, "provider": "google"},
             select_fields=["access_token", "refresh_token", "email"],
         )
 
@@ -663,81 +744,8 @@ class GetNotes(Resource):
     @auth_required(isOptional=True)
     def get(self, uid, user):
         notes = []
-        selectFields = ["note", "note_time", "status", "nid"]
-        userNotes = DBHelper.find(
-            "notes", filters={"uid": uid, "status": 1}, select_fields=selectFields
-        )
-
-        for note in userNotes:
-            notes.append(
-                {
-                    "note": note["note"],
-                    "note_time": note[
-                        "note_time"
-                    ].isoformat(),  # or .strftime('%Y-%m-%dT%H:%M:%S%z') if timezone is present
-                    "status": note["status"],
-                    "nid": note["nid"],
-                }
-            )
 
         return {"status": 1, "message": "Notes fetched", "payload": {"notes": notes}}
-
-
-def extract_datetime(text: str, now=None) -> str:
-    ist = pytz.timezone("Asia/Kolkata")
-    now = now or datetime.now(ist)
-
-    def to_ist_iso(dt: datetime) -> str:
-        return dt.astimezone(ist).replace(microsecond=0).isoformat()
-
-    def extract_time_manually(text: str) -> time | None:
-        match = re.search(r"\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b", text, re.IGNORECASE)
-        if match:
-            hour = int(match.group(1))
-            minute = int(match.group(2) or 0)
-            meridian = match.group(3).lower()
-            if meridian == "pm" and hour != 12:
-                hour += 12
-            if meridian == "am" and hour == 12:
-                hour = 0
-            return time(hour, minute)
-        return None
-
-    # Step 1: Try search_dates (for full datetime matches)
-    results = search_dates(
-        text,
-        settings={
-            "PREFER_DATES_FROM": "future",
-            "RELATIVE_BASE": now,
-            "TIMEZONE": "Asia/Kolkata",
-            "TO_TIMEZONE": "Asia/Kolkata",
-            "RETURN_AS_TIMEZONE_AWARE": True,
-        },
-    )
-
-    if results:
-        results = sorted(results, key=lambda x: len(x[0]), reverse=True)
-        matched_text, parsed_dt = results[0]
-        parsed_dt = parsed_dt.astimezone(ist)
-
-        # Handle "only time" (like "10pm") by combining with today's date
-        if re.fullmatch(
-            r"(at\s*)?\d{1,2}(:\d{2})?\s*(am|pm)", matched_text.strip(), re.IGNORECASE
-        ):
-            manual_time = extract_time_manually(matched_text)
-            if manual_time:
-                parsed_dt = ist.localize(datetime.combine(now.date(), manual_time))
-
-        return to_ist_iso(parsed_dt)
-
-    # Step 2: If search_dates fails but there's a time manually
-    manual_time = extract_time_manually(text)
-    if manual_time:
-        parsed_dt = ist.localize(datetime.combine(now.date(), manual_time))
-        return to_ist_iso(parsed_dt)
-
-    # Step 3: fallback to current time
-    return to_ist_iso(now)
 
 
 def extract_datetime_us(text: str, now=None) -> str:

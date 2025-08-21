@@ -6,6 +6,7 @@ import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import type { FamilyMember, Schedule } from '../left-section';
 import { addSchedules, getUserSchedules, updateSchedule } from '../../../services/family';
+import { useGlobalLoading } from '../../../app/loadingContext';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -60,7 +61,7 @@ const SchedulesCard: React.FC<SchedulesCardProps> = ({
         updated_at: undefined,
     });
     const [editScheduleIndex, setEditScheduleIndex] = useState<number | null>(null);
-    const [loading, setLoading] = useState<boolean>(false);
+    const { loading, setLoading } = useGlobalLoading();
     const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
     const [scheduleFilter, setScheduleFilter] = useState<'all' | 'pending' | 'completed'>('all');
 

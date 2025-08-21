@@ -7,8 +7,9 @@ from flask_restful import Resource
 from datetime import datetime
 import pytz
 import requests
+from root.common import DocklyUsers, Hubs, HubsEnum, Status
 from root.auth.auth import auth_required, getAccessTokens
-from root.utilis import handle_user_session, uniqueId
+from root.utilis import get_device_info, handle_user_session, uniqueId
 from root.config import (
     EMAIL_PASSWORD,
     EMAIL_SENDER,
@@ -25,6 +26,8 @@ def generate_otp():
 
 
 def send_otp_email(email, otp):
+    print(f"otp: {otp}")
+    print(f"email: {email}")
     try:
         msg = EmailMessage()
         msg["Subject"] = "Your OTP Code for Dockly"
@@ -87,44 +90,94 @@ def getUtcCurrentTime():
     return datetime.now(tz=pytz.UTC)
 
 
+def store_user_session(user_id: str, session_token: str, is_active=True):
+    ip_address = request.remote_addr
+    user_agent = request.headers.get("User-Agent")
+    device_info = get_device_info()
+
+    # 1️⃣ Check if session already exists
+    existing_session = DBHelper.find_one(
+        "user_sessions", filters={"user_id": user_id}, select_fields=["user_id"]
+    )
+
+    if existing_session:
+        # 🔁 Update session
+        DBHelper.update(
+            table_name="user_sessions",
+            filters={"user_id": user_id},
+            update_fields={
+                "session_token": session_token,
+                "ip_address": ip_address,
+                "user_agent": user_agent,
+                "device_info": device_info,
+                "is_active": is_active,
+                "last_active": datetime.utcnow(),
+                "logged_out": None,
+            },
+        )
+    else:
+        # 🆕 Insert session
+        DBHelper.insert(
+            "user_sessions",
+            user_id=user_id,
+            session_token=session_token,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            device_info=device_info,
+            is_active=is_active,
+            created_at=datetime.utcnow(),
+            last_active=datetime.utcnow(),
+            logged_out=None,
+        )
+
+    # 2️⃣ Always insert into session_logs
+    DBHelper.insert(
+        "session_logs",
+        user_id=user_id,
+        ip_address=ip_address,
+        device_info=device_info,
+        action="login",
+        timestamp=datetime.utcnow(),
+    )
+
+
 class RegisterUser(Resource):
     def post(self):
         data = request.get_json()
         userName = data.get("userName")
         inputEmail = data.get("email", "")
+        isBookmark = data.get("isBookmark", False)
         userId = ""
 
-        # 1. Check if user exists by username
         existingUser = DBHelper.find_one(
             "users",
-            filters={"username": userName},
-            select_fields=["email", "uid", "is_dockly_user"],
+            filters={"user_name": userName},
+            select_fields=["email", "uid", "duser"],
         )
-        #  CASE 1: User exists
+
         if existingUser:
             userId = existingUser.get("uid")
             dbEmail = existingUser.get("email")
-            isDockly = existingUser.get("is_dockly_user")
+            isDockly = existingUser.get("duser")
 
-            # Case: Dockly user with matching email — login
             if isDockly and inputEmail == dbEmail:
-                # sessionInfo = handle_user_session(userId)
                 token = getAccessTokens({"uid": userId})
+                store_user_session(user_id=userId, session_token=token["accessToken"])
                 return {
                     "status": 1,
                     "message": "Welcome back",
                     "payload": {
                         "userId": userId,
-                        # "session": sessionInfo,
                         "token": token["accessToken"],
                         "redirectUrl": "/dashboard",
+                        "userName": userName,
                     },
                 }
 
-            # ⚠️ If email not given in input, send OTP to existing DB email for verification
             if isDockly and not inputEmail and dbEmail:
                 otp = generate_otp()
                 Thread(target=send_otp_email, args=(dbEmail, otp)).start()
+
                 return {
                     "status": 1,
                     "message": f"OTP sent to {dbEmail} for email verification",
@@ -132,40 +185,44 @@ class RegisterUser(Resource):
                         "redirectUrl": "/verify-email",
                         "email": dbEmail,
                         "userId": userId,
+                        "userName": userName,
                         "otpStatus": {"otp": otp, "email": dbEmail},
                     },
                 }
 
-            # 🚧 If not Dockly user, but email is provided, register as Dockly user (depends on your policy)
-            # if isDockly and inputEmail != dbEmail:
             return {
                 "status": 0,
                 "message": "Username already exists and is unavailable",
                 "payload": {},
             }
 
-        # CASE 2: New User (username not found)
+        # ❌ DO NOT CREATE new user if request is from bookmark
+        if isBookmark:
+            return {
+                "status": 0,
+                "message": "No username found. Please register.",
+                "payload": {},
+            }
+
+        # ✅ Allow registration only when not from bookmark (regular registration path)
         uid = uniqueId(digit=5, isNum=True, prefix="USER")
         userId = DBHelper.insert(
             "users",
             return_column="uid",
             uid=uid,
             email="",
-            mobile="",
-            username=userName,
+            user_name=userName,
             is_email_verified=False,
-            is_phone_verified=False,
-            is_dockly_user=True,
+            is_active=Status.ACTIVE.value,
+            duser=DocklyUsers.PaidMember.value,
+            splan=0,
         )
-
-        # sessionInfo = handle_user_session(userId)
 
         return {
             "status": 1,
             "message": "User registered and session created",
             "payload": {
                 "userId": userId,
-                # "session": sessionInfo,
                 "redirectUrl": "/sign-up",
             },
         }
@@ -180,7 +237,7 @@ class SaveUserEmail(Resource):
             existingUser = DBHelper.find_one(
                 "users",
                 filters={"email": email},
-                select_fields=["uid", "username"],
+                select_fields=["uid", "user_name"],
             )
             if existingUser:
                 return {
@@ -197,9 +254,10 @@ class SaveUserEmail(Resource):
                 )
             otp = generate_otp()
             otpResponse = send_otp_email(email, otp)
+            print(f"otpResponse: {otpResponse}")
             # otpResponse = {"otp": otp, "email": email}
             username = (
-                existingUser.get("username", "")
+                existingUser.get("user_name", "")
                 if existingUser
                 else inputData["username"]
             )
@@ -211,16 +269,18 @@ class SaveUserEmail(Resource):
                     "otpStatus": otpResponse,
                     "uid": uid,
                     "username": username,
+                    "duser": DocklyUsers.PaidMember.value,
                 },
             }
         else:
             existingUser = DBHelper.find_one(
                 "users",
                 filters={"email": email},
-                select_fields=["uid", "username"],
+                select_fields=["uid", "user_name"],
             )
             otp = generate_otp()
             otpResponse = send_otp_email(email, otp)
+            print(f"otpResponse: {otpResponse}")
             # otpResponse = {"otp": otp, "email": email}
             if existingUser:
                 uid = existingUser.get("uid")
@@ -232,7 +292,8 @@ class SaveUserEmail(Resource):
                         "email": email,
                         "otpStatus": otpResponse,
                         "uid": uid,
-                        "username": existingUser.get("username"),
+                        "username": existingUser.get("user_name"),
+                        "duser": DocklyUsers.PaidMember.value,
                     },
                 }
             else:
@@ -244,20 +305,23 @@ class SaveUserEmail(Resource):
                     return_column="uid",
                     uid=uid,
                     email="",
-                    mobile="",
-                    username=username,
+                    # mobile="",
+                    user_name=username,
                     is_email_verified=False,
-                    is_phone_verified=False,
-                    is_dockly_user=True,
+                    # is_phone_verified=False,
+                    duser=DocklyUsers.PaidMember.value,
+                    is_active=Status.ACTIVE.value,
+                    splan=0,
                 )
                 return {
                     "status": 1,
                     "message": "User registered and Otp sent Successfully",
                     "payload": {
                         "email": email,
-                        "otpStatus": otpResponse,
+                        # "otpStatus": otpResponse,
                         "uid": uid,
                         "username": username,
+                        "duser": DocklyUsers.PaidMember.value,
                     },
                 }
 
@@ -285,6 +349,7 @@ class OtpVerification(Resource):
         inputData = request.get_json(silent=True)
         userId = inputData["userId"]
         otp = inputData.get("otp")
+        duser = inputData.get("duser")
         response = is_otp_valid(inputData["storedOtp"], otp)
         uid = DBHelper.update_one(
             table_name="users",
@@ -292,14 +357,62 @@ class OtpVerification(Resource):
             updates={"is_email_verified": True},
             return_fields=["uid", "email"],
         )
+        # 🔁 Link family invite notifications to this UID
+        new_user_email = uid.get("email", "").strip().lower()
+        new_user_uid = uid.get("uid")
+
+        pending_invites = DBHelper.find_all(
+            table_name="notifications",
+            filters={"status": "pending", "task_type": "family_invite"},
+            select_fields=["id", "metadata"],
+        )
+
+        for invite in pending_invites:
+            metadata = invite.get("metadata", {})
+            input_data = metadata.get("input_data", {})
+            invited_email = input_data.get("email", "").strip().lower()
+
+            if invited_email == new_user_email:
+                DBHelper.update(
+                    table_name="notifications",
+                    filters={"id": invite["id"]},
+                    update_fields={
+                        "receiver_id": new_user_uid,
+                        "task_type": "family_request",  # ✅ Required for action buttons
+                        "action_required": True,
+                    },
+                )
         userInfo = {
             "uid": uid.get("uid"),
         }
         token = getAccessTokens(userInfo)
+        store_user_session(user_id=userId, session_token=token["accessToken"])
         # handle_user_session(uid)
         response["payload"]["token"] = token["accessToken"]
         response["payload"]["userId"] = uid.get("uid")
         response["payload"]["email"] = uid.get("email")
+        sharedIds = [
+            HubsEnum.Family.value,
+            HubsEnum.Finance.value,
+            HubsEnum.Health.value,
+            HubsEnum.Home.value,
+        ]
+        # hubs = DBHelper.find_all(
+        #     table_name="hubs",
+        #     select_fields=["name", "relationship"],
+        #     filters={"user_id": uid},
+        # )
+        if duser:
+            if int(duser) == DocklyUsers.PaidMember.value:
+                for id in sharedIds:
+                    shared = DBHelper.insert(
+                        table_name="users_access_hubs",
+                        user_id=uid.get("uid"),
+                        id=f"{uid.get('uid')}-{id}",
+                        hubs=id,
+                        is_active=Status.ACTIVE.value,
+                        return_column="hubs",
+                    )
         return response
 
 
@@ -388,61 +501,25 @@ class GetStarted(Resource):
     @auth_required(isOptional=True)
     def get(self, uid, user):
         if not uid:
-            return {
-                "status": 0,
-                "message": "User ID is required",
-                "payload": {},
-            }
+            return {"status": 0, "message": "User ID is required", "payload": {}}
 
-        completedSteps = 0
-        steps = [
-            "profileCompleted",
-            "accountsCompleted",
-            "boardCreated",
-            "documentUploaded",
-            "notificationsSetup",
-        ]
-
-        # Check profile completion
-        profile = DBHelper.find_one(
-            "user_profiles", filters={"uid": uid}, select_fields=["uid"]
+        # Check if user has Google token and bank board set up
+        google_account = DBHelper.find_one(
+            "google_tokens", filters={"uid": uid}, select_fields=["uid"]
         )
-        if profile and profile.get("uid"):
-            completedSteps += 1
-            if "profileCompleted" in steps:
-                steps.remove("profileCompleted")
-
-        # Check notifications setup
-        notifications = DBHelper.find_one(
-            "user_settings",
-            filters={"user_id": uid},
-            select_fields=["email_notifications", "push_notifications"],
+        bank_details = DBHelper.find_one(
+            "bankDetails", filters={"uid": uid}, select_fields=["uid"]
         )
 
-        if notifications is not None:
-            completedSteps += 1
-            if "notificationsSetup" in steps:
-                steps.remove("notificationsSetup")
-        googleUser = DBHelper.find_one(
-            "google_tokens",
-            filters={"uid": uid},
-            select_fields=["email"],
-        )
-        if googleUser is not None:
-            completedSteps += 1
-            if "accountsCompleted" in steps:
-                steps.remove("accountsCompleted")
-        print(f"steps: {steps}")
-        print(f"completedSteps: {completedSteps}")
+        is_redirect = not (google_account or bank_details)
 
         return {
             "status": 1,
             "message": "Fetched Get Started steps",
             "payload": {
-                "completedSteps": completedSteps,
-                "steps": steps,
                 "username": user.get("username", ""),
                 "uid": uid,
+                "isRedirect": is_redirect,
             },
         }
 

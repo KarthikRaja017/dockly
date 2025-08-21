@@ -8,6 +8,7 @@ import { AxiosResponse } from "axios";
 import { getUserProfile, userAddProfile } from "../../../services/user";
 import DocklyLoader from "../../../utils/docklyLoader";
 import dayjs from 'dayjs';
+import { useGlobalLoading } from "../../loadingContext";
 
 type PersonalValues = {
   first_name?: string;
@@ -23,7 +24,7 @@ type PersonalValues = {
 
 const ProfilePage: React.FC = () => {
   const [isPersonalEditing, setIsPersonalEditing] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const { setLoading } = useGlobalLoading();
   const [isAddressEditing, setIsAddressEditing] = useState(false);
   const [personalValues, setPersonalValues] = useState<PersonalValues | null>(null);
   const [profileImage, setProfileImage] = useState<string>("https://randomuser.me/api/portraits/men/32.jpg");
@@ -98,7 +99,7 @@ const ProfilePage: React.FC = () => {
   };
 
 
-  if (loading || !personalValues) {
+  if (!personalValues) {
     return <DocklyLoader />
   }
 
@@ -106,7 +107,7 @@ const ProfilePage: React.FC = () => {
 
   return (
     <div>
-      <Header isHovered={false} /> {/* Add Header */}
+      {/* <Header isHovered={false} /> Add Header */}
       <div
         style={{
           padding: "24px",

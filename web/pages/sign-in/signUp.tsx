@@ -7,6 +7,7 @@ import { AxiosResponse } from "axios";
 import { userAddEmail } from "../../services/user";
 import { showNotification } from "../../utils/notification";
 import { LowercaseInput } from "../../app/comman";
+import { useGlobalLoading } from "../../app/loadingContext";
 
 type ApiResponse = {
   status: boolean;
@@ -27,7 +28,7 @@ const SignUpDockly = () => {
   const params = useParams() || {};
   const username = params.username;
   const [userId, setUserId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const { loading, setLoading } = useGlobalLoading();
   const [email, setEmail] = useState(false);
   useEffect(() => {
     const userId = localStorage.getItem("userId") || null;
@@ -49,6 +50,7 @@ const SignUpDockly = () => {
       showNotification("Success", msg, "success");
       localStorage.setItem("storedOtp", payload?.otpStatus.otp || "");
       localStorage.setItem("email", payload?.email || "");
+      localStorage.setItem("duser", payload?.duser)
       router.push(`/${payload?.username}/verify-email?email=${payload.email}`);
     }
     setLoading(false);

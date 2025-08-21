@@ -12,11 +12,12 @@ import {
 import 'antd/dist/reset.css';
 
 import { useRouter } from 'next/navigation';
+import { useGlobalLoading } from '../../app/loadingContext';
 const { Title, Paragraph } = Typography;
 
 const CalendarIntroBoard: React.FC = () => {
   const [isCalendarUser, setIsCalendarUser] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const { loading, setLoading } = useGlobalLoading();
   const [username, setUsername] = useState<string | null>(null);
 
   const handleGetStarted = async () => {
@@ -33,17 +34,17 @@ const CalendarIntroBoard: React.FC = () => {
   };
 
   const router = useRouter();
-  
-    useEffect(() => {
-      const storedUsername = localStorage.getItem('username');
-      if (storedUsername) {
-        setUsername(storedUsername);
-      }
-    }, [])
-    const handlesubmit =  () => {
-      localStorage.setItem("calendar", "1");
-      router.push(`/${username}/calendar`);
+
+  useEffect(() => {
+    const storedUsername = localStorage.getItem('username');
+    if (storedUsername) {
+      setUsername(storedUsername);
     }
+  }, [])
+  const handlesubmit = () => {
+    localStorage.setItem("calendar", "1");
+    router.push(`/${username}/calendar`);
+  }
 
   return (
     <Card style={{ padding: '0px 24px' }} loading={loading}>

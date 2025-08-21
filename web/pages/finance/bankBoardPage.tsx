@@ -1,3 +1,4 @@
+
 "use client";
 import { useEffect, useState } from "react";
 import {
@@ -20,6 +21,7 @@ import {
 import FinanceIntroBoard from "./financeBoard";
 import BankPage from "./bankPage";
 import { useRouter } from "next/navigation";
+import DocklyLoader from "../../utils/docklyLoader";
 
 const { Title } = Typography;
 export default function BankBoardPage() {
@@ -27,7 +29,9 @@ export default function BankBoardPage() {
   const [profileId, setProfileId] = useState("");
   const [emailId, setEmailId] = useState("");
   const [isFinanceAccount, setIsFinanceAccount] = useState(false);
+  console.log("🚀 ~ BankBoardPage ~ isFinanceAccount:", isFinanceAccount)
   const [bankDetails, setBankDetails] = useState<any>(null);
+  console.log("🚀 ~ BankBoardPage ~ bankDetails:", bankDetails)
   const [loading, setLoading] = useState(true); // <-- Add loading state
   const [connectionId, setConnectionId] = useState<string>();
   const [username, setUsername] = useState<string>("");
@@ -59,20 +63,20 @@ export default function BankBoardPage() {
 
   useEffect(() => {
     if (!loading && (!bankDetails || bankDetails.length === 0)) {
-      router.push(`/${username}/finance/setup`);
+      router.push(`/${username}/finance-hub/setup`);
     }
   }, [loading, bankDetails]);
 
   if (loading) {
     return (
-      <div>
-        <Spin />
-      </div>
+      // <div>
+      <DocklyLoader />
+      // </div>
     ); // Or a spinner
   }
 
   return (
-    <div style={{ background: "#f0f2f5", minHeight: "100vh" }}>
+    <div style={{ background: "#fafafa", minHeight: "100vh" }}>
       <BankPage bankDetails={bankDetails} />
     </div>
   );
@@ -212,3 +216,4 @@ const FinanceProfileSetup = (props: any) => {
     </>
   );
 };
+

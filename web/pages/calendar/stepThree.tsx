@@ -5,7 +5,6 @@ import { API_URL } from "../../services/apiConfig";
 const { Text } = Typography;
 const CalendarStepThree = (props: any) => {
   const { setStep, selectedCalendars, setConnectedCalendars } = props;
-  console.log("🚀 ~ CalendarStepThree ~ selectedCalendars:", selectedCalendars)
   const [username, setUsername] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
 
@@ -129,9 +128,7 @@ const CalendarStepThree = (props: any) => {
         </p>
         <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
           {[
-            "Read calendar events and details",
-            "Create new events and reminders in Dockly",
-            "Modify or delete events created by Dockly",
+            "Sync selected service data", "Display relevant information in Dockly", "Allow disconnection anytime",
           ].map((item, index) => (
             <li
               key={index}
@@ -176,7 +173,7 @@ const CalendarStepThree = (props: any) => {
               />
             </svg>
             <span style={{ fontSize: "14px", color: "#111827" }}>
-              Cannot modify or delete events created outside of Dockly
+              Cannot access or modify data not explicitly selected by you
             </span>
           </li>
         </ul>
@@ -196,9 +193,8 @@ const CalendarStepThree = (props: any) => {
           <span style={{ fontWeight: 500 }}>Data & Privacy</span>
           <br />
           <span style={{ color: "#6b7280" }}>
-            Dockly syncs calendar data securely and doesn't share your
-            information with third parties. You can disconnect calendars at any
-            time.
+            Dockly syncs your selected service data securely and doesn't share it with
+            third parties. You can disconnect access at any time.
           </span>
         </p>
       </div>

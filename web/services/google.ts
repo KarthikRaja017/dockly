@@ -31,3 +31,7 @@ export async function updateNotes(params: any) {
 export async function getNotes(params: any) {
   return api.get('/get/notes', { params });
 }
+
+export async function addEvent(params: any) {
+  return api.post('/add/event', params);
+}

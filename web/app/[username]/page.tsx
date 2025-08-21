@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Spin } from "antd";
+import DocklyLoader from "../../utils/docklyLoader";
 
 export default function UserRedirectPage() {
   const router = useRouter();
@@ -17,5 +17,5 @@ export default function UserRedirectPage() {
     router.replace(`/${username}/dashboard`);
   }, [username]);
 
-  return <Spin />;
+  return;
 }

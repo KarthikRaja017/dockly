@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from flask import Flask
+from flask import Flask, app, json, jsonify, request
 from flask_jwt_extended import JWTManager
 from flask_restful import Api
 from flask_cors import CORS
@@ -36,6 +36,9 @@ def create_app(test_config=None):
     from root.google import google_bp
 
     app.register_blueprint(google_bp)
+    from root.dropbox import dropbox_bp
+
+    app.register_blueprint(dropbox_bp)
     from root.microsoft import microsoft_bp
 
     app.register_blueprint(microsoft_bp)
@@ -50,6 +53,21 @@ def create_app(test_config=None):
     from root.notes import notes_bp
 
     app.register_blueprint(notes_bp)
+    from root.dashboard import dashboard_bp
+
+    app.register_blueprint(dashboard_bp)
+    from root.planner import planner_bp
+
+    app.register_blueprint(planner_bp)
+    from root.notifications import notifications_bp
+
+    app.register_blueprint(notifications_bp)
+    from root.home import home_bp
+
+    app.register_blueprint(home_bp)
+    from root.files import google_drive_bp
+
+    app.register_blueprint(google_drive_bp)
     app.permanent_session_lifetime = timedelta(minutes=60)
     # initialize_firebase()
 

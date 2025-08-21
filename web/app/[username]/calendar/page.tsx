@@ -10,10 +10,11 @@ import { getCalendarEvents } from '../../../services/google';
 import DocklyLoader from '../../../utils/docklyLoader';
 import moment from 'moment';
 import axios from 'axios';
+import { useGlobalLoading } from '../../loadingContext';
 
 const Dashboard = () => {
   const [step, setStep] = useState<number>(1);
-  const [loading, setLoading] = useState<boolean>(false);
+  const { setLoading } = useGlobalLoading();
   const [selectedCalendars, setSelectedCalendars] = useState<string[]>([]);
   const [selectedOptions, setSelectedOptions] = useState({
     calendarEvents: true,
@@ -139,10 +140,6 @@ const Dashboard = () => {
     }
   };
 
-  if (loading) {
-    return <DocklyLoader />;
-  }
-
   return (
     <div
       style={{
@@ -158,14 +155,14 @@ const Dashboard = () => {
           setSelectedCalendars={setSelectedCalendars}
         />
       )}
-      {step === 2 && (
+      {/* {step === 2 && (
         <CalendarStepTwo
           selectedCalendars={selectedCalendars}
           selectedOptions={selectedOptions}
           setSelectedOptions={setSelectedOptions}
           setStep={setStep}
         />
-      )}
+      )} */}
       {step === 3 && (
         <CalendarStepThree
           setStep={setStep}

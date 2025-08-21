@@ -64,12 +64,12 @@ def validateAccess(uid, user, amac):
 
 
 def getAuthUser(uid, fields=None):
-    selectFields = ["uid", "email", "mobile", "username"]
+    selectFields = ["uid", "email", "user_name", "duser"]
 
     if fields:
         if isinstance(fields, dict):
             if "retriveAll" in fields:
-                selectFields = ["uid", "email", "mobile", "username"]
+                selectFields = ["uid", "email", "user_name", "duser"]
             else:
                 selectFields = [field for field, value in fields.items() if value == 1]
 
@@ -78,7 +78,7 @@ def getAuthUser(uid, fields=None):
     )
 
     user_settings = DBHelper.find_one(
-        "user_settings",
+        "user_preferences",
         filters={"user_id": uid},
         select_fields=[
             "theme",
@@ -89,21 +89,29 @@ def getAuthUser(uid, fields=None):
         ],
     )
 
-    # session_data = DBHelper.find_one(
-    #     "user_sessions",
-    #     filters={"uid": uid},
-    #     select_fields=["ip_address", "session_id"],
-    # )
-    # print(f"session_data: {session_data}")
+    session_data = DBHelper.find_one(
+        "user_sessions",
+        filters={"user_id": uid},
+        select_fields=["ip_address", "session_token"],
+    )
 
     if not user_data:
         return None
 
     user_data = dict(user_data) if isinstance(user_data, RealDictRow) else user_data
 
-    # if session_data is None:
-    #     session_data = {}
-    merged_data = {**user_data, **(user_settings or {})}
+    if session_data is None:
+        session_data = {}
+
+    merged_data = {
+        **user_data,
+        **(user_settings or {}),
+        "session_data": (
+            dict(session_data)
+            if isinstance(session_data, RealDictRow)
+            else session_data
+        ),
+    }
 
     return merged_data
 

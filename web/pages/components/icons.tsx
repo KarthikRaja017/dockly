@@ -1,6 +1,9 @@
 import React from "react";
 import type { SVGProps } from "react";
 
+export function CatppuccinFolderConnection(props: SVGProps<SVGSVGElement>) {
+  return (<svg xmlns="http://www.w3.org/2000/svg" width={25} height={25} viewBox="0 0 16 16" {...props}><g fill="none" strokeLinecap="round" strokeLinejoin="round"><path stroke="#343434" d="M4.5 4.5H12c.83 0 1.5.67 1.5 1.5v.5m-7.5 7H2A1.5 1.5 0 0 1 .5 12V3.5a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v1" strokeWidth={1}></path><path stroke="#343434" d="M14.001 12.437a2 2 0 1 0-2.439-2.434M10.5 13.5l3-3m-3.497 1.062A2 2 0 1 0 12.437 14" strokeWidth={1}></path></g></svg>);
+}
 export default function FlatColorIconsCalendar(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
@@ -715,3 +718,56 @@ export function IconParkFolderLock(props: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+
+export const BookmarkIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    style={{ width: '24px', height: '24px', fill: 'none', stroke: 'currentColor', strokeWidth: 2, ...props.style }}
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+  </svg>
+);
+export const FileTextIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    style={{ width: '24px', height: '24px', fill: 'none', stroke: 'currentColor', strokeWidth: 2, ...props.style }}
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+    <polyline points="14 2 14 8 20 8"></polyline>
+    <line x1="16" y1="13" x2="8" y2="13"></line>
+    <line x1="16" y1="17" x2="8" y2="17"></line>
+  </svg>
+);
+export const ShieldIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    style={{ width: '24px', height: '24px', fill: 'none', stroke: 'currentColor', strokeWidth: 2, ...props.style }}
+    viewBox="0 0 24 24"
+    {...props}
+  >
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+  </svg>
+);
+export const UsersIcon = () => <svg style={{ width: '24px', height: '24px', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }} viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>;
+export const HomeIcon = () => <svg style={{ width: '24px', height: '24px', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }} viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>;
+export const DollarSignIcon = () => <svg style={{ width: '24px', height: '24px', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }} viewBox="0 0 24 24"><line x1="12" x2="12" y1="1" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>;
+export const HeartIcon = () => <svg style={{ width: '24px', height: '24px', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }} viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>;
+export const MapPinIcon = () => <svg style={{ width: '24px', height: '24px', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }} viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>;
+export const FolderOpenIcon = () => <svg style={{ width: '24px', height: '24px', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }} viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M20 7H8l-2-3H2v14l2-1.5V7h14l2 3z"></path></svg>;
+export const ChevronRightIcon = (props: any) => (
+  <svg style={{ width: '24px', height: '24px', fill: 'none', stroke: 'currentColor', strokeWidth: 2, ...props.style }} viewBox="0 0 24 24" {...props}>
+    <polyline points="9 18 15 12 9 6"></polyline>
+  </svg>
+);
+export const SparklesIcon = () => <svg style={{ width: '24px', height: '24px', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }} viewBox="0 0 24 24"><path d="M12 2v4m0 12v4M2 12h4m12 0h4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"></path></svg>;
+export const ZapIcon = () => <svg style={{ width: '24px', height: '24px', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }} viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>;
+export const CloudIcon = () => <svg style={{ width: '24px', height: '24px', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }} viewBox="0 0 24 24"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>;
+export const CheckCircleIcon = (props: any) => (
+  <svg style={{ width: '24px', height: '24px', fill: 'none', stroke: 'currentColor', strokeWidth: 2, ...props.style }} viewBox="0 0 24 24" {...props}>
+    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+  </svg>
+);
+export const ArrowRightIcon = () => <svg style={{ width: '24px', height: '24px', fill: 'none', stroke: 'currentColor', strokeWidth: 2 }} viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>;
